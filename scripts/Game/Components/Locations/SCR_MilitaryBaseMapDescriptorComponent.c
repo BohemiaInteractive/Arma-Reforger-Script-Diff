@@ -1,0 +1,7 @@
+class SCR_MilitaryBaseMapDescriptorComponentClass : SCR_RadioCoverageMapDescriptorComponentClass
+{
+}
+
+class SCR_MilitaryBaseMapDescriptorComponent : SCR_RadioCoverageMapDescriptorComponent
+{
+}

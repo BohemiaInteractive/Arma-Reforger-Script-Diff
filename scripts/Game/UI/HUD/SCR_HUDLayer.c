@@ -1,0 +1,3 @@
+class SCR_HUDLayer
+{
+};

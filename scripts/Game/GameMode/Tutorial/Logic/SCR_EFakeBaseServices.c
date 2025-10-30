@@ -1,0 +1,12 @@
+enum SCR_EFakeBaseServices
+{
+	ARMORY = 1 << 1,
+	LIGHT_VEHICLE_DEPOT = 1 << 2,
+	HEAVY_VEHICLE_DEPOT = 1 << 3,
+	FIELD_HOSPITAL = 1 << 4,
+	BARRACKS = 1 << 5,
+	RADIO_ANTENNA = 1 << 6,
+	HELIPAD = 1 << 7,
+	FUEL_DEPOT = 1 << 8,
+	REPAIR_DEPOT = 1 << 9,
+}

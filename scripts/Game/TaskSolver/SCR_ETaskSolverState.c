@@ -1,0 +1,7 @@
+enum SCR_ETaskSolverState
+{
+	NOT_STARTED,
+	IN_PROGRESS,
+	COMPLETED,
+	FAILED
+}

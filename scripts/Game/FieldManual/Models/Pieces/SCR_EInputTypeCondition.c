@@ -1,0 +1,6 @@
+enum SCR_EInputTypeCondition
+{
+	ALL_INPUTS,
+	KEYBOARD_ONLY,
+	GAMEPAD_ONLY,
+}

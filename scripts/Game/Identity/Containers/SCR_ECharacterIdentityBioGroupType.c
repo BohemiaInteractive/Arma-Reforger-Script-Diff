@@ -1,0 +1,6 @@
+enum SCR_ECharacterIdentityBioGroupType
+{
+	MILITARY_AND_CIVILIAN = 0,
+	MILITARY_ONLY = 10,
+	CIVILIAN_ONLY = 20,
+}

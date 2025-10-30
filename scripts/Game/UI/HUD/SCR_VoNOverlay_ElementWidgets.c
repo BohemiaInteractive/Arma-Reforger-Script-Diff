@@ -1,0 +1,52 @@
+// Layout file: UI/layouts/HUD/VON/VoNOverlay_Element.layout
+// Layout file: UI/layouts/HUD/VON/VoNOverlay_Element.layout
+class SCR_VoNOverlay_ElementWidgets
+{
+	protected static const ResourceName LAYOUT = "{25221F619214A722}UI/layouts/HUD/VON/VoNOverlay_Element.layout";
+
+	ImageWidget m_wGameMaster;
+	OverlayWidget m_wMicFrame;
+	ImageWidget m_wMicBackground;
+	ImageWidget m_wMic;
+	ImageWidget m_wIconBackground;
+	ImageWidget m_wIcon;
+	TextWidget m_wFrequency;
+	TextWidget m_wSeparator;
+	ImageWidget m_wSquadLeaderIcon;
+	TextWidget m_wRole;
+	ImageWidget m_wPlatformImageGlow;
+	ImageWidget m_wPlatformImage;
+	TextWidget m_wName;
+	OverlayWidget m_wChannelFrame;
+	ImageWidget m_wChannelBackground;
+	RichTextWidget m_wChannelText;
+
+	//------------------------------------------------------------------------------------------------
+	bool Init(notnull Widget root)
+	{
+		m_wGameMaster = ImageWidget.Cast(root.FindWidget("VerticalLayout0.HorizontalLayout.m_wGameMaster"));
+		m_wMicFrame = OverlayWidget.Cast(root.FindWidget("VerticalLayout0.HorizontalLayout.Frame0.m_wMicFrame"));
+		m_wMicBackground = ImageWidget.Cast(root.FindWidget("VerticalLayout0.HorizontalLayout.Frame0.m_wMicFrame.m_wMicBackground"));
+		m_wMic = ImageWidget.Cast(root.FindWidget("VerticalLayout0.HorizontalLayout.Frame0.m_wMicFrame.m_wMic"));
+		m_wIconBackground = ImageWidget.Cast(root.FindWidget("VerticalLayout0.HorizontalLayout.Frame0.m_wIconBackground"));
+		m_wIcon = ImageWidget.Cast(root.FindWidget("VerticalLayout0.HorizontalLayout.Frame0.m_wIcon"));
+		m_wFrequency = TextWidget.Cast(root.FindWidget("VerticalLayout0.HorizontalLayout.m_wFrequency"));
+		m_wSeparator = TextWidget.Cast(root.FindWidget("VerticalLayout0.HorizontalLayout.m_wSeparator"));
+		m_wSquadLeaderIcon = ImageWidget.Cast(root.FindWidget("VerticalLayout0.HorizontalLayout.m_wSquadLeaderIcon"));
+		m_wRole = TextWidget.Cast(root.FindWidget("VerticalLayout0.HorizontalLayout.m_wRole"));
+		m_wPlatformImageGlow = ImageWidget.Cast(root.FindWidget("VerticalLayout0.HorizontalLayout.Overlay0.m_wPlatformImageGlow"));
+		m_wPlatformImage = ImageWidget.Cast(root.FindWidget("VerticalLayout0.HorizontalLayout.Overlay0.m_wPlatformImage"));
+		m_wName = TextWidget.Cast(root.FindWidget("VerticalLayout0.HorizontalLayout.m_wName"));
+		m_wChannelFrame = OverlayWidget.Cast(root.FindWidget("VerticalLayout0.HorizontalLayout.m_wChannelFrame"));
+		m_wChannelBackground = ImageWidget.Cast(root.FindWidget("VerticalLayout0.HorizontalLayout.m_wChannelFrame.m_wChannelBackground"));
+		m_wChannelText = RichTextWidget.Cast(root.FindWidget("VerticalLayout0.HorizontalLayout.m_wChannelFrame.Frame0.m_wChannelText"));
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetLayout()
+	{
+		return LAYOUT;
+	}
+}

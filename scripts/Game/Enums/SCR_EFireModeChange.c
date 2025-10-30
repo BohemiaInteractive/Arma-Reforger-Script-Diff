@@ -1,0 +1,6 @@
+enum SCR_EFireModeChange
+{
+	WEAPON_GROUP,
+	FIRE_MODE,
+	RIPPLE_QUANTITY
+}

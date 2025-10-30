@@ -1,0 +1,26 @@
+//~Update config: ArsenalItemTypeUIConfig.conf if Enum changes as well as any Editor related Attributes!
+enum SCR_EArsenalItemType
+{
+	RIFLE = 1 << 1,
+	PISTOL = 1 << 2,
+	LETHAL_THROWABLE = 1 << 3,
+	ROCKET_LAUNCHER = 1 << 4,
+	MACHINE_GUN = 1 << 5,
+	HEAL = 1 << 6,
+	BACKPACK = 1 << 7,
+	SNIPER_RIFLE = 1 << 8,
+	NON_LETHAL_THROWABLE = 1 << 9,
+	HEADWEAR = 1 << 10,
+	TORSO = 1 << 11,
+	VEST_AND_WAIST = 1 << 12,
+	LEGS = 1 << 13,
+	FOOTWEAR = 1 << 14,
+	RADIO_BACKPACK = 1 << 15,
+	EQUIPMENT = 1 << 16,
+	WEAPON_ATTACHMENT = 1 << 17,
+	EXPLOSIVES = 1 << 18,
+	HANDWEAR = 1 << 19,
+	MORTARS = 1 << 20,
+	HELICOPTER = 1 << 21,
+	VEHICLE = 1 << 22,
+}

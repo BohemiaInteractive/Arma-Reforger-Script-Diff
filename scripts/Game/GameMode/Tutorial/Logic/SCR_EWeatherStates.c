@@ -1,0 +1,8 @@
+enum SCR_EWeatherStates
+{
+	CLEAR,
+	CLOUDY,
+	OVERCAST,
+	RAINY,
+	NO_CHANGE
+}

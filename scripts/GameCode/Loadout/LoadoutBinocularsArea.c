@@ -1,0 +1,3 @@
+class LoadoutBinocularsArea: LoadoutAreaType
+{
+};

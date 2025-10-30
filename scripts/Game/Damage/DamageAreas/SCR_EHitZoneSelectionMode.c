@@ -1,0 +1,7 @@
+enum SCR_EHitZoneSelectionMode
+{
+	DEFAULT,
+	RANDOM,
+	RANDOM_PHYSICAL,
+	FIRST_PHYSICAL
+}
