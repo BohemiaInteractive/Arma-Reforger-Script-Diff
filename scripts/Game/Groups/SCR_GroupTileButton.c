@@ -121,6 +121,8 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 	protected SCR_InputButtonComponent m_RemoveGroupButton;
 	protected SCR_PlayerControllerGroupComponent m_GroupComponent;
 	protected SCR_PlayerFactionAffiliationComponent m_sPlyFactionAffilComp;
+	
+	protected SCR_HorizontalScrollAnimationComponent m_ScrollComponent;
 
 	[Attribute("0.898 0.541 0.184 1", UIWidgets.ColorPicker)]
 	protected ref Color m_PlayerNameSelfColor;
@@ -156,6 +158,14 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 	protected static ref ScriptInvokerInt m_OnPlayerTileFocusLost;
 	
 	protected bool m_bIsPriority;
+	
+	//------------------------------------------------------------------------------------------------
+	override void HandlerAttached(Widget w)
+	{
+		super.HandlerAttached(w);
+		
+		m_ScrollComponent = SCR_HorizontalScrollAnimationComponent.Cast(w.FindAnyWidget("CallsignFrame").FindHandler(SCR_HorizontalScrollAnimationComponent));
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
@@ -888,8 +898,10 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		TextWidget callsign = TextWidget.Cast(GetRootWidget().FindAnyWidget("Callsign"));
 		TextWidget frequency = TextWidget.Cast(GetRootWidget().FindAnyWidget("Frequency"));
 		TextWidget playerCount = TextWidget.Cast(GetRootWidget().FindAnyWidget("PlayerCount"));
+		
 		if (!frequencyImage || !playerIcon || !callsign || !frequency || !playerCount)
 			return;
+		
 		frequencyImage.SetColor(groupColor);
 		playerIcon.SetColor(groupColor);
 		callsign.SetColor(groupColor);
@@ -910,13 +922,30 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 
 		if (m_GroupComponent.GetSelectedGroupID() == -1)
 			m_GroupComponent.SetSelectedGroupID(m_iGroupID);
+		
 		EInputDeviceType deviceType = GetGame().GetInputManager().GetLastUsedInputDevice();
 		if (deviceType == EInputDeviceType.GAMEPAD || deviceType == EInputDeviceType.KEYBOARD)
 		{
 			m_GroupComponent.SetSelectedGroupID(m_iGroupID);
 			RefreshPlayers();
 		}
+		
+		if (!m_ScrollComponent.GetContentFitX())
+			m_ScrollComponent.AnimationStart();
+		
 		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool OnFocusLost(Widget w, int x, int y)
+	{
+		if (m_ScrollComponent.IsAnimating())
+		{
+			m_ScrollComponent.AnimationStop();
+			m_ScrollComponent.ResetPosition();
+		}
+		
+		return super.OnFocusLost(w, x, y);
 	}
 
 	//------------------------------------------------------------------------------------------------

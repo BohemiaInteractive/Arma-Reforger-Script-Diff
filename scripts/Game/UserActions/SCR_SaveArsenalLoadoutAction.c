@@ -17,8 +17,15 @@ class SCR_SaveArsenalLoadout : SCR_BaseFactionCheckUserAction
 	{
 #ifdef DISABLE_ARSENAL_LOADOUTS
 		return false;
-#endif		
-		if (!m_ArsenalManager || !super.CanBeShownScript(user))
+#endif	
+		
+		if (!m_ArsenalManager || !m_ArsenalComponent)
+		{
+			if (!UserActionInit())
+				return false;
+		}
+			
+		if (!super.CanBeShownScript(user))
 			return false;
 		
 		//~ If has arsenal component and arsenal has an inventory. Only show if saving is allowed and not disabled at the start
@@ -66,14 +73,20 @@ class SCR_SaveArsenalLoadout : SCR_BaseFactionCheckUserAction
 	//------------------------------------------------------------------------------------------------
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
+		super.Init(pOwnerEntity, pManagerComponent);
+		
 		if (SCR_Global.IsEditMode())
 			return;
 		
-		super.Init(pOwnerEntity, pManagerComponent);
-		
+		UserActionInit();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool UserActionInit()
+	{
 		SCR_ArsenalManagerComponent.GetArsenalManager(m_ArsenalManager);
 		if (!m_ArsenalManager)
-			return;
+			return false;
 		
 		//~ Get Arsenal component
 		m_ArsenalComponent = SCR_ArsenalComponent.Cast(GetOwner().FindComponent(SCR_ArsenalComponent));
@@ -84,11 +97,12 @@ class SCR_SaveArsenalLoadout : SCR_BaseFactionCheckUserAction
 		if (!m_ArsenalComponent)
 		{
 			Print("SCR_SaveArsenalLoadout is attached to an entity that does not have an arsenal on self or parent (if m_bAllowGetArsenalFromParent is true)!", LogLevel.WARNING);
-			return;
+			return false;
 		}	
 		
 		//~ Allows editor to set the set the allowing of arsenal saving
 		m_ArsenalComponent.SetHasSaveArsenalAction(true);
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -169,9 +183,12 @@ class SCR_SaveArsenalLoadout : SCR_BaseFactionCheckUserAction
 	//------------------------------------------------------------------------------------------------
 	override protected void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity)
 	{		
-		if (!m_ArsenalManager || !m_ArsenalComponent)
-			return;
-
+		if (!m_ArsenalComponent || !m_ArsenalManager)
+		{
+			if (!UserActionInit())
+				return;
+		}
+		
 		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(pUserEntity);
 		if (playerId <= 0)
 			return;

@@ -34,7 +34,7 @@ class SCR_DestructibleBuildingComponentClass : SCR_DamageManagerComponentClass
 	[Attribute("", UIWidgets.Auto, desc: "Slow down event audio source configuration")]
 	ref SCR_AudioSourceConfiguration m_AudioSourceConfiguration;
 
-	[Attribute(uiwidget: UIWidgets.GraphDialog)]
+	[Attribute(uiwidget: UIWidgets.CurveDialog)]
 	ref Curve m_CameraShakeCurve;
 
 	[Attribute(uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(SCR_EDestructionRotationEnum))]
@@ -207,7 +207,7 @@ class SCR_BuildingDestructionCameraShakeProgress : SCR_NoisyCameraShakeProgress
 	//------------------------------------------------------------------------------------------------
 	void SetSizeMultiplier(float sizeMultiplier)
 	{
-		m_fSizeMultiplier = sizeMultiplier;
+		m_fSizeMultiplier = Math.Min(sizeMultiplier, MAX_MULTIPLIER);
 	}
 }
 
@@ -566,6 +566,64 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Destroys all direct child entities that have SCR_DestructibleBuildingComponent
+	//! Each child will handle its own sub-children during its destruction process
+	//! \param[in] owner The parent entity whose children should be checked and destroyed
+	protected void DestroyChildDestructibles(notnull IEntity owner)
+	{	
+		// Pre-allocate shared resources to avoid repeated allocations
+		Instigator sharedInstigator = GetInstigator();
+		if (!sharedInstigator)
+			sharedInstigator = Instigator.CreateInstigator(null);
+		
+		HitZone defaultHitZone;
+		vector hitPosDirNorm[3]; // Empty for TRUE damage type
+		// Trigger destruction - child will handle its own sub-children
+		SCR_DamageContext damageContext = new SCR_DamageContext(
+			EDamageType.TRUE,
+			1,
+			hitPosDirNorm,
+			null,
+			defaultHitZone,
+			sharedInstigator,
+			null,
+			-1,
+			-1
+		);
+		
+		// Iterate through direct children and destroy those with destructible components
+		IEntity child = owner.GetChildren();
+		IEntity nextChild;
+		while (child)
+		{
+			// Store next sibling BEFORE any modifications to be safe
+			nextChild = child.GetSibling();
+			
+			SCR_DestructibleBuildingComponent childDestructibleComp = SCR_DestructibleBuildingComponent.Cast(
+				child.FindComponent(SCR_DestructibleBuildingComponent)
+			);
+			
+			if (childDestructibleComp)
+			{
+				defaultHitZone = childDestructibleComp.GetDefaultHitZone();
+				if (defaultHitZone)
+				{
+					// Detach from parent before triggering destruction
+					owner.RemoveChild(child, true);
+					
+					damageContext.damageValue = defaultHitZone.GetMaxHealth();
+					damageContext.struckHitZone = defaultHitZone;
+					damageContext.hitEntity = child;
+
+					childDestructibleComp.HandleDamage(damageContext);
+				}
+			}
+			
+			child = nextChild;
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Returns prefab data stored speed gradual multiplier
 	protected float GetSpeedGradualMultiplier()
 	{
@@ -756,6 +814,9 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		data.m_aQueriedEntities = {};
 
 		owner.GetWorldTransform(data.m_vStartMatrix);
+
+		// Destroy child entities with SCR_DestructibleBuildingComponent before querying
+		DestroyChildDestructibles(owner);
 
 		// We'll query for static and dynamic entities only.
 		// Proxies are also excluded so we don't even consider:
@@ -1610,6 +1671,15 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 	override bool HijackDamageHandling(notnull BaseDamageContext damageContext)
 	{
 		if (damageContext.damageEffect && damageContext.damageEffect.Type() == SCR_VehicleFireDamageEffect)
+			return true;
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override bool HasDataToReplicate()
+	{
+		if (m_bDestroyed == true)
 			return true;
 
 		return false;

@@ -2709,6 +2709,9 @@ class SCR_AIGroup : ChimeraAIGroup
 		writer.WriteBool(m_bIsPrivacyChangeable);
 		writer.WriteBool(m_bIsCreatedByCommander);
 
+		writer.WriteInt(m_RallyPointId);
+		writer.WriteBool(m_bForcedRallyPoint);
+
 		//do rpcs for players join/leave
 		//add invokers for players join/leave
 
@@ -2785,6 +2788,9 @@ class SCR_AIGroup : ChimeraAIGroup
 		reader.ReadInt(m_eGroupRole);
 		reader.ReadBool(m_bIsPrivacyChangeable);
 		reader.ReadBool(m_bIsCreatedByCommander);
+
+		reader.ReadInt(m_RallyPointId);
+		reader.ReadBool(m_bForcedRallyPoint);
 
 		return true;
 	}

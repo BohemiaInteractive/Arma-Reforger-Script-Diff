@@ -107,39 +107,18 @@ class SCR_TaskMapUIComponent : SCR_MapUIElement
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
 		super.OnMouseEnter(w, x, y);
+		
 		if (w != m_Widgets.m_wTaskIconButton)
 			return false;
 
-		if (m_Task.GetTaskState() & SCR_ETaskState.COMPLETED)
-			return false;
-
+		m_bEnableContext = true;
 		m_Widgets.m_wTaskTitleButton.SetVisible(true);
 		m_Widgets.m_wAssignedPlayers.SetVisible(m_bDisplayAssigned);
 
 		m_wRoot.Update();
-		GetGame().GetCallqueue().Call(SetPos);
 		m_TaskManager.SetHoveredTask(m_Task);
 
 		return false;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void SetPos()
-	{
-		float hoverSizeX, hoverSizeY;
-		m_Widgets.m_wTaskTitleButton.GetScreenSize(hoverSizeX, hoverSizeY);
-
-		float left, top, right, bottom;
-		AlignableSlot.GetPadding(m_Widgets.m_wTaskTitleButton, left, top, right, bottom);
-
-		left = GetGame().GetWorkspace().DPIScale(left);
-
-		float pos = (hoverSizeX + left) * 0.5;
-		pos = GetGame().GetWorkspace().DPIUnscale(pos);
-
-		FrameSlot.SetPosX(m_Widgets.m_wSizeLayout, pos);
-
-		m_bEnableContext = true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -148,9 +127,6 @@ class SCR_TaskMapUIComponent : SCR_MapUIElement
 		super.OnMouseLeave(w, enterW, x, y);
 
 		m_Widgets.m_wTaskTitleButton.SetVisible(false);
-
-		if (enterW != m_Widgets.m_wTaskIconButton && enterW != m_Widgets.m_wTaskTitleButton)
-			FrameSlot.SetPosX(m_Widgets.m_wSizeLayout, 0);
 
 		m_bEnableContext = false;
 		m_TaskManager.SetHoveredTask(null);
@@ -201,8 +177,19 @@ class SCR_TaskMapUIComponent : SCR_MapUIElement
 
 		float titleX, titleY;
 		m_Widgets.m_wTaskTitle.GetScreenSize(titleX, titleY);
+		
+		bool isOverflow = frameX < titleX;
+		
+		float witdh;
+		if (isOverflow)
+			witdh = m_Widgets.m_wTitleSizeLayout.GetMaxDesiredWidth();
+		else
+			witdh = 0;
+		
+		m_Widgets.m_wTitleSizeLayout.SetWidthOverride(witdh);
+		m_Widgets.m_wTitleSizeLayout.EnableWidthOverride(isOverflow);
 
-		return frameX < titleX;
+		return isOverflow;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -231,7 +218,7 @@ class SCR_TaskMapUIComponent : SCR_MapUIElement
 		else if (m_TaskManager)
 		{
 			m_TaskManager.SetSelectedTask(m_Task);
-			m_TaskManager.ToggleMapTaskList();
+			m_TaskManager.SetTaskListVisibility(true);
 		}
 	}
 
@@ -433,7 +420,9 @@ class SCR_TaskMapUIComponent : SCR_MapUIElement
 				playerController.SetPlatformImageToKind(platformKind, m_Widgets.m_wPlatformIcon, showOnPC: true, showOnXbox: true);
 		}
 		else
+		{
 			m_Widgets.m_wAuthorLayout.SetVisible(false);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

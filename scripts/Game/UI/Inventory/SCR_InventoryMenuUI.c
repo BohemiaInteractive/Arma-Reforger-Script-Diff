@@ -433,7 +433,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	protected const string BUTTON_REMOVE_TOURNIQUET = "ButtonRemoveTourniquet";
 
 	protected const LocalizedString GAMEPAD_HINT_BACK = "#AR-Menu_Back";
+	protected const LocalizedString GAMEPAD_HINT_MOVE = "#AR-Inventory_Move";
 	protected const LocalizedString GAMEPAD_HINT_CLOSE = "#AR-Inventory_Close";
+	protected const LocalizedString GAMEPAD_HINT_SELECT = "#AR-Inventory_Select";
 	protected const LocalizedString GAMEPAD_HINT_DESELECT = "#AR-Inventory_Deselect";
 	
 	protected static ref ScriptInvokerInventorySlotHover m_OnItemHover;
@@ -459,10 +461,10 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (m_AttachmentSpinBox)
 			m_AttachmentSpinBox.ClearAll();
 
-		Widget bleeding = m_widget.FindAnyWidget("BleedingGlobal");
-		Widget fracture = m_widget.FindAnyWidget("FractureGlobal");
-		Widget morphineTimer = m_widget.FindAnyWidget("MorphineTimer");
-		Widget salineTimer = m_widget.FindAnyWidget("SalineTimer");
+		const Widget bleeding = m_widget.FindAnyWidget("BleedingGlobal");
+		const Widget fracture = m_widget.FindAnyWidget("FractureGlobal");
+		const Widget morphineTimer = m_widget.FindAnyWidget("MorphineTimer");
+		const Widget salineTimer = m_widget.FindAnyWidget("SalineTimer");
 
 		m_CharController = SCR_CharacterControllerComponent.Cast(m_Player.GetCharacterController());
 		m_CharDamageManager = SCR_CharacterDamageManagerComponent.Cast(m_Player.GetDamageManager());
@@ -479,18 +481,43 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			m_salineTimerHandlerGlobal = SCR_CountingTimerUI.Cast(salineTimer.FindHandler(SCR_CountingTimerUI));
 	}
 
-	protected bool InitHitZones()
+	protected bool InitHitZones(bool batchProcessing = false)
 	{
-		int hzToInit = m_aHitZonePoints.Count();
-		if (hzToInit == CHARACTER_HITZONES_COUNT)
+		const int hzToInit = m_aHitZonePoints.Count();
+		if (hzToInit >= CHARACTER_HITZONES_COUNT)
 			return true;
 
-		Widget w = GetGame().GetWorkspace().CreateWidgets(HITZONE_CONTAINER_LAYOUT, m_wAttachmentPointsContainer);
-		SCR_InventoryHitZonePointContainerUI point = SCR_InventoryHitZonePointContainerUI.Cast(w.FindHandler(SCR_InventoryHitZonePointContainerUI));
-		point.InitializeHitZoneUI(m_pStorageListUI.GetStorage(), this, hzToInit + 1, m_Player);
+		const bool updateAttachmentStorage = !batchProcessing || hzToInit + 1 == CHARACTER_HITZONES_COUNT;
+		const Widget w = GetGame().GetWorkspace().CreateWidgets(HITZONE_CONTAINER_LAYOUT, m_wAttachmentPointsContainer);
+		const SCR_InventoryHitZonePointContainerUI point = SCR_InventoryHitZonePointContainerUI.Cast(w.FindHandler(SCR_InventoryHitZonePointContainerUI));
+		point.InitializeHitZoneUI(m_pStorageListUI.GetStorage(), this, hzToInit + 1, m_Player, updateAttachmentStorage);
 		m_aHitZonePoints.Insert(point);
 
 		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Creates visualization of damage currently sustained by the character, and spinbox for remeding that damage
+	//! NOTE: Use with care as this method is expesinve, as it evaluates all hit zones on the character
+	protected void InitializeAllHitZonesUI(bool startingTheProcess = true)
+	{
+		if (startingTheProcess)
+		{
+			if (!m_aHitZonePoints.IsEmpty())
+				return;
+	
+			InitializeCharacterHitZones(); // clear existing data and prepare sources for fetching new data
+		}
+
+		InitHitZones(true);
+		if (m_aHitZonePoints.Count() < CHARACTER_HITZONES_COUNT)
+		{
+			GetGame().GetCallqueue().CallLater(InitializeAllHitZonesUI, param1: false); //spread the initialization onto different frames as initialization of HZ is expensive
+			return;
+		}
+
+		OnDamageStateChanged(); // update the visualization of current effects
+		UpdateCharacterPreview(); // update the preview and the position of the hit zone indicators
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -580,7 +607,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		SCR_CharacterBloodHitZone charBloodHZ = m_CharDamageManager.GetBloodHitZone();
 
 		//TODO@FAC change this strong treshold and make better condition when effects work
-		bool bleedingVisible = (charBloodHZ.GetHealthScaled() <= charBloodHZ.GetDamageStateThreshold(ECharacterBloodState.STRONG));
+		const bool bleedingVisible = (charBloodHZ.GetHealthScaled() <= charBloodHZ.GetDamageStateThreshold(ECharacterBloodState.STRONG));
 		float bleedingAmount = Math.InverseLerp(
 			charBloodHZ.GetDamageStateThreshold(ECharacterBloodState.UNCONSCIOUS),
 			charBloodHZ.GetDamageStateThreshold(ECharacterBloodState.UNDAMAGED),
@@ -651,9 +678,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		m_pPrevActiveStorageUI = m_pActiveStorageUI;
 		m_pActiveStorageUI = storageUI;
 		if( m_pActiveStorageUI )
-		{
-			m_pFocusedSlotUI = m_pActiveStorageUI.GetFocusedSlot();
-		}
+			SetSlotFocused(m_pActiveStorageUI.GetFocusedSlot(), m_pActiveStorageUI, true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -691,8 +716,15 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	void RefreshPlayerWidget()
 	{
-		if (!m_pPreviewManager || m_pInspectedSlot)
+		if (!m_pPreviewManager)
 			return;
+
+		if (m_pInspectedSlot)
+		{
+			UpdateGearInspectionPreview();
+			return;
+		}
+
 		if (m_wPlayerRender)
 			m_pPreviewManager.SetPreviewItem(m_wPlayerRender, m_Player, m_PlayerRenderAttributes, true);
 		if (m_wPlayerRenderSmall)
@@ -947,19 +979,18 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (m_bStorageSwitchMode)
 		{
 			HideItemInfo();
-			Widget btnToFocus = m_pStorageLootUI.GetButtonWidget();
+			SCR_InventoryStorageBaseUI focusedStorage = m_pStorageLootUI;
 			if (m_pActiveStorageUI)
-				btnToFocus = m_pActiveStorageUI.GetButtonWidget();
-			
-			GetGame().GetCallqueue().Call(FocusWidget, btnToFocus);
+				focusedStorage = m_pActiveStorageUI;
+
+			// delay by one frame or else when you are selecting an item for transfer (specifically observed with supplies), then game might think that you depressed the transfer button with focus being on this storage, thus instantly dropping that selected item into this storage
+			GetGame().GetCallqueue().Call(FocusWidget, param1: focusedStorage.GetButtonWidget());
 		}
-		else
+		else if (m_pActiveStorageUI)
 		{
-			if (m_pActiveStorageUI)
-			{
-				m_pActiveStorageUI.ShowContainerBorder(false);
-				FocusOnSlotInStorage(m_pActiveStorageUI, m_pActiveStorageUI.GetSlotId(m_pActiveStorageUI.GetLastFocusedSlot()));
-			}
+			const SCR_InventoryStorageBaseUI previouslyFocusedStorage = m_pActiveStorageUI; // store locally a reference to it as when focus is transfered, then m_pActiveStorageUI may change or even become null
+			if (FocusOnSlotInStorage(m_pActiveStorageUI, m_pActiveStorageUI.GetSlotId(m_pActiveStorageUI.GetLastFocusedSlot())))
+				previouslyFocusedStorage.ShowContainerBorder(false);
 		}
 
 		if (updateNavBar)
@@ -977,21 +1008,24 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (!m_AttachmentSpinBox)
 			return;
 
-		int itemCount = m_AttachmentSpinBox.GetNumItems();
-		bool shouldBeActive = (enable && (itemCount > 0));
-		m_AttachmentSpinBox.SetEnabled(shouldBeActive);
-		m_AttachmentSpinBox.GetRootWidget().SetVisible(shouldBeActive);
+		const int itemCount = m_AttachmentSpinBox.GetNumItems();
+		const bool shouldBeActive = (enable && (itemCount > 0));
 
-		Widget leftArea = m_widget.FindAnyWidget("LeftArea");
-		Widget rightArea = m_widget.FindAnyWidget("StoragesListSlot");
+		m_AttachmentSpinBox.SetEnabled(shouldBeActive);
+
+		const Widget rootWidget = m_AttachmentSpinBox.GetRootWidget();
+		rootWidget.SetVisible(shouldBeActive);
+
+		const Widget leftArea = m_widget.FindAnyWidget("LeftArea");
+		const Widget rightArea = m_widget.FindAnyWidget("StoragesListSlot");
 
 		// Switches navigation targets based on the presence of the spinbox in the center
 		if (shouldBeActive)
 		{
 			leftArea.SetNavigation(WidgetNavigationDirection.RIGHT, WidgetNavigationRuleType.EXPLICIT, "AttachmentSpinBox");
 			rightArea.SetNavigation(WidgetNavigationDirection.LEFT, WidgetNavigationRuleType.EXPLICIT, "AttachmentSpinBox");
-			m_AttachmentSpinBox.GetRootWidget().SetNavigation(WidgetNavigationDirection.RIGHT, WidgetNavigationRuleType.EXPLICIT, "StoragesListSlot");
-			m_AttachmentSpinBox.GetRootWidget().SetNavigation(WidgetNavigationDirection.LEFT, WidgetNavigationRuleType.EXPLICIT, "StorageLootSlot");
+			rootWidget.SetNavigation(WidgetNavigationDirection.RIGHT, WidgetNavigationRuleType.EXPLICIT, "StoragesListSlot");
+			rootWidget.SetNavigation(WidgetNavigationDirection.LEFT, WidgetNavigationRuleType.EXPLICIT, "StorageLootSlot");
 		}
 		else
 		{
@@ -1012,40 +1046,76 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void FocusOnSlotInStorage(SCR_InventoryStorageBaseUI storage, int slotIndex = 0)
+	//! Attempts to focus on a slot from provided storage
+	//! \param[in] storageUi
+	//! \param[in] slotIndex of the slot which should be focused
+	//! \return true if focus transfer should be considered as successful, otherwise returns false
+	bool FocusOnSlotInStorage(SCR_InventoryStorageBaseUI storageUi, int slotIndex = 0)
 	{
-		if (!storage)
-			return;
+		if (!storageUi)
+			return false;
 
 		array<SCR_InventorySlotUI> slots = {};
-		storage.GetSlots(slots);
+		storageUi.GetSlots(slots);
 
-		if (slots.IsIndexValid(slotIndex) && slots[slotIndex])
+		if (slots.IsEmpty())
 		{
-			Widget slotToFocus = slots[slotIndex].GetButtonWidget();
-			if (!slotToFocus)
-			{
-				while (slots.IsIndexValid(++slotIndex) && !slotToFocus)
-				{
-					slotToFocus = slots[slotIndex].GetButtonWidget();
-				}
-			}
+			if (!m_bIsUsingGamepad) // in case of M&K dont go back to the storage mode, as M&K doesnt support that mode, and user will not be able to turn it off
+				return true;
 
-			GetGame().GetWorkspace().SetFocusedWidget(slotToFocus);
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.CLICK);
+			SetStorageSwitchMode(true, false); // if this storage doesnt have any slots on which we could focus, then lets go back to the storage switch mode
+			return false;
 		}
-		else
+
+		if (!slots.IsIndexValid(slotIndex))
+			slotIndex = 0; // if provided index is invalid then use first slot
+
+		SCR_InventorySlotUI uiSlot = slots[slotIndex];
+		Widget button;
+		if (uiSlot)
+			button = uiSlot.GetButtonWidget();
+
+		if (!button || !button.IsEnabled())
+			uiSlot = FindFirstFocusableUiSlot(slots, button, slotIndex);
+
+		if (!uiSlot)
 		{
-			int slotToFocus = (slots.Count()-1);
-			if (slots.IsIndexValid(slotToFocus) && slots[slotToFocus])
-			{
-				GetGame().GetWorkspace().SetFocusedWidget(slots[slotToFocus].GetButtonWidget());
-			}
-			else
-			{
-				GetGame().GetWorkspace().SetFocusedWidget(null);
-				HideItemInfo();
-			}
+			if (!m_bIsUsingGamepad)
+				return true;
+
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.CLICK);
+			SetStorageSwitchMode(true, false); // since we dont have a button to focus on we switch back to the storage mode
+			return false;
 		}
+
+		GetGame().GetWorkspace().SetFocusedWidget(button);
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Finds first ui slot which can be focused
+	//! \param[in] slots an array of ui slots to check
+	//! \param[out] button of the found valid ui slot. If such slot was not found then this will be null
+	//! \param[in] ignoredId of the slot that shouldnt be checked
+	//! \return slot which can be focused, and if such slot is not found then returns null
+	protected SCR_InventorySlotUI FindFirstFocusableUiSlot(notnull array<SCR_InventorySlotUI> slots, out Widget button = null, int ignoredId = -1)
+	{
+		foreach (int i, SCR_InventorySlotUI uiSlot : slots)
+		{
+			if (ignoredId == i)
+				continue;
+
+			if (!uiSlot || !uiSlot.IsSlotEnabled())
+				continue;
+
+			button = uiSlot.GetButtonWidget();
+			if (button && button.IsEnabled())
+				return uiSlot;
+		}
+
+		button = null;
+		return null;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1223,7 +1293,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 					SetStorageSwitchMode(false);
 					return;
 				}
-				if (m_pFocusedSlotUI && !m_pFocusedSlotUI.IsSlotSelected())
+				if (m_pFocusedSlotUI && !m_pFocusedSlotUI.IsSelected())
 					Action_SelectItem();
 				else
 					Action_DeselectItem();
@@ -1441,18 +1511,20 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (m_wAttachmentStorage)
 		{
 			m_wAttachmentStorage.RemoveHandler(m_wAttachmentStorage.FindHandler(SCR_InventoryAttachmentStorageUI));
-			m_wAttachmentStorage.RemoveFromHierarchy();
 			if (closeOnly)
 				return;
 		}
 
-		Widget parent = m_widget.FindAnyWidget("AttachmentStorage");
-		if (!parent)
-			return;
-
-		m_wAttachmentStorage = GetGame().GetWorkspace().CreateWidgets(BACKPACK_STORAGE_LAYOUT, parent);
 		if (!m_wAttachmentStorage)
-			return;
+		{
+			const Widget parent = m_widget.FindAnyWidget("AttachmentStorage");
+			if (!parent)
+				return;
+
+			m_wAttachmentStorage = GetGame().GetWorkspace().CreateWidgets(BACKPACK_STORAGE_LAYOUT, parent);
+			if (!m_wAttachmentStorage)
+				return;
+		}
 
 		SCR_InventoryAttachmentStorageUI handler = new SCR_InventoryAttachmentStorageUI(m_pStorageListUI.GetStorage(), null, this, 0, null, searchPredicate);
 		m_wAttachmentStorage.AddHandler(handler);
@@ -1462,11 +1534,10 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	void CloseAttachmentStorage()
 	{
-		if (m_wAttachmentStorage)
-		{
-			m_wAttachmentStorage.RemoveHandler(m_wAttachmentStorage.FindHandler(SCR_InventoryAttachmentStorageUI));
-			m_wAttachmentStorage.RemoveFromHierarchy();
-		}
+		if (!m_wAttachmentStorage)
+			return;
+
+		m_wAttachmentStorage.RemoveHandler(m_wAttachmentStorage.FindHandler(SCR_InventoryAttachmentStorageUI));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1613,16 +1684,17 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	{
 		BaseInventoryStorageComponent lastFocusedStorage;
 		int lastFocusedSlotId = -1;
-		if (m_pFocusedSlotUI)
+		if (m_pFocusedSlotUI && !m_bStorageSwitchMode)
 		{
 			lastFocusedStorage = m_pFocusedSlotUI.GetStorageUI().GetStorage();
 			lastFocusedSlotId = m_pFocusedSlotUI.GetStorageUI().GetFocusedSlotId();
 		}
-		else if (m_bStorageSwitchMode && m_pActiveHoveredStorageUI)
-		{
-			// if we weren't targeting specific slot, but we were 'focused' on a specific storage, then lets try to stay focused on it
-			lastFocusedStorage = m_pActiveHoveredStorageUI.GetStorage();
-		}
+
+		if (m_bIsUsingGamepad && lastFocusedSlotId < 0 && !lastFocusedStorage)
+			m_bStorageSwitchMode = true;
+
+		if (m_bStorageSwitchMode && m_pActiveHoveredStorageUI)
+			lastFocusedStorage = m_pActiveHoveredStorageUI.GetStorage(); // if we weren't targeting specific slot, but we were 'focused' on a specific storage, then lets try to stay focused on it
 
 		m_iStorageListCounter = 0;
 		array<SCR_InventorySlotUI> aSlotsUI = {};
@@ -1636,6 +1708,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				CloseStorage( pStorage );
 			}
 		}
+
 		SortSlotsByLoadoutArea( aSlotsUI );
 		m_aStorages.Resize( aSlotsUI.Count() );
 
@@ -2048,23 +2121,12 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		m_pDamageInfo.Move( GetGame().GetWorkspace().DPIUnscale( iMouseX ), GetGame().GetWorkspace().DPIUnscale( iMouseY ) );
 	}
 	//---- REFACTOR NOTE END ----
+
 	//------------------------------------------------------------------------------------------------
-	protected bool GetDamageInfo()
-	{
- 	 	Widget infoWidget = GetGame().GetWorkspace().CreateWidgets(DAMAGE_INFO, m_widget);
-		if ( !infoWidget )
-			return false;
-
-		infoWidget.AddHandler( new SCR_InventoryDamageInfoUI() );
-		m_pDamageInfo = SCR_InventoryDamageInfoUI.Cast( infoWidget.FindHandler( SCR_InventoryDamageInfoUI ) );
-		
-		return m_pDamageInfo;
-	}
-
 	void DestroyDamageInfo()
 	{
-		if (m_pItemInfo)
-			m_pItemInfo.Destroy();
+		if (m_pDamageInfo)
+			m_pDamageInfo.Destroy();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2092,6 +2154,13 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	void SetSlotFocused( SCR_InventorySlotUI pFocusedSlot, SCR_InventoryStorageBaseUI pFromStorageUI, bool bFocused )
 	{
+		if (m_pFocusedSlotUI && (m_pFocusedSlotUI != pFocusedSlot || !bFocused))
+		{
+			SCR_InventorySlotUI oldFocusedSlot = m_pFocusedSlotUI;
+			m_pFocusedSlotUI = null;
+			oldFocusedSlot.OnSlotFocusLost();
+		}
+
 		if( bFocused )
 		{
 			InputManager pInputManager = GetGame().GetInputManager();
@@ -2361,10 +2430,17 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		else
 			m_pNavigationBar.SetButtonEnabled(BUTTON_SELECT, !m_pSelectedSlotUI && m_pActiveStorageUI);
 
-		bool hoveringOverQuickSlots = m_pActiveStorageUI == m_pQuickSlotStorage;
-		bool transferringSupplies = SCR_SupplyInventorySlotUI.Cast(m_pSelectedSlotUI) && m_pSelectedSlotUI != m_pFocusedSlotUI;
-		bool isTargetingDifferentStorage = m_pSelectedSlotUI && m_pSelectedSlotUI.GetStorageUI() != m_pActiveStorageUI;
-		bool isTargetingDifferentSlot = m_pSelectedSlotUI != m_pFocusedSlotUI;
+		SCR_InventoryStorageBaseUI selectedStorage;
+		if (m_pSelectedSlotUI)
+			selectedStorage = m_pSelectedSlotUI.GetStorageUI();
+
+		const bool hoveringOverQuickSlots = m_pActiveStorageUI == m_pQuickSlotStorage;
+		const bool transferringSupplies = SCR_SupplyInventorySlotUI.Cast(m_pSelectedSlotUI) && m_pSelectedSlotUI != m_pFocusedSlotUI;
+		const bool isTargetingDifferentSlot = m_pSelectedSlotUI != m_pFocusedSlotUI;
+		bool isTargetingDifferentStorage = selectedStorage != m_pActiveStorageUI;
+		if (!isTargetingDifferentStorage && selectedStorage && (selectedStorage == m_pWeaponStorage || selectedStorage == m_pQuickSlotStorage))
+			isTargetingDifferentStorage = isTargetingDifferentSlot; // weapon slots and quick slots should be treated as separate storages, despite them being one
+
 		if (m_bStorageSwitchMode)
 		{
 			if (m_pSelectedSlotUI)
@@ -2430,7 +2506,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	void HandleSlottedItemFunction()
 	{
-		string sAction = "#AR-Inventory_Select";
+		string sAction = GAMEPAD_HINT_SELECT;
 		bool arsenalItem = IsStorageArsenal(m_pFocusedSlotUI.GetStorageUI().GetCurrentNavigationStorage()); // hotfix for disabling opening open action in arsenal storages
 
 		switch ( m_pFocusedSlotUI.GetSlotedItemFunction() )
@@ -2598,17 +2674,19 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void HandleSelectButtonState( string sAction = "#AR-Inventory_Select" )
+	protected void HandleSelectButtonState(string sAction = GAMEPAD_HINT_SELECT)
 	{
 		//TODO: this can be done better
-		if ( sAction == "#AR-Inventory_Move" )
-			m_pNavigationBar.SetButtonActionName( BUTTON_SELECT, sAction );
+		if (sAction == GAMEPAD_HINT_MOVE)
+		{
+			m_pNavigationBar.SetButtonActionName(BUTTON_SELECT, sAction);
+		}
 		else
 		{
-			if ( !m_pFocusedSlotUI.IsSlotSelected() )
-				m_pNavigationBar.SetButtonActionName( BUTTON_SELECT, sAction );
+			if (!m_pFocusedSlotUI.IsSelected())
+				m_pNavigationBar.SetButtonActionName(BUTTON_SELECT, sAction);
 			else
-				m_pNavigationBar.SetButtonActionName( BUTTON_SELECT, "#AR-Inventory_Deselect" );
+				m_pNavigationBar.SetButtonActionName(BUTTON_SELECT, GAMEPAD_HINT_DESELECT);
 		}
 	}
 
@@ -2633,10 +2711,10 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 
 		if (!itemSlot)
 		{
+			SetAttachmentSpinBoxActive(false);
 			CloseAttachmentStorage();
-			SetAttachmentSpinBoxActive(m_bIsUsingGamepad);
+			InitializeAllHitZonesUI();
 			m_PlayerRenderAttributes.RotateItemCamera(Vector(0, 0, 0), Vector(0, 0, 0), Vector(0, 0, 0)); // reset rotation
-			InitializeCharacterHitZones();
 			UpdateCharacterPreview();
 			return;
 		}
@@ -2682,6 +2760,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	void InspectWeapon(SCR_WeaponAttachmentsStorageComponent weaponAttachmentStorage)
 	{
+		DestroyDamageInfo();
 		CloseAttachmentStorage();
 		HideCharacterHitZones();
 		SetAttachmentSpinBoxActive(m_bIsUsingGamepad);
@@ -2710,7 +2789,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	protected void FilterOutStorages( bool bShow = true )
 	{
 		//Get all slots from the storage list UI
-		array<SCR_InventorySlotUI> pSlotsInListUI = new array<SCR_InventorySlotUI>();
+		array<SCR_InventorySlotUI> pSlotsInListUI = {};
 		m_pStorageListUI.GetSlots( pSlotsInListUI );
 		//foreach ( SCR_InventorySlotUI pSlotFromUI : pSlotsInListUI )
 		//	RegisterUIStorage( pSlotFromUI );
@@ -2829,23 +2908,18 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				SetStorageSwitchMode(true);
 				return;
 			}
-			else
-			{
-				if (m_pSelectedSlotUI)
-				{
-					DeselectSlot();				
-				}
-				else
-				{
-					Action_CloseInventory();
-					return;
-				}
 
-				SetStorageSwitchMode(false);
-				ResetHighlightsOnAvailableStorages();
-				FocusOnSlotInStorage(m_pActiveStorageUI);
+			if (!m_pSelectedSlotUI)
+			{
+				Action_CloseInventory();
 				return;
 			}
+
+			DeselectSlot();
+			SetStorageSwitchMode(false);
+			ResetHighlightsOnAvailableStorages();
+			FocusOnSlotInStorage(m_pActiveStorageUI);
+			return;
 		}
 		else
 		{
@@ -2962,11 +3036,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				if (m_bIsUsingGamepad)
 					SetStorageSwitchMode(true);
 				NavigationBarUpdate();
-				if (m_pSelectedSlotUI)
-				{
-					m_pSelectedSlotUI.SetSelected(false);
-					m_pSelectedSlotUI = null;
-				}
+				DeselectSlot();
 				FocusOnSlotInStorage(m_pActiveStorageUI);
 				ResetHighlightsOnAvailableStorages();
 			} break;
@@ -3003,8 +3073,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				if (m_pSelectedSlotUI)
 				{
 					ResetHighlightsOnAvailableStorages();
-					m_pSelectedSlotUI.SetSelected(false);
-					m_pSelectedSlotUI = null;
+					DeselectSlot()
 				}
 
 				NavigationBarUpdate();
@@ -3243,12 +3312,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		
 		if (MoveItemToStorageSlot_ResourceContainer())
 		{
-			if (m_pSelectedSlotUI)
-			{
-				m_pSelectedSlotUI.SetSelected(false);
-				m_pSelectedSlotUI = null;
-			}
-			
+			DeselectSlot();
 			return;
 		}
 
@@ -3267,11 +3331,14 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		m_pCallBack.m_pMenu = this;
 		m_pCallBack.m_pStorageFrom = m_pSelectedSlotUI.GetStorageUI();
 
+		DeselectSlot();
 		SCR_InventoryOpenedStorageUI open = GetOpenedStorage(m_pFocusedSlotUI.GetAsStorage());
 		if (open)
 			m_pCallBack.m_pStorageTo = open;
 		else
 			m_pCallBack.m_pStorageTo = m_pFocusedSlotUI.GetStorageUI();
+
+		m_pCallBack.m_pStorageToFocus = m_pCallBack.m_pStorageTo;
 
 		BaseInventoryStorageComponent pStorageFromComponent = m_pCallBack.m_pStorageFrom.GetCurrentNavigationStorage();
 		BaseInventoryStorageComponent pStorageToComponent = m_pFocusedSlotUI.GetAsStorage();
@@ -3328,6 +3395,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		m_pCallBack.m_pMenu = this;
 		m_pCallBack.m_pStorageFrom = m_pSelectedSlotUI.GetStorageUI();
 		m_pCallBack.m_pStorageTo = m_pFocusedSlotUI.GetStorageUI();
+		m_pCallBack.m_pStorageToFocus = m_pCallBack.m_pStorageTo;
+		m_pCallBack.m_iSlotToFocus = m_pCallBack.m_pStorageTo.GetSlotId(m_pFocusedSlotUI);
 		
 		InventoryItemComponent pItemToReplaceComp = m_pFocusedSlotUI.GetInventoryItemComponent();
 		IEntity pItemToReplace;
@@ -3403,6 +3472,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			}
 		}
 		
+		DeselectSlot();
 		BaseInventoryStorageComponent pStorageToComponent = m_pWeaponStorageComp;
 		
 		if (!m_InventoryManager.TryMoveItemToStorage( pItem, m_pWeaponStorageComp, weaponSlot.GetWeaponSlotIndex(), m_pCallBack ))
@@ -3423,24 +3493,17 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		bool operationFailed;
 		if (MoveItem_VirtualArsenal(pStorageBaseUI, operationFailed))
 		{
+			DeselectSlot();
+			NavigationBarUpdate();
 			if (operationFailed)
-			{
-				DeselectSlot();
-				NavigationBarUpdate();
 				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
-			}
 
 			return;
 		}
 		
 		if (MoveItem_ResourceContainer(pStorageBaseUI))
 		{
-			if (m_pSelectedSlotUI)
-			{
-				m_pSelectedSlotUI.SetSelected(false);
-				m_pSelectedSlotUI = null;
-			}
-			
+			DeselectSlot();
 			return;
 		}
 		
@@ -3455,15 +3518,17 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		
 		m_pCallBack.m_pItem = pItem;
 		m_pCallBack.m_pMenu = this;
-		m_pCallBack.m_pStorageToFocus = m_pSelectedSlotUI.GetStorageUI();
-		m_pCallBack.m_sItemToFocus = m_pSelectedSlotUI.GetItemResource();
-		m_pCallBack.m_iSlotToFocus = m_pSelectedSlotUI.GetStorageUI().GetSlotId(m_pSelectedSlotUI);
 		m_pCallBack.m_pStorageFrom = m_pSelectedSlotUI.GetStorageUI();
+		m_pCallBack.m_sItemToFocus = m_pSelectedSlotUI.GetItemResource();
 
 		if ( pStorageBaseUI )
 			m_pCallBack.m_pStorageTo = pStorageBaseUI;
 		else
 			m_pCallBack.m_pStorageTo = m_pActiveHoveredStorageUI;
+
+		m_pCallBack.m_pStorageToFocus = m_pCallBack.m_pStorageTo;
+		if (m_pCallBack.m_pStorageTo)
+			m_pCallBack.m_iSlotToFocus = m_pCallBack.m_pStorageTo.GetFocusedSlotId();
 
 		BaseInventoryStorageComponent pStorageTo = m_pActiveHoveredStorageUI.GetCurrentNavigationStorage();
 		if (IsStorageArsenal(pStorageTo))
@@ -3491,6 +3556,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if ( pStorageTo && EquipedWeaponStorageComponent.Cast( pStorageTo ) )
 		{
 			m_InventoryManager.EquipWeapon( pItem, m_pCallBack, m_pCallBack.m_pStorageFrom == m_pStorageLootUI );
+			DeselectSlot();
 			return;
 		}
 		else if ( pStorageTo && CharacterInventoryStorageComponent.Cast( pStorageTo ) )
@@ -3528,6 +3594,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				}
 
 				m_InventoryManager.InsertItem( pItem, m_pActiveHoveredStorageUI.GetCurrentNavigationStorage(), m_pCallBack.m_pStorageFrom.GetStorage(), m_pCallBack );
+				DeselectSlot();
 			}
 		}
 	}
@@ -4363,11 +4430,14 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	void DeselectSlot()
 	{
-		if (m_pSelectedSlotUI)
-		{
-			m_pSelectedSlotUI.SetSelected(false);
-			m_pSelectedSlotUI = null;
-		}
+		if (!m_pSelectedSlotUI)
+			return;
+
+		m_pSelectedSlotUI.SetSelected(false);
+		m_pSelectedSlotUI = null;
+
+		if (m_pNavigationBar)
+			m_pNavigationBar.SetButtonActionName(BUTTON_SELECT, GAMEPAD_HINT_SELECT);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -4696,7 +4766,6 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			m_EStateMenuItem = EStateMenuItem.STATE_IDLE;
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_CONTAINER_CLOSE);
 			FocusOnSlotInStorage(pParentStorage);
-			m_bWasJustTraversing = true;
 		}
 		ResetHighlightsOnAvailableStorages();
 	}
@@ -5404,12 +5473,17 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		}
 
 		int iSlotIndex = m_pFocusedSlotUI.GetSlotIndex();
-		BaseWeaponComponent weaponComp = BaseWeaponComponent.Cast(item.FindComponent(BaseWeaponComponent));
-		
-		if (weaponComp && !m_StorageManager.ItemBelongsToSlot(weaponComp.GetWeaponType(), iSlotIndex) || iSlotIndex < WEAPON_SLOTS_COUNT || m_pWeaponStorageComp.Contains(item))
+		if (iSlotIndex < WEAPON_SLOTS_COUNT || m_pWeaponStorageComp.Contains(item))
 		{
 			ShowQuickSlotStorage();
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
+			if (m_pSelectedSlotUI.GetButtonWidget())
+				FocusWidget(m_pSelectedSlotUI.GetButtonWidget());
+			else
+				FocusWidget(m_pFocusedSlotUI.GetButtonWidget());
+
+			DeselectSlot();
+			NavigationBarUpdate();
 			return;
 		}
 		
@@ -5533,14 +5607,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (oldState != isGamepad)
 		{
 			if (oldState)
-			{//force reset the lable of this hint as for M&K there is only one mode for this button
-				m_pNavigationBar.SetButtonActionName(BUTTON_BACK, GAMEPAD_HINT_CLOSE);
-			}
+				m_pNavigationBar.SetButtonActionName(BUTTON_BACK, GAMEPAD_HINT_CLOSE); // force reset the lable of this hint as for M&K there is only one mode for this button
 			else if (m_pSelectedSlotUI)
-			{//as there is nothing that cleares the selected slot which was selected when using M&K
-				m_pSelectedSlotUI.SetSelected(false);
-				m_pSelectedSlotUI = null;
-			}
+				DeselectSlot() // as there is nothing that cleares the selected slot which was selected when using M&K
 		}
 
 		NavigationBarUpdate();

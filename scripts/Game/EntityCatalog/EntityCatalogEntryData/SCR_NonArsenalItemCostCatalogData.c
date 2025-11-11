@@ -8,14 +8,41 @@ class SCR_NonArsenalItemCostCatalogData : SCR_BaseEntityCatalogData
 	[Attribute(desc: "Depending on the settings of the arsenal component arsenal items can have an alternative supply cost. So it will take the cost of the alternative rather than the default cost. \n\nIf an Arsenal is not cost type default and the arsenal item does not have that cost type defined than it will still use the default cost.\n\nIf multiple entries have the same value than the last in the array will be used")]
 	protected ref array<ref SCR_ArsenalAlternativeCostData> m_aArsenalAlternativeCostData;
 	
+	//~ Any attachements on the weapon or additional costs are saved for performance on cost calculation
+	protected ref array<SCR_ArsenalItem> m_aAdditionalCosts;
+	protected ref array<SCR_NonArsenalItemCostCatalogData> m_aNonArsenalAdditionalCosts;
+	
 	protected ref map<SCR_EArsenalSupplyCostType, int> m_mArsenalAlternativeCostData;
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get supply cost of item
 	//! \param[in] supplyCostType What the supply cost is that should be obtained from the arsenal data. If the specific supply cost is not found then Default will be used instead
+	//! \param[in] addAdditionalCosts Whether additional costs should be counted in supply cost or not. By default set to true.
 	//! \return Supplycost
-	int GetSupplyCost(SCR_EArsenalSupplyCostType supplyCostType)
+	int GetSupplyCost(SCR_EArsenalSupplyCostType supplyCostType, bool addAdditionalCosts = true)
 	{
+		int additionalCost;
+
+		if (addAdditionalCosts)
+		{
+			//~ Get the cost of any attachments on the item that are not in arsenal but still have a cost
+			if (m_aNonArsenalAdditionalCosts)
+			{
+				foreach (SCR_NonArsenalItemCostCatalogData data : m_aNonArsenalAdditionalCosts)
+				{
+					additionalCost += data.GetSupplyCost(supplyCostType);
+				}
+			}
+			//~ Get the cost of any attachments on the item that can be in the arsenal
+			if (m_aAdditionalCosts)
+			{
+				foreach (SCR_ArsenalItem data : m_aAdditionalCosts)
+				{
+					additionalCost += data.GetSupplyCost(supplyCostType);
+				}
+			}
+		}
+
 		if (supplyCostType != SCR_EArsenalSupplyCostType.DEFAULT && m_mArsenalAlternativeCostData != null)
 		{
 			int returnValue; 
@@ -23,9 +50,9 @@ class SCR_NonArsenalItemCostCatalogData : SCR_BaseEntityCatalogData
 				return returnValue;
 		}
 		
-		return m_iSupplyCost;
+		return m_iSupplyCost + additionalCost;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void InitData(notnull SCR_EntityCatalogEntry entry)
 	{		
@@ -46,5 +73,16 @@ class SCR_NonArsenalItemCostCatalogData : SCR_BaseEntityCatalogData
 			//~ Delete array
 			m_aArsenalAlternativeCostData = null;
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Gets the calculated cost of the attachments and ammo
+	override void PostInitData(notnull SCR_EntityCatalogEntry entry)
+	{
+		Resource itemResource = Resource.Load(entry.GetPrefab());
+		if (!itemResource.IsValid())
+			return;
+
+		SCR_ArsenalItem.AddAdditionalCosts(entry, itemResource, m_aAdditionalCosts, m_aNonArsenalAdditionalCosts);
 	}
 }

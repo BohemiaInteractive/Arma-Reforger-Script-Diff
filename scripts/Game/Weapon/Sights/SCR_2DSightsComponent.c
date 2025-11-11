@@ -10,6 +10,13 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 	protected bool m_bShouldHideParentParentObject;
 
 	protected SCR_SightsZoomFOVInfo m_SightsFovInfo;
+	
+	protected static bool s_bIsUsingSights;
+	
+	static bool IsUsingSights()
+	{
+		return s_bIsUsingSights;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void RegisterInputs()
@@ -49,6 +56,8 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 		}
 
 		SelectZoomLevel(m_iSelectedZoomLevel);
+		
+		s_bIsUsingSights = true;
 
 		// Set parent
 		IEntity owner = GetOwner();
@@ -102,6 +111,8 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 
 			m_ParentCharacter = null;
 		}
+		
+		s_bIsUsingSights = false;
 
 		super.HandleSightDeactivation();
 	}

@@ -373,7 +373,7 @@ class SCR_AddonLineBaseComponent : SCR_ListMenuEntryComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnDeleteButton()
 	{
-		SCR_DeleteAddonDialog.CreateDeleteAddon(m_Item);
+		SCR_WorkshopUiCommon.OnDeleteAddonButton(m_Item);
 	}
 
 	//------------------------------------------------------------------------------------------------

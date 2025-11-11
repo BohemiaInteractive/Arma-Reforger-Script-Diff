@@ -303,12 +303,15 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 	[Attribute(defvalue: "7", desc: "Max number of objectives that can be shown on a single page", params: "1 inf")]
 	protected int m_iMaxNumberOfObjectives;
 	
+	[Attribute(defvalue: "false", desc: "Use Task Finish History Manager for getting the list of Task Info")]
+	protected bool m_bUseTaskFinishHistoryManager;
+
 	protected Widget m_wFinishedObjectivesWidget;
 	protected ButtonWidget m_wColumnButton;
-	protected ref array<SCR_Task> m_aCompletedTasks;
 	protected ref array<Widget> m_aFinishedObjectivesWidgets = {};
 	protected int m_iCurrentPage;
 	protected int m_iFinishedTasksCount;
+	protected ref array<ref SCR_TaskUIInfo> m_aFinishedTasksUIInfo;
 	
 	//------------------------------------------------------------------------------------------------
 	//! Initialises content for given column
@@ -353,23 +356,51 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 	//! TODO - Will be fixed in the future
 	void ProcessTasks()
 	{
-		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
-		if (!taskSystem)
-			return;
-		
-		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-		if (!factionManager)
-			return;
-		
-		Faction faction = factionManager.GetLocalPlayerFaction();
-		if (!faction)
-			return;
-		
-		if (!m_aCompletedTasks)
-			m_aCompletedTasks = {};
+		if (!m_aFinishedTasksUIInfo)
+			m_aFinishedTasksUIInfo = {};
+		else
+			m_aFinishedTasksUIInfo.Clear();
 
-		taskSystem.GetTasksByState(m_aCompletedTasks, SCR_ETaskState.COMPLETED, faction.GetFactionKey());
-		m_iFinishedTasksCount = m_aCompletedTasks.Count();
+		if (m_bUseTaskFinishHistoryManager)
+		{
+			int playerId = GetGame().GetPlayerController().GetPlayerId();
+			array<ref SCR_TaskFinishEntry> finishedTasks = SCR_TaskFinishHistoryManagerComponent.GetInstance().GetByPlayerID(playerId);
+			if (!finishedTasks)
+				return;
+
+			foreach (SCR_TaskFinishEntry entry : finishedTasks)
+			{
+				if (!entry.WasSuccessful())
+					continue;
+
+				SCR_TaskUIInfo info;
+				entry.GetUIInfo(info);
+				m_aFinishedTasksUIInfo.Insert(info);
+			}
+		}
+		else
+		{
+			SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+			if (!taskSystem)
+				return;
+
+			SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+			if (!factionManager)
+				return;
+
+			Faction faction = factionManager.GetLocalPlayerFaction();
+			if (!faction)
+				return;
+
+			array<SCR_Task> completedTasks = {};
+			taskSystem.GetTasksByState(completedTasks, SCR_ETaskState.COMPLETED, faction.GetFactionKey());
+			foreach (SCR_Task task : completedTasks)
+			{
+				m_aFinishedTasksUIInfo.Insert(task.GetTaskUIInfo());
+			}
+		}
+
+		m_iFinishedTasksCount = m_aFinishedTasksUIInfo.Count();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -485,7 +516,6 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 	{
 		int taskId;
 		Widget entry;
-		SCR_Task task;
 		SCR_TaskUIInfo info;
 		RichTextWidget name;
 		Widget finishedObjectivesContentHolder;
@@ -520,8 +550,7 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 
 			entry.SetVisible(true);
 			name = RichTextWidget.Cast(entry.FindAnyWidget("ObjectiveText"));
-			task = m_aCompletedTasks[taskId];
-			info = task.GetTaskUIInfo();
+			info = m_aFinishedTasksUIInfo[taskId];
 			info.SetNameTo(name);
 		}
 		

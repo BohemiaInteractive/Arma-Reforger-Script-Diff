@@ -1886,7 +1886,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		// Sandbox mil bases spawned via HQ tents are interfering with shown flag as they have different faction
 		// It's a temporary fix until we switch to full free building and bases on top of each other will no longer be a thing
 		if (flag && GetFaction())
-			GetGame().GetCallqueue().CallLater(ChangeFlags, 1000, false, GetFaction());
+			GetGame().GetCallqueue().CallLater(UpdateFlags, 1000, false);
 	}
 
 	//------------------------------------------------------------------------------------------------

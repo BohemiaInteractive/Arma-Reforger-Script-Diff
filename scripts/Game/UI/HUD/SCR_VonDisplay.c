@@ -286,6 +286,8 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 		data.m_Widgets.m_wSeparator.SetVisible(false);
 		data.m_Widgets.m_wPlatformImage.SetVisible(false);
 		data.m_Widgets.m_wPlatformImageGlow.SetVisible(false);
+		data.m_Widgets.m_wRecievers.SetVisible(false);
+		data.m_Widgets.m_wNosignal.SetVisible(false);
 
 		// radio
 		if (radioTransceiver)
@@ -400,7 +402,7 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 				}
 			}
 
-			data.m_Widgets.m_wRole.SetVisible(false);
+			data.m_Widgets.m_wRole.SetVisible(true);
 			data.m_Widgets.m_wSquadLeaderIcon.SetVisible(isSquadLeader);
 		}
 		else	// outgoing
@@ -455,6 +457,29 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 				}
 				
 				data.m_Widgets.m_wGameMaster.SetColor(Color.FromInt(GUIColors.ORANGE.PackToInt()));
+
+				PlayerController controller = GetGame().GetPlayerController();
+				data.m_Entity = controller.GetControlledEntity();
+				if (controller)
+					data.m_Faction = factionMgr.SGetPlayerFaction(controller.GetPlayerId());
+
+				if (data.m_Entity && data.m_Faction)
+				{
+					// Refactor note: Reference to specific game mode is not desired
+					SCR_GameModeCampaign gameModeCampaign = SCR_GameModeCampaign.GetInstance();
+					if (gameModeCampaign && !gameModeCampaign.GetBaseManager().IsEntityInFactionRadioSignal(data.m_Entity, data.m_Faction))
+					{
+						data.m_Widgets.m_wRecievers.SetVisible(true);
+						data.m_Widgets.m_wNosignal.SetVisible(true);
+						data.m_Widgets.m_wRecievers.SetColor(Color.FromInt(GUIColors.DARK_GRAY.PackToInt()));
+						data.m_Widgets.m_wNosignal.SetColor(Color.FromInt(GUIColors.DARK_GRAY.PackToInt()));
+					}
+					else
+					{
+						data.m_Widgets.m_wRecievers.SetVisible(false);
+						data.m_Widgets.m_wNosignal.SetVisible(false);
+					}
+				}
 			}
 			else
 			{

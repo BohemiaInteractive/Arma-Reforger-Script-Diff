@@ -18,6 +18,12 @@ class SCR_XPRewardInfo
 	[Attribute("1", desc: "Toggles UI feedback for XP change.")]
 	protected bool m_bAllowNotification;
 	
+	[Attribute("0", desc: "Toggles use reward cooldown, the cooldown is set after reward is earned and another reward can be earned after cooldown expires.")]
+	protected bool m_bUseRewardCooldown;
+
+	[Attribute("300", UIWidgets.EditBox, "Reward cooldown [s]", "0 inf")]
+	protected float m_fRewardCooldown;
+
 	//------------------------------------------------------------------------------------------------
 	SCR_EXPRewards GetRewardID()
 	{
@@ -36,6 +42,20 @@ class SCR_XPRewardInfo
 		return m_iRewardXP;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! return true if player can use cooldown for this reward type
+	bool CanUseRewardCooldown()
+	{
+		return m_bUseRewardCooldown;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! return reward cooldown [s]
+	float GetRewardCooldown()
+	{
+		return m_fRewardCooldown;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	/*EProfileSkillID GetRewardSkill()
 	{

@@ -261,6 +261,7 @@ enum ENotification
 	GROUPS_REQUEST_ACCEPTED = 1109, //!< player was accepted to private group
 	GROUPS_REQUEST_DENIED = 1110, //!< player was accepted to private group
 	GROUPS_REQUEST_CANCELLED = 1111, //!< players join request was canceled by group leader change
+	GROUPS_INVITE_CANCELLED_INSUFFICIENT_RANK = 1112, //!< Player invite was not sent due to invitee's insufficient rank to join group
 	
 	//OTHERS
 	ACTION_ON_COOLDOWN = 1200, //!< Action is on cooldown and cannot be executed

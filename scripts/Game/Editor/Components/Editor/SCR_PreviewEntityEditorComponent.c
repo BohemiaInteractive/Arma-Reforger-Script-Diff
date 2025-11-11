@@ -84,6 +84,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	protected SCR_LayersEditorComponent m_LayerManager;
 	protected SCR_StatesEditorComponent m_StateManager;
 	protected SCR_EditablePreviewEntity m_PreviewEntity;
+	protected ResourceName m_sPreviewPrefab;
 	private ResourceName m_SlotPrefab;
 	private vector m_aLocalOffset[4];
 	private SCR_EditableEntityComponent m_Entity;
@@ -682,6 +683,15 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	{
 		return m_PreviewEntity;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get preview prefab.
+	//! \return Preview prefab
+	ResourceName GetPreviewPrefab()
+	{
+		return m_sPreviewPrefab;
+	}
+
 	/*!
 	Get action context activated every frame.
 	\return Action context name
@@ -914,6 +924,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 			m_SlotPrefab = SCR_EditableEntityComponentClass.GetSlotPrefab(entityComponent);
 			m_bIsFixedPosition = SCR_EditableEntityComponentClass.HasFlag(entityComponent, EEditableEntityFlag.STATIC_POSITION);
 			m_bCanMoveInRoot = !m_Interaction || m_Interaction.CanSetParent(SCR_EditableEntityInteraction.ROOT, 0);
+			m_sPreviewPrefab = prefab;
 			
 			if (m_bIsFixedPosition)
 			{
@@ -987,6 +998,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		{
 			SCR_BasePreviewEntity previewEntity = m_PreviewEntity;
 			m_PreviewEntity = null;
+			m_sPreviewPrefab = string.Empty;
 			
 			previewEntity.GetWorldTransform(m_vTransform);
 			if (m_Target)

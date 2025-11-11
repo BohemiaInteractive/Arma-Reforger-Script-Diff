@@ -1,7 +1,7 @@
 /*!
 Notification which allows for displaying the creation text of a task
 Displays a notification: %1 = task creation text
-SCR_NotificationData: m_iParam1 = taskRplId
+SCR_NotificationData: m_iParam1 = taskNotification, m_iParam2 = factionId, m_iParam3 = baseCallsign, m_iParam4 = callerGroupId
 */
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(ENotification, "m_NotificationKey")]
 class SCR_NotificationTaskCreationText : SCR_NotificationDisplayData
@@ -9,35 +9,40 @@ class SCR_NotificationTaskCreationText : SCR_NotificationDisplayData
 	//------------------------------------------------------------------------------------------------
 	override string GetText(SCR_NotificationData data)
 	{
-		RplId taskRplId;
-		data.GetParams(taskRplId);
-		string creationText = GetTaskCreationText(taskRplId);
-		if (creationText.IsEmpty())
+		FactionManager factionManager = GetGame().GetFactionManager();
+		if (!factionManager)
 			return string.Empty;
 
-		data.SetNotificationTextEntries(creationText);
-		return super.GetText(data);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected string GetTaskCreationText(RplId taskRplId)
-	{
-		RplComponent taskRplcComp = RplComponent.Cast(Replication.FindItem(taskRplId));
-		if (!taskRplcComp)
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		if (!campaign)
 			return string.Empty;
 
-		IEntity taskEntity = taskRplcComp.GetEntity();
-		if (!taskEntity)
+		SCR_TaskNotificationManagerComponent taskNotificationManager = SCR_TaskNotificationManagerComponent.GetInstance();
+		if (!taskNotificationManager)
 			return string.Empty;
 
-		SCR_Task task = SCR_Task.Cast(taskEntity);
-		if (!task)
+		SCR_ETaskNotification taskNotification;
+		int factionId;
+		int baseCallsign;
+		int callerGroupId;
+		data.GetParams(taskNotification, factionId, baseCallsign, callerGroupId);
+
+		Faction faction = factionManager.GetFactionByIndex(factionId);
+		if (!faction)
 			return string.Empty;
 
-		SCR_TaskNotificationComponent notificationComp = SCR_TaskNotificationComponent.Cast(task.FindComponent(SCR_TaskNotificationComponent));
-		if (!notificationComp)
+		SCR_MinorRequestedTaskNotificationData requestedNotificationData = SCR_MinorRequestedTaskNotificationData.Cast(taskNotificationManager.GetTaskNotificationData(taskNotification, SCR_ETaskNotificationMsg.MINOR_CREATION));
+		if (requestedNotificationData)
+			return requestedNotificationData.GetCreationText(callerGroupId);
+
+		SCR_MinorTaskNotificationData notificationData = SCR_MinorTaskNotificationData.Cast(taskNotificationManager.GetTaskNotificationData(taskNotification, SCR_ETaskNotificationMsg.MINOR_CREATION));
+		if (!notificationData)
 			return string.Empty;
 
-		return notificationComp.GetCreationText();
+		SCR_CampaignMilitaryBaseComponent base = campaign.GetBaseManager().FindBaseByCallsign(baseCallsign);
+		if (base)
+			return WidgetManager.Translate(notificationData.m_sText, base.GetFormattedBaseNameWithCallsign(faction));
+
+		return notificationData.m_sText;
 	}
 }

@@ -130,45 +130,45 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 		else
 			return Math.ClampInt(damagePhase, 0, GetNumDamagePhases() - 1);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void SetOriginalResourceName(ResourceName originalResourceName)
 	{
 		GetDestructionMultiPhaseData().SetOriginalResourceName(originalResourceName);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected ResourceName GetOriginalResourceName()
 	{
 		if (m_iDestructionMultiPhaseDataIndex == -1)
 			return ResourceName.Empty;
-		
+
 		return GetDestructionMultiPhaseData().GetOriginalResourceName();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected int GetTargetDamagePhase()
 	{
 		if (m_iDestructionMultiPhaseDataIndex == -1)
 			return 0;
-		
+
 		return GetDestructionMultiPhaseData().GetTargetDamagePhase();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void SetTargetDamagePhase(int targetDamagePhase)
 	{
 		GetDestructionMultiPhaseData().SetTargetDamagePhase(targetDamagePhase);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void SetDamagePhase(int damagePhase)
 	{
 		GetDestructionMultiPhaseData().SetDamagePhase(damagePhase);
-		
+
 		SCR_DestructionUtility.SetDamagePhaseSignal(GetOwner(), damagePhase);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Switches to the input damage phase (or deletes if past last phase)
 	void GoToDamagePhase(int damagePhase, bool delayMeshChange)
@@ -177,24 +177,24 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 		{
 			if (GetDestructionBaseData())
 				s_OnDestructibleDestroyed.Invoke(this);
-			
+
 			DeleteDestructibleDelayed();
 			return;
 		}
-		
+
 		int currentDamagePhase = GetDamagePhase();
 		if (currentDamagePhase == damagePhase) // Same phase, ignore
 			return;
-		
+
 		SCR_DestructionUtility.RegenerateNavmeshDelayed(GetOwner());
-		
+
 		if (currentDamagePhase == 0)
 		{
 			VObject vObject = GetOwner().GetVObject();
 			if (vObject)
 				SetOriginalResourceName(vObject.GetResourceName());
 		}
-		
+
 		SCR_DestructionMultiPhaseComponentClass componentData = SCR_DestructionMultiPhaseComponentClass.Cast(GetComponentData(GetOwner()));
 		if (!componentData)
 			return;
@@ -261,7 +261,7 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 				remap = remapParent;
 			}
 		}
-		
+
 		SCR_DestructionUtility.SetModel(owner, modelPath, remap);
 	}
 
@@ -272,44 +272,44 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 		SCR_DestructionMultiPhaseComponentClass componentData = SCR_DestructionMultiPhaseComponentClass.Cast(GetComponentData(GetOwner()));
 		if (!componentData)
 			return true;
-		
+
 		if (componentData.m_bDeleteAfterFinalPhase)
 			return GetDamagePhase() < GetNumDamagePhases();
-		
+
 		return GetDamagePhase() < GetNumDamagePhases() - 1;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! OnDamage
 	override void OnDamage(notnull BaseDamageContext damageContext)
 	{
 		if (IsProxy())
 			return;
-		
+
 		if (GetOwner().IsDeleted() || IsDestroyed())
 			return;
-		
+
 		SCR_DestructionMultiPhaseComponentClass componentData = SCR_DestructionMultiPhaseComponentClass.Cast(GetComponentData(GetOwner()));
-		
+
 		float currentHealth = GetHealth();
 		float previousHealth = GetDestructionBaseData().GetPreviousHealth();
-		
+
 		SCR_DestructionHitInfo hitInfo = CreateDestructionHitInfo(damageContext.damageValue >= componentData.m_fDamageThresholdMaximum, previousHealth, damageContext.damageValue, damageContext.damageType, damageContext.hitPosition, damageContext.hitDirection, damageContext.hitNormal);
-		
+
 		if (componentData.m_bPassDamageToChildren)
 			PassDamageToChildren(damageContext);
-		
+
 		if (currentHealth <= 0)
 		{
 			int lastPhase = componentData.m_aDamagePhases.Count();
-						
+
 			if (hitInfo.m_TotalDestruction)
 			{
 				if (!componentData.m_bDeleteAfterFinalPhase && componentData.m_aDamagePhases && !componentData.m_aDamagePhases.IsEmpty() && !(componentData.m_bDestroyChildrenWhenDestroyed && GetOwner().GetParent()))
 				{
 					GoToDamagePhase(lastPhase, false);
 					ReplicateDestructibleState(lastPhase, true);
-					
+
 					// Delete children without spawning effects
 					if (componentData.m_bDestroyChildrenWhenDestroyed)
 						DeleteDestructibleChildrenDelayed(false);
@@ -319,23 +319,23 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 					//Don't replicate state as there is no particles or sound to be played
 					DeleteDestructibleDelayed();
 				}
-				
+
 				GetDestructionBaseData().DeleteHitInfo();
 				return;
 			}
-				
+
 			if (componentData.m_aDamagePhases && !componentData.m_aDamagePhases.IsEmpty()) // MPD has damage phases
 			{
 				SCR_DamagePhaseData lastPhaseData = GetDamagePhaseData(lastPhase);
-			
+
 				if (componentData.m_eMaterialSoundType > 0)
 					SCR_DestructionUtility.PlaySound(GetOwner(), componentData.m_eMaterialSoundType, GetNumDamagePhases(), GetDamagePhase());
-					
+
 				if (lastPhaseData.m_PhaseDestroySpawnObjects && !lastPhaseData.m_PhaseDestroySpawnObjects.IsEmpty())
 					SCR_DestructionUtility.SpawnDestroyObjects(GetOwner(), lastPhaseData.m_PhaseDestroySpawnObjects, hitInfo);
 				else
 					SCR_DestructionUtility.SpawnDestroyObjects(GetOwner(), componentData.m_DestroySpawnObjects, hitInfo);
-				
+
 				if (componentData.m_bDeleteAfterFinalPhase)
 				{
 					ReplicateDestructibleState(lastPhase);
@@ -345,6 +345,9 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 				{
 					GoToDamagePhase(lastPhase, false);
 					ReplicateDestructibleState(lastPhase);
+					
+					if (componentData.m_bDestroyChildrenWhenDestroyed)
+						DeleteDestructibleChildrenDelayed();
 				}
 			}
 			else
@@ -352,7 +355,7 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 				if (componentData.m_eMaterialSoundType > 0)
 					SCR_DestructionUtility.PlaySound(GetOwner(), componentData.m_eMaterialSoundType, GetNumDamagePhases(), GetDamagePhase());
 				
-				if ( !componentData.m_bDestroyParentWhenDestroyed )
+				if ( !componentData.m_bDestroyParentWhenDestroyed || !GetOwner().GetParent().GetPhysics() )
 					SCR_DestructionUtility.SpawnDestroyObjects(GetOwner(), componentData.m_DestroySpawnObjects, hitInfo);
 				
 				ReplicateDestructibleState();				
@@ -366,18 +369,18 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 		int targetDamagePhase = GetTargetDamagePhase();
 		if (targetDamagePhase <= 0)
 			return;
-		
+
 		if (currentHealth <= m_fNextPhaseHealth)
 		{
 			if (componentData.m_eMaterialSoundType > 0)
 				SCR_DestructionUtility.PlaySound(GetOwner(), componentData.m_eMaterialSoundType, GetNumDamagePhases(), GetDamagePhase());
-			
-			SCR_DamagePhaseData targetDamagePhaseData = GetDamagePhaseData(targetDamagePhase);			
+
+			SCR_DamagePhaseData targetDamagePhaseData = GetDamagePhaseData(targetDamagePhase);
 			if (targetDamagePhaseData.m_PhaseDestroySpawnObjects && !targetDamagePhaseData.m_PhaseDestroySpawnObjects.IsEmpty())
 				SCR_DestructionUtility.SpawnDestroyObjects(GetOwner(), targetDamagePhaseData.m_PhaseDestroySpawnObjects, hitInfo);
 			else
 				SCR_DestructionUtility.SpawnDestroyObjects(GetOwner(), componentData.m_DestroySpawnObjects, hitInfo);
-			
+
 			GoToDamagePhase(targetDamagePhase, true);
 			ReplicateDestructibleState(targetDamagePhase);
 
@@ -420,7 +423,7 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 		SCR_DestructionMultiPhaseComponentClass componentData = SCR_DestructionMultiPhaseComponentClass.Cast(GetComponentData(GetOwner()));
 		if (!componentData)
 			return;
-		
+
 		SCR_DestructionHitInfo hitInfo = GetDestructionHitInfo(true);
 		hitInfo.m_HitPosition = hitPosDirNorm[0];
 		hitInfo.m_HitDirection = hitPosDirNorm[1];
@@ -471,6 +474,15 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected override bool HasDataToReplicate()
+	{
+		if (GetDamagePhase() != 0)
+			return true;
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected override event bool OnRplSave(ScriptBitWriter writer)
 	{
 		super.OnRplSave(writer);
@@ -480,35 +492,35 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 
 		if (writeDamagePhase)
 			writer.Write(GetDamagePhase(), 8); // Write which damage phase we are in
-		
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected override event bool OnRplLoad(ScriptBitReader reader)
 	{
 		super.OnRplLoad(reader);
-		
+
 		bool readDamagePhase;
 		reader.Read(readDamagePhase, 1);
-		
+
 		if (!readDamagePhase)
 			return true;
-		
+
 		int damagePhase;
 		reader.Read(damagePhase, 8); // Read which damage phase we are meant to be in
-		
+
 		if (damagePhase != GetDamagePhase())
 			GoToDamagePhase(damagePhase, false);
-		
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
-		
+
 		if (IsProxy())
 			return;
 

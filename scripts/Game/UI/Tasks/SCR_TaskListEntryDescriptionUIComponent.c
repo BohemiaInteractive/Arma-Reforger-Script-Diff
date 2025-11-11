@@ -542,7 +542,9 @@ class SCR_TaskListEntryDescriptionUIComponent : SCR_ScriptedWidgetComponent
 	{
 		if (m_Task != task)
 			return;
-
+		
+		m_Widgets.m_wButtonShowMap.SetVisible(visible != SCR_ETaskUIVisibility.LIST_ONLY);
+		
 		SetVisibility(false);
 	}
 

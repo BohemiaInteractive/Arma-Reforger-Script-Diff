@@ -109,8 +109,21 @@ class SCR_PrefabSpawnable : SCR_BaseSpawnable
 			vector spawnMat[4];
 			GetSpawnTransform(owner, spawnMat, m_bSpawnAsChildren);
 			
+			// Divide the matrix by owner scale to remove scale from transformation
+			float ownerScale = owner.GetScale();
+			if (ownerScale > 0) // Avoid division by zero
+			{
+				spawnMat[0] = spawnMat[0] / ownerScale; // X axis
+				spawnMat[1] = spawnMat[1] / ownerScale; // Y axis
+				spawnMat[2] = spawnMat[2] / ownerScale; // Z axis
+				// Position (spawnMat[3]) is NOT divided - it should remain in world space
+			}
+			
 			EntitySpawnParams prefabSpawnParams = EntitySpawnParams();
 			prefabSpawnParams.Transform = spawnMat;
+			// Use Scale parameter to set scale instead of using transformation
+			prefabSpawnParams.Scale = ownerScale;
+			
 			IEntity spawnedPrefab = GetGame().SpawnEntityPrefab(Resource.Load(prefabPath), null, prefabSpawnParams);
 			if (!spawnedPrefab)
 				continue;

@@ -344,6 +344,9 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 		if (!config)
 			return;
+		
+		if(config.MapEntityMode == EMapEntityMode.SPAWNSCREEN)
+			return;
 
 		switch (config.MapEntityMode)
 		{
@@ -1166,13 +1169,15 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	//! \param[in] callerCallsignCompany
 	//! \param[in] callerCallsignPlatoon
 	//! \param[in] callerCallsignSquad
+	//! \param[in] callerCallsignCharacter
 	//! \param[in] calledCallsignCompany
 	//! \param[in] calledCallsignPlatoon
 	//! \param[in] calledCallsignSquad
+	//! \param[in] calledCallsignCharacter
 	//! \param[in] param
 	//! \param[in] seed
 	//! \param[in] quality
-	void PlayRadioMsg(SCR_ERadioMsg msg, int factionId, int baseCallsign, int callerCallsignCompany, int callerCallsignPlatoon, int callerCallsignSquad, int calledCallsignCompany, int calledCallsignPlatoon, int calledCallsignSquad, int param, float seed, float quality)
+	void PlayRadioMsg(SCR_ERadioMsg msg, int factionId, int baseCallsign, int callerCallsignCompany, int callerCallsignPlatoon, int callerCallsignSquad, int callerCallsignCharacter, int calledCallsignCompany, int calledCallsignPlatoon, int calledCallsignSquad, int calledCallsignCharacter, int param, float seed, float quality)
 	{
 		if (m_Campaign.IsTutorial())
 			return;
@@ -1187,25 +1192,25 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 		if (!player)
 			return;
 
-		SCR_CommunicationSoundComponent soundComp = SCR_CommunicationSoundComponent.Cast(player.FindComponent(SCR_CommunicationSoundComponent));
+		SCR_HQRadioSoundEntity radioSoundEntity = SCR_HQRadioSoundEntity.GetInstance();
+		if (!radioSoundEntity)
+			return;
 
+		SimpleSoundComponent soundComp = radioSoundEntity.GetSimpleSoundComponent();
 		if (!soundComp)
 			return;
 
-		SignalsManagerComponent signalComp = SignalsManagerComponent.Cast(player.FindComponent(SignalsManagerComponent));
-
-		if (!signalComp)
-			return;
-
-		int signalBase = signalComp.AddOrFindSignal("Base");
-		int signalCompanyCaller = signalComp.AddOrFindSignal("CompanyCaller");
-		int signalCompanyCalled = signalComp.AddOrFindSignal("CompanyCalled");
-		int signalPlatoonCaller = signalComp.AddOrFindSignal("PlatoonCaller");
-		int signalPlatoonCalled = signalComp.AddOrFindSignal("PlatoonCalled");
-		int signalSquadCaller = signalComp.AddOrFindSignal("SquadCaller");
-		int signalSquadCalled = signalComp.AddOrFindSignal("SquadCalled");
-		int signalSeed = signalComp.AddOrFindSignal("Seed");
-		int signalQuality = signalComp.AddOrFindSignal("TransmissionQuality");
+		int signalBase = soundComp.GetSignalIndex("Base");
+		int signalCompanyCaller = soundComp.GetSignalIndex("CompanyCaller");
+		int signalCompanyCalled = soundComp.GetSignalIndex("CompanyCalled");
+		int signalPlatoonCaller = soundComp.GetSignalIndex("PlatoonCaller");
+		int signalPlatoonCalled = soundComp.GetSignalIndex("PlatoonCalled");
+		int signalSquadCaller = soundComp.GetSignalIndex("SquadCaller");
+		int signalSquadCalled = soundComp.GetSignalIndex("SquadCalled");
+		int signalSoldierCaller = soundComp.GetSignalIndex("SoldierCaller");
+		int signalSoldierCalled = soundComp.GetSignalIndex("SoldierCalled");
+		int signalSeed = soundComp.GetSignalIndex("Seed");
+		int signalQuality = soundComp.GetSignalIndex("TransmissionQuality");
 
 		SCR_CampaignFactionManager fManager = SCR_CampaignFactionManager.Cast(GetGame().GetFactionManager());
 		SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(fManager.GetFactionByIndex(factionId));
@@ -1221,25 +1226,27 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 				callsignInfo = faction.GetBaseCallsignByIndex(base.GetCallsign(), m_Campaign.GetCallsignOffset());
 
 			if (callsignInfo)
-				signalComp.SetSignalValue(signalBase, callsignInfo.GetSignalIndex());
+				soundComp.SetSignalValue(signalBase, callsignInfo.GetSignalIndex());
 		}
 
 		if (callerCallsignCompany != SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX)
 		{
-			signalComp.SetSignalValue(signalCompanyCaller, callerCallsignCompany);
-			signalComp.SetSignalValue(signalPlatoonCaller, callerCallsignPlatoon);
-			signalComp.SetSignalValue(signalSquadCaller, callerCallsignSquad);
+			soundComp.SetSignalValue(signalCompanyCaller, callerCallsignCompany);
+			soundComp.SetSignalValue(signalPlatoonCaller, callerCallsignPlatoon);
+			soundComp.SetSignalValue(signalSquadCaller, callerCallsignSquad);
+			soundComp.SetSignalValue(signalSoldierCaller, callerCallsignCharacter);
 		}
 
 		if (calledCallsignCompany != SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX)
 		{
-			signalComp.SetSignalValue(signalCompanyCalled, calledCallsignCompany);
-			signalComp.SetSignalValue(signalPlatoonCalled, calledCallsignPlatoon);
-			signalComp.SetSignalValue(signalSquadCalled, calledCallsignSquad);
+			soundComp.SetSignalValue(signalCompanyCalled, calledCallsignCompany);
+			soundComp.SetSignalValue(signalPlatoonCalled, calledCallsignPlatoon);
+			soundComp.SetSignalValue(signalSquadCalled, calledCallsignSquad);
+			soundComp.SetSignalValue(signalSoldierCalled, calledCallsignCharacter);
 		}
 
-		signalComp.SetSignalValue(signalSeed, seed);
-		signalComp.SetSignalValue(signalQuality, quality);
+		soundComp.SetSignalValue(signalSeed, seed);
+		soundComp.SetSignalValue(signalQuality, quality);
 
 		string msgName;
 		LocalizedString text;
@@ -1275,7 +1282,9 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 			case SCR_ERadioMsg.DEMOTION_RENEGADE:
 			{
-				msgName = SCR_SoundEvent.SOUND_HQ_REN;
+				mustSetFactionKey = false;
+				mustSetFactionIdentityVoice = true;
+				msgName = SCR_SoundEvent.SOUND_HQC_M_RENEGADE_COMMANDER;
 				text = "#AR-Campaign_Demotion-UC";
 				text2 = "#AR-Rank_Renegade";
 				break;
@@ -1283,7 +1292,9 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 			case SCR_ERadioMsg.DEMOTION:
 			{
-				msgName = SCR_SoundEvent.SOUND_HQ_DEM;
+				mustSetFactionKey = false;
+				mustSetFactionIdentityVoice = true;
+				msgName = SCR_SoundEvent.SOUND_HQC_M_DEMOTE_COMMANDER;
 				text = "#AR-Campaign_Demotion-UC";
 				SCR_CampaignFaction f = SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
 
@@ -1295,7 +1306,9 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 			case SCR_ERadioMsg.PROMOTION_PRIVATE:
 			{
-				msgName = SCR_SoundEvent.SOUND_HQ_POP;
+				mustSetFactionKey = false;
+				mustSetFactionIdentityVoice = true;
+				msgName = SCR_SoundEvent.SOUND_HQC_M_PPRIVATE_COMMANDER;
 				text = "#AR-Campaign_Promotion-UC";
 				text2 = "#AR-Rank_WestPrivate";
 				break;
@@ -1303,7 +1316,9 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 			case SCR_ERadioMsg.PROMOTION_CORPORAL:
 			{
-				msgName = SCR_SoundEvent.SOUND_HQ_POC;
+				mustSetFactionKey = false;
+				mustSetFactionIdentityVoice = true;
+				msgName = SCR_SoundEvent.SOUND_HQC_M_PCORPORAL_COMMANDER;
 				text = "#AR-Campaign_Promotion-UC";
 				text2 = "#AR-Rank_WestCorporal";
 				break;
@@ -1311,7 +1326,9 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 			case SCR_ERadioMsg.PROMOTION_SERGEANT:
 			{
-				msgName = SCR_SoundEvent.SOUND_HQ_POS;
+				mustSetFactionKey = false;
+				mustSetFactionIdentityVoice = true;
+				msgName = SCR_SoundEvent.SOUND_HQC_M_PSERGEANT_COMMANDER;
 				text = "#AR-Campaign_Promotion-UC";
 				text2 = "#AR-Rank_WestSergeant";
 				break;
@@ -1319,7 +1336,9 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 			case SCR_ERadioMsg.PROMOTION_LIEUTENANT:
 			{
-				msgName = SCR_SoundEvent.SOUND_HQ_POL;
+				mustSetFactionKey = false;
+				mustSetFactionIdentityVoice = true;
+				msgName = SCR_SoundEvent.SOUND_HQC_M_PLIEUTENANT_COMMANDER;
 				text = "#AR-Campaign_Promotion-UC";
 				text2 = "#AR-Rank_WestLieutenant";
 				break;
@@ -1327,7 +1346,9 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 			case SCR_ERadioMsg.PROMOTION_CAPTAIN:
 			{
-				msgName = SCR_SoundEvent.SOUND_HQ_PON;
+				mustSetFactionKey = false;
+				mustSetFactionIdentityVoice = true;
+				msgName = SCR_SoundEvent.SOUND_HQC_M_PCAPTAIN_COMMANDER;
 				text = "#AR-Campaign_Promotion-UC";
 				text2 = "#AR-Rank_WestCaptain";
 				break;
@@ -1335,7 +1356,9 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 			case SCR_ERadioMsg.PROMOTION_MAJOR:
 			{
-				msgName = SCR_SoundEvent.SOUND_HQ_POM;
+				mustSetFactionKey = false;
+				mustSetFactionIdentityVoice = true;
+				msgName = SCR_SoundEvent.SOUND_HQC_M_PMAJOR_COMMANDER;
 				text = "#AR-Campaign_Promotion-UC";
 				text2 = "#AR-Rank_WestMajor";
 				break;
@@ -1348,19 +1371,25 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 				if (!f || f != SCR_FactionManager.SGetLocalPlayerFaction())
 					return;
 
-				msgName = SCR_SoundEvent.SOUND_HQ_PMV;
+				msgName = SCR_SoundEvent.SOUND_HQC_M_VICTORY_COMMANDER;
+				mustSetFactionKey = false;
+				mustSetFactionIdentityVoice = true;
 				break;
 			}
 
 			case SCR_ERadioMsg.WINNING:
 			{
-				msgName = SCR_SoundEvent.SOUND_HQ_PMC;
+				msgName = SCR_SoundEvent.SOUND_HQC_M_WINNING_COMMANDER;
+				mustSetFactionKey = false;
+				mustSetFactionIdentityVoice = true;
 				break;
 			}
 
 			case SCR_ERadioMsg.LOSING:
 			{
-				msgName = SCR_SoundEvent.SOUND_HQ_PML;
+				msgName = SCR_SoundEvent.SOUND_HQC_M_LOSING_COMMANDER;
+				mustSetFactionKey = false;
+				mustSetFactionIdentityVoice = true;
 				break;
 			}
 
@@ -1371,7 +1400,9 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 				if (!f || f == SCR_FactionManager.SGetLocalPlayerFaction())
 					return;
 
-				msgName = SCR_SoundEvent.SOUND_HQ_PMD;
+				msgName = SCR_SoundEvent.SOUND_HQC_M_DEFEAT_COMMANDER;
+				mustSetFactionKey = false;
+				mustSetFactionIdentityVoice = true;
 				break;
 			}
 
@@ -1471,7 +1502,11 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 					return;
 
 				if (base.GetType() == SCR_ECampaignBaseType.BASE)
-					msgName = SCR_SoundEvent.SOUND_HQ_BUA;
+				{
+					msgName = SCR_SoundEvent.SOUND_HQC_M_BASEUNDERATTACK_COMMANDER;
+					mustSetFactionKey = false;
+					mustSetFactionIdentityVoice = true;
+				}
 
 				text = "#AR-Campaign_BaseUnderAttack-UC";
 
@@ -1658,15 +1693,13 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 		if (!msgName.IsEmpty())
 		{
-			AudioSystem.TerminateSound(m_PlayedRadio);
-
 			if (mustSetFactionKey)
 				msgName = msgName + "_" + faction.GetFactionKey();
 			
 			if (mustSetFactionIdentityVoice)
 			{
-				int signalIdentityVoice = signalComp.AddOrFindSignal("IdentityVoice");
-				signalComp.SetSignalValue(signalIdentityVoice, faction.GetIndentityVoiceSignal());
+				int signalIdentityVoice = soundComp.GetSignalIndex("IdentityVoice");
+				soundComp.SetSignalValue(signalIdentityVoice, faction.GetIndentityVoiceSignal());
 			}
 
 			BaseContainer settings = GetGame().GetGameUserSettings().GetModule("SCR_AudioSettings");
@@ -1677,7 +1710,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 			}
 			
 			if (announcerEnabled)
-				m_PlayedRadio = soundComp.SoundEvent(msgName);
+				radioSoundEntity.PlayRadioSound(msgName);
 		}
 
 		if (isFriendly && (!text.IsEmpty() || !text2.IsEmpty()))
@@ -1860,8 +1893,15 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnTaskStateChanged(SCR_Task task, SCR_ETaskState newState)
 	{
-		if (newState == SCR_ETaskState.COMPLETED)
-			ShowHint(EHint.CONFLICT_OBJECTIVES_ADVANCED);
+		if (newState != SCR_ETaskState.COMPLETED)
+			return;
+
+		array<int> assigneeIDs = task.GetTaskAssigneePlayerIDs();
+		int myPlayerId = SCR_PlayerController.GetLocalPlayerId();
+		if (assigneeIDs.Contains(myPlayerId))
+		{
+ 			ShowHint(EHint.CONFLICT_OBJECTIVES_ADVANCED);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

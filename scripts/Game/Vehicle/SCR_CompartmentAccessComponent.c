@@ -61,7 +61,7 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnCompartmentEntered(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
+	override protected void OnCompartmentEntered(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
 	{
 		if (m_OnCompartmentEntered)
 			m_OnCompartmentEntered.Invoke( targetEntity, manager, mgrID, slotID, move );
@@ -151,7 +151,7 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnCompartmentLeft(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
+	override protected void OnCompartmentLeft(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
 	{
 		if (m_OnCompartmentLeft)
 			m_OnCompartmentLeft.Invoke( targetEntity, manager, mgrID, slotID, move );

@@ -57,6 +57,7 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 
 	protected ref array<ResourceName> m_aPlaceablePrefabs = {};
 	protected ref map<SCR_CampaignMilitaryBaseComponent, ref array<SCR_CampaignBuildingCompositionComponent>> m_mCampaignBuildingComponents;
+	protected ref array<SCR_CampaignBuildingCompositionComponent> m_aHQBuildingCompositions = {};
 
 	protected SCR_EditableEntityCore m_EntityCore;
 	protected IEntity m_TemporaryProvider;
@@ -506,6 +507,46 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected bool TryAddHQ(notnull SCR_CampaignBuildingCompositionComponent composition)
+	{
+		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(composition.GetOwner().FindComponent(SCR_EditableEntityComponent));
+		if (!editableEntity)
+			return false;
+
+		if (!IsHQService(editableEntity))
+			return false;
+
+		m_aHQBuildingCompositions.Insert(composition);
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool TryRemoveHQ(notnull SCR_CampaignBuildingCompositionComponent composition)
+	{
+		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(composition.GetOwner().FindComponent(SCR_EditableEntityComponent));
+		if (!editableEntity)
+			return false;
+
+		if (!IsHQService(editableEntity))
+			return false;
+
+		m_aHQBuildingCompositions.RemoveItem(composition);
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool IsHQService(notnull SCR_EditableEntityComponent editableEntity)
+	{
+		SCR_EditableEntityUIInfo prefabInfo = SCR_EditableEntityUIInfo.Cast(editableEntity.GetInfo());
+		if (!prefabInfo)
+			return false;
+
+		array<EEditableEntityLabel> entityLabels = {};
+		prefabInfo.GetEntityLabels(entityLabels);
+		return entityLabels.Contains(EEditableEntityLabel.SERVICE_HQ);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void SetOnPlayerDeathEvent(int playerID)
 	{
 		IEntity player = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID);
@@ -707,6 +748,8 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 		if (!baseSystem)
 			return;
 
+		TryAddHQ(composition);
+
 		vector position = composition.GetOwner().GetOrigin();
 		array<SCR_MilitaryBaseComponent> bases = {};
 		baseSystem.GetBases(bases);
@@ -745,6 +788,8 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 		SCR_MilitaryBaseSystem baseSystem = SCR_MilitaryBaseSystem.GetInstance();
 		if (!baseSystem)
 			return;
+
+		TryRemoveHQ(composition);
 
 		array<SCR_MilitaryBaseComponent> bases = {};
 		baseSystem.GetBases(bases);
@@ -793,6 +838,13 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 			return 0;
 
 		return compositions.Copy(baseComponents);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return spawned HQ building compositions
+	array<SCR_CampaignBuildingCompositionComponent> GetHQBuildingCompositions()
+	{
+		return m_aHQBuildingCompositions;
 	}
 
 	//------------------------------------------------------------------------------------------------

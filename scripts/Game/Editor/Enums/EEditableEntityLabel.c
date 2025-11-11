@@ -119,6 +119,9 @@ enum EEditableEntityLabel
 	TRAIT_RANDOMIZED = 290, //! This trait is for entities that have random variants when placed in the world by Editor
 	TRAIT_VEHICLE_REARMING = 291,
 	TRAIT_EFFECT_MODULE = 295,
+	TRAIT_ESSENTIAL = 296,
+	TRAIT_GUARD = 297,
+	TRAIT_LOGISTICS = 298,	
 	
 	SERVICE_ANTENNA = 901,
 	SERVICE_ARMORY = 902,

@@ -166,10 +166,10 @@ class SCR_DataToSpreadsheetPlugin : ResourceManagerPlugin
 					ProcessAttributes(container, containerPathSub, prefabName, entry.GetAttributes());
 				}
 				break;
-				
-				case "ObjectArray" : 
+
+				case "ObjectArray" :
 				{
-					SCR_DataToSpreadsheetTemplatesObjectArray entry = SCR_DataToSpreadsheetTemplatesObjectArray.Cast(currentEntry);		
+					SCR_DataToSpreadsheetTemplatesObjectArray entry = SCR_DataToSpreadsheetTemplatesObjectArray.Cast(currentEntry);
 					BaseContainerList containerList = entSrc.GetObjectArray(entry.m_ObjectName);
 					array<ref ContainerIdPathEntry> containerPathSub = new array<ref ContainerIdPathEntry>;
 					foreach (ContainerIdPathEntry obj : containerPath)
@@ -183,7 +183,7 @@ class SCR_DataToSpreadsheetPlugin : ResourceManagerPlugin
 			}
 		}
 	}
-	
+
 	protected static BaseContainer GetChildFromList(notnull BaseContainerList containerList, string childName)
 	{
 		if (childName.IsEmpty())
@@ -210,10 +210,10 @@ class SCR_DataToSpreadsheetPlugin : ResourceManagerPlugin
 
 		return null;
 	}
-	
+
 	void ProcessAttributesList(BaseContainerList containerList, array<ref ContainerIdPathEntry> containerPath, ResourceName prefabName, array<ref SCR_DataToSpreadsheetTemplatesBase> TemplateData)
 	{
-		
+
 		foreach (SCR_DataToSpreadsheetTemplatesBase currentEntry : TemplateData)
 		{
 			switch (currentEntry.ReturnType())
@@ -231,7 +231,7 @@ class SCR_DataToSpreadsheetPlugin : ResourceManagerPlugin
 					ProcessAttributes(container, containerPathSub, prefabName, entry.GetAttributes());
 				}
 				break;
-				
+
 				case "ObjectIndex" :
 				{
 					SCR_DataToSpreadsheetTemplatesObjectIndex entry = SCR_DataToSpreadsheetTemplatesObjectIndex.Cast(currentEntry);
@@ -245,15 +245,15 @@ class SCR_DataToSpreadsheetPlugin : ResourceManagerPlugin
 					ProcessAttributes(container, containerPathSub, prefabName, entry.GetAttributes());
 				}
 				break;
-				
-				default: 
+
+				default:
 				{
 					Print("Incorrect element");
 				}
-			}	
+			}
 		}
 	}
-	
+
 
 	//------------------------------------------------------------------------------------------------
 	//! Process single, selected attribute
@@ -408,10 +408,28 @@ class SCR_DataToSpreadsheetPlugin : ResourceManagerPlugin
 			m_sExportString += prefabName + "\t";
 			Resource prefab = Resource.Load(prefabName);
 			BaseContainer prefabSource;
-			if (prefabName.EndsWith(".et")) 
+			MetaFile meta;
+			if (prefabName.EndsWith(".et"))
 			{
 				prefabSource = SCR_BaseContainerTools.FindEntitySource(prefab);
-			}else{
+			}
+			else if (prefabName.EndsWith(".xob") || prefabName.EndsWith(".edds"))
+			{
+				// For .xob, .emat, and .edds files, use their meta file and convert to base container
+				ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
+				meta = resourceManager.GetMetaFile(prefabName.GetPath());
+				if (meta)
+				{
+					prefabSource = meta.ToBaseContainer();
+				}
+				else
+				{
+					Print(string.Format("Failed to get meta file for: %1", prefabName), LogLevel.ERROR);
+					continue;
+				}
+			}
+			else
+			{
 				prefabSource = prefab.GetResource().ToBaseContainer();
 			}
 
@@ -421,6 +439,8 @@ class SCR_DataToSpreadsheetPlugin : ResourceManagerPlugin
 			m_bGenerateHeader = false;
 			if (m_bSaveRequired)
 			{
+				if (meta)
+					meta.Save();
 				BaseContainerTools.SaveContainer(prefabSource, prefabName);
 				m_bSaveRequired = false;
 			}
@@ -570,10 +590,10 @@ class SCR_DataToSpreadsheetTemplatesObjectArray: SCR_DataToSpreadsheetTemplatesB
 {
 	[Attribute(desc: "Name of component to modify or add")]
 	string m_ObjectName;
-	
+
 	[Attribute(desc: "Array of attributes which will be modified inside component belonging to prefab. If component is not present, new one will be created")]
 	ref array<ref SCR_DataToSpreadsheetTemplatesBase> m_AttributesArray;
-	
+
 	override string ReturnType()
 	{
 		return "ObjectArray";

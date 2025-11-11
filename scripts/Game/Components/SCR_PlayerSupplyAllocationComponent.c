@@ -37,11 +37,12 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 			{
 				gameMode.GetOnPlayerConnected().Insert(OnPlayerConnected);
 				gameMode.GetOnPlayerKilled().Insert(OnPlayerKilled);
-				gameMode.GetOnPlayerSpawned().Insert(OnPlayerSpawned);
+				gameMode.GetOnPlayerDisconnected().Insert(OnPlayerDisconnected);
 			}
 
 			SetSupplyAllocationValuesByRank();
 			SCR_ResourcePlayerControllerInventoryComponent.GetOnArsenalItemRequested().Insert(OnArsenalRequestItem);
+			m_PlayerController.m_OnPossessed.Insert(OnCharacterPossessed);
 		}
 
 		#ifdef ENABLE_DIAG
@@ -190,31 +191,49 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Start replenishment timer and listen to player rank changes
+	//! Unsubscribes the rank changed invoker
 	//! \param[in] playerId
-	//! \param[in] controlledEntity
-	protected void OnPlayerSpawned(int playerId, IEntity controlledEntity)
+	//! \param[in] kick cause
+	//! \param[in] timeout
+	protected void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
-		if (m_PlayerController.GetMainEntity() != controlledEntity)
+		if (m_PlayerController.GetPlayerId() != playerId)
 			return;
 
-		SCR_PlayerXPHandlerComponent playerXPHandler = SCR_PlayerXPHandlerComponent.Cast(m_PlayerController.FindComponent(SCR_PlayerXPHandlerComponent));
-		if (playerXPHandler)
-		{
-			playerXPHandler.GetOnPlayerXPChanged().Remove(OnUnspawnedPlayerXPChanged);
-		}
+		IEntity playerCharacter = m_PlayerController.GetMainEntity();
+		if (!playerCharacter)
+			return;
+
+		SCR_CharacterRankComponent rankComp = SCR_CharacterRankComponent.Cast(playerCharacter.FindComponent(SCR_CharacterRankComponent));
+		if (!rankComp)
+			return;
+
+		rankComp.s_OnRankChanged.Remove(OnRankChanged);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Is called when player spawns or gets control of his character after reconnect
+	//! Sets up the events for supply allocation changes based on rank
+	//! \param[in] possessed character
+	protected void OnCharacterPossessed(IEntity character)
+	{
+		if (m_PlayerController.GetMainEntity() != character)
+			return;
+
+		if (SCR_Enum.HasPartialFlag(GetEventMask(), EntityEvent.FRAME))
+			return;
 
 		if (!m_bIsEnabled)
 			return;
 
-		SCR_CharacterRankComponent rankComp = SCR_CharacterRankComponent.Cast(controlledEntity.FindComponent(SCR_CharacterRankComponent));
+		SetEventMask(GetOwner(), EntityEvent.FRAME);
+		m_fAvailableAllocatedSuppliesReplenishmentTimer = m_MilitarySupplyAllocationConfig.GetAvailableAllocatedSuppliesReplenishmentTimer();
+
+		SCR_CharacterRankComponent rankComp = SCR_CharacterRankComponent.Cast(character.FindComponent(SCR_CharacterRankComponent));
 		if (!rankComp)
 			return;
 
 		rankComp.s_OnRankChanged.Insert(OnRankChanged);
-
-		SetEventMask(GetOwner(), EntityEvent.FRAME);
-		m_fAvailableAllocatedSuppliesReplenishmentTimer = m_MilitarySupplyAllocationConfig.GetAvailableAllocatedSuppliesReplenishmentTimer();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -243,13 +262,11 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 		if (m_PlayerController.GetPlayerId() != playerId)
 			return;
 
-		if (m_PlayerController.GetMainEntity())
-			return;
-
 		SCR_PlayerXPHandlerComponent playerXPHandler = SCR_PlayerXPHandlerComponent.Cast(m_PlayerController.FindComponent(SCR_PlayerXPHandlerComponent));
 		if (!playerXPHandler)
 			return;
 
+		playerXPHandler.GetOnPlayerXPChanged().Remove(OnUnspawnedPlayerXPChanged);
 		SCR_ECharacterRank rank = playerXPHandler.GetPlayerRankByXP();
 		SetSupplyAllocationValuesByRank(rank);
 	}
@@ -395,11 +412,12 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 			{
 				gameMode.GetOnPlayerConnected().Insert(OnPlayerConnected);
 				gameMode.GetOnPlayerKilled().Insert(OnPlayerKilled);
-				gameMode.GetOnPlayerSpawned().Insert(OnPlayerSpawned);
+				gameMode.GetOnPlayerDisconnected().Insert(OnPlayerDisconnected);
 			}
 
 			SCR_ResourcePlayerControllerInventoryComponent.GetOnArsenalItemRequested().Insert(OnArsenalRequestItem);
 
+			m_PlayerController.m_OnPossessed.Insert(OnCharacterPossessed);
 			if (!controlledEntity)
 				return;
 
@@ -422,10 +440,11 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 			{
 				gameMode.GetOnPlayerConnected().Remove(OnPlayerConnected);
 				gameMode.GetOnPlayerKilled().Remove(OnPlayerKilled);
-				gameMode.GetOnPlayerSpawned().Remove(OnPlayerSpawned);
+				gameMode.GetOnPlayerDisconnected().Remove(OnPlayerDisconnected);
 			}
 
 			SCR_ResourcePlayerControllerInventoryComponent.GetOnArsenalItemRequested().Remove(OnArsenalRequestItem);
+			m_PlayerController.m_OnPossessed.Remove(OnCharacterPossessed);
 
 			if (!controlledEntity)
 				return;
@@ -454,7 +473,7 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 		{
 			gameMode.GetOnPlayerConnected().Remove(OnPlayerConnected);
 			gameMode.GetOnPlayerKilled().Remove(OnPlayerKilled);
-			gameMode.GetOnPlayerSpawned().Remove(OnPlayerSpawned);
+			gameMode.GetOnPlayerDisconnected().Remove(OnPlayerDisconnected);
 		}
 
 		if (m_PlayerController)
@@ -464,6 +483,8 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 			{
 				playerXPHandler.GetOnPlayerXPChanged().Remove(OnUnspawnedPlayerXPChanged);
 			}
+
+			m_PlayerController.m_OnPossessed.Remove(OnCharacterPossessed);
 		}
 
 		SCR_ResourcePlayerControllerInventoryComponent.GetOnArsenalItemRequested().Remove(OnArsenalRequestItem);

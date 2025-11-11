@@ -40,6 +40,8 @@ sealed class HitZoneContainerComponent: GameComponent
 
 	// callbacks
 
+	//! Use it to save bandwidth in some default conditions. Use it if Save and Load are overriden.
+	event protected bool HasDataToReplicate();
 	// --------------------------------------------------------------------------------
 	event protected bool OnRplSave(ScriptBitWriter writer);
 	event protected bool OnRplLoad(ScriptBitReader reader);

@@ -1,10 +1,13 @@
 class SCR_WeaponInfoVehicle : SCR_WeaponInfo
 {
+	[Attribute(desc: "Name of the compartment for which this element should be enabled.\nLeave empty if it is meant for all compartments in this entity")]
+	protected string m_sCompartmentName;
+
 	protected TurretComponent m_Turret;
 	protected TurretControllerComponent m_TurretController;
-	
+
 	//------------------------------------------------------------------------------------------------
-	override void DisplayUpdate(IEntity owner, float timeSlice)
+	override protected void DisplayUpdate(IEntity owner, float timeSlice)
 	{
 		if (!m_wRoot || !m_WeaponState)
 			return;
@@ -21,7 +24,7 @@ class SCR_WeaponInfoVehicle : SCR_WeaponInfo
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMuzzleChanged(BaseWeaponComponent weapon, BaseMuzzleComponent muzzle, BaseMuzzleComponent prevMuzzle)
+	override protected void OnMuzzleChanged(BaseWeaponComponent weapon, BaseMuzzleComponent muzzle, BaseMuzzleComponent prevMuzzle)
 	{	
 		super.OnMuzzleChanged(weapon, muzzle, prevMuzzle);
 		
@@ -32,7 +35,7 @@ class SCR_WeaponInfoVehicle : SCR_WeaponInfo
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnTurretReload_init(BaseWeaponComponent weapon)
+	protected void OnTurretReload_init(BaseWeaponComponent weapon)
 	{
 		float rldTime = m_TurretController.GetReloadTime();
 		
@@ -47,7 +50,9 @@ class SCR_WeaponInfoVehicle : SCR_WeaponInfo
 		
 		OnTurretReload(weapon, false, m_TurretController);
 	}
-	void OnTurretReload(BaseWeaponComponent weapon, bool finished, TurretControllerComponent turretController)
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnTurretReload(BaseWeaponComponent weapon, bool finished, TurretControllerComponent turretController)
 	{
 		if (!m_WeaponState)
 			return;
@@ -89,7 +94,7 @@ class SCR_WeaponInfoVehicle : SCR_WeaponInfo
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	override bool DisplayStartDrawInit(IEntity owner)
+	override protected bool DisplayStartDrawInit(IEntity owner)
 	{
 		if(!owner)
 			return false;
@@ -100,16 +105,8 @@ class SCR_WeaponInfoVehicle : SCR_WeaponInfo
 		if(!m_TurretController)
 			return false;
 		
-		BaseCompartmentSlot slot = m_TurretController.GetCompartmentSlot();
-		if(!slot)
-			return false;
-		
-		ChimeraCharacter character = ChimeraCharacter.Cast(slot.GetOccupant());
-		if(!character)
-			return false;
-		
 		// Detect and store weapon manager
-		m_WeaponManager = BaseWeaponManagerComponent.Cast(owner.FindComponent(BaseWeaponManagerComponent));
+		m_WeaponManager = m_TurretController.GetWeaponManager();
 		if (!m_WeaponManager)
 			return false;	
 
@@ -123,7 +120,83 @@ class SCR_WeaponInfoVehicle : SCR_WeaponInfo
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void AddEventHandlers(IEntity owner)
+	override protected void DisplayStartDraw(IEntity owner)
+	{
+		super.DisplayStartDraw(owner);
+
+		ChimeraCharacter character = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+		if (!character)
+			return;
+		
+		m_CompartmentAccess = SCR_CompartmentAccessComponent.Cast(character.GetCompartmentAccessComponent());
+		if (!m_CompartmentAccess)
+			return;
+
+		BaseCompartmentSlot compartment = m_CompartmentAccess.GetCompartment();
+		if (!compartment)
+			return;
+
+		m_CompartmentAccess.GetOnCompartmentEntered().Insert(OnCompartmentEntered); // watch if player has switched to a different compartment in this entity
+		EvaluateCurrentCompartment(compartment);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void DisplayStopDraw(IEntity owner)
+	{
+		super.DisplayStopDraw(owner);
+
+		if (!m_CompartmentAccess)
+			return;
+
+		m_CompartmentAccess.GetOnCompartmentEntered().Remove(OnCompartmentEntered);
+		m_CompartmentAccess = null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Evaluates if compartment requirements were met, and if so, then it will try to show the HUD element, otherwise it will try to hide it.
+	//! \param[in] currentCompartment
+	protected void EvaluateCurrentCompartment(notnull BaseCompartmentSlot currentCompartment)
+	{
+		if (m_sCompartmentName.IsEmpty())
+			return;
+
+		if (m_sCompartmentName == currentCompartment.GetCompartmentName())
+		{
+			Show(true);
+			if (m_eWeaponStateEvent == 0)
+				m_eWeaponStateEvent = EWeaponFeature.WEAPON; // we just took control of a weapon thus we need to show HUD for it
+
+			return;
+		}
+
+		Show(false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnCompartmentEntered(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
+	{
+		BaseCompartmentSlot compartment = m_CompartmentAccess.GetCompartment();
+		if (compartment)
+			EvaluateCurrentCompartment(compartment);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void DisplayControlledEntityChanged(IEntity from, IEntity to)
+	{
+		super.DisplayControlledEntityChanged(from, to);
+
+		if (!m_CompartmentAccess)
+			return;
+
+		if (m_CompartmentAccess.GetOwner() != from)
+			return;
+
+		m_CompartmentAccess.GetOnCompartmentEntered().Remove(OnCompartmentEntered);
+		m_CompartmentAccess = null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void AddEventHandlers(IEntity owner)
 	{
 		if (m_EventHandlerManager)
 		{
@@ -140,7 +213,7 @@ class SCR_WeaponInfoVehicle : SCR_WeaponInfo
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void RemoveEventHandlers(IEntity owner)
+	override protected void RemoveEventHandlers(IEntity owner)
 	{
 		if (m_EventHandlerManager)
 		{

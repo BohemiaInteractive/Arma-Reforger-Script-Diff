@@ -42,8 +42,8 @@ class SCR_TaskManagerUIComponent : SCR_BaseGameModeComponent
 	
 	[Attribute("0")]
 	protected bool m_bShowCurrentTaskOnRespawn;
-	
-	[Attribute("{C9D32771B2166F77}Configs/Task/TasksTabConfig_Base.conf", params: "conf class=SCR_TasksTabConfig")]
+
+	[Attribute("{C9D32771B2166F77}Configs/Task/TasksTabConfig_Base.conf", UIWidgets.ResourceNamePicker, params: "conf class=SCR_TasksTabConfig")]
 	protected string m_sTaskTabConfig;
 	
 	static SCR_TaskManagerUIComponent s_Instance;
@@ -161,22 +161,6 @@ class SCR_TaskManagerUIComponent : SCR_BaseGameModeComponent
 		{
 			AnimateWidget.Opacity(m_wTaskHint, 0, 1);
 		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Toggles task list display in map view
-	void ToggleMapTaskList()
-	{
-		if (!m_MapEntity)
-			return;
-
-		SCR_MapTaskListUI taskListUI = SCR_MapTaskListUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapTaskListUI));
-		if (!taskListUI)
-			return;
-
-		taskListUI.ToggleTaskList(true);
-		if (m_TaskListComponent && m_SelectedTask)
-			m_TaskListComponent.FocusOnEntry(m_SelectedTask);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -514,6 +498,9 @@ class SCR_TaskManagerUIComponent : SCR_BaseGameModeComponent
 			return;
 		
 		taskUI.ToggleTaskList(newVisibility);
+		
+		if (m_TaskListComponent && m_SelectedTask)
+			m_TaskListComponent.FocusOnEntry(m_SelectedTask);
 		
 		SCR_MapJournalUI journalUI = SCR_MapJournalUI.Cast(mapEntity.GetMapUIComponent(SCR_MapJournalUI));
 		if (!journalUI)

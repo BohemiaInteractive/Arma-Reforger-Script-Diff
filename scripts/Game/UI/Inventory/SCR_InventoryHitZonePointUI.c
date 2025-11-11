@@ -187,7 +187,7 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void InitializeHitZoneUI(BaseInventoryStorageComponent storage, SCR_InventoryMenuUI menuManager, int hitZoneId, IEntity player)
+	void InitializeHitZoneUI(BaseInventoryStorageComponent storage, SCR_InventoryMenuUI menuManager, int hitZoneId, IEntity player, bool updateAttachmentStorage = true)
 	{
 		m_pStorage = storage;
 		m_pInventoryMenu = menuManager;
@@ -207,27 +207,27 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 		m_pBloodHitZone.GetOnDamageStateChanged().Insert(UpdateHitZoneState);
 		m_aGroupHitZones.Insert(m_pBloodHitZone);
 
-		UpdateHitZoneState(m_pBloodHitZone);
+		UpdateHitZoneState(m_pBloodHitZone, updateAttachmentStorage);
 
 		m_pCharDmgManager.GetOnDamageEffectAdded().Insert(UpdateHitZoneDOTAdded);
 		m_pCharDmgManager.GetOnDamageEffectRemoved().Insert(UpdateHitZoneDOTRemoved);
 		m_pCharDmgManager.GetHitZonesOfGroup(m_eHitZoneGroup, m_aGroupHitZones);
-		string boneName = m_pCharDmgManager.GetBoneName(m_eHitZoneGroup);
-		m_iBoneIndex = m_Player.GetAnimation().GetBoneIndex(boneName);
+		m_iBoneIndex = m_Player.GetAnimation().GetBoneIndex(m_pCharDmgManager.GetBoneName(m_eHitZoneGroup));
 
-		foreach (HitZone hz : m_aGroupHitZones)
+		SCR_CharacterHitZone scrHZ;
+		const int lastId = m_aGroupHitZones.Count() - 1;
+		foreach (int i, HitZone hz : m_aGroupHitZones)
 		{
-			SCR_CharacterHitZone scrHZ = SCR_CharacterHitZone.Cast(hz);
-			if (scrHZ)
-			{
-				scrHZ.GetOnDamageStateChanged().Insert(UpdateHitZoneState);
-				UpdateHitZoneState(scrHZ);
-			}
+			scrHZ = SCR_CharacterHitZone.Cast(hz);
+			if (!scrHZ)
+				continue;
+
+			scrHZ.GetOnDamageStateChanged().Insert(UpdateHitZoneState);
+			UpdateHitZoneState(scrHZ, updateAttachmentStorage && i == lastId); // only update attachment storage with the last HZ data to not waste time
 		}
 
-		bool tourniquetted = m_pCharDmgManager.GetGroupTourniquetted(m_eHitZoneGroup);
-		Widget newStorage = GetGame().GetWorkspace().CreateWidgets(m_pInventoryMenu.BACKPACK_STORAGE_LAYOUT, m_wRoot);
-		m_pStorageUI = new SCR_InventoryHitZoneUI(storage, null, menuManager, 0, null, this, tourniquetted);
+		const Widget newStorage = GetGame().GetWorkspace().CreateWidgets(m_pInventoryMenu.BACKPACK_STORAGE_LAYOUT, m_wRoot);
+		m_pStorageUI = new SCR_InventoryHitZoneUI(storage, null, menuManager, 0, null, this, m_pCharDmgManager.GetGroupTourniquetted(m_eHitZoneGroup));
 		newStorage.AddHandler(m_pStorageUI);
 		m_pStorageUI.GetRootWidget().SetVisible(false);
 	}
@@ -271,42 +271,43 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	protected void UpdateHitZoneState(SCR_HitZone hz)
+	protected void UpdateHitZoneState(SCR_HitZone hz, bool updateAttachmentStorage = true)
 	{
 		if (!hz || !m_aGroupHitZones.Contains(hz))
 			return;
 		
-		float health = m_pCharDmgManager.GetGroupHealthScaled(m_eHitZoneGroup);
+		const float health = m_pCharDmgManager.GetGroupHealthScaled(m_eHitZoneGroup);
 		float bleeding;
 		
+		SCR_RegeneratingHitZone regenHitZone;
 		foreach (HitZone groupHZ : m_aGroupHitZones)
 		{
 			if (groupHZ == m_pBloodHitZone)
 				continue;
 			
-			SCR_RegeneratingHitZone regenHitZone = SCR_RegeneratingHitZone.Cast(groupHZ);
+			regenHitZone = SCR_RegeneratingHitZone.Cast(groupHZ);
 			if (!regenHitZone)
 				continue;
 			
-			if (regenHitZone.GetHitZoneDamageOverTime(EDamageType.BLEEDING) > 0)
-			{
-				bleeding = m_pCharDmgManager.GetGroupDamageOverTime(m_eHitZoneGroup, EDamageType.BLEEDING);
-				break;
-			}
+			if (regenHitZone.GetHitZoneDamageOverTime(EDamageType.BLEEDING) <= 0)
+				continue;
+
+			bleeding = m_pCharDmgManager.GetGroupDamageOverTime(m_eHitZoneGroup, EDamageType.BLEEDING);
+			break;
 		}		
 
-		float dotHealing = -m_pCharDmgManager.GetGroupDamageOverTime(m_eHitZoneGroup, EDamageType.HEALING);
-		float dotRegen = m_pCharDmgManager.GetGroupDamageOverTime(m_eHitZoneGroup, EDamageType.REGENERATION);
-		float regen = (dotHealing + dotRegen);
+		const float dotHealing = -m_pCharDmgManager.GetGroupDamageOverTime(m_eHitZoneGroup, EDamageType.HEALING);
+		const float dotRegen = m_pCharDmgManager.GetGroupDamageOverTime(m_eHitZoneGroup, EDamageType.REGENERATION);
+		const float regen = (dotHealing + dotRegen);
 
-		bool tourniquetted = m_pCharDmgManager.GetGroupTourniquetted(m_eHitZoneGroup);
-		bool salineBagged = m_pCharDmgManager.GetGroupSalineBagged(m_eHitZoneGroup);
+		const bool tourniquetted = m_pCharDmgManager.GetGroupTourniquetted(m_eHitZoneGroup);
+		const bool salineBagged = m_pCharDmgManager.GetGroupSalineBagged(m_eHitZoneGroup);
 
 		if (m_pStorageUI)
 			m_pStorageUI.SetTourniquetted(tourniquetted);
 		
-		bool bleedingVisible = (bleeding > 0 || tourniquetted || salineBagged);
-		bool damageVisible = (health < 1 && bleeding == 0);
+		const bool bleedingVisible = (bleeding > 0 || tourniquetted || salineBagged);
+		const bool damageVisible = (health < 1 && bleeding == 0);
 		m_pDamageHandler.GetRootWidget().SetVisible(damageVisible || bleedingVisible);
 		m_pDamageHandler.UpdateHitZoneState(health, bleeding, regen, tourniquetted, salineBagged);
 
@@ -315,7 +316,7 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 		if (!m_pInventoryMenu)
 			return;
 
-		if (m_bSelected || m_pInventoryMenu.IsUsingGamepad())
+		if (updateAttachmentStorage && (m_bSelected || m_pInventoryMenu.IsUsingGamepad()))
 			ShowApplicableItems();
 		
 		if (bleeding > 0 || health < 1 || tourniquetted || salineBagged)
@@ -485,6 +486,7 @@ class SCR_InventoryHitZonePointUI : ScriptedWidgetComponent
 	{
 		StopBloodDropAnim();
 		StopRegenAnim();
+		HideVirtualHZInfo();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -678,7 +680,7 @@ class SCR_InventoryHitZonePointUI : ScriptedWidgetComponent
 			bleedingIntensityText
 			);
 			
-		string name = "";
+		string name;
 		if (!virtualHZ)
 			name = m_pParentContainer.GetHitZoneName();
 
@@ -748,7 +750,7 @@ class SCR_InventoryHitZonePointUI : ScriptedWidgetComponent
 		if (!damageMan)
 			return;		
 		
-		float groupHealth = damageMan.GetGroupHealthScaled(group);
+		const float groupHealth = damageMan.GetGroupHealthScaled(group);
 		bleedingRate = damageMan.GetGroupDamageOverTime(group, EDamageType.BLEEDING);
 		isTourniquetted = damageMan.GetGroupTourniquetted(group);
 		isSalineBagged = damageMan.GetGroupSalineBagged(group);

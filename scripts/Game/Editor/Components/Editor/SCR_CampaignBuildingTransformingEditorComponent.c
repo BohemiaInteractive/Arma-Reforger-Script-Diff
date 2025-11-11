@@ -11,6 +11,7 @@ class SCR_CampaignBuildingTransformingEditorComponent : SCR_TransformingEditorCo
 {
 	protected SCR_EditableEntityComponent m_LastRejectedPivot;
 	protected SCR_CampaignBuildingPlacingObstructionEditorComponent m_ObstructionComponent;
+	protected SCR_CampaignBuildingPlacingHQBaseEditorComponent m_HQBaseEditorComponent;
 	protected SCR_EditablePreviewEntity m_PreviewEntity;
 	protected SCR_PreviewEntityEditorComponent m_PreviewEntityEditorComponent;
 
@@ -118,6 +119,7 @@ class SCR_CampaignBuildingTransformingEditorComponent : SCR_TransformingEditorCo
 		m_PreviewEntityEditorComponent = SCR_PreviewEntityEditorComponent.Cast(FindEditorComponent(SCR_PreviewEntityEditorComponent, true, true));
 
 		m_ObstructionComponent = SCR_CampaignBuildingPlacingObstructionEditorComponent.Cast(FindEditorComponent(SCR_CampaignBuildingPlacingObstructionEditorComponent, true, true));
+		m_HQBaseEditorComponent = SCR_CampaignBuildingPlacingHQBaseEditorComponent.Cast(FindEditorComponent(SCR_CampaignBuildingPlacingHQBaseEditorComponent, true, true));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -143,7 +145,7 @@ class SCR_CampaignBuildingTransformingEditorComponent : SCR_TransformingEditorCo
 		vector transform[4];
 		m_PreviewManager.GetPreviewTransform(transform);
 
-		if (!m_ObstructionComponent.CanCreate() || !IsInBuildingRadiusVector(transform[3]))
+		if (!m_ObstructionComponent.CanCreate() || !IsInBuildingRadiusVector(transform[3]) || m_HQBaseEditorComponent && !m_HQBaseEditorComponent.CanCreate())
 		{
 			CancelEditing();
 			return false;

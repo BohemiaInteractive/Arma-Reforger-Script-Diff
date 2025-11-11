@@ -142,14 +142,16 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 		if (buildingComponent)
 			buildingComponent.SetCanPlaySoundOnDeletion(true);
 		
-		networkComponent.DeleteCompositionByUserAction(m_RootEntity);
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(pUserEntity);
+
+		networkComponent.DeleteCompositionByUserAction(m_RootEntity, playerId);
 
 		// deleting base if it is possible
 		if (!isHQService || !canBeBaseDisassembled)
 			return;
 
 		if (base)
-			networkComponent.DeleteBaseByUserAction(base.GetOwner());
+			networkComponent.DeleteBaseByUserAction(base.GetOwner(), playerId);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -517,7 +519,7 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 			return false;
 
 		// check if is exists dismantle task on this base for player faction
-		SCR_DismantleCampaignMilitaryBaseTaskEntity task = SCR_DismantleCampaignMilitaryBaseTaskEntity.Cast(GetTaskOnBase(campaignBase, playerFaction, SCR_DismantleCampaignMilitaryBaseTaskEntity));
+		SCR_DismantleCampaignMilitaryBaseTaskEntity task = SCR_DismantleCampaignMilitaryBaseTaskEntity.Cast(SCR_CampaignTaskHelper.GetTaskOnBase(campaignBase, playerFaction, SCR_DismantleCampaignMilitaryBaseTaskEntity));
 		if (!task)
 			return false;
 
@@ -526,43 +528,6 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 			return false;
 
 		return true;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected SCR_Task GetTaskOnBase(notnull SCR_CampaignMilitaryBaseComponent campaignMilitaryBase, notnull Faction faction, typename taskClass)
-	{
-		array<SCR_Task> tasks = {};
-		SCR_TaskSystem.GetInstance().GetTasksByStateFiltered(
-			tasks,
-			SCR_ETaskState.CREATED | SCR_ETaskState.ASSIGNED,
-			faction.GetFactionKey(),
-			-1,
-			taskClass
-		);
-
-		SCR_CampaignMilitaryBaseTaskData data;
-		SCR_CampaignMilitaryBaseComponent base;
-		SCR_CampaignMilitaryBaseTaskEntity campaignMilitaryBaseTask;
-
-		foreach (SCR_Task task : tasks)
-		{
-			campaignMilitaryBaseTask = SCR_CampaignMilitaryBaseTaskEntity.Cast(task);
-			if (!campaignMilitaryBaseTask)
-				continue;
-
-			data = SCR_CampaignMilitaryBaseTaskData.Cast(task.GetTaskData());
-			if (!data)
-				continue;
-
-			base = campaignMilitaryBaseTask.GetMilitaryBase();
-			if (!base)
-				continue;
-
-			if (base == campaignMilitaryBase)
-				return task;
-		}
-
-		return null;
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -1,6 +1,8 @@
 [BaseContainerProps(), SCR_Spawnable_SmallDebrisTitle()]
 class SCR_DebrisSpawnable : SCR_BaseSpawnable
 {
+	[Attribute("0 0 0", UIWidgets.Coords, "Random spawn position offset range (X Y Z in meters)", params: "0 inf")]
+	vector m_vRandomPositionOffset;
 	[Attribute(ResourceName.Empty, UIWidgets.ResourcePickerThumbnail, "Debris model prefabs to spawn (spawns ALL of them)", "et xob")]
 	ref array<ResourceName> m_ModelPrefabs;
 	[Attribute("0", desc: "Remap materials on all models defined in Phase Model array to those used on owner prefab. Remap is applied based on material slot names.")]
@@ -27,7 +29,7 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 	float m_fRandomVelocityAngular;
 	[Attribute("0", uiwidget: UIWidgets.ComboBox, "Type of material for debris sound", "", ParamEnumArray.FromEnum(SCR_EMaterialSoundTypeDebris))]
 	SCR_EMaterialSoundTypeDebris m_eMaterialSoundType;
-	
+
 #ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
 	//! Returns true when attributes are the same
@@ -35,60 +37,63 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 	override bool CompareAttributes(SCR_BaseSpawnable other)
 	{
 		SCR_DebrisSpawnable otherDebris = SCR_DebrisSpawnable.Cast(other);
-		
+
 		if (!super.CompareAttributes(other))
 			return false;
-		
+
 		if (otherDebris.m_ModelPrefabs != m_ModelPrefabs)
 			return false;
-		
+
 		if (otherDebris.m_fLifetimeMin != m_fLifetimeMin)
 			return false;
-		
+
 		if (otherDebris.m_fLifetimeMax != m_fLifetimeMax)
 			return false;
-		
+
 		if (otherDebris.m_fDistanceMax != m_fDistanceMax)
 			return false;
-		
+
 		if (otherDebris.m_fPriority != m_fPriority)
 			return false;
-		
+
 		if (otherDebris.m_fDamageToImpulse != m_fDamageToImpulse)
 			return false;
-		
+
 		if (otherDebris.m_fMaxDamageToSpeedMultiplier != m_fMaxDamageToSpeedMultiplier)
 			return false;
-		
+
 		if (otherDebris.m_fRandomVelocityLinear != m_fRandomVelocityLinear)
 			return false;
-		
+
 		if (otherDebris.m_fRandomVelocityAngular != m_fRandomVelocityAngular)
 			return false;
-		
+
+		if (otherDebris.m_vRandomPositionOffset != m_vRandomPositionOffset)
+			return false;
+
 		if (otherDebris.m_eMaterialSoundType != m_eMaterialSoundType)
 			return false;
-		
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void SetVariables(WorldEditorAPI api, IEntitySource source, array<ref ContainerIdPathEntry> path, int index)
 	{
 		super.SetVariables(api, source, path, index);
-		
+
 		string prefabsArray = "";
 		// Set all variables of the spawn object
 		for (int i = 0, count = m_ModelPrefabs.Count(); i < count; i++)
 		{
 			prefabsArray += m_ModelPrefabs[i];
-			
+
 			if (i != count - 1) // Not last item
 				prefabsArray += ",";
 		}
-		
+
 		api.SetVariableValue(source, path, "m_ModelPrefabs", prefabsArray);
-		
+
 		api.SetVariableValue(source, path, "m_fMass", m_fMass.ToString());
 		api.SetVariableValue(source, path, "m_fLifetimeMin", m_fLifetimeMin.ToString());
 		api.SetVariableValue(source, path, "m_fLifetimeMax", m_fLifetimeMax.ToString());
@@ -98,9 +103,10 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 		api.SetVariableValue(source, path, "m_fMaxDamageToSpeedMultiplier", m_fMaxDamageToSpeedMultiplier.ToString());
 		api.SetVariableValue(source, path, "m_fRandomVelocityLinear", m_fRandomVelocityLinear.ToString());
 		api.SetVariableValue(source, path, "m_fRandomVelocityAngular", m_fRandomVelocityAngular.ToString());
+		api.SetVariableValue(source, path, "m_vRandomPositionOffset", m_vRandomPositionOffset.ToString());
 		api.SetVariableValue(source, path, "m_eMaterialSoundType", m_eMaterialSoundType.ToString());
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override bool CreateObject(WorldEditorAPI api, IEntitySource source, array<ref ContainerIdPathEntry> path, int index)
 	{
@@ -109,18 +115,18 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 			api.CreateObjectArrayVariableMember(source, path, "m_aPhaseDestroySpawnObjects", "SCR_DebrisSpawnable", index);
 			return true;
 		}
-		
+
 		return false;
 	}
 #endif
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Spawns the object
 	override IEntity Spawn(IEntity owner, Physics parentPhysics, SCR_HitInfo hitInfo, bool snapToTerrain = false)
 	{
 		if (!hitInfo)
 			return null;
-		
+
 		int numModelPrefabs = 0;
 		if (m_ModelPrefabs)
 			numModelPrefabs = m_ModelPrefabs.Count();
@@ -141,7 +147,7 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 		for (int i = 0; i < numModelPrefabs; i++)
 		{
 			ResourceName prefabPath = m_ModelPrefabs[i];
-			
+
 			ResourceName modelPath;
 			string remap;
 			SCR_Global.GetModelAndRemapFromResource(prefabPath, modelPath, remap);
@@ -164,20 +170,29 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 
 			if (modelPath == ResourceName.Empty)
 				continue;
-			
+
 			vector spawnMat[4];
 			GetSpawnTransform(owner, spawnMat);
-			
+
+			// Add random offset to spawn position
+			vector randomOffset = vector.Zero;
+			for (int axis = 0; axis < 3; axis++)
+			{
+				if (m_vRandomPositionOffset[axis] != 0)
+					randomOffset[axis] = Math.RandomFloat(-m_vRandomPositionOffset[axis], m_vRandomPositionOffset[axis]);
+			}
+			spawnMat[3] = spawnMat[3] + randomOffset;
+
 			SCR_DestructionDamageManagerComponent destructionComponent = SCR_DestructionDamageManagerComponent.Cast(owner.FindComponent(SCR_DestructionDamageManagerComponent));
-			
+
 			float dmgSpeed = Math.Clamp(hitInfo.m_HitDamage * m_fDamageToImpulse / m_fMass, 0, m_fMaxDamageToSpeedMultiplier);
-			
+
 			vector linearVelocity = hitInfo.m_HitDirection * Math.RandomFloat(0, 1);
 			linearVelocity += Vector(Math.RandomFloat(-1, 1), Math.RandomFloat(-1, 1), Math.RandomFloat(-1, 1)) * m_fRandomVelocityLinear;
 			linearVelocity *= dmgSpeed;
 			vector angularVelocity = Vector(Math.RandomFloat(-1, 1), Math.RandomFloat(-1, 1), Math.RandomFloat(-1, 1)) * Math.RandomFloat(0.25, 4) * m_fRandomVelocityAngular;
 			angularVelocity *= dmgSpeed;
-			
+
 			if (parentPhysics)
 			{
 				linearVelocity += parentPhysics.GetVelocity();
@@ -187,7 +202,7 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 			SCR_DebrisSmallEntity.SpawnDebris(owner.GetWorld(), spawnMat, modelPath, m_fMass, Math.RandomFloat(m_fLifetimeMin, m_fLifetimeMax), m_fDistanceMax, m_fPriority, linearVelocity, angularVelocity, remap, false, m_eMaterialSoundType);
 #endif
 		}
-		
+
 		return null;
 	}
 }

@@ -485,18 +485,10 @@ class SCR_GroupTaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnPlayableGroupCreated(notnull SCR_AIGroup group)
-	{
-		group.GetOnGroupRoleChanged().Insert(OnGroupRoleChanged);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	protected void OnPlayableGroupRemoved(SCR_AIGroup group)
 	{
 		if (!group)
 			return;
-
-		group.GetOnGroupRoleChanged().Remove(OnGroupRoleChanged);
 
 		CheckAndDeleteRequestedTasks(group);
 	}
@@ -767,12 +759,10 @@ class SCR_GroupTaskManagerComponent : ScriptComponent
 		}
 
 		if (m_GroupsManager)
-		{
 			m_GroupsManager.GetOnPlayableGroupRemoved().Insert(OnPlayableGroupRemoved);
-			m_GroupsManager.GetOnPlayableGroupCreated().Insert(OnPlayableGroupCreated);
-		}
 
 		SCR_AIGroup.GetOnPlayerRemoved().Insert(OnPlayerRemoved);
+		SCR_AIGroup.GetOnGroupRoleChanged().Insert(OnGroupRoleChanged);
 		m_TaskSystem.GetOnTaskRemoved().Insert(OnTaskRemoved);
 	}
 
@@ -788,12 +778,10 @@ class SCR_GroupTaskManagerComponent : ScriptComponent
 		super.OnDelete(owner);
 
 		if (m_GroupsManager)
-		{
-			m_GroupsManager.GetOnPlayableGroupCreated().Remove(OnPlayableGroupCreated);
 			m_GroupsManager.GetOnPlayableGroupRemoved().Remove(OnPlayableGroupRemoved);
-		}
 
 		SCR_AIGroup.GetOnPlayerRemoved().Remove(OnPlayerRemoved);
+		SCR_AIGroup.GetOnGroupRoleChanged().Remove(OnGroupRoleChanged);
 
 		if (m_TaskSystem)
 			m_TaskSystem.GetOnTaskRemoved().Remove(OnTaskRemoved);

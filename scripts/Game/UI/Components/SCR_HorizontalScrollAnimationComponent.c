@@ -15,15 +15,15 @@ Root (this component need to be here)
 */
 
 [EnumLinear()]
-enum EScrollAnimationState
+enum SCR_EScrollAnimationState
 {
 	NONE,
-	
+
 	MOVING_LEFT,
 	MOVING_LEFT_DONE_WAITING,
 	MOVING_RIGHT,
 	MOVING_RIGHT_DONE_WAITING,
-	
+
 	MOVING_TOP,
 	MOVING_TOP_DONE_WAITING,
 	MOVING_BOTTOM,
@@ -53,17 +53,20 @@ class SCR_HorizontalScrollAnimationComponent : ScriptedWidgetComponent
 	[Attribute("0", UIWidgets.CheckBox, "Inwards offset from left edge of root widget to be used in calculations")]
 	protected float m_fOffsetLeft;
 
-	[Attribute(typename.EnumToString(EScrollAnimationState, EScrollAnimationState.NONE), UIWidgets.ComboBox, "Start state of animation", "", ParamEnumArray.FromEnum(EScrollAnimationState))]
-	protected EScrollAnimationState m_eInitialState;
+	[Attribute(typename.EnumToString(SCR_EScrollAnimationState, SCR_EScrollAnimationState.NONE), UIWidgets.ComboBox, "Start state of animation", "", ParamEnumArray.FromEnum(SCR_EScrollAnimationState))]
+	protected SCR_EScrollAnimationState m_eInitialState;
 
-	protected EScrollAnimationState m_State;
+	protected SCR_EScrollAnimationState m_eState;
 	protected Widget m_wContent;
 	protected Widget m_wRoot;
-	
+
 	protected float m_fStartPosX;
 	protected float m_fStartPosY;
 	protected float m_fTimer;
-	
+
+	protected float m_fTargetPosX;
+	protected float m_fTargetPosY;
+
 	protected bool m_bIsVerticalAnimation;
 
 	//------------------------------------------------------------------------------------------------
@@ -72,8 +75,8 @@ class SCR_HorizontalScrollAnimationComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	void AnimationStop()
 	{
-		m_State = EScrollAnimationState.NONE;
-		
+		m_eState = SCR_EScrollAnimationState.NONE;
+
 		if (GetGame() && GetGame().GetCallqueue())
 			GetGame().GetCallqueue().Remove(OnFrame);
 	}
@@ -82,19 +85,45 @@ class SCR_HorizontalScrollAnimationComponent : ScriptedWidgetComponent
 	void AnimationStart(bool IsVerticalAnimation = false)
 	{
 		// If not animating, start animation
-		if (m_State == EScrollAnimationState.NONE)
+		if (m_eState == SCR_EScrollAnimationState.NONE)
 		{
+			ResetPosition();
+			GetGame().GetCallqueue().CallLater(SetupValues, 0);
 			GetGame().GetCallqueue().CallLater(OnFrame, 0, true);
-			
+
 			m_bIsVerticalAnimation = IsVerticalAnimation;
-			
+
 			if (m_bIsVerticalAnimation)
-				m_State = EScrollAnimationState.MOVING_TOP;
+				m_eState = SCR_EScrollAnimationState.MOVING_TOP;
 			else
-				m_State = EScrollAnimationState.MOVING_LEFT;
+				m_eState = SCR_EScrollAnimationState.MOVING_LEFT;
 		}
 
 		// Otherwise it's already animating in some state, do nothing
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsAnimating()
+	{
+		return m_eState != SCR_EScrollAnimationState.NONE;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetupValues()
+	{
+		float contentw, contenth, contentx, contenty, rootw, rooth, rootx, rooty;
+		m_wContent.GetScreenSize(contentw, contenth);
+		m_wContent.GetScreenPos(contentx, contenty);
+		m_wRoot.GetScreenSize(rootw, rooth);
+		m_wRoot.GetScreenPos(rootx, rooty);
+		
+		m_fStartPosX = FrameSlot.GetPosX(m_wContent);
+		m_fStartPosY = FrameSlot.GetPosY(m_wContent);
+
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
+		
+		m_fTargetPosX = rootw - contentw - workspace.DPIScale(m_fOffsetLeft);
+		m_fTargetPosY = rooth - contenth + workspace.DPIScale(m_fOffsetLeft);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -103,7 +132,7 @@ class SCR_HorizontalScrollAnimationComponent : ScriptedWidgetComponent
 	{
 		if (!m_wContent)
 			return;
-		
+
 		if (m_bIsVerticalAnimation)
 			FrameSlot.SetPosY(m_wContent, m_fStartPosY);
 		else
@@ -117,15 +146,11 @@ class SCR_HorizontalScrollAnimationComponent : ScriptedWidgetComponent
 		if (!m_wContent)
 			return true;
 
-		float rootw, rooth;
+		float rootw, rooth, contentw, contenth;
+		m_wContent.GetScreenSize(contentw, contenth);
 		m_wRoot.GetScreenSize(rootw, rooth);
 
-		float contentw, contenth;
-		m_wContent.GetScreenSize(contentw, contenth);
-
-		WorkspaceWidget workspace = GetGame().GetWorkspace();
-
-		return rootw > contentw + workspace.DPIScale(m_fOffsetLeft + m_fOffsetRight);
+		return rootw > contentw + GetGame().GetWorkspace().DPIScale(m_fOffsetLeft + m_fOffsetRight);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -135,15 +160,11 @@ class SCR_HorizontalScrollAnimationComponent : ScriptedWidgetComponent
 		if (!m_wContent)
 			return true;
 
-		float rootw, rooth;
+		float rootw, rooth, contentw, contenth;
+		m_wContent.GetScreenSize(contentw, contenth);
 		m_wRoot.GetScreenSize(rootw, rooth);
 
-		float contentw, contenth;
-		m_wContent.GetScreenSize(contentw, contenth);
-
-		WorkspaceWidget workspace = GetGame().GetWorkspace();
-
-		return rooth > contenth + workspace.DPIScale(m_fOffsetLeft + m_fOffsetRight);
+		return rooth > contenth + GetGame().GetWorkspace().DPIScale(m_fOffsetLeft + m_fOffsetRight);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -160,18 +181,18 @@ class SCR_HorizontalScrollAnimationComponent : ScriptedWidgetComponent
 
 		if (!m_wContent)
 		{
-			Print(string.Format("[SCR_HorizontalScrollAnimationComponent] Widget %1 was not found", m_sAnimationContentWidget), LogLevel.ERROR);
+			PrintFormat("[SCR_HorizontalScrollAnimationComponent] Widget %1 was not found", m_sAnimationContentWidget, level: LogLevel.ERROR);
 			return;
 		}
 
-		m_fStartPosX = FrameSlot.GetPosX(m_wContent);
-		m_fStartPosY = FrameSlot.GetPosY(m_wContent);
+		m_eState = m_eInitialState;
 
-		m_State = m_eInitialState;
-		
 		//use CallLater, it seems that Call() might not have a loop/repeat option
-		if (m_State != EScrollAnimationState.NONE)
+		if (m_eState != SCR_EScrollAnimationState.NONE)
+		{
+			GetGame().GetCallqueue().CallLater(SetupValues, 0);
 			GetGame().GetCallqueue().CallLater(OnFrame, 0, true);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -186,176 +207,158 @@ class SCR_HorizontalScrollAnimationComponent : ScriptedWidgetComponent
 	{
 		float tDelta = ftime * 0.001;
 
-		switch (m_State)
+		switch (m_eState)
 		{
-			case EScrollAnimationState.NONE:
+			case SCR_EScrollAnimationState.NONE:
 				// Doing nothing
 				break;
 
-			case EScrollAnimationState.MOVING_LEFT:
+			case SCR_EScrollAnimationState.MOVING_LEFT:
 			{
-				// Moving left
-				AnimateHorizontalPosition(tDelta, -m_fAnimationSpeedPxPerSec);
-
-				WorkspaceWidget workspace = GetGame().GetWorkspace();
-				float rootw, rooth, rootx, rooty;
-				float contentw, contenth, contentx, contenty;
-				m_wRoot.GetScreenSize(rootw, rooth);
-				m_wRoot.GetScreenPos(rootx, rooty);
-				m_wContent.GetScreenSize(contentw, contenth);
-				m_wContent.GetScreenPos(contentx, contenty);
-				
-				float curr = contentx + contentw;
-				float target = rootx + rootw - workspace.DPIScale(m_fOffsetRight);
-
-				if (curr < target)
+				if (AnimateHorizontalPosition(tDelta, -m_fAnimationSpeedPxPerSec, m_fTargetPosX))
 				{
-					m_State = EScrollAnimationState.MOVING_LEFT_DONE_WAITING;
+					m_eState = SCR_EScrollAnimationState.MOVING_LEFT_DONE_WAITING;
 					m_fTimer = m_fWaitTimeLeftSec;
 				}
 
 				break;
 			}
 
-			case EScrollAnimationState.MOVING_LEFT_DONE_WAITING:
+			case SCR_EScrollAnimationState.MOVING_LEFT_DONE_WAITING:
 			{
 				m_fTimer -= tDelta;
 				if (m_fTimer < 0)
 				{
 					if (m_bAnimateBack)
 					{
-						m_State = EScrollAnimationState.MOVING_RIGHT;
+						m_eState = SCR_EScrollAnimationState.MOVING_RIGHT;
 					}
 					else
 					{
 						ResetPosition();
 						m_fTimer = m_fWaitTimeRightSec;
-						m_State = EScrollAnimationState.MOVING_RIGHT_DONE_WAITING;
+						m_eState = SCR_EScrollAnimationState.MOVING_RIGHT_DONE_WAITING;
 					}
 				}
+
 				break;
 			}
 
-			case EScrollAnimationState.MOVING_RIGHT:
+			case SCR_EScrollAnimationState.MOVING_RIGHT:
 			{
-				// Moving right
-				AnimateHorizontalPosition(tDelta, m_fAnimationSpeedPxPerSec);
-
 				WorkspaceWidget workspace = GetGame().GetWorkspace();
-				float rootx, rooty;
-				float contentx, contenty;
-				m_wRoot.GetScreenPos(rootx, rooty);
-				m_wContent.GetScreenPos(contentx, contenty);
-
-				if (contentx > rootx)
+				if (AnimateHorizontalPosition(tDelta, m_fAnimationSpeedPxPerSec, workspace.DPIScale(m_fOffsetRight)))
 				{
-					m_State = EScrollAnimationState.MOVING_RIGHT_DONE_WAITING;
+					m_eState = SCR_EScrollAnimationState.MOVING_RIGHT_DONE_WAITING;
 					m_fTimer = m_fWaitTimeRightSec;
 				}
 
 				break;
 			}
 
-			case EScrollAnimationState.MOVING_RIGHT_DONE_WAITING:
+			case SCR_EScrollAnimationState.MOVING_RIGHT_DONE_WAITING:
 			{
 				m_fTimer -= tDelta;
 				if (m_fTimer < 0)
 				{
-					m_State = EScrollAnimationState.MOVING_LEFT;
+					m_eState = SCR_EScrollAnimationState.MOVING_LEFT;
 				}
+
 				break;
 			}
 
-			case EScrollAnimationState.MOVING_TOP:
+			case SCR_EScrollAnimationState.MOVING_TOP:
 			{
-				// Moving Up
-				AnimateVerticalPosition(tDelta, -m_fAnimationSpeedPxPerSec);
-
-				WorkspaceWidget workspace = GetGame().GetWorkspace();
-				float rootw, rooth, rootx, rooty;
-				float contentw, contenth, contentx, contenty;
-				m_wRoot.GetScreenSize(rootw, rooth);
-				m_wRoot.GetScreenPos(rootx, rooty);
-				m_wContent.GetScreenSize(contentw, contenth);
-				m_wContent.GetScreenPos(contentx, contenty);
-				
-				float curr = contenty + contenth;
-				float target = rooty + rooth - workspace.DPIScale(m_fOffsetRight);
-
-				if (curr < target)
+				if (AnimateVerticalPosition(tDelta, -m_fAnimationSpeedPxPerSec, m_fTargetPosY))
 				{
-					m_State = EScrollAnimationState.MOVING_TOP_DONE_WAITING;
+					m_eState = SCR_EScrollAnimationState.MOVING_TOP_DONE_WAITING;
 					m_fTimer = m_fWaitTimeLeftSec;
 				}
 
 				break;
 			}
 
-			case EScrollAnimationState.MOVING_TOP_DONE_WAITING:
+			case SCR_EScrollAnimationState.MOVING_TOP_DONE_WAITING:
 			{
 				m_fTimer -= tDelta;
 				if (m_fTimer < 0)
 				{
 					if (m_bAnimateBack)
 					{
-						m_State = EScrollAnimationState.MOVING_BOTTOM;
+						m_eState = SCR_EScrollAnimationState.MOVING_BOTTOM;
 					}
 					else
 					{
 						ResetPosition();
 						m_fTimer = m_fWaitTimeRightSec;
-						m_State = EScrollAnimationState.MOVING_BOTTOM_DONE_WAITING;
+						m_eState = SCR_EScrollAnimationState.MOVING_BOTTOM_DONE_WAITING;
 					}
 				}
+
 				break;
 			}
 
-			case EScrollAnimationState.MOVING_BOTTOM:
+			case SCR_EScrollAnimationState.MOVING_BOTTOM:
 			{
-				// Moving down
-				AnimateVerticalPosition(tDelta, m_fAnimationSpeedPxPerSec);
-
 				WorkspaceWidget workspace = GetGame().GetWorkspace();
-				float rootx, rooty;
-				float contentx, contenty;
-				m_wRoot.GetScreenPos(rootx, rooty);
-				m_wContent.GetScreenPos(contentx, contenty);
-
-				if (contenty > rooty)
+				if (AnimateVerticalPosition(tDelta, -m_fAnimationSpeedPxPerSec, workspace.DPIScale(m_fOffsetRight)))
 				{
-					m_State = EScrollAnimationState.MOVING_BOTTOM_DONE_WAITING;
+					m_eState = SCR_EScrollAnimationState.MOVING_BOTTOM_DONE_WAITING;
 					m_fTimer = m_fWaitTimeRightSec;
 				}
 
 				break;
 			}
 
-			case EScrollAnimationState.MOVING_BOTTOM_DONE_WAITING:
+			case SCR_EScrollAnimationState.MOVING_BOTTOM_DONE_WAITING:
 			{
 				m_fTimer -= tDelta;
 				if (m_fTimer < 0)
 				{
-					m_State = EScrollAnimationState.MOVING_TOP;
+					m_eState = SCR_EScrollAnimationState.MOVING_TOP;
 				}
+
 				break;
 			}
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void AnimateHorizontalPosition(float tDelta, float speed)
+	protected bool AnimateHorizontalPosition(float tDelta, float speed, float target)
 	{
 		float currentPos = FrameSlot.GetPosX(m_wContent);
 		float newPos = currentPos + tDelta * speed;
-		FrameSlot.SetPosX(m_wContent, newPos);
+
+		if ((currentPos - target) * (newPos - target) <= 0)
+		{
+			FrameSlot.SetPosX(m_wContent, target);
+			return true; // reached destination !
+		}
+		else
+		{
+			FrameSlot.SetPosX(m_wContent, newPos);
+			return false;
+		}
+
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void AnimateVerticalPosition(float tDelta, float speed)
+	protected bool AnimateVerticalPosition(float tDelta, float speed, float target)
 	{
 		float currentPos = FrameSlot.GetPosY(m_wContent);
 		float newPos = currentPos + tDelta * speed;
-		FrameSlot.SetPosY(m_wContent, newPos);
+
+		if ((currentPos - target) * (newPos - target) <= 0)
+		{
+			FrameSlot.SetPosY(m_wContent, target);
+			return true; // reached destination !
+		}
+		else
+		{
+			FrameSlot.SetPosY(m_wContent, newPos);
+			return false;
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

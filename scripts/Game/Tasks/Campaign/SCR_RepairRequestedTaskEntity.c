@@ -10,9 +10,6 @@ class SCR_RepairRequestedTaskEntity : SCR_BaseRequestedTaskEntity
 	[Attribute("150", UIWidgets.EditBox, "Area radius [m]", "0 inf")]
 	protected float m_fAreaRadius;
 
-	[Attribute("300", UIWidgets.EditBox, "Antiexploit cooldown [s], after the repair task is completed, a cooldown is set for the player", "0 inf")]
-	protected float m_fRewardCooldown;
-
 	[Attribute("900", UIWidgets.EditBox, "After this time [s], task is cancelled", "0 inf")]
 	protected float m_fAutoCancelTime;
 
@@ -21,9 +18,6 @@ class SCR_RepairRequestedTaskEntity : SCR_BaseRequestedTaskEntity
 	protected WorldTimestamp m_AutoCancelTimestamp;
 	protected bool m_bIsAreaCheckRunning;
 	protected bool m_bWasLocalPlayerInArea;
-
-	// hidden anti-exploit cooldown
-	protected static ref map<int, WorldTimestamp> m_mRewardCooldowns = new map<int, WorldTimestamp>(); //! <playerId, cooldownTimestamp>
 
 	//------------------------------------------------------------------------------------------------
 	protected void StartCheckingDistanceToArea()
@@ -142,34 +136,6 @@ class SCR_RepairRequestedTaskEntity : SCR_BaseRequestedTaskEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] playerId
-	//! returns true if player has active reward cooldown
-	protected bool HasPlayerRewardCooldown(int playerId)
-	{
-		ChimeraWorld world = GetGame().GetWorld();
-		if (!world)
-			return false;
-
-		WorldTimestamp cooldownTimestamp;
-		if (!m_mRewardCooldowns.Find(playerId, cooldownTimestamp))
-			return false;
-
-		return !world.GetServerTimestamp().Greater(cooldownTimestamp);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Sets to player reward cooldown, this is an anti-exploit protection
-	//! \param[in] playerId
-	protected void SetPlayerRewardCooldown(int playerId)
-	{
-		ChimeraWorld world = GetGame().GetWorld();
-		if (!world)
-			return;
-
-		m_mRewardCooldowns.Set(playerId, world.GetServerTimestamp().PlusSeconds(m_fRewardCooldown));
-	}
-
-	//------------------------------------------------------------------------------------------------
 	protected void OnVehicleRepaired(SCR_BaseSupportStationComponent supportStation, ESupportStationType supportStationType, IEntity actionTarget, IEntity actionUser, SCR_BaseUseSupportStationAction action)
 	{
 		if (!m_TaskSystem)
@@ -240,11 +206,7 @@ class SCR_RepairRequestedTaskEntity : SCR_BaseRequestedTaskEntity
 
 		foreach (int playerID : assigneePlayerIDs)
 		{
-			// players can get a reward when the cooldown ends, this is an anti-exploit protection
-			if (!HasPlayerRewardCooldown(playerID))
-				comp.AwardXP(playerID, SCR_EXPRewards.REPAIR_TASK_COMPLETED, 1.0, false);
-
-			SetPlayerRewardCooldown(playerID);
+			comp.AwardXP(playerID, SCR_EXPRewards.REPAIR_TASK_COMPLETED, 1.0, false);
 		}
 	}
 

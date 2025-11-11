@@ -46,6 +46,9 @@ class SCR_ManagedDamageEffectsContainer
 	//! \param[in] dmgMgr
 	bool BatchData(notnull inout map<typename, ref SCR_BatchedDamageEffects> newBatchedData, const float avgTimeSlice, SCR_ExtendedDamageManagerComponent dmgMgr)
 	{
+		if (dmgMgr.GetState() == EDamageState.DESTROYED)
+			return false;
+
 		newBatchedData.Clear();
 		if (!m_EffectsSet || m_EffectsSet.IsEmpty())
 			return false;

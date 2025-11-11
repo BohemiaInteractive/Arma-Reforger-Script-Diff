@@ -107,6 +107,9 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 
 	[Attribute("-1", desc: "Maximum amount of bases that can be established per faction. The amount of Established bases is also limited by the amount of callsigns. If value of -1 is used, the amount of established bases is only limited by callsign amount.", params: "-1 inf 1", category: "Campaign")]
 	protected int m_iFactionEstablishBaseLimit;
+	
+	[Attribute("{11A29F36F362D318}Prefabs/MP/Campaign/SCR_HQRadioSoundEntity.et", desc:"Entity with a sound component that is used to load and play HQ radio sounds.", params: "et", category: "Campaign")]
+	protected ResourceName m_sHQRadioSoundEntityPrefab;
 
 	static const int MINIMUM_DELAY = 100;
 	static const int UI_UPDATE_DELAY = 250;
@@ -196,6 +199,12 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	int GetFactionEstablishBaseLimit()
 	{
 		return m_iFactionEstablishBaseLimit;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetHQRadioSoundEntityPrefab()
+	{
+		return m_sHQRadioSoundEntityPrefab;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1783,6 +1792,10 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		// Establishing Bases can only be enabled when Commander Role is enabled
 		if (!m_bCommanderRoleEnabled)
 			m_bEstablishingBasesEnabled = false;
+
+		// prewarm acp for HQ radio sounds
+		if (!m_sHQRadioSoundEntityPrefab.IsEmpty() && !System.IsConsoleApp())
+			SCR_HQRadioSoundEntity.GetInstance();
 	}
 
 	//------------------------------------------------------------------------------------------------

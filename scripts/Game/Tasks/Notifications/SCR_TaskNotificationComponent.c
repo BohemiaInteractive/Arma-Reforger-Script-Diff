@@ -1,127 +1,46 @@
 [ComponentEditorProps(category: "GameScripted/Tasks", description: "Task notification component")]
 class SCR_TaskNotificationComponentClass : ScriptComponentClass
 {
-	[Attribute(ENotification.GROUP_TASK_GROUP_ASSIGNED_TO_SAME_TASK.ToString(), uiwidget: UIWidgets.ComboBox, enumType: ENotification, category: "Minor notification")]
-	protected ENotification m_eGroupAssignedToSameTaskNotification;
-
-	[Attribute(ENotification.GROUP_TASK_COMPLETED.ToString(), uiwidget: UIWidgets.ComboBox, enumType: ENotification, category: "Minor notification")]
-	protected ENotification m_eTaskCompletedNotification;
-
-	[Attribute(ENotification.GROUP_TASK_FAILED.ToString(), uiwidget: UIWidgets.ComboBox, enumType: ENotification, category: "Minor notification")]
-	protected ENotification m_eTaskFailedNotification;
-
-	[Attribute(ENotification.GROUP_TASK_CANCELED.ToString(), uiwidget: UIWidgets.ComboBox, enumType: ENotification, category: "Minor notification")]
-	protected ENotification m_eTaskCanceledNotification;
-
-	[Attribute(category: "Major notification")]
-	protected ref SCR_TaskNotificationData m_Creation;
-
-	[Attribute(category: "Major notification")]
-	protected ref SCR_TaskNotificationData m_YourGroupAssignedToTask;
-
-	[Attribute(category: "Major notification")]
-	protected ref SCR_TaskNotificationData m_TaskAssignedBySquadLeader;
-
-	[Attribute(category: "Major notification")]
-	protected ref SCR_TaskNotificationData m_TaskAssignedBySquadLeaderToHisMembers;
-
-	[Attribute(category: "Major notification")]
-	protected ref SCR_TaskNotificationData m_TaskCompletedForCommander;
-
-	[Attribute(category: "Major notification")]
-	protected ref SCR_TaskNotificationData m_TaskAssignedToYourGroupCompleted;
-
-	[Attribute(category: "Major notification")]
-	protected ref SCR_TaskNotificationData m_TaskAssignedToYourGroupFailed;
-
-	[Attribute(category: "Major notification")]
-	protected ref SCR_TaskNotificationData m_TaskAssignedToYourGroupCanceled;
-
-	//------------------------------------------------------------------------------------------------
-	ENotification GetGroupAssignedToSameTaskNotification()
-	{
-		return m_eGroupAssignedToSameTaskNotification;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	ENotification GetTaskCompletedNotification()
-	{
-		return m_eTaskCompletedNotification;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	ENotification GetTaskFailedNotification()
-	{
-		return m_eTaskFailedNotification;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	ENotification GetTaskCanceledNotification()
-	{
-		return m_eTaskCanceledNotification;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	SCR_TaskNotificationData GetDataCreation()
-	{
-		return m_Creation;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	SCR_TaskNotificationData GetDataYourGroupAssignedToTask()
-	{
-		return m_YourGroupAssignedToTask;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	SCR_TaskNotificationData GetDataTaskAssignedBySquadLeader()
-	{
-		return m_TaskAssignedBySquadLeader;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	SCR_TaskNotificationData GetDataTaskAssignedBySquadLeaderToHisMembers()
-	{
-		return m_TaskAssignedBySquadLeaderToHisMembers;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	SCR_TaskNotificationData GetDataTaskCompletedForCommander()
-	{
-		return m_TaskCompletedForCommander;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	SCR_TaskNotificationData GetDataTaskAssignedToYourGroupCompleted()
-	{
-		return m_TaskAssignedToYourGroupCompleted;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	SCR_TaskNotificationData GetDataTaskAssignedToYourGroupFailed()
-	{
-		return m_TaskAssignedToYourGroupFailed;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	SCR_TaskNotificationData GetDataTaskAssignedToYourGroupcCanceled()
-	{
-		return m_TaskAssignedToYourGroupCanceled;
-	}
 }
 
 class SCR_TaskNotificationComponent : ScriptComponent
 {
-	protected const int POPUP_DURATION = 6;
+	[Attribute(uiwidget: UIWidgets.ComboBox, enumType:SCR_ETaskNotification)]
+	protected SCR_ETaskNotification m_eTaskNotification;
 
 	protected SCR_TaskSystem m_TaskSystem;
 	protected SCR_GroupsManagerComponent m_GroupsManager;
 	protected RplComponent m_RplComponent;
 	protected SCR_Task m_Task;
 	protected SCR_GroupTaskManagerComponent m_GroupTaskManager;
-
+	protected SCR_TaskNotificationManagerComponent m_TaskNotificationManager;
+	protected SCR_FactionManager m_FactionManager;
+	protected SCR_GameModeCampaign m_Campaign
 	protected int m_iGridX;
 	protected int m_iGridY;
+
+	protected const bool ALLOW_SEND_TO_EMPTY_GROUP = false;
+
+	//------------------------------------------------------------------------------------------------
+	//! \return campaign faction
+	SCR_CampaignFaction GetFaction()
+	{
+		if (!m_Task || !m_FactionManager)
+			return null;
+
+		SCR_CampaignFaction campaignFaction;
+		foreach (string factionKey : m_Task.GetTaskData().m_aOwnerFactionKeys)
+		{
+			if (factionKey.IsEmpty())
+				continue;
+
+			campaignFaction = SCR_CampaignFaction.Cast(m_FactionManager.GetFactionByKey(factionKey));
+			if (campaignFaction)
+				return campaignFaction;
+		}
+
+		return null;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	protected bool HasGroupTask(SCR_TaskExecutor executor)
@@ -143,49 +62,15 @@ class SCR_TaskNotificationComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	string GetCreationText()
+	protected bool IsPlayerGroupLeader(int playerID, notnull array<SCR_AIGroup> playableGroups)
 	{
-		SCR_TaskNotificationComponentClass prefabData = SCR_TaskNotificationComponentClass.Cast(GetComponentData(GetOwner()));
-		if (!prefabData)
-			return string.Empty;
-
-		// campaign military base task - uses base name in text
-		SCR_CampaignMilitaryBaseTaskEntity baseTask = SCR_CampaignMilitaryBaseTaskEntity.Cast(GetOwner());
-		if (baseTask)
+		foreach (SCR_AIGroup group : playableGroups)
 		{
-			Faction faction = SCR_FactionManager.SGetLocalPlayerFaction();
-			if (!faction)
-				return string.Empty;
-
-			SCR_CampaignMilitaryBaseComponent base = baseTask.GetMilitaryBase();
-			if (!base)
-				return string.Empty;
-
-			return WidgetManager.Translate(prefabData.GetDataCreation().m_sText, base.GetFormattedBaseNameWithCallsign(faction));
+			if (group.IsPlayerLeader(playerID))
+				return true;
 		}
 
-		return prefabData.GetDataCreation().m_sText;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void PlayVONotification(string soundEventName, int baseCallsign = SCR_MilitaryBaseComponent.INVALID_BASE_CALLSIGN, int callerGroupId = 0, int calledGroupId = 0)
-	{
-		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
-		if (!campaign)
-			return;
-
-		SCR_TaskNotificationManagerEntity taskNotifManager = SCR_TaskNotificationManagerEntity.GetInstance();
-		if (!taskNotifManager)
-			return;
-
-		taskNotifManager.PlayVONotification(soundEventName.Trim(), baseCallsign, callerGroupId, calledGroupId, m_iGridX, m_iGridY);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected bool IsPlayerCommander(int playerID)
-	{
-		SCR_Faction faction = SCR_Faction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
-		return faction && faction.IsPlayerCommander(playerID);
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -197,78 +82,81 @@ class SCR_TaskNotificationComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnTaskCreated(SCR_Task task)
+	protected void OnTaskCreated(SCR_Task task, int byPlayerID)
 	{
-		if (task != m_Task)
+		if (task != m_Task || !m_GroupsManager)
 			return;
 
-		SCR_TaskNotificationComponentClass prefabData = SCR_TaskNotificationComponentClass.Cast(GetComponentData(GetOwner()));
-		if (!prefabData)
+		SCR_CampaignFaction faction = GetFaction();
+		if (!faction)
 			return;
 
-		int localPlayerId = SCR_PlayerController.GetLocalPlayerId();
-		if (localPlayerId == 0)
+		array<SCR_AIGroup> playableGroups = m_GroupsManager.GetPlayableGroupsByFaction(faction);
+		if (!playableGroups)
 			return;
 
-		SCR_AIGroup group = m_GroupsManager.GetPlayerGroup(localPlayerId);
-		if (!group)
+		BaseTransceiver hqTransceiver = GetHQTransceiver(faction);
+		if (!hqTransceiver)
 			return;
-
-		SCR_TaskExecutorGroup groupExecutor = SCR_TaskExecutorGroup.Cast(SCR_TaskExecutorGroup.FromGroup(group.GetGroupID()));
-		bool hasGroupTask = HasGroupTask(groupExecutor);
 
 		int baseCallsign = SCR_MilitaryBaseComponent.INVALID_BASE_CALLSIGN;
 		SCR_CampaignMilitaryBaseTaskEntity baseTask = SCR_CampaignMilitaryBaseTaskEntity.Cast(GetOwner());
 		if (baseTask && baseTask.GetMilitaryBase())
 			baseCallsign = baseTask.GetMilitaryBase().GetCallsign();
 
-		// task is created and data loaded, check if local group is assigned to the new task
-		if (m_TaskSystem.CanTaskBeAssignedTo(task, groupExecutor))
+		SCR_TaskExecutorGroup groupExecutor;
+		foreach (SCR_AIGroup group : playableGroups)
 		{
-			if (task.IsTaskAssignedTo(groupExecutor))
+			if (!ALLOW_SEND_TO_EMPTY_GROUP && group.GetPlayerCount() == 0)
+				continue;
+
+			groupExecutor = SCR_TaskExecutorGroup.Cast(SCR_TaskExecutorGroup.FromGroup(group.GetGroupID()));
+			if (!groupExecutor)
+				continue;
+
+			if (m_TaskSystem.CanTaskBeAssignedTo(task, groupExecutor))
 			{
-				SCR_PopUpNotification.GetInstance().PopupMsg(prefabData.GetDataYourGroupAssignedToTask().m_sText, param1: GetTaskName(task), duration: POPUP_DURATION, prio: SCR_EGroupTaskPopUpPriority.CREATED, sound: SCR_SoundEvent.TASK_CREATED);
-				PlayVONotification(prefabData.GetDataYourGroupAssignedToTask().m_sSoundEventName, baseCallsign);
-			}
-			else
-			{
-				if (hasGroupTask)
+				if (!task.IsTaskAssignedTo(groupExecutor))
 				{
-					SCR_NotificationsComponent.SendLocal(ENotification.GROUP_TASK_CREATED, m_RplComponent.Id());
-				}
-				else
-				{
-					SCR_PopUpNotification.GetInstance().PopupMsg(GetCreationText(), param1: GetTaskName(task), duration: POPUP_DURATION, prio: SCR_EGroupTaskPopUpPriority.CREATED, sound: SCR_SoundEvent.TASK_CREATED);
-					PlayVONotification(prefabData.GetDataCreation().m_sSoundEventName, baseCallsign);
+					if (HasGroupTask(groupExecutor))
+						SendMessageToGroup(m_eTaskNotification, SCR_ETaskNotificationMsg.MINOR_CREATION, 0, hqTransceiver, group, baseCallsign);
+					else
+						SendMessageToGroup(m_eTaskNotification, SCR_ETaskNotificationMsg.MAJOR_CREATION, 0, hqTransceiver, group, baseCallsign, 0, 0, m_iGridX, m_iGridY);
 				}
 			}
-		}
-		else if (m_TaskSystem.IsTaskVisibleFor(task, groupExecutor))
-		{
-			SCR_NotificationsComponent.SendLocal(ENotification.GROUP_TASK_CREATED, m_RplComponent.Id());
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnTaskAssigneeAdded(SCR_Task task, SCR_TaskExecutor executor, int requesterID)
 	{
-		if (task != m_Task)
+		if (task != m_Task || !m_GroupsManager)
 			return;
 
-		int localPlayerId = SCR_PlayerController.GetLocalPlayerId();
-		if (localPlayerId == 0 || requesterID == localPlayerId)
+		SCR_CampaignFaction faction = GetFaction();
+		if (!faction)
 			return;
 
-		SCR_TaskNotificationComponentClass prefabData = SCR_TaskNotificationComponentClass.Cast(GetComponentData(GetOwner()));
-		if (!prefabData)
+		array<SCR_AIGroup> playableGroups = m_GroupsManager.GetPlayableGroupsByFaction(faction);
+		if (!playableGroups)
 			return;
 
-		SCR_AIGroup group = m_GroupsManager.GetPlayerGroup(localPlayerId);
-		if (!group)
+		SCR_TaskExecutorGroup newAssignedGroupExecutor = SCR_TaskExecutorGroup.Cast(executor);
+		if (!newAssignedGroupExecutor)
 			return;
 
-		SCR_TaskExecutorGroup localGroupExecutor = SCR_TaskExecutorGroup.Cast(SCR_TaskExecutorGroup.FromGroup(group.GetGroupID()));
-		if (!m_TaskSystem.IsTaskVisibleFor(task, localGroupExecutor))
+		SCR_PlayerControllerGroupComponent playerGroupComponent = SCR_PlayerControllerGroupComponent.GetPlayerControllerComponent(requesterID);
+		if (!playerGroupComponent)
+			return;
+
+		int requesterGroupId = playerGroupComponent.GetGroupID();
+
+		SCR_AIGroup newAssignedGroup = m_GroupsManager.FindGroup(newAssignedGroupExecutor.GetGroupID());
+		if (!newAssignedGroup)
+			return;
+
+		BaseTransceiver playerTransceiver = GetPlayerTransceiver(requesterID);
+		if (!playerTransceiver)
 			return;
 
 		int baseCallsign = SCR_MilitaryBaseComponent.INVALID_BASE_CALLSIGN;
@@ -276,40 +164,36 @@ class SCR_TaskNotificationComponent : ScriptComponent
 		if (baseTask && baseTask.GetMilitaryBase())
 			baseCallsign = baseTask.GetMilitaryBase().GetCallsign();
 
-		SCR_TaskExecutorGroup newAssignedGroupExecutor = SCR_TaskExecutorGroup.Cast(executor);
-
-		if (IsPlayerCommander(localPlayerId))
+		if (faction.IsPlayerCommander(requesterID))
 		{
-			// player is commander and not requester, play group leader voice
-
-			SCR_AIGroup newAssignedGroup = m_GroupsManager.FindGroup(newAssignedGroupExecutor.GetGroupID());
-			if (!newAssignedGroup)
-				return;
-
-			SCR_PopUpNotification.GetInstance().PopupMsg(prefabData.GetDataTaskAssignedBySquadLeader().m_sText, param1: SCR_GroupHelperUI.GetTranslatedGroupName(newAssignedGroup), param2: GetTaskName(task), duration: POPUP_DURATION, prio: SCR_EGroupTaskPopUpPriority.ASSIGNED, sound: SCR_SoundEvent.TASK_ACCEPT);
-			PlayVONotification(prefabData.GetDataTaskAssignedBySquadLeader().m_sSoundEventName, baseCallsign, newAssignedGroupExecutor.GetGroupID());
-			return;
+			// commander send msg to SL and SM
+			SendMessageToGroup(m_eTaskNotification, SCR_ETaskNotificationMsg.MAJOR_GROUP_ASSIGNED_TO_TASK, requesterID, playerTransceiver, newAssignedGroup, baseCallsign, requesterGroupId, newAssignedGroup.GetGroupID(), m_iGridX, m_iGridY);
 		}
 
-		if (m_TaskSystem.CanTaskBeAssignedTo(task, localGroupExecutor))
+		SCR_TaskExecutorGroup groupExecutor;
+		foreach (SCR_AIGroup group : playableGroups)
 		{
-			if (task.IsTaskAssignedTo(localGroupExecutor))
+			if (!ALLOW_SEND_TO_EMPTY_GROUP && group.GetPlayerCount() == 0)
+				continue;
+
+			groupExecutor = SCR_TaskExecutorGroup.Cast(SCR_TaskExecutorGroup.FromGroup(group.GetGroupID()));
+			if (!groupExecutor)
+				continue;
+
+			if (group.GetGroupRole() == SCR_EGroupRole.COMMANDER)
+			{
+				SendMessageToGroup(m_eTaskNotification, SCR_ETaskNotificationMsg.MAJOR_ASSIGNED_BY_SL_TO_COMMANDER, requesterID, playerTransceiver, group, baseCallsign, requesterGroupId, newAssignedGroup.GetGroupID(), m_iGridX, m_iGridY);
+			}
+			else if (task.IsTaskAssignedTo(groupExecutor))
 			{
 				if (group.IsPlayerLeader(requesterID))
 				{
-					// assigned by leader, play group leader voice to his members
-					SCR_PopUpNotification.GetInstance().PopupMsg(prefabData.GetDataTaskAssignedBySquadLeaderToHisMembers().m_sText, param1: GetTaskName(task), duration: POPUP_DURATION, prio: SCR_EGroupTaskPopUpPriority.ASSIGNED, sound: SCR_SoundEvent.TASK_ACCEPT);
-					PlayVONotification(prefabData.GetDataTaskAssignedBySquadLeaderToHisMembers().m_sSoundEventName, baseCallsign, 0, newAssignedGroupExecutor.GetGroupID());
+					SendMessageToGroup(m_eTaskNotification, SCR_ETaskNotificationMsg.MAJOR_ASSIGNED_BY_SL_TO_SM, requesterID, playerTransceiver, group, baseCallsign, requesterGroupId, newAssignedGroup.GetGroupID(), m_iGridX, m_iGridY);
 				}
-				else if (newAssignedGroupExecutor.GetGroupID() == localGroupExecutor.GetGroupID())
+				else if (newAssignedGroupExecutor.GetGroupID() != groupExecutor.GetGroupID())
 				{
-					// assigned by commander, play commander voice
-					SCR_PopUpNotification.GetInstance().PopupMsg(prefabData.GetDataYourGroupAssignedToTask().m_sText, param1: GetTaskName(task), duration: POPUP_DURATION, prio: SCR_EGroupTaskPopUpPriority.ASSIGNED, sound: SCR_SoundEvent.TASK_ACCEPT);
-					PlayVONotification(prefabData.GetDataYourGroupAssignedToTask().m_sSoundEventName, baseCallsign, 0, newAssignedGroupExecutor.GetGroupID());
-				}
-				else
-				{
-					SCR_NotificationsComponent.SendLocal(prefabData.GetGroupAssignedToSameTaskNotification(), newAssignedGroupExecutor.GetGroupID());
+					// skip a current assigned group
+					SendMessageToGroup(m_eTaskNotification, SCR_ETaskNotificationMsg.MINOR_GROUP_ASSIGNED_TO_SAME_TASK, requesterID, playerTransceiver, group, baseCallsign, newAssignedGroup.GetGroupID(), groupExecutor.GetGroupID(), m_iGridX, m_iGridY);
 				}
 			}
 		}
@@ -318,19 +202,19 @@ class SCR_TaskNotificationComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnTaskStateChanged(SCR_Task task, SCR_ETaskState newState)
 	{
-		if (task != m_Task)
+		if (task != m_Task || !m_GroupsManager)
 			return;
 
-		SCR_TaskNotificationComponentClass prefabData = SCR_TaskNotificationComponentClass.Cast(GetComponentData(GetOwner()));
-		if (!prefabData)
+		SCR_CampaignFaction faction = GetFaction();
+		if (!faction)
 			return;
 
-		int localPlayerId = SCR_PlayerController.GetLocalPlayerId();
-		if (localPlayerId == 0)
+		array<SCR_AIGroup> playableGroups = m_GroupsManager.GetPlayableGroupsByFaction(faction);
+		if (!playableGroups)
 			return;
 
-		SCR_AIGroup group = m_GroupsManager.GetPlayerGroup(localPlayerId);
-		if (!group)
+		BaseTransceiver hqTransceiver = GetHQTransceiver(faction);
+		if (!hqTransceiver)
 			return;
 
 		int baseCallsign = SCR_MilitaryBaseComponent.INVALID_BASE_CALLSIGN;
@@ -338,70 +222,50 @@ class SCR_TaskNotificationComponent : ScriptComponent
 		if (baseTask && baseTask.GetMilitaryBase())
 			baseCallsign = baseTask.GetMilitaryBase().GetCallsign();
 
-		// To task is assigned new group, check if local group is assigned
-		SCR_TaskExecutorGroup localGroupExecutor = SCR_TaskExecutorGroup.Cast(SCR_TaskExecutorGroup.FromGroup(group.GetGroupID()));
+		SCR_TaskExecutorGroup groupExecutor;
+		foreach (SCR_AIGroup group : playableGroups)
+		{
+			if (!ALLOW_SEND_TO_EMPTY_GROUP && group.GetPlayerCount() == 0)
+				continue;
 
-		if (task.IsTaskAssignedTo(localGroupExecutor))
-		{
-			if (newState == SCR_ETaskState.COMPLETED)
+			groupExecutor = SCR_TaskExecutorGroup.Cast(SCR_TaskExecutorGroup.FromGroup(group.GetGroupID()));
+			if (!groupExecutor)
+				continue;
+
+			if (group.GetGroupRole() == SCR_EGroupRole.COMMANDER && newState == SCR_ETaskState.COMPLETED)
 			{
-				SCR_PopUpNotification.GetInstance().PopupMsg(prefabData.GetDataTaskAssignedToYourGroupCompleted().m_sText, param1: GetTaskName(task), duration: POPUP_DURATION, prio: SCR_EGroupTaskPopUpPriority.COMPLETED, sound: SCR_SoundEvent.TASK_SUCCEED);
-				PlayVONotification(prefabData.GetDataTaskAssignedToYourGroupCompleted().m_sSoundEventName, baseCallsign);
+				SCR_AIGroup firstAssignedGroup = GetFirstAssignedGroup(m_Task);
+				if (firstAssignedGroup)
+					SendMessageToGroup(m_eTaskNotification, SCR_ETaskNotificationMsg.MAJOR_TASK_FOR_COMMANDER_COMPLETED, 0, hqTransceiver, group, baseCallsign, firstAssignedGroup.GetGroupID(), 0, m_iGridX, m_iGridY);
 			}
-			else if (newState == SCR_ETaskState.FAILED)
-			{
-				SCR_PopUpNotification.GetInstance().PopupMsg(prefabData.GetDataTaskAssignedToYourGroupFailed().m_sText, param1: GetTaskName(task), duration: POPUP_DURATION, prio: SCR_EGroupTaskPopUpPriority.FAILED, sound: SCR_SoundEvent.TASK_FAILED);
-				PlayVONotification(prefabData.GetDataTaskAssignedToYourGroupFailed().m_sSoundEventName, baseCallsign);
-			}
-			else if (newState == SCR_ETaskState.CANCELLED)
-			{
-				SCR_PopUpNotification.GetInstance().PopupMsg(prefabData.GetDataTaskAssignedToYourGroupcCanceled().m_sText, param1: GetTaskName(task), duration: POPUP_DURATION, prio: SCR_EGroupTaskPopUpPriority.CANCELED, sound: SCR_SoundEvent.TASK_CANCELED);
-				PlayVONotification(prefabData.GetDataTaskAssignedToYourGroupcCanceled().m_sSoundEventName, baseCallsign);
-			}
-		}
-		else
-		{
-			if (group.IsPlayerLeader(localPlayerId) && m_TaskSystem.IsTaskVisibleFor(task, localGroupExecutor))
+			else if (task.IsTaskAssignedTo(groupExecutor))
 			{
 				if (newState == SCR_ETaskState.COMPLETED)
 				{
-					if (IsPlayerCommander(localPlayerId))
-					{
-						SCR_TaskExecutorGroup assignedGroupExecutor;
-						array<ref SCR_TaskExecutor> assignees = task.GetTaskAssignees();
-						if (assignees && !assignees.IsEmpty())
-						{
-							foreach (SCR_TaskExecutor executor : assignees)
-							{
-								assignedGroupExecutor = SCR_TaskExecutorGroup.Cast(executor);
-								if (assignedGroupExecutor)
-									break;
-							}
-						}
-
-						if (!assignedGroupExecutor)
-							return;
-
-						SCR_AIGroup assignedGroup = m_GroupsManager.FindGroup(assignedGroupExecutor.GetGroupID());
-						if (!assignedGroup)
-							return;
-
-						// play only to commander
-						SCR_PopUpNotification.GetInstance().PopupMsg(prefabData.GetDataTaskCompletedForCommander().m_sText, param1: SCR_GroupHelperUI.GetTranslatedGroupName(assignedGroup), param2: GetTaskName(task), duration: POPUP_DURATION, prio: SCR_EGroupTaskPopUpPriority.COMPLETED, sound: SCR_SoundEvent.TASK_SUCCEED);
-						PlayVONotification(prefabData.GetDataTaskCompletedForCommander().m_sSoundEventName, baseCallsign, assignedGroupExecutor.GetGroupID());
-					}
-					else
-					{
-						SCR_NotificationsComponent.SendLocal(prefabData.GetTaskCompletedNotification(), m_RplComponent.Id());
-					}
+					SendMessageToGroup(m_eTaskNotification, SCR_ETaskNotificationMsg.MAJOR_TASK_ASSIGNED_TO_YOUR_GROUP_COMPLETED, 0, hqTransceiver, group, baseCallsign, group.GetGroupID(), 0, m_iGridX, m_iGridY);
 				}
 				else if (newState == SCR_ETaskState.FAILED)
 				{
-					SCR_NotificationsComponent.SendLocal(prefabData.GetTaskFailedNotification(), m_RplComponent.Id());
+					SendMessageToGroup(m_eTaskNotification, SCR_ETaskNotificationMsg.MAJOR_TASK_ASSIGNED_TO_YOUR_GROUP_FAILED, 0, hqTransceiver, group, baseCallsign, group.GetGroupID(), 0, m_iGridX, m_iGridY);
 				}
 				else if (newState == SCR_ETaskState.CANCELLED)
 				{
-					SCR_NotificationsComponent.SendLocal(prefabData.GetTaskCanceledNotification(), m_RplComponent.Id());
+					SendMessageToGroup(m_eTaskNotification, SCR_ETaskNotificationMsg.MAJOR_TASK_ASSIGNED_TO_YOUR_GROUP_CANCELED, 0, hqTransceiver, group, baseCallsign, group.GetGroupID(), 0, m_iGridX, m_iGridY);
+				}
+			}
+			else if (m_TaskSystem.IsTaskVisibleFor(task, groupExecutor))
+			{
+				if (newState == SCR_ETaskState.COMPLETED)
+				{
+					SendMessageToGroup(m_eTaskNotification, SCR_ETaskNotificationMsg.MINOR_TASK_COMPLETED, 0, hqTransceiver, group, baseCallsign, group.GetGroupID(), 0, m_iGridX, m_iGridY);
+				}
+				else if (newState == SCR_ETaskState.FAILED)
+				{
+					SendMessageToGroup(m_eTaskNotification, SCR_ETaskNotificationMsg.MINOR_TASK_FAILED, 0, hqTransceiver, group, baseCallsign, group.GetGroupID(), 0, m_iGridX, m_iGridY);
+				}
+				else if (newState == SCR_ETaskState.CANCELLED)
+				{
+					SendMessageToGroup(m_eTaskNotification, SCR_ETaskNotificationMsg.MINOR_TASK_CANCELED, 0, hqTransceiver, group, baseCallsign, group.GetGroupID(), 0, m_iGridX, m_iGridY);
 				}
 			}
 		}
@@ -413,21 +277,100 @@ class SCR_TaskNotificationComponent : ScriptComponent
 		if (task != m_Task)
 			return;
 
-		OnTaskCreated(task);
+		OnTaskCreated(task, byPlayerID);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool RplLoad(ScriptBitReader reader)
+	protected BaseTransceiver GetHQTransceiver(notnull SCR_CampaignFaction faction)
 	{
-		SCR_Task task = SCR_Task.Cast(GetOwner());
-		if (!task)
-			return true;
+		SCR_CampaignMilitaryBaseComponent HQ = faction.GetMainBase();
+		if (!HQ)
+			return null;
 
-		SetGrid();
+		BaseRadioComponent radio = BaseRadioComponent.Cast(HQ.GetOwner().FindComponent(BaseRadioComponent));
+		if (!radio || !radio.IsPowered())
+			return null;
 
-		OnTaskCreated(task);
+		return radio.GetTransceiver(0);
+	}
 
-		return true;
+	//------------------------------------------------------------------------------------------------
+	protected BaseTransceiver GetPlayerTransceiver(int playerId)
+	{
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(playerId));
+		if (!playerController)
+			return null;
+
+		IEntity player = playerController.GetMainEntity();
+		if (!player)
+			return null;
+
+		SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.Cast(player.FindComponent(SCR_GadgetManagerComponent));
+		if (!gadgetManager)
+			return null;
+
+		IEntity radioEnt = gadgetManager.GetGadgetByType(EGadgetType.RADIO);
+		if (!radioEnt)
+			return null;
+
+		BaseRadioComponent radio = BaseRadioComponent.Cast(radioEnt.FindComponent(BaseRadioComponent));
+		if (!radio || !radio.IsPowered())
+			return null;
+
+		return radio.GetTransceiver(0);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected SCR_AIGroup GetFirstAssignedGroup(notnull SCR_Task task)
+	{
+		array<ref SCR_TaskExecutor> assignees = task.GetTaskAssignees();
+
+		if (!assignees.IsIndexValid(0))
+			return null;
+
+		SCR_TaskExecutorGroup assignedGroupExecutor = SCR_TaskExecutorGroup.Cast(assignees[0]);
+		if (!assignedGroupExecutor)
+			return null;
+
+		return m_GroupsManager.FindGroup(assignedGroupExecutor.GetGroupID());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SendMessageToGroup(SCR_ETaskNotification notificationType, SCR_ETaskNotificationMsg msgType, int callerPlayerId, BaseTransceiver transmitter, SCR_AIGroup receiverGroup, int baseCallsign = SCR_MilitaryBaseComponent.INVALID_BASE_CALLSIGN, int callerGroupId = -1, int calledGroupId = -1, int gridX = -1, int gridY = -1)
+	{
+		if (!transmitter || !receiverGroup || !m_TaskNotificationManager || !m_FactionManager)
+			return;
+
+		SCR_CampaignFaction faction = GetFaction();
+		if (!faction)
+			return;
+
+		SCR_BaseTaskNotificationData notificationData = SCR_BaseTaskNotificationData.Cast(m_TaskNotificationManager.GetTaskNotificationData(notificationType, msgType));
+		if (!notificationData || !notificationData.CanSendNotification(receiverGroup))
+			return;
+
+		int factionId = m_FactionManager.GetFactionIndex(faction);
+
+		SCR_TaskRadioMsg msg = new SCR_TaskRadioMsg();
+		msg.SetTaskNotification(notificationType, msgType);
+		msg.SetTaskNotificationData(notificationData);
+		msg.SetBaseCallsign(baseCallsign);
+		msg.SetFactionId(factionId);
+		msg.SetFaction(faction);
+		msg.SetGrid((gridX * 1000) + gridY);
+		msg.SetCallerGroupId(callerGroupId);
+		msg.SetCalledGroupId(calledGroupId);
+		msg.SetCallerPlayerId(callerPlayerId);
+		msg.SetEncryptionKey(transmitter.GetRadio().GetEncryptionKey());
+
+		if (m_Task)
+			msg.SetTaskPosition(m_Task.GetTaskPosition());
+
+		#ifdef TASK_NOTIFICATION_DEBUG
+		Print("[SCR_TaskNotificationComponent.SendMessageToGroup] notifType:"+SCR_Enum.GetEnumName(SCR_ETaskNotification, notificationType)+" msg:"+SCR_Enum.GetEnumName(SCR_ETaskNotificationMsg, msgType)+" to group:"+SCR_GroupHelperUI.GetTranslatedGroupNameAndRoleName(receiverGroup), LogLevel.DEBUG);
+		#endif
+
+		transmitter.BeginTransmissionFreq(msg, receiverGroup.GetRadioFrequency());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -439,22 +382,29 @@ class SCR_TaskNotificationComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
-		if (System.IsConsoleApp())
+		m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
+
+		if (!m_RplComponent || m_RplComponent.IsProxy())
 			return;
 
+		m_GroupsManager = SCR_GroupsManagerComponent.GetInstance();
+		m_GroupTaskManager = SCR_GroupTaskManagerComponent.GetInstance();
+		m_TaskNotificationManager = SCR_TaskNotificationManagerComponent.GetInstance();
 		m_Task = SCR_Task.Cast(owner);
+		m_FactionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		m_Campaign = SCR_GameModeCampaign.Cast(GetGame().GetGameMode());
+
+		if (!m_Campaign)
+			return;
 
 		SCR_Task.GetOnTaskAssigneeAdded().Insert(OnTaskAssigneeAdded);
 		SCR_Task.GetOnTaskStateChanged().Insert(OnTaskStateChanged);
 
 		m_TaskSystem = SCR_TaskSystem.GetInstance();
-		m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
-		m_GroupsManager = SCR_GroupsManagerComponent.GetInstance();
-		m_GroupTaskManager = SCR_GroupTaskManagerComponent.GetInstance();
 
 		SetGrid();
 
-		if (m_GroupTaskManager && m_RplComponent.IsMaster())
+		if (m_GroupTaskManager)
 			m_GroupTaskManager.GetOnGroupTaskSet().Insert(OnGroupTaskSet);
 	}
 
@@ -467,14 +417,4 @@ class SCR_TaskNotificationComponent : ScriptComponent
 		if (m_GroupTaskManager)
 			m_GroupTaskManager.GetOnGroupTaskSet().Remove(OnGroupTaskSet);
 	}
-}
-
-[BaseContainerProps()]
-class SCR_TaskNotificationData
-{
-	[Attribute(uiwidget: UIWidgets.LocaleEditBox)]
-	LocalizedString m_sText;
-
-	[Attribute(uiwidget: UIWidgets.LocaleEditBox)]
-	string m_sSoundEventName;
 }

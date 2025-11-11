@@ -637,7 +637,7 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 		SCR_FlagComponent flag = SCR_FlagComponent.Cast(component);
 
 		if (flag && GetFaction())
-			GetGame().GetCallqueue().CallLater(ChangeFlags, 500, false, GetFaction());	// Give the system time to properly register slots
+			GetGame().GetCallqueue().CallLater(UpdateFlags, 500, false);	// Give the system time to properly register slots
 
 		if (!IsProxy())
 		{
@@ -792,6 +792,16 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 
 			comp.OnCapturingFactionChanged(m_sCapturingFaction);
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateFlags()
+	{
+		Faction faction = GetFaction();
+		if (!faction)
+			return;
+
+		ChangeFlags(faction);
 	}
 
 	//------------------------------------------------------------------------------------------------

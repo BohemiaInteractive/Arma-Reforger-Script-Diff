@@ -244,7 +244,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 			nonArsenalData = SCR_NonArsenalItemCostCatalogData.Cast(data);
 			if (nonArsenalData)
 			{
-				refundAmount = SCR_ResourceSystemHelper.RoundRefundSupplyAmount(nonArsenalData.GetSupplyCost(supplyCostType) * refundMultiplier);
+				refundAmount = SCR_ResourceSystemHelper.RoundRefundSupplyAmount(nonArsenalData.GetSupplyCost(supplyCostType, false) * refundMultiplier);
 				countedItems.Insert(item);
 				break;
 			}
@@ -300,7 +300,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 					nonArsenalData = SCR_NonArsenalItemCostCatalogData.Cast(data);
 					if (nonArsenalData)
 					{
-						refundAmount += SCR_ResourceSystemHelper.RoundRefundSupplyAmount(nonArsenalData.GetSupplyCost(supplyCostType) * refundMultiplier);
+						refundAmount += SCR_ResourceSystemHelper.RoundRefundSupplyAmount(nonArsenalData.GetSupplyCost(supplyCostType, false) * refundMultiplier);
 						countedItems.Insert(attachedEntity);
 						break;
 					}

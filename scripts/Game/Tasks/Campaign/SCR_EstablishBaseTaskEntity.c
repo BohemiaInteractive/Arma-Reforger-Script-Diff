@@ -115,18 +115,33 @@ class SCR_EstablishBaseTaskEntity : SCR_Task
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void DelayedDeleteTask(SCR_CampaignMilitaryBaseComponent base, SCR_CampaignFaction faction)
+	protected SCR_MilitaryBaseComponent GetBase(vector position, bool isAllowedCampaignBase = false)
 	{
-		if (base && faction)
-			base.SetFaction(faction);
+		SCR_MilitaryBaseSystem baseSystem = SCR_MilitaryBaseSystem.GetInstance();
+		if (!baseSystem)
+			return null;
 
-		DeleteTask();
+		array<SCR_MilitaryBaseComponent> bases = {};
+		baseSystem.GetBases(bases);
+
+		foreach (SCR_MilitaryBaseComponent base : bases)
+		{
+			if (vector.DistanceSqXZ(base.GetOwner().GetOrigin(), position) <= (base.GetRadius() * base.GetRadius()))
+			{
+				if (!isAllowedCampaignBase && SCR_CampaignMilitaryBaseComponent.Cast(base))
+					continue;
+
+				return base;
+			}
+		}
+
+		return null;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnBaseBuilt(notnull SCR_CampaignMilitaryBaseComponent base, Faction faction)
+	protected void OnBaseBuilt(notnull SCR_CampaignMilitaryBaseComponent campaignBase, Faction faction)
 	{
-		float distanceSq = vector.DistanceSqXZ(base.GetOwner().GetOrigin(), GetOrigin());
+		float distanceSq = vector.DistanceSqXZ(campaignBase.GetOwner().GetOrigin(), GetOrigin());
 
 		if (distanceSq <= Math.Pow(m_iBaseEstablishingRadius + m_fProviderBuildingRadius, 2))
 		{
@@ -135,23 +150,21 @@ class SCR_EstablishBaseTaskEntity : SCR_Task
 				m_TaskSystem.SetTaskState(this, SCR_ETaskState.COMPLETED); // HQ was built and the hologram was placed by a builder with the same faction.
 
 				// change faction of the HQ composition if not match with builder's faction
-				if (base.GetCampaignFaction() != m_BuilderFaction)
+				if (campaignBase.GetCampaignFaction() != m_BuilderFaction)
 				{
-					base.SetFaction(m_BuilderFaction);
+					campaignBase.SetFaction(m_BuilderFaction);
 
-					// It is necessary to call later so that the faction is correctly set on the base and also the flag, which is changed later.
-					GetGame().GetCallqueue().CallLater(DelayedDeleteTask, DELETE_TASK_DELAY, false, base, m_BuilderFaction);
-				}
-				else
-				{
-					DeleteTask();
+					SCR_MilitaryBaseComponent base = GetBase(campaignBase.GetOwner().GetOrigin());
+					if (base)
+						base.SetFaction(m_BuilderFaction);
 				}
 			}
 			else
 			{
 				m_TaskSystem.SetTaskState(this, SCR_ETaskState.FAILED);
-				DeleteTask();
 			}
+
+			DeleteTask();
 		}
 		else if (distanceSq <= m_iBaseMinDistanceSq)
 		{

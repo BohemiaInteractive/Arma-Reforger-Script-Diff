@@ -52,7 +52,10 @@ class BaseTransceiver: ScriptAndConfig
 	*/
 	proto external void SetRange(float range);
 	proto external BaseRadioComponent GetRadio();
+	//! Makes transmission of message on tuned frequency
 	proto external void BeginTransmission(BaseRadioMessage message);
+	//! Makes transmission of message on given frequency (kHz), ignoring the tuned one
+	proto external void BeginTransmissionFreq(BaseRadioMessage message, int frequency);
 }
 
 /*!

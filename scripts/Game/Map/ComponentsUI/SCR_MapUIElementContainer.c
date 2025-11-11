@@ -356,8 +356,8 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		}
 
 		//## Don't create icon for completed and cancelled tasks.
-		if (SCR_Enum.HasPartialFlag(SCR_ETaskState.COMPLETED | SCR_ETaskState.CANCELLED, m_TaskSystem.GetTaskState(task)))
-			return;
+		//if (SCR_Enum.HasPartialFlag(SCR_ETaskState.COMPLETED | SCR_ETaskState.CANCELLED, m_TaskSystem.GetTaskState(task)))
+		//	return;
 
 		Widget w = GetGame().GetWorkspace().CreateWidgets(m_sTaskElement, m_wIconsContainer);
 		if (!w)

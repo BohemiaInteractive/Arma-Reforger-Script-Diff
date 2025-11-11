@@ -294,7 +294,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	bool IsSlotBlocked() { return m_bBlocked; }
 	//------------------------------------------------------------------------------------------------
-	bool IsSlotSelected() { return m_bSelected; }
+	bool IsSelected() { return m_bSelected; }
 	//------------------------------------------------------------------------------------------------
 	//! should be the slot visible?
 	void SetSlotVisible( bool bVisible )
@@ -541,7 +541,10 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	{
 		//TODO: show the selected effect should be done as a component
 		if (!m_pItem)
+		{
+			m_bSelected = false;
 			return;
+		}
 
 		m_bSelected = select;
 		if (!m_wSelectedEffect)
@@ -609,8 +612,6 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	// ! Returns the UI storage the slot is associated with
 	SCR_InventoryStorageBaseUI GetStorageUI() { return m_pStorageUI; }	
 	
-	//------------------------------------------------------------------------------------------------
-	bool IsSelected() { return m_bSelected; }
 	
 	//------------------------------------------------------------------------------------------------
 	protected UIInfo GetItemDetails()
@@ -958,9 +959,14 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	{
 		if (m_pStorageUI.GetInventoryMenuHandler())
 			m_pStorageUI.GetInventoryMenuHandler().UnregisterUIStorage( this );
-		
-		m_widget.RemoveHandler( this );
-		m_widget.RemoveFromHierarchy();
+
+		if (m_widget)
+		{
+			m_widget.RemoveHandler( this );
+			m_widget.RemoveFromHierarchy();
+			m_widget = null;
+		}
+
 		if (m_wPreviewImage)
 		{
 			ItemPreviewManagerEntity manager = m_pStorageUI.GetInventoryMenuHandler().GetItemPreviewManager();
@@ -1102,6 +1108,9 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------		
 	void CheckCompatibility(SCR_InventorySlotUI slot)
 	{
+		if (!m_widget)
+			return;
+
 		SCR_InventoryMenuUI menu = SCR_InventoryMenuUI.Cast(GetGame().GetMenuManager().FindMenuByPreset(ChimeraMenuPreset.Inventory20Menu));
 		if (!menu)
 			return;
@@ -1119,44 +1128,44 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		if (slot == this)
 			return;
 
-		if (slot.GetSlotedItemFunction() == ESlotFunction.TYPE_MAGAZINE)
+		if (slot.GetSlotedItemFunction() != ESlotFunction.TYPE_MAGAZINE)
+			return;
+
+		if (!m_pItem)
+			return;
+
+		IEntity owner = m_pItem.GetOwner();
+		BaseWeaponComponent weapon = BaseWeaponComponent.Cast(owner.FindComponent(BaseWeaponComponent));
+		if (!weapon)
+			return;
+
+		InventoryItemComponent itemComp = slot.GetInventoryItemComponent();
+		if (!itemComp)
+			return;
+
+		MagazineComponent magComp = MagazineComponent.Cast(itemComp.GetOwner().FindComponent(MagazineComponent));
+		if (!magComp)
+			return;
+
+		BaseMagazineWell well = magComp.GetMagazineWell();
+		if (!well)
+			return;
+
+		BaseMuzzleComponent muzzle = weapon.GetCurrentMuzzle();
+		if (!muzzle)
+			return;
+
+		BaseMagazineWell muzzleWell = muzzle.GetMagazineWell();
+		if (!muzzleWell)
+			return;
+
+		if (!Turret.Cast(owner) && !menu.IsWeaponEquipped(owner) || slot.IsInherited(SCR_ArsenalInventorySlotUI))
 		{
-			if (!m_pItem)
-				return;
-
-			IEntity owner = m_pItem.GetOwner();
-			BaseWeaponComponent weapon = BaseWeaponComponent.Cast(owner.FindComponent(BaseWeaponComponent));
-			if (!weapon)
-				return;
-
-			InventoryItemComponent itemComp = slot.GetInventoryItemComponent();
-			if (!itemComp)
-				return;
-
-			MagazineComponent magComp = MagazineComponent.Cast(itemComp.GetOwner().FindComponent(MagazineComponent));
-			if (!magComp)
-				return;
-
-			BaseMagazineWell well = magComp.GetMagazineWell();
-			if (!well)
-				return;
-
-			BaseMuzzleComponent muzzle = weapon.GetCurrentMuzzle();
-			if (!muzzle)
-				return;
-
-			BaseMagazineWell muzzleWell = muzzle.GetMagazineWell();
-			if (!muzzleWell)
-				return;
-
-			if (!Turret.Cast(owner) && !menu.IsWeaponEquipped(owner) || slot.IsInherited(SCR_ArsenalInventorySlotUI))
-			{
-				incompatible.SetVisible(true);
-				return;
-			}
-
-			incompatible.SetVisible(!well.Type().IsInherited(muzzleWell.Type()));
+			incompatible.SetVisible(true);
+			return;
 		}
+
+		incompatible.SetVisible(!well.Type().IsInherited(muzzleWell.Type()));
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -86,7 +86,7 @@ class SCR_Faction : ScriptedFaction
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Background imageset for this faction background", params:"imageset")]
 	protected ResourceName m_sFactionBackground;
 	
-	[Attribute("", desc:"Identity voice signal", params:"0 inf")]
+	[Attribute("0", desc:"Identity voice signal", params:"0 inf")]
 	protected int m_iIdentityVoiceSignal;
 
 	[Attribute()]

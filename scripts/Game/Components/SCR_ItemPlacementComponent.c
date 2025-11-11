@@ -102,36 +102,24 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected SCR_CharacterControllerComponent GetCharacterController(IEntity from)
-	{
-		if (!from)
-			return null;
-
-		ChimeraCharacter character = ChimeraCharacter.Cast(from);
-		if (!character)
-			return SCR_CharacterControllerComponent.Cast(from.FindComponent(SCR_CharacterControllerComponent));
-
-		return SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
-	}
-
-	//------------------------------------------------------------------------------------------------
 	protected void UnregisterEvents(IEntity from)
 	{
-		if (!from)
+		ChimeraCharacter character = ChimeraCharacter.Cast(from);
+		if (!character)
 			return;
 
-		BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast(from.FindComponent(BaseWeaponManagerComponent));
+		BaseWeaponManagerComponent weaponManager = character.GetWeaponManager();
 		if (weaponManager)
 		{
 			weaponManager.m_OnWeaponChangeCompleteInvoker.Remove(OnWeaponChangeEnded);
 			weaponManager.m_OnWeaponChangeStartedInvoker.Remove(OnWeaponChanged);
 		}
 
-		SCR_CharacterControllerComponent characterController = GetCharacterController(from);
+		SCR_CharacterControllerComponent characterController = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
 		if (characterController)
 			characterController.GetOnPlayerDeathWithParam().Remove(OnCharacterDeath);
 
-		SCR_CompartmentAccessComponent compartmentAccessComponent = SCR_CompartmentAccessComponent.Cast(from.FindComponent(SCR_CompartmentAccessComponent));
+		SCR_CompartmentAccessComponent compartmentAccessComponent = SCR_CompartmentAccessComponent.Cast(character.GetCompartmentAccessComponent());
 		if (compartmentAccessComponent)
 		{
 			compartmentAccessComponent.GetOnCompartmentEntered().Remove(OnComparmentEntered);
@@ -142,21 +130,22 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void RegisterEvents(IEntity to)
 	{
-		if (!to)
+		ChimeraCharacter character = ChimeraCharacter.Cast(to);
+		if (!character)
 			return;
 
-		BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast(to.FindComponent(BaseWeaponManagerComponent));
+		BaseWeaponManagerComponent weaponManager = character.GetWeaponManager();
 		if (weaponManager)
 		{
 			weaponManager.m_OnWeaponChangeCompleteInvoker.Insert(OnWeaponChangeEnded);
 			weaponManager.m_OnWeaponChangeStartedInvoker.Insert(OnWeaponChanged);
 		}
 
-		SCR_CharacterControllerComponent characterController = GetCharacterController(to);
+		SCR_CharacterControllerComponent characterController = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
 		if (characterController)
 			characterController.GetOnPlayerDeathWithParam().Insert(OnCharacterDeath);
 
-		SCR_CompartmentAccessComponent compartmentAccessComponent = SCR_CompartmentAccessComponent.Cast(to.FindComponent(SCR_CompartmentAccessComponent));
+		SCR_CompartmentAccessComponent compartmentAccessComponent = SCR_CompartmentAccessComponent.Cast(character.GetCompartmentAccessComponent());
 		if (compartmentAccessComponent)
 		{
 			compartmentAccessComponent.GetOnCompartmentEntered().Insert(OnComparmentEntered);
@@ -168,11 +157,11 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	protected void OnControlledEntityChanged(IEntity from, IEntity to)
 	{
 		m_PlacedItem = null;
-		ChimeraCharacter characterTo = ChimeraCharacter.Cast(to);
 
+		ChimeraCharacter characterTo = ChimeraCharacter.Cast(to);
 		if (characterTo)
 		{
-			m_CompartmnetAccessComponent = SCR_CompartmentAccessComponent.Cast(to.FindComponent(SCR_CompartmentAccessComponent));
+			m_CompartmnetAccessComponent = SCR_CompartmentAccessComponent.Cast(characterTo.GetCompartmentAccessComponent());
 			m_PlacedItem = characterTo.GetCharacterController().GetRightHandItem();
 		}
 		else
@@ -185,6 +174,27 @@ class SCR_ItemPlacementComponent : ScriptComponent
 
 		// register to new event handler
 		RegisterEvents(to);
+
+		ChimeraCharacter previousCharacter = ChimeraCharacter.Cast(from);
+		if (!previousCharacter)
+			return;
+
+		SCR_CharacterControllerComponent characterController = SCR_CharacterControllerComponent.Cast(previousCharacter.GetCharacterController());
+		if (!characterController)
+			return;
+
+		characterController.m_OnItemUseEndedInvoker.Remove(OnPlacingEnded);
+		GetGame().GetCallqueue().Remove(ValidateTargetEntityExistance);
+		if (!characterController.IsUsingItem())
+			return;
+
+		CharacterAnimationComponent animationComponent = characterController.GetAnimationComponent();
+		if (!animationComponent)
+			return;
+
+		animationComponent.GetCommandHandler().CancelItemUse();
+		
+		SCR_NotificationsComponent.SendLocal(ENotification.PLACEABLE_ITEM_CANT_PLACE_GENERIC); // show some generic information, just to be clear that his placement action has failed
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -201,8 +211,8 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	//! Callback method triggered by button press
 	protected void StartPlaceItem()
 	{
-		IEntity controlledEntity = SCR_PlayerController.GetLocalControlledEntity();
-		if (!controlledEntity)
+		ChimeraCharacter character = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+		if (!character)
 			return;
 
 		if (m_eCantPlaceReason > 0)
@@ -227,7 +237,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 			}
 		}
 
-		SCR_CharacterControllerComponent characterController = GetCharacterController(controlledEntity);
+		SCR_CharacterControllerComponent characterController = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
 		if (!characterController)
 			return;
 
@@ -237,7 +247,6 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		if (characterController.IsUsingItem())
 			return;
 
-		ChimeraCharacter character = ChimeraCharacter.Cast(controlledEntity);
 		CharacterAnimationComponent animationComponent = character.GetAnimationComponent();
 		int itemActionId = animationComponent.BindCommand("CMD_Item_Action");
 		vector mat[4];
@@ -257,15 +266,16 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		params.SetMaxAnimLength(15.0);
 		params.SetAlignmentPoint(ptWS);
 
-		if (characterController.TryUseItemOverrideParams(params))
-		{
-			characterController.m_OnItemUseEndedInvoker.Insert(OnPlacingEnded);
-			DisablePreview();
-		}
+		DisablePreview(); // disable preview and suspend placement logic to prevent executing this 
+ 		characterController.m_OnItemUseEndedInvoker.Insert(OnPlacingEnded); // subscribe to this invoker now, as there is always a chance that someone will be so fast that we will miss it
+
+		if (!characterController.TryUseItemOverrideParams(params))
+			OnPlacingEnded(m_PlaceableItem.GetOwner(), false, params); // if item usage has failed, we need to manually informs ourselves that placement has failed
+		else if (m_bIsBeingAttachedToEntity)
+			GetGame().GetCallqueue().CallLater(ValidateTargetEntityExistance, 500, true); // used to locally check if the entity to which player wants to attach the object is still there
+
 		characterController.GetAnimationComponent().GetCommandHandler().AlignNewTurns();
 
-		if (m_bIsBeingAttachedToEntity)
-			GetGame().GetCallqueue().CallLater(ValidateTargetEntityExistance, 500, true);	//used to locally check if the entity to which player wants to attach the object is still there
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -277,7 +287,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		if (!controlledEntity)
 			return;
 
-		SCR_CharacterControllerComponent characterController = GetCharacterController(controlledEntity);
+		SCR_CharacterControllerComponent characterController = SCR_CharacterControllerComponent.Cast(controlledEntity.GetCharacterController());
 		if (!characterController)
 			return;
 
@@ -289,6 +299,9 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		characterController.SetDisableMovementControls(true);
 
 		characterController.m_OnItemUseEndedInvoker.Remove(OnPlacingEnded);
+
+		if (!m_PlacedItem)
+			return;
 
 		if (!successful)
 		{
@@ -377,13 +390,16 @@ class SCR_ItemPlacementComponent : ScriptComponent
 				m_eCantPlaceReason = 0;
 		}
 
+		if (!m_PlacedItem)
+			m_eCantPlaceReason = ENotification.PLACEABLE_ITEM_CANT_PLACE_GENERIC; // we lost the reference so we need to abort the placement logic
+
 		if (m_eCantPlaceReason > 0)
 		{
-			IEntity controlledEntity = SCR_PlayerController.GetLocalControlledEntity();
-			if (!controlledEntity)
+			ChimeraCharacter character = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+			if (!character)
 				return;
 
-			SCR_CharacterControllerComponent characterController = GetCharacterController(controlledEntity);
+			SCR_CharacterControllerComponent characterController = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
 			if (!characterController)
 				return;
 
@@ -456,7 +472,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		}
 		else
 		{
-			GetGame().GetInputManager().RemoveActionListener(ACTION_NAME_PLACEMENT, EActionTrigger.DOWN, StartPlaceItem);
+ 			GetGame().GetInputManager().RemoveActionListener(ACTION_NAME_PLACEMENT, EActionTrigger.DOWN, StartPlaceItem);
 			GetGame().GetInputManager().RemoveActionListener(ACTION_NAME_FORCE_PLACEMENT, EActionTrigger.DOWN, ForcePlaceItem);
 			ClearEventMask(GetOwner(), EntityEvent.FRAME);
 		}
@@ -525,7 +541,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnCharacterDeath(SCR_CharacterControllerComponent characterController, IEntity killerEntity, notnull Instigator killer)
 	{
-		UnregisterEvents(killerEntity);
+		UnregisterEvents(characterController.GetOwner());
 		m_PlacedItem = null; // Reset this cached value
 		DisablePreview();
 	}
@@ -542,6 +558,11 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		{
 			if (weapon.GetRootParent() != SCR_PlayerController.GetLocalControlledEntity())
 				return;
+
+			ChimeraCharacter char = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+			SCR_CharacterControllerComponent characterController = SCR_CharacterControllerComponent.Cast(char.GetCharacterController());
+			if (characterController)
+				characterController.m_OnItemUseEndedInvoker.Dump();
 
 			EnablePreview(weapon);
 		}

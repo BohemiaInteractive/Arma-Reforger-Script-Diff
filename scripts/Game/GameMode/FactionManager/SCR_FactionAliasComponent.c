@@ -69,6 +69,21 @@ class SCR_FactionAliasComponent : ScriptComponent
 		else
 			return inputFactionKey;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	array<string> GetAllFactionKeyAliases(FactionKey inputFactionKey)
+	{
+		array<ref SCR_ScenarioFrameworkFactionAliasConfig> aliasConfigs = SCR_MapHelperT<FactionKey, ref SCR_ScenarioFrameworkFactionAliasConfig>.GetElements(m_mAliasToFactionKeyMap);
+		array<string> aliases = {};
+		
+		foreach (SCR_ScenarioFrameworkFactionAliasConfig config : aliasConfigs)
+		{
+			if (config.m_sFactionKey == inputFactionKey)
+				aliases.Insert(config.m_sAlias);
+		}
+		
+		return aliases;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Initializes the facton alias component instance for Workbench object previews.

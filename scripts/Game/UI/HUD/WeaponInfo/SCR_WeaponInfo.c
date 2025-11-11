@@ -69,7 +69,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	
 	protected BaseWeaponManagerComponent m_WeaponManager;
 	protected SCR_InventoryStorageManagerComponent m_InventoryManager;
-	protected CompartmentAccessComponent m_CompartmentAccess;
+	protected SCR_CompartmentAccessComponent m_CompartmentAccess;
 
 	// Members for previous states of weapon
 	protected ref SCR_WeaponState m_WeaponState;
@@ -93,7 +93,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	ref SCR_PrefabDataPredicate m_pPrefabDataPredicate = new SCR_PrefabDataPredicate();
 	
 	//------------------------------------------------------------------------------------------------
-	void OnWeaponChanged(BaseWeaponComponent weapon, BaseWeaponComponent prevWeapon)
+	protected void OnWeaponChanged(BaseWeaponComponent weapon, BaseWeaponComponent prevWeapon)
 	{
 		#ifdef WEAPON_INFO_DEBUG
 		_print("OnWeaponChanged");
@@ -178,7 +178,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	void OnMuzzleChanged_init(BaseWeaponComponent weapon)
+	protected void OnMuzzleChanged_init(BaseWeaponComponent weapon)
 	{
 		BaseMuzzleComponent muzzle;
 		
@@ -193,7 +193,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		
 		OnMuzzleChanged(weapon, muzzle, null);
 	}
-	void OnMuzzleChanged(BaseWeaponComponent weapon, BaseMuzzleComponent muzzle, BaseMuzzleComponent prevMuzzle)
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnMuzzleChanged(BaseWeaponComponent weapon, BaseMuzzleComponent muzzle, BaseMuzzleComponent prevMuzzle)
 	{
 		if (!m_WeaponState)
 			return;
@@ -237,7 +239,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnMagazineChanged_init(BaseWeaponComponent weapon, BaseMuzzleComponent muzzle)
+	protected void OnMagazineChanged_init(BaseWeaponComponent weapon, BaseMuzzleComponent muzzle)
 	{
 		BaseMagazineComponent magazine;
 		
@@ -253,7 +255,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		
 		OnMagazineChanged(weapon, magazine, null);
 	}
-	void OnMagazineChanged(BaseWeaponComponent weapon, BaseMagazineComponent magazine, BaseMagazineComponent prevMagazine)
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnMagazineChanged(BaseWeaponComponent weapon, BaseMagazineComponent magazine, BaseMagazineComponent prevMagazine)
 	{
 		if (!m_WeaponState)
 			return;
@@ -294,7 +298,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnMagazineCountChanged_init(BaseWeaponComponent weapon, BaseMagazineComponent magazine)
+	protected void OnMagazineCountChanged_init(BaseWeaponComponent weapon, BaseMagazineComponent magazine)
 	{
 		BaseMuzzleComponent muzzle;
 		
@@ -356,7 +360,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		
 		OnMagazineCountChanged(weapon, magazineCount, isGrenade);
 	}
-	void OnMagazineCountChanged(BaseWeaponComponent weapon, int magazineCount, bool isGrenade)
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnMagazineCountChanged(BaseWeaponComponent weapon, int magazineCount, bool isGrenade)
 	{
 		if (!m_WeaponState || !weapon)
 			return;
@@ -389,7 +395,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}
 		
 	//------------------------------------------------------------------------------------------------
-	void OnAmmoCountChanged_init(BaseWeaponComponent weapon, BaseMagazineComponent magazine)
+	protected void OnAmmoCountChanged_init(BaseWeaponComponent weapon, BaseMagazineComponent magazine)
 	{
 		BaseMuzzleComponent muzzle;
 		
@@ -415,7 +421,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		
 		OnAmmoCountChanged(weapon, muzzle, magazine, ammoCount, isBarrelChambered);
 	}
-	void OnAmmoCountChanged(BaseWeaponComponent weapon, BaseMuzzleComponent muzzle, BaseMagazineComponent magazine, int ammoCount, bool isBarrelChambered)
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnAmmoCountChanged(BaseWeaponComponent weapon, BaseMuzzleComponent muzzle, BaseMagazineComponent magazine, int ammoCount, bool isBarrelChambered)
 	{
 		if (!m_WeaponState)
 			return;
@@ -455,7 +463,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	void OnFiremodeChanged_init(BaseWeaponComponent weapon, BaseMuzzleComponent muzzle)
+	protected void OnFiremodeChanged_init(BaseWeaponComponent weapon, BaseMuzzleComponent muzzle)
 	{
 		BaseFireMode firemode;
 		
@@ -472,7 +480,8 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		OnFiremodeChanged(weapon, muzzle, firemode);
 	}
 	
-	void OnFiremodeChanged(BaseWeaponComponent weapon, BaseMuzzleComponent muzzle, BaseFireMode firemode)
+	//------------------------------------------------------------------------------------------------
+	protected void OnFiremodeChanged(BaseWeaponComponent weapon, BaseMuzzleComponent muzzle, BaseFireMode firemode)
 	{
 		if (!m_WeaponState)
 			return;
@@ -496,7 +505,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	void OnZeroingChanged_init(BaseWeaponComponent weapon)
+	protected void OnZeroingChanged_init(BaseWeaponComponent weapon)
 	{
 		int zeroing = 0;
 		
@@ -511,7 +520,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		
 		OnZeroingChanged(weapon, zeroing);
 	}
-	void OnZeroingChanged(BaseWeaponComponent weapon, int zeroing)
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnZeroingChanged(BaseWeaponComponent weapon, int zeroing)
 	{
 		if (!m_WeaponState)
 			return;
@@ -531,7 +542,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnADSChanged_init(BaseWeaponComponent weapon)
+	protected void OnADSChanged_init(BaseWeaponComponent weapon)
 	{
 		bool inADS = false;
 		
@@ -546,7 +557,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 				
 		OnADSChanged(weapon, inADS);
 	}
-	void OnADSChanged(BaseWeaponComponent weapon, bool inADS)
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnADSChanged(BaseWeaponComponent weapon, bool inADS)
 	{
 		if (!m_WeaponState)
 			return;
@@ -568,7 +581,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnZoomChanged_init(BaseWeaponComponent weapon)
+	protected void OnZoomChanged_init(BaseWeaponComponent weapon)
 	{
 		float zoom = 0;
 
@@ -582,8 +595,10 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		#endif		
 				
 		OnZoomChanged(zoom, -1);
-	}	
-	void OnZoomChanged(float zoom, float fov)
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnZoomChanged(float zoom, float fov)
 	{
 		if (!m_WeaponState)
 			return;
@@ -603,7 +618,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	void OnInspectionModeChanged(bool state)
+	protected void OnInspectionModeChanged(bool state)
 	{
 		if (!m_WeaponState)
 			return;
@@ -620,7 +635,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnAttachmentChanged(WeaponComponent weapon, bool isAttached, IEntity attachmentEntity)
+	protected void OnAttachmentChanged(WeaponComponent weapon, bool isAttached, IEntity attachmentEntity)
 	{
 		if (!m_WeaponState)
 			return;
@@ -656,11 +671,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 			m_WeaponState.m_SightsZoomFOVInfo = null;		
 		}		
 	}
-	
 
-	
 	//------------------------------------------------------------------------------------------------
-	override void DisplayUpdate(IEntity owner, float timeSlice)
+	override protected void DisplayUpdate(IEntity owner, float timeSlice)
 	{		
 		if (!m_wRoot || !m_WeaponState || !m_WeaponState.m_Weapon)
 			return;
@@ -689,7 +702,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	
 	
 	//------------------------------------------------------------------------------------------------
-	void FadeElements()
+	protected void FadeElements()
 	{
 		// Weapon state debug
 		#ifdef WEAPON_INFO_DEBUG_STATES			
@@ -1113,17 +1126,17 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}		
 		
 	//------------------------------------------------------------------------------------------------
-	override bool DisplayStartDrawInit(IEntity owner)
+	override protected bool DisplayStartDrawInit(IEntity owner)
 	{
 		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(owner);
 		if (!character)
 			return false;
 
-		m_WeaponManager = BaseWeaponManagerComponent.Cast(character.FindComponent(BaseWeaponManagerComponent));
+		m_WeaponManager = character.GetWeaponManager();
 		if (!m_WeaponManager)
 			return false;
 
-		m_CompartmentAccess = CompartmentAccessComponent.Cast(owner.FindComponent(CompartmentAccessComponent));
+		m_CompartmentAccess = SCR_CompartmentAccessComponent.Cast(character.GetCompartmentAccessComponent());
 		if (!m_CompartmentAccess)
 			return false;
 		
@@ -1142,7 +1155,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void DisplayStartDraw(IEntity owner)
+	override protected void DisplayStartDraw(IEntity owner)
 	{
 		if (!m_wRoot)
 			return;
@@ -1163,7 +1176,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}	
 		
 	//------------------------------------------------------------------------------------------------
-	override void DisplayStopDraw(IEntity owner)
+	override protected void DisplayStopDraw(IEntity owner)
 	{
 		if (m_WeaponState && m_WeaponState.m_SightsZoomFOVInfo)
 			m_WeaponState.m_SightsZoomFOVInfo.GetEventOnZoomChanged().Remove(OnZoomChanged);
@@ -1181,7 +1194,19 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void AddEventHandlers(IEntity owner)
+	// Called when the visibility flags no longer suspend the GUI; e.g. GM left and GUI marked as not to show in GM -> GUI can show again
+	// Doesn't mean the GUI is visible, it is just not hidded due to visibility flags; use m_bShown to check the visibility
+	override protected void DisplayOnResumed()
+	{
+		super.DisplayOnResumed();
+
+		Show(true, UIConstants.FADE_RATE_SLOW); // Pausing hides this display thus we should show it again when it is resumed
+		if (m_eWeaponStateEvent == 0)
+			m_eWeaponStateEvent = EWeaponFeature.WEAPON; // we just gained control of this weapon thus we should request fading in of the weapon HUD
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void AddEventHandlers(IEntity owner)
 	{
 		if (m_EventHandlerManager)
 		{
@@ -1199,7 +1224,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void RemoveEventHandlers(IEntity owner)
+	protected void RemoveEventHandlers(IEntity owner)
 	{
 		if (m_EventHandlerManager)
 		{

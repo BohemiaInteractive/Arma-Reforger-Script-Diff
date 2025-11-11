@@ -18,6 +18,9 @@ class SCR_PowerPole : PowerPoleEntity
 	[Attribute(uiwidget: UIWidgets.None, desc: "[OBSOLETE (use Cable Slot Groups above)] Slots for connecting with other power poles", category: "[OLD] Power Cable Slots")]
 	protected ref array<ref SCR_PowerPoleSlotBase> m_aSlots; // obsolete since 2024-04-02 - hidden since 2024-08-07
 
+	// Connected powerlines handling variables
+	protected static const float CONNECTED_POLE_SEARCH_RADIUS = 3.0; // meters to search for connected powerlines (matching building destruction pattern)
+
 #ifdef WORKBENCH
 
 	//------------------------------------------------------------------------------------------------
@@ -211,6 +214,102 @@ class SCR_PowerPole : PowerPoleEntity
 	}
 
 #endif // WORKBENCH
+
+	//------------------------------------------------------------------------------------------------
+	//! Override to handle cascading destruction when entering FirstDestructionPhase
+	override void OnStateChanged(int destructibleState, ScriptBitReader frameData, bool JIP)
+	{
+		super.OnStateChanged(destructibleState, frameData, JIP);
+
+		// Only handle connected powerlines on first destruction phase (state 1)
+		if (destructibleState == 1 && !JIP)
+		{
+			HandleConnectedPowerlines();
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Handle connected powerlines when this pole is destroyed
+	//! Based on HandleConnectedPowerlines in SCR_DestructibleBuildingComponent
+	protected void HandleConnectedPowerlines()
+	{
+		BaseWorld world = GetGame().GetWorld();
+		if (!world)
+			return;
+
+		// Get cable slot group positions like in SCR_DestructibleBuildingComponent
+		array<vector> polePositions = GetCableSlotGroupPositions();
+
+		// Query for powerlines around each cable slot group position and delete them
+		foreach (vector polePosition : polePositions)
+		{
+			world.QueryEntitiesBySphere(polePosition, CONNECTED_POLE_SEARCH_RADIUS, ProcessFoundPowerline, FilterPowerlineEntity);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get cable slot group positions, following the exact pattern from SCR_DestructibleBuildingComponent
+	protected array<vector> GetCableSlotGroupPositions()
+	{
+		array<vector> positions = {};
+
+		// Get prefab data to access cable slot groups
+		SCR_PowerPoleClass prefabData = SCR_PowerPoleClass.Cast(GetPrefabData());
+		if (!prefabData || !prefabData.m_aCableSlotGroups)
+		{
+			// Fallback to entity origin if no cable slot groups
+			positions.Insert(GetOrigin());
+			return positions;
+		}
+
+		// Iterate through cable slot groups and average slot positions per group
+		foreach (SCR_PoleCableSlotGroup slotGroup : prefabData.m_aCableSlotGroups)
+		{
+			if (!slotGroup || !slotGroup.m_aSlots)
+				continue;
+
+			vector avgLocalPos = vector.Zero;
+			int validSlotCount = 0;
+
+			// Sum all slot positions in this group
+			foreach (SCR_PoleCableSlot slot : slotGroup.m_aSlots)
+			{
+				if (!slot)
+					continue;
+
+				avgLocalPos += slot.m_vPosition;
+				validSlotCount++;
+			}
+
+			// Calculate average and transform to world space
+			if (validSlotCount > 0)
+			{
+				avgLocalPos = avgLocalPos / validSlotCount;
+				vector avgWorldPos = CoordToParent(avgLocalPos);
+				positions.Insert(avgWorldPos);
+			}
+		}
+
+		return positions;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Filter callback to only process PowerlineEntity types during sphere query
+	//! This is more efficient than checking entity type in ProcessFoundPowerline
+	protected bool FilterPowerlineEntity(notnull IEntity entity)
+	{
+		return entity.Type() == PowerlineEntity;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Process each found powerline entity and delete it
+	//! Simplified since filtering is done in FilterPowerlineEntity
+	protected bool ProcessFoundPowerline(notnull IEntity entity)
+	{
+		delete entity;
+		return true;
+	}
+
 
 	//------------------------------------------------------------------------------------------------
 	// constructor

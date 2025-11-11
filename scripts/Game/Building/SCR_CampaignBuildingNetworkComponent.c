@@ -5,6 +5,8 @@ class SCR_CampaignBuildingNetworkComponentClass : ScriptComponentClass
 
 class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 {
+	protected const int ALLOWED_PLAYER_DISTANCE_SQ = 10000; //! 100m
+
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] buildingValue
@@ -49,25 +51,27 @@ class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	//! Delete composition by a tool
 	//! \param[in] composition
-	void DeleteCompositionByUserAction(notnull IEntity composition)
+	//! \param[in] userPlayerId
+	void DeleteCompositionByUserAction(notnull IEntity composition, int userPlayerId)
 	{
 		RplComponent comp = RplComponent.Cast(composition.FindComponent(RplComponent));
 		if (!comp)
 			return;
 
-		Rpc(RpcAsk_DeleteCompositionByUserAction, comp.Id());
+		Rpc(RpcAsk_DeleteCompositionByUserAction, comp.Id(), userPlayerId);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Delete base by a tool
 	//! \param[in] IEntity base
-	void DeleteBaseByUserAction(notnull IEntity base)
+	//! \param[in] userPlayerId
+	void DeleteBaseByUserAction(notnull IEntity base, int userPlayerId)
 	{
 		RplComponent comp = RplComponent.Cast(base.FindComponent(RplComponent));
 		if (!comp)
 			return;
 
-		Rpc(RpcAsk_DeleteBaseByUserAction, comp.Id());
+		Rpc(RpcAsk_DismantleBaseByUserAction, comp.Id(), userPlayerId);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -180,12 +184,22 @@ class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 	//! Delete composition, executed from user action
 	//! \param[in] rplCompositionId
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_DeleteCompositionByUserAction(RplId rplCompositionId)
+	protected void RpcAsk_DeleteCompositionByUserAction(RplId rplCompositionId, int userPlayerId)
 	{
+		if (userPlayerId <= 0)
+			return;
+
 		IEntity composition = GetProviderFormRplId(rplCompositionId);
 		if (!composition)
 			return;
 		
+		IEntity playerEntity = GetGame().GetPlayerManager().GetPlayerControlledEntity(userPlayerId);
+		if (!playerEntity)
+			return;
+
+		if (vector.DistanceSqXZ(composition.GetOrigin(), playerEntity.GetOrigin()) > ALLOWED_PLAYER_DISTANCE_SQ)
+			return;
+
 		SCR_CampaignBuildingCompositionComponent buildingComponent = SCR_CampaignBuildingCompositionComponent.Cast(composition.FindComponent(SCR_CampaignBuildingCompositionComponent));
 		if (buildingComponent)
 			buildingComponent.SetCanPlaySoundOnDeletion(true);
@@ -212,13 +226,42 @@ class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 	//! Delete base, executed from user action
 	//! \param[in] RplId rplBaseId
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_DeleteBaseByUserAction(RplId rplBaseId)
+	protected void RpcAsk_DismantleBaseByUserAction(RplId rplBaseId, int userPlayerId)
 	{
-		IEntity base = GetProviderFormRplId(rplBaseId);
+		if (userPlayerId <= 0)
+			return;
+
+		IEntity baseEntity = GetProviderFormRplId(rplBaseId);
+		if (!baseEntity)
+			return;
+
+		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(baseEntity.FindComponent(SCR_CampaignMilitaryBaseComponent));
 		if (!base)
 			return;
 
-		RplComponent.DeleteRplEntity(base, false);
+		Faction playerFaction = SCR_FactionManager.SGetPlayerFaction(userPlayerId);
+		if (!playerFaction)
+			return;
+
+		// check if is exists dismantle task on this base for player faction
+		SCR_DismantleCampaignMilitaryBaseTaskEntity task = SCR_DismantleCampaignMilitaryBaseTaskEntity.Cast(SCR_CampaignTaskHelper.GetTaskOnBase(base, playerFaction, SCR_DismantleCampaignMilitaryBaseTaskEntity));
+		if (!task)
+			return;
+
+		// check if the player is assigned to task
+		if (!task.IsTaskAssignedTo(SCR_TaskExecutor.FromPlayerID(userPlayerId)))
+			return;
+
+		IEntity playerEntity = GetGame().GetPlayerManager().GetPlayerControlledEntity(userPlayerId);
+		if (!playerEntity)
+			return;
+
+		if (vector.DistanceSqXZ(baseEntity.GetOrigin(), playerEntity.GetOrigin()) > ALLOWED_PLAYER_DISTANCE_SQ)
+			return;
+
+		PrintFormat("Base:%1 was dismantled by playerId:%2", base.GetBaseName(), userPlayerId);
+
+		RplComponent.DeleteRplEntity(baseEntity, false);
 	}
 
 	//------------------------------------------------------------------------------------------------

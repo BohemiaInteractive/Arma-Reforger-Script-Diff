@@ -21,6 +21,13 @@ class SCR_InventoryAttachmentStorageUI : SCR_InventoryStorageBaseUI
 		m_widget.FindAnyWidget("HeaderOverlay").SetVisible(false);
 		ActivateCloseStorageButton();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override event void HandlerDeattached(Widget w)
+	{
+		super.HandlerDeattached(w);
+		DestroyEmptySlots();
+	}
 
 	protected override void SetPreviewItem()
 	{

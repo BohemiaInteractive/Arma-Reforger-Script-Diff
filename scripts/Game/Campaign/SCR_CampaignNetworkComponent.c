@@ -861,7 +861,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		msg.SetRadioMsg(msgType);
 		msg.SetFactionId(factionId);
 		msg.SetBaseCallsign(baseCallsign);
-		msg.SetCallerCallsign(companyCallsignIndexCaller, platoonCallsignIndexCaller, squadCallsignIndexCaller);
+		msg.SetCallerCallsign(companyCallsignIndexCaller, platoonCallsignIndexCaller, squadCallsignIndexCaller, characterCallsignIndexCaller);
 		msg.SetIsPublic(public);
 		msg.SetParam(param);
 		msg.SetPlayerID(m_PlayerController.GetPlayerId());
@@ -870,9 +870,9 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		int companyCallsignIndexCalled, platoonCallsignIndexCalled, squadCallsignIndexCalled, characterCallsignIndexCalled;
 		
 		if (called && callsignManager.GetEntityCallsignIndexes(called, companyCallsignIndexCalled, platoonCallsignIndexCalled, squadCallsignIndexCalled, characterCallsignIndexCalled))
-			msg.SetCalledCallsign(companyCallsignIndexCalled, platoonCallsignIndexCalled, squadCallsignIndexCalled);
+			msg.SetCalledCallsign(companyCallsignIndexCalled, platoonCallsignIndexCalled, squadCallsignIndexCalled, characterCallsignIndexCalled);
 
-		Rpc(RpcDo_PlayRadioMsg, msgType, factionId, baseCallsign, CompressCallsign(companyCallsignIndexCaller, platoonCallsignIndexCaller, squadCallsignIndexCaller), CompressCallsign(companyCallsignIndexCalled, platoonCallsignIndexCalled, squadCallsignIndexCalled), param, msg.GetSeed(), 1.0);
+		Rpc(RpcDo_PlayRadioMsg, msgType, factionId, baseCallsign, CompressCallsign(companyCallsignIndexCaller, platoonCallsignIndexCaller, squadCallsignIndexCaller, characterCallsignIndexCaller), CompressCallsign(companyCallsignIndexCalled, platoonCallsignIndexCalled, squadCallsignIndexCalled, characterCallsignIndexCalled), param, msg.GetSeed(), 1.0);
 		
 		if (public)
 			transmitter.BeginTransmission(msg);
@@ -887,21 +887,24 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected int CompressCallsign(int company, int platoon, int squad)
+	protected int CompressCallsign(int company, int platoon, int squad, int character)
 	{
-		return (company * 10000) + (platoon * 100) + squad;
+		return (company * 1000000) + (platoon * 10000) + (squad * 100) + character;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void DecompressCallsign(int callsign, out int company, out int platoon, out int squad)
+	protected void DecompressCallsign(int callsign, out int company, out int platoon, out int squad, out int character)
 	{
-		company = Math.Floor(callsign * 0.0001);
-		callsign = callsign - (company * 10000);
+		company = Math.Floor(callsign * 0.000001);
+		callsign = callsign - (company * 1000000);
 		
-		platoon = Math.Floor(callsign * 0.01);
-		callsign = callsign - (platoon * 100);
+		platoon = Math.Floor(callsign * 0.0001);
+		callsign = callsign - (platoon * 10000);
 		
-		squad = callsign;
+		squad = Math.Floor(callsign * 0.01);
+		callsign = callsign - (squad * 100);
+
+		character = callsign;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1210,6 +1213,38 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Play task notification msg
+	//! \param[in] taskNotification
+	//! \param[in] msg
+	//! \param[in] factionId
+	//! \param[in] baseCallsign
+	//! \param[in] callerGroupId
+	//! \param[in] calledGroupId
+	//! \param[in] grid
+	//! \param[in] quality
+	//! \param[in] playerID
+	void PlayTaskNotificationMsg(SCR_ETaskNotification taskNotification, SCR_ETaskNotificationMsg msg, int factionId, int baseCallsign, int callerGroupId, int calledGroupId, int grid, float quality, int playerID)
+	{
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		if (!campaign)
+			return;
+
+		if (playerID == 0 || playerID > 0 && playerID == m_PlayerController.GetPlayerId())
+			Rpc(RpcDo_PlayTaskNotificationMsg, taskNotification, msg, factionId, baseCallsign, callerGroupId, calledGroupId, grid, quality);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void RpcDo_PlayTaskNotificationMsg(SCR_ETaskNotification taskNotification, SCR_ETaskNotificationMsg msg, int factionId, int baseCallsign, int callerGroupId, int calledGroupId, int grid, float quality)
+	{
+		SCR_TaskNotificationManagerComponent taskNotificationManager = SCR_TaskNotificationManagerComponent.GetInstance();
+		if (!taskNotificationManager)
+			return;
+
+		taskNotificationManager.PlayTaskNotificationMsg(taskNotification, msg, factionId, baseCallsign, callerGroupId, calledGroupId, grid, quality);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] msg
 	//! \param[in] FactionId
@@ -1217,31 +1252,20 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	//! \param[in] callerCallsignCompany
 	//! \param[in] callerCallsignPlatoon
 	//! \param[in] callerCallsignSquad
+	//! \param[in] callerCallsignCharacter
 	//! \param[in] calledCallsignCompany
 	//! \param[in] calledCallsignPlatoon
 	//! \param[in] calledCallsignSquad
+	//! \param[in] calledCallsignCharacter
 	//! \param[in] isPublic
 	//! \param[in] param
 	//! \param[in] seed
 	//! \param[in] quality
 	//! \param[in] playerID
-	void PlayRadioMsg(SCR_ERadioMsg msg, int FactionId, int baseCallsign, int callerCallsignCompany, int callerCallsignPlatoon, int callerCallsignSquad, int calledCallsignCompany, int calledCallsignPlatoon, int calledCallsignSquad, bool isPublic, int param, float seed, float quality, int playerID)
+	void PlayRadioMsg(SCR_ERadioMsg msg, int FactionId, int baseCallsign, int callerCallsignCompany, int callerCallsignPlatoon, int callerCallsignSquad, int callerCallsignCharacter, int calledCallsignCompany, int calledCallsignPlatoon, int calledCallsignSquad, int calledCallsignCharacter, bool isPublic, int param, float seed, float quality, int playerID)
 	{
-		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
-		
-		if (!campaign)
-			return;
-		
-		SCR_CallsignManagerComponent callsignManager = SCR_CallsignManagerComponent.Cast(campaign.FindComponent(SCR_CallsignManagerComponent));
-		
-		if (!callsignManager)
-			return;
-		
-		int playerCallsignCompany, playerCallsignPlatoon, playerCallsignSquad, playerCallsignCharacter;
-		callsignManager.GetEntityCallsignIndexes(m_PlayerController.GetMainEntity(), playerCallsignCompany, playerCallsignPlatoon, playerCallsignSquad, playerCallsignCharacter);
-		
 		if (isPublic || playerID == m_PlayerController.GetPlayerId())
-			Rpc(RpcDo_PlayRadioMsg, msg, FactionId, baseCallsign, CompressCallsign(callerCallsignCompany, callerCallsignPlatoon, callerCallsignSquad), CompressCallsign(calledCallsignCompany, calledCallsignPlatoon, calledCallsignSquad), param, seed, quality);
+			Rpc(RpcDo_PlayRadioMsg, msg, FactionId, baseCallsign, CompressCallsign(callerCallsignCompany, callerCallsignPlatoon, callerCallsignSquad, callerCallsignCharacter), CompressCallsign(calledCallsignCompany, calledCallsignPlatoon, calledCallsignSquad, calledCallsignCharacter), param, seed, quality);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1259,16 +1283,16 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	{
 		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		
-		int callerCallsignCompany, callerCallsignPlatoon, callerCallsignSquad, calledCallsignCompany, calledCallsignPlatoon, calledCallsignSquad;
-		DecompressCallsign(callerCallsign, callerCallsignCompany, callerCallsignPlatoon, callerCallsignSquad);
-		DecompressCallsign(calledCallsign, calledCallsignCompany, calledCallsignPlatoon, calledCallsignSquad);
+		int callerCallsignCompany, callerCallsignPlatoon, callerCallsignSquad, callerCallsignCharacter, calledCallsignCompany, calledCallsignPlatoon, calledCallsignSquad, calledCallsignCharacter;
+		DecompressCallsign(callerCallsign, callerCallsignCompany, callerCallsignPlatoon, callerCallsignSquad, callerCallsignCharacter);
+		DecompressCallsign(calledCallsign, calledCallsignCompany, calledCallsignPlatoon, calledCallsignSquad, calledCallsignCharacter);
 		
 		SCR_CampaignFeedbackComponent comp = SCR_CampaignFeedbackComponent.GetInstance();
 		
 		if (!comp)
 			return;
 		
-		comp.PlayRadioMsg(msg, factionId, baseCallsign, callerCallsignCompany, callerCallsignPlatoon, callerCallsignSquad, calledCallsignCompany, calledCallsignPlatoon, calledCallsignSquad, param, seed, quality);
+		comp.PlayRadioMsg(msg, factionId, baseCallsign, callerCallsignCompany, callerCallsignPlatoon, callerCallsignSquad, callerCallsignCharacter, calledCallsignCompany, calledCallsignPlatoon, calledCallsignSquad, calledCallsignCharacter, param, seed, quality);
 
 //		if (checkHQReached)
 //			GetGame().GetCallqueue().CallLater(CheckHQReached, 7000)

@@ -33,7 +33,6 @@ class SCR_GroupSubMenuPlayerlist : SCR_GroupSubMenuBase
 		CreateViewProfileButton();
 		SetupNameChangeButton();
 		SetupPrivateChecker();
-		UpdateGroupSettingsButtons();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -73,7 +72,6 @@ class SCR_GroupSubMenuPlayerlist : SCR_GroupSubMenuBase
 		SCR_GroupTileButton.GetOnGroupTileClicked().Insert(UpdateGroupsMenu);
 		SCR_GroupTileButton.GetOnPlayerTileFocus().Insert(OnPlayerTileFocus);
 		SCR_GroupTileButton.GetOnPlayerTileFocusLost().Insert(OnPlayerTileFocusLost);
-		m_PlayerGroupController.GetOnSetSelectedGroupID().Insert(OnSetSelectedGroupId);
 		SetAcceptButtonStatus();
 	}	
 		
@@ -118,7 +116,6 @@ class SCR_GroupSubMenuPlayerlist : SCR_GroupSubMenuBase
 		SCR_AIGroup.GetOnFlagSelected().Remove(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnCustomDescriptionChanged().Remove(UpdateGroupsMenu);
 		m_PlayerGroupController.GetOnInviteReceived().Remove(SetAcceptButtonStatus);
-		m_PlayerGroupController.GetOnSetSelectedGroupID().Remove(OnSetSelectedGroupId);
 		
 		//todo:mku this is a temporary solution because of how playerlist is implemented right now
 		OverlayWidget header = OverlayWidget.Cast(m_wMenuRoot.FindAnyWidget("SortHeader"));
@@ -134,7 +131,16 @@ class SCR_GroupSubMenuPlayerlist : SCR_GroupSubMenuBase
 		SCR_GroupTileButton.GetOnPlayerTileFocus().Remove(OnPlayerTileFocus);
 		SCR_GroupTileButton.GetOnPlayerTileFocusLost().Remove(OnPlayerTileFocusLost);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	override protected void UpdateGroups(SCR_PlayerControllerGroupComponent playerGroupController)
+	{
+		super.UpdateGroups(playerGroupController);
+
+		if (playerGroupController == m_PlayerGroupController)
+			UpdateGroupSettingsButtons();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected void CreateNewGroup()
 	{
@@ -369,12 +375,6 @@ class SCR_GroupSubMenuPlayerlist : SCR_GroupSubMenuBase
 			return;
 		
 		buttonComp.m_OnClicked.Insert(OnPrivateCheckerClicked);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnSetSelectedGroupId(int groupId)
-	{
-		UpdateGroupSettingsButtons();
 	}
 
 	//------------------------------------------------------------------------------------------------

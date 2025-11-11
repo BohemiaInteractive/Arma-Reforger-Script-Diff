@@ -33,6 +33,8 @@ class SCR_CampaignFaction : SCR_Faction
 
 	protected int m_iControlPointsHeld;
 	
+	protected const bool USE_GROUP_FREQUENCY = true;
+
 	//------------------------------------------------------------------------------------------------
 	void GetStartingVehiclePrefabs(out notnull array<ResourceName> prefabs)
 	{
@@ -78,18 +80,55 @@ class SCR_CampaignFaction : SCR_Faction
 		
 		if (called && !callsignManager.GetEntityCallsignIndexes(called, companyCallsignIndex, platoonCallsignIndex, squadCallsignIndex, characterCallsignIndex))
 	    	return;
-		
-		SCR_CampaignRadioMsg msg = new SCR_CampaignRadioMsg();
-		msg.SetRadioMsg(msgType);
-		msg.SetFactionId(GetGame().GetFactionManager().GetFactionIndex(this));
-		msg.SetBaseCallsign(baseCallsign);
-		msg.SetCalledCallsign(companyCallsignIndex, platoonCallsignIndex, squadCallsignIndex);
-		msg.SetIsPublic(public);
-		msg.SetParam(param);
-		msg.SetPlayerID(calledID);
-		msg.SetEncryptionKey(radio.GetEncryptionKey());
 
-		transmitter.BeginTransmission(msg);
+		if (USE_GROUP_FREQUENCY)
+		{
+			// send a message from HQ trasmintter individually to each group
+			SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+			if (!groupsManager)
+				return;
+
+			array<SCR_AIGroup> playableGroups = groupsManager.GetPlayableGroupsByFaction(this);
+			if (!playableGroups)
+				return;
+
+			SCR_CampaignRadioMsg msg;
+
+			foreach (SCR_AIGroup group : playableGroups)
+			{
+				if (!group)
+					continue;
+
+				msg = new SCR_CampaignRadioMsg();
+				msg.SetRadioMsg(msgType);
+				msg.SetFactionId(GetGame().GetFactionManager().GetFactionIndex(this));
+				msg.SetBaseCallsign(baseCallsign);
+				msg.SetCalledCallsign(companyCallsignIndex, platoonCallsignIndex, squadCallsignIndex, characterCallsignIndex);
+				msg.SetIsPublic(public);
+				msg.SetParam(param);
+				msg.SetPlayerID(calledID);
+				msg.SetEncryptionKey(radio.GetEncryptionKey());
+
+				if (group.GetGroupRole() == SCR_EGroupRole.COMMANDER)
+					msg.SetMessageForCommander(true, this);
+
+				transmitter.BeginTransmissionFreq(msg, group.GetRadioFrequency());
+			}
+		}
+		else
+		{
+			// send a message only to HQ platoon frequency
+			SCR_CampaignRadioMsg msg = new SCR_CampaignRadioMsg();
+			msg.SetRadioMsg(msgType);
+			msg.SetFactionId(GetGame().GetFactionManager().GetFactionIndex(this));
+			msg.SetBaseCallsign(baseCallsign);
+			msg.SetCalledCallsign(companyCallsignIndex, platoonCallsignIndex, squadCallsignIndex, characterCallsignIndex);
+			msg.SetIsPublic(public);
+			msg.SetParam(param);
+			msg.SetPlayerID(calledID);
+			msg.SetEncryptionKey(radio.GetEncryptionKey());
+			transmitter.BeginTransmission(msg);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

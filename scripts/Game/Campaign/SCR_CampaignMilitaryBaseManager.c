@@ -267,8 +267,6 @@ class SCR_CampaignMilitaryBaseManager
 		if (m_Campaign.IsProxy())
 			return;
 
-		SCR_MilitaryBaseSystem.GetInstance().GetOnLogicRegisteredInBase().Insert(DisableExtraSeizingComponents);
-		SCR_MilitaryBaseSystem.GetInstance().GetOnBaseRegistered().Insert(OnBaseRegistered);
 		RecalculateRadioCoverage(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR));
 		RecalculateRadioCoverage(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.OPFOR));
 		EvaluateControlPoints();
@@ -1416,6 +1414,16 @@ class SCR_CampaignMilitaryBaseManager
 		baseManager.GetOnBaseUnregistered().Insert(OnBaseUnregistered);
 
 		m_Campaign.GetOnStarted().Insert(OnConflictStarted);
+
+		if (!Replication.IsServer())
+			return;
+
+		const SCR_MilitaryBaseSystem militaryBaseSystem = SCR_MilitaryBaseSystem.GetInstance();
+		if (militaryBaseSystem)
+		{
+			militaryBaseSystem.GetOnLogicRegisteredInBase().Insert(DisableExtraSeizingComponents);
+			militaryBaseSystem.GetOnBaseRegistered().Insert(OnBaseRegistered);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1433,5 +1441,12 @@ class SCR_CampaignMilitaryBaseManager
 
 		if (m_Campaign)
 			m_Campaign.GetOnStarted().Remove(OnConflictStarted);
+
+		const SCR_MilitaryBaseSystem militaryBaseSystem = SCR_MilitaryBaseSystem.GetInstance();
+		if (militaryBaseSystem)
+		{
+			militaryBaseSystem.GetOnLogicRegisteredInBase().Remove(DisableExtraSeizingComponents);
+			militaryBaseSystem.GetOnBaseRegistered().Remove(OnBaseRegistered);
+		}
 	}
 }

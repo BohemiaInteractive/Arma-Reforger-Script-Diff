@@ -100,6 +100,14 @@ class SCR_FlammableHitZone : SCR_VehicleHitZone
 	protected ParticleEffectEntity		m_BurningParticle; // Rapid fire damage particle emitter
 	protected ParticleEffectEntity		m_BurningGroundParticle; // Burning fuel on ground particle
 
+	override bool HasDataToReplicate()
+	{	
+		if (m_eFireState <= SCR_EBurningState.NONE)
+			return false;
+		
+		return true;
+	}
+	
 	override bool Save(notnull ScriptBitWriter writer)
 	{
 		writer.WriteInt(GetFireState());

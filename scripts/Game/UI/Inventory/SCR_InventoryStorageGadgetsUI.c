@@ -12,7 +12,7 @@ class SCR_InventoryStorageGadgetsUI : SCR_InventoryStorageBaseUI
 	// ! creates the slot
 	override SCR_InventorySlotUI CreateSlotUI( InventoryItemComponent pComponent, SCR_ItemAttributeCollection pAttributes = null )
 	{
-		return SCR_InventorySlotGadgetUI( pComponent, this );			//creates the slot 
+		return new SCR_InventorySlotGadgetUI( pComponent, this );			//creates the slot 
 	}
 	
 	

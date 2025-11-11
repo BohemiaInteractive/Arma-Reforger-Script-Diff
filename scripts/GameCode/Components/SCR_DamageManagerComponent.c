@@ -873,7 +873,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Determine secondary explosion prefab based on explosion value, type and resource type if defined
-	ResourceName GetSecondaryExplosion(float value, SCR_ESecondaryExplosionType explosionType, EResourceType resourceType = EResourceType.SUPPLIES, bool fire = false)
+	ResourceName GetSecondaryExplosion(float value, SCR_ESecondaryExplosionType explosionType, EResourceType resourceType = EResourceType.SUPPLIES, bool fire = false, out bool hasData = false)
 	{
 		SCR_DamageManagerComponentClass prefabData = SCR_DamageManagerComponentClass.Cast(GetComponentData(GetOwner()));
 		if (!prefabData)
@@ -888,6 +888,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		if (!secondaries)
 			return ResourceName.Empty;
 
+		hasData = true;
 		return secondaries.GetExplosionPrefab(value, explosionType, resourceType);
 	}
 
@@ -1066,36 +1067,42 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		if (!owner)
 			return;
 
-		ResourceName secondaryExplosionPrefab = GetSecondaryExplosion(resourceValue, SCR_ESecondaryExplosionType.RESOURCE);
-		if (secondaryExplosionPrefab.IsEmpty())
+		bool hasData;
+		ResourceName secondaryExplosionPrefab = GetSecondaryExplosion(resourceValue, SCR_ESecondaryExplosionType.RESOURCE, EResourceType.SUPPLIES, false, hasData);
+		if (!hasData)
 			return;
 
 		SCR_ResourceContainerQueueBase containerQueue = encapsulator.GetContainerQueue();
 		int containerCount = encapsulator.GetContainerCount();
 		SCR_ResourceContainer container;
-		float weight;
-		vector position;
-		vector averagePosition = owner.CoordToLocal(encapsulator.GetOwnerOrigin());
 		EntitySpawnParams spawnParams = new EntitySpawnParams();
-		spawnParams.Parent = owner;
 
 		// Get the weighed average position of explosion relative to encapsulator
-		for (int i; i < containerCount; i++)
+		// Only calculate if we actually have an explosion to spawn
+		if (!secondaryExplosionPrefab.IsEmpty())
 		{
-			container = containerQueue.GetContainerAt(i);
-			if (!container)
-				continue;
+			float weight;
+			vector position;
+			vector averagePosition = owner.CoordToLocal(encapsulator.GetOwnerOrigin());
+			spawnParams.Parent = owner;
 
-			// Determine secondary explosion position
-			weight = container.GetResourceValue() / resourceValue;
-			if (weight <= 0)
-				continue;
+			for (int i; i < containerCount; i++)
+			{
+				container = containerQueue.GetContainerAt(i);
+				if (!container)
+					continue;
 
-			position = owner.CoordToLocal(container.GetOwnerOrigin());
-			averagePosition += position * weight;
+				// Determine secondary explosion position
+				weight = container.GetResourceValue() / resourceValue;
+				if (weight <= 0)
+					continue;
+
+				position = owner.CoordToLocal(container.GetOwnerOrigin());
+				averagePosition += position * weight;
+			}
+			spawnParams.Transform[3] = averagePosition;
 		}
 
-		spawnParams.Transform[3] = averagePosition;
 
 		// Destroy the resources and deny further use
 		for (int i; i < containerCount; i++)
@@ -1108,7 +1115,9 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 			container.SetResourceRights(EResourceRights.NONE);
 		}
 
-		SecondaryExplosion(secondaryExplosionPrefab, instigator, spawnParams);
+		// Spawn explosion if prefab is available
+		if (!secondaryExplosionPrefab.IsEmpty())
+			SecondaryExplosion(secondaryExplosionPrefab, instigator, spawnParams);
 	}
 
 	//------------------------------------------------------------------------------------------------

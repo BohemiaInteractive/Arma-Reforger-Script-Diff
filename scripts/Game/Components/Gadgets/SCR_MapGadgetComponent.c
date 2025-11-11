@@ -102,6 +102,9 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 	//! \param[in] config
 	protected void OnMapOpen(MapConfiguration config)
 	{
+		if (SCR_WeaponSwitchingBaseUI.s_bOpened)
+			SCR_WeaponSwitchingBaseUI.GetWeaponSwitchingBaseUI().CloseQuickSlots(); // force close it as WeaponSelectionContext will obstruct input for MapContext
+		
 		if (m_FadeInOutEffect)
 			m_FadeInOutEffect.FadeOutEffect(false, m_fActivationDelay); // fade in after map open
 		

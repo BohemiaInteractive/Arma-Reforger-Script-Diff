@@ -9,13 +9,17 @@ class SCR_CampaignRadioMsg : ScriptedRadioMessage
 	protected int m_iCallerCompanyID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX;
 	protected int m_iCallerPlatoonID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX;
 	protected int m_iCallerSquadID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX;
+	protected int m_iCallerCharacterID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX;
 	protected int m_iCalledCompanyID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX;
 	protected int m_iCalledPlatoonID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX;
 	protected int m_iCalledSquadID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX;
+	protected int m_iCalledCharacterID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX;
 	protected float m_fSeed = Math.RandomFloat01();
 	protected bool m_bIsPublic = true;
 	protected int m_iParam = INVALID_RADIO_MSG_PARAM;
 	protected int m_iPlayerID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX;
+	protected bool m_bIsMessageForCommander;
+	protected SCR_Faction m_Faction;
 	
 	//------------------------------------------------------------------------------------------------
 	void SetRadioMsg(SCR_ERadioMsg msg)
@@ -36,19 +40,21 @@ class SCR_CampaignRadioMsg : ScriptedRadioMessage
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetCallerCallsign(int companyID, int platoonID, int squadID)
+	void SetCallerCallsign(int companyID, int platoonID, int squadID, int characterID)
 	{
 		m_iCallerCompanyID = companyID;
 		m_iCallerPlatoonID = platoonID;
 		m_iCallerSquadID = squadID;
+		m_iCallerCharacterID = characterID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetCalledCallsign(int companyID, int platoonID, int squadID)
+	void SetCalledCallsign(int companyID, int platoonID, int squadID, int characterID)
 	{
 		m_iCalledCompanyID = companyID;
 		m_iCalledPlatoonID = platoonID;
 		m_iCalledSquadID = squadID;
+		m_iCalledCharacterID = characterID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -69,6 +75,15 @@ class SCR_CampaignRadioMsg : ScriptedRadioMessage
 		m_iPlayerID = playerID;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] isMessageForCommander
+	//! \param[in] faction
+	void SetMessageForCommander(bool isMessageForCommander, notnull SCR_Faction faction)
+	{
+		m_bIsMessageForCommander = isMessageForCommander;
+		m_Faction = faction;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	float GetSeed()
 	{
@@ -102,13 +117,16 @@ class SCR_CampaignRadioMsg : ScriptedRadioMessage
 			int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(owner);
 			PlayerController controller = GetGame().GetPlayerManager().GetPlayerController(playerID);
 			
+			if (m_bIsMessageForCommander && m_Faction && !m_Faction.IsPlayerCommander(playerID))
+				return;
+
 			if (!controller)
 				return;
 			
 			SCR_CampaignNetworkComponent comp = SCR_CampaignNetworkComponent.Cast(controller.FindComponent(SCR_CampaignNetworkComponent));
 			
 			if (comp)
-				comp.PlayRadioMsg(m_iRadioMsg, m_iFactionId, m_iBaseCallsign, m_iCallerCompanyID, m_iCallerPlatoonID, m_iCallerSquadID, m_iCalledCompanyID, m_iCalledPlatoonID, m_iCalledSquadID, m_bIsPublic, m_iParam, m_fSeed, quality, m_iPlayerID);
+				comp.PlayRadioMsg(m_iRadioMsg, m_iFactionId, m_iBaseCallsign, m_iCallerCompanyID, m_iCallerPlatoonID, m_iCallerSquadID, m_iCallerCharacterID, m_iCalledCompanyID, m_iCalledPlatoonID, m_iCalledSquadID, m_iCalledCharacterID, m_bIsPublic, m_iParam, m_fSeed, quality, m_iPlayerID);
 		}
 		else
 		{

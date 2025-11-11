@@ -47,7 +47,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	protected ref ScriptInvoker m_OnPlayableGroupRemoved = new ScriptInvoker();
 	protected ref ScriptInvoker m_OnNewGroupsAllowedChanged = new ScriptInvoker();
 	protected ref ScriptInvoker m_OnCanPlayersChangeAttributeChanged = new ScriptInvoker();
-	protected int m_iLatestGroupID = 0;
+	protected int m_iLatestGroupID = 1000; // Lower ids reserved for pre-defined groups
 	protected ref map<Faction, ref array<SCR_AIGroup>> m_mPlayableGroups = new map<Faction, ref array<SCR_AIGroup>>();
 	protected ref map<Faction, int> m_mPlayableGroupFrequencies = new map<Faction, int>();
 	protected ref map<int, ref FactionHolder> m_mUsedFrequenciesMap = new map<int, ref FactionHolder>();
@@ -164,23 +164,22 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	void CreatePredefinedGroups()
+	//! Setup preset groups once
+	protected void CreatePredefinedGroups()
 	{
 		FactionManager factionManager = GetGame().GetFactionManager();
 		if (!factionManager)
 			return;
 
 		array<Faction> factions = {};
-
 		factionManager.GetFactionsList(factions);
-		bool isConfigFound;
-
+		
 		bool isCommanderRoleEnabled = true;
 		SCR_GameModeCampaign gameModeCampaign = SCR_GameModeCampaign.Cast(GetGame().GetGameMode());
 		if (gameModeCampaign)
 			isCommanderRoleEnabled = gameModeCampaign.GetCommanderRoleEnabled();
 
+		int presetGroupId = 1;
 		foreach (Faction faction : factions)
 		{
 			SCR_Faction scrFaction = SCR_Faction.Cast(faction);
@@ -209,6 +208,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 					{
 						if (group.IsPredefinedGroup() && (group.GetGroupRole() == gr.GetGroupRole()))
 						{
+							group.SetGroupID(presetGroupId++);
 							found = true;
 							break;
 						}
@@ -222,11 +222,12 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 				if (!newGroup)
 					continue;
 
+				newGroup.SetGroupID(presetGroupId++);
 				newGroup.SetPredefinedGroup(true);
 				newGroup.SetCanDeleteIfNoPlayer(false);
-				isConfigFound = false;
 
 				// setup group by groupRolePresetConfig if is configured
+				bool isConfigFound;
 				foreach (SCR_GroupRolePresetConfig config : groupRolePresetConfigs)
 				{
 					if (config.GetGroupRole() == gr.GetGroupRole())
@@ -814,6 +815,29 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		}
 
 		return playerRank >= requiredRank;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_GroupRolePresetConfig FindGroupRolePresetConfig(notnull Faction faction, SCR_EGroupRole role)
+	{
+		SCR_Faction scrFaction = SCR_Faction.Cast(faction);
+		if (!scrFaction)
+			return null;
+
+		array<SCR_GroupRolePresetConfig> groupRolePresetConfigs = {};
+		scrFaction.GetGroupRolePresetConfigs(groupRolePresetConfigs);
+		SCR_GroupRolePresetConfig groupPreset;
+
+		foreach (SCR_GroupRolePresetConfig preset : groupRolePresetConfigs)
+		{
+			if (preset.GetGroupRole() == role)
+			{
+				groupPreset = preset;
+				break;
+			}
+		}
+
+		return groupPreset;
 	}
 
 	//------------------------------------------------------------------------------------------------

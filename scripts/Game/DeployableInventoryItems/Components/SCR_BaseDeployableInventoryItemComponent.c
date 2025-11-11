@@ -114,14 +114,22 @@ class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 		if (m_bIsDeployed)
 			return;
 		
+		// transform containing information about the position where replacement entity is going to be spawned
 		vector transform[4];
-		IEntity owner = GetOwner();
-		SCR_TerrainHelper.GetTerrainBasis(owner.GetOrigin(), transform, GetGame().GetWorld(), false, new TraceParam());
+		const IEntity owner = GetOwner();
+		const World world = owner.GetWorld();
+		const TraceParam param = new TraceParam();
+		const array<IEntity> ignoredEntities = {owner, userEntity};
+		param.ExcludeArray = ignoredEntities;
+		param.LayerMask = EPhysicsLayerPresets.Projectile; // to prevent entites from being deployed on leaves
+		
+		// +10cm buffer to prevent it from being deployed inside other objects
+		SCR_TerrainHelper.GetTerrainBasis(owner.GetOrigin() + vector.Up * 0.1, transform, world, false, param);
 
-		m_aOriginalTransform = transform;
+		owner.GetWorldTransform(m_aOriginalTransform);
 
 		EntitySpawnParams params = new EntitySpawnParams();
-		params.Transform = m_aOriginalTransform;
+		params.Transform = transform;
 		params.TransformMode = ETransformMode.WORLD;
 
 		SCR_BaseDeployableInventoryItemComponentClass data = SCR_BaseDeployableInventoryItemComponentClass.Cast(GetComponentData(owner));
@@ -132,7 +140,7 @@ class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 		if (!resource.IsValid())
 			return;
 
-		m_ReplacementEntity = GetGame().SpawnEntityPrefab(resource, GetGame().GetWorld(), params);
+		m_ReplacementEntity = GetGame().SpawnEntityPrefab(resource, world, params);
 		if (!m_ReplacementEntity)
 			return;
 

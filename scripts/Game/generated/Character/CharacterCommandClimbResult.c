@@ -27,6 +27,7 @@ class CharacterCommandClimbResult
 	vector 		mClimbDirectionLS;	//! Climbing direction (in local space of grap-point's parent)
 
 	IEntity		m_ClimbParent;	//! Entity that we are climbing on.
+	int				m_LinkingObjectIndex; //! Internal variable used for character linking to climbable entity.
 
 
 }

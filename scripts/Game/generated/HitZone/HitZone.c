@@ -90,6 +90,8 @@ class HitZone: ScriptAndConfig
 	\param ScriptBitReader reader: Buffer to read the data from.
 	*/
 	event protected bool Load(notnull ScriptBitReader reader);
+	//! Use it to save bandwidth in some default conditions. Use it if Save and Load are overriden.
+	event protected bool HasDataToReplicate();
 	//! Call OnInit method from script
 	event void OnInit(IEntity pOwnerEntity, GenericComponent pManagerComponent);
 	//! Called when damage changes

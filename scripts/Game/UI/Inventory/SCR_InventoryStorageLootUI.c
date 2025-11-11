@@ -17,6 +17,10 @@ class SCR_InventoryStorageLootUI : SCR_InventoryStorageBaseUI
 	// ! creates the slot
 	protected override SCR_InventorySlotUI CreateSlotUI( InventoryItemComponent pComponent, SCR_ItemAttributeCollection pAttributes = null )
 	{
+		const SCR_ItemAttributeCollection attributes = SCR_ItemAttributeCollection.Cast(pComponent.GetAttributes());
+		if (!attributes || !attributes.IsVisible(pComponent))
+			return null; // following slots dont add themselves as handlers if the item is not visible, thus skip creation of those as without a strong ref they will self destruct, and simply waste time
+
 		BaseInventoryStorageComponent inventoryStorageComponent = GetCurrentNavigationStorage();
 		
 		if (inventoryStorageComponent)
@@ -24,9 +28,9 @@ class SCR_InventoryStorageLootUI : SCR_InventoryStorageBaseUI
 			IEntity storageOwner = inventoryStorageComponent.GetOwner();
 			
 			if (!storageOwner || !storageOwner.FindComponent(SCR_ArsenalInventoryStorageManagerComponent))
-				return new SCR_InventorySlotUI(pComponent, this, true);
+				return new SCR_InventorySlotUI(pComponent, this, true, pAttributes: attributes);
 			
-			SCR_ArsenalInventorySlotUI slotUI = SCR_ArsenalInventorySlotUI(pComponent, this, false, -1, null);
+			SCR_ArsenalInventorySlotUI slotUI = new SCR_ArsenalInventorySlotUI(pComponent, this, false, -1, attributes);
 			
 			if (inventoryStorageComponent)
 			{
@@ -37,19 +41,19 @@ class SCR_InventoryStorageLootUI : SCR_InventoryStorageBaseUI
 		}
 		else if (WeaponAttachmentsStorageComponent.Cast(pComponent))
 		{
-			return SCR_InventorySlotWeaponUI(pComponent, this, true);
+			return new SCR_InventorySlotWeaponUI(pComponent, this, true, pAttributes: attributes);
 		}
 		else if (SCR_ResourceComponent.FindResourceComponent(pComponent.GetOwner()))
 		{
-			return SCR_SupplyInventorySlotUI(pComponent, this, true);
+			return new SCR_SupplyInventorySlotUI(pComponent, this, true, pAttributes: attributes);
 		}
 		else if (BaseInventoryStorageComponent.Cast( pComponent))
 		{
-			return SCR_InventorySlotStorageEmbeddedUI(pComponent, this, true);
+			return new SCR_InventorySlotStorageEmbeddedUI(pComponent, this, true, pAttributes: attributes);
 		}
 		else
 		{
-			return new SCR_InventorySlotUI(pComponent, this, true);
+			return new SCR_InventorySlotUI(pComponent, this, true, pAttributes: attributes);
 		}
 	}
 

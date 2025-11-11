@@ -106,7 +106,7 @@ class SCR_InventoryOpenedStorageArsenalUI : SCR_InventoryOpenedStorageUI
 		}
 		else
 		{
-			SCR_ArsenalInventorySlotUI slotUI = SCR_ArsenalInventorySlotUI(pComponent, this, false, -1, null); //creates the slot
+			SCR_ArsenalInventorySlotUI slotUI = new SCR_ArsenalInventorySlotUI(pComponent, this, false, -1, null); //creates the slot
 			
 			slotUI.SetArsenalResourceComponent(m_ResourceComponent);
 			SCR_InventoryStorageBaseUI.ARSENAL_SLOT_STORAGES.Insert(slotUI, GetCurrentNavigationStorage().GetOwner());

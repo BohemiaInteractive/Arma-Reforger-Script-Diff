@@ -23,6 +23,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	protected SCR_ResourceConsumer								m_ResourceConsumer;
 	protected SCR_InventoryMenuUI								m_MenuHandler;
 	protected ref array<SCR_InventorySlotUI>					m_aSlots				= {};
+	protected ref array<Widget>									m_aEmptySlotWidget;
 	protected SCR_InventorySlotUI								m_pSelectedSlot			= null;
 	protected SCR_InventorySlotUI								m_pPrevSelectedSlot		= null;
 	protected SCR_InventorySlotUI								m_pFocusedSlot			= null;
@@ -597,19 +598,19 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		}
 		else if ( WeaponAttachmentsStorageComponent.Cast( pComponent ) )
 		{
-			return SCR_InventorySlotWeaponUI( pComponent, this, false );			//creates the slot
+			return new SCR_InventorySlotWeaponUI( pComponent, this, false );			//creates the slot
 		}
 		else if (SCR_ResourceComponent.FindResourceComponent(pComponent.GetOwner()))
 		{
-			return SCR_SupplyInventorySlotUI(pComponent, this, false);			//creates the slot
+			return new SCR_SupplyInventorySlotUI(pComponent, this, false);			//creates the slot
 		}
 		else if ( BaseInventoryStorageComponent.Cast( pComponent ) )
 		{
-			return SCR_InventorySlotStorageEmbeddedUI( pComponent, this, false );			//creates the slot
+			return new SCR_InventorySlotStorageEmbeddedUI( pComponent, this, false );			//creates the slot
 		}
 		else if (pComponent.GetOwner().FindComponent(SCR_ArsenalInventoryStorageManagerComponent))
 		{
-			SCR_ArsenalInventorySlotUI slotUI = SCR_ArsenalInventorySlotUI(pComponent, this, false, -1, null);
+			SCR_ArsenalInventorySlotUI slotUI = new SCR_ArsenalInventorySlotUI(pComponent, this, false, -1, null);
 			BaseInventoryStorageComponent inventoryStorageComponent = GetCurrentNavigationStorage();
 
 			if (inventoryStorageComponent)
@@ -906,42 +907,61 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		// TODO: optimize? ( the existing slots must be deleted. The previous algorithm doesn't work any more, since the number of slots is unknown due to the aggregation-stacking of the items of the same type )
 		DeleteSlots();
 		
+		// number of items for which slots are not created, as they are part of the stack in a already exising slot
 		int iCompensationOffset = 0;
 		array<SCR_InventorySlotUI> slotsToUpdate = {};
 					
-		for (int i = 0; i < pItemsInStorage.Count(); i++)
+		InventoryItemComponent iic;
+		SCR_ItemAttributeCollection attributes;
+		RplComponent rplComp;
+		SCR_InventorySlotUI uiSlot;
+		foreach (int i, IEntity item : pItemsInStorage)
 		{
-			InventoryItemComponent pComponent = GetItemComponentFromEntity( pItemsInStorage[i] );
-			
-			if ( !pComponent )
+			if (!item)
 				continue;
-			
-			SCR_ItemAttributeCollection attributes = SCR_ItemAttributeCollection.Cast(pComponent.GetAttributes());
-			bool stackable = (attributes && attributes.IsStackable());		
-			int m = FindItem( pComponent );	//does the item already exist in the same inventory container?
 
-			if ( m != -1 && stackable )
+			iic = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+			if (!iic)
+				continue; // item in inventory without iic sounds like insanity but im not going to question safety
+
+			const int slotId = FindItem(iic);
+			if (slotId < 0)
 			{
-				RplComponent rplComp = RplComponent.Cast(pItemsInStorage[i].FindComponent(RplComponent));
-				if (m_aSlots[m].IsInherited(SCR_SupplyInventorySlotUI) && rplComp)
+				uiSlot = CreateSlotUI(iic);
+				if (!uiSlot)
 				{
-					m_aSlots[ m ].IncreaseStackNumberWithRplId(rplComp.Id()); 
-					slotsToUpdate.Insert(m_aSlots[m]);
-				}
-				else
-				{
-					m_aSlots[ m ].IncreaseStackNumber();		//if it exists, just increase the stacked number and don't create new slot
+					iCompensationOffset++;
+					continue;
 				}
 
-				iCompensationOffset++;
+				if (i - iCompensationOffset > m_aSlots.Count() - 1)			//if the item is not identical, create a new slow
+					m_aSlots.Insert(uiSlot);
+				else
+					m_aSlots[i - iCompensationOffset++] = uiSlot;
+
+				continue;
+			}
+
+			attributes = SCR_ItemAttributeCollection.Cast(iic.GetAttributes());
+			if (!attributes || !attributes.IsStackable())
+				continue;
+
+			uiSlot = m_aSlots[slotId];
+			if (!uiSlot)
+				continue;
+
+			rplComp = RplComponent.Cast(item.FindComponent(RplComponent));
+			if (rplComp && uiSlot.IsInherited(SCR_SupplyInventorySlotUI))
+			{
+				uiSlot.IncreaseStackNumberWithRplId(rplComp.Id()); 
+				slotsToUpdate.Insert(uiSlot);
 			}
 			else
 			{
-				if ( i - iCompensationOffset > m_aSlots.Count()-1 )			//otherwise if the item is not identical, create a new slow
-					m_aSlots.Insert( CreateSlotUI(pComponent) );
-				else
-					m_aSlots[ i - iCompensationOffset++ ] = CreateSlotUI(pComponent);
+				uiSlot.IncreaseStackNumber();		//if it exists, just increase the stacked number and don't create new slot
 			}
+
+			iCompensationOffset++;
 		}
 
 		foreach (SCR_InventorySlotUI slot : slotsToUpdate)
@@ -1213,12 +1233,20 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			child = child.GetSibling();
 		}
 
+		SCR_InventorySlotUI firstVisibleSlot;
 		foreach ( int i, SCR_InventorySlotUI pSlot: m_aSlots )
 		{
 			if ( pSlot )
 			{
 				bool visible = (pSlot.GetPage() == iPage);
 				pSlot.SetSlotVisible(visible);
+
+				if (!visible && pSlot == m_pLastFocusedSlot)	// when slot is made invisible then it looses track of its button, as it is disabled
+					m_pLastFocusedSlot = null;					// thus we should never try to refocus on such slot as its not possible
+
+				if (visible && !firstVisibleSlot)	// because previously focused slot might be disabled now
+					firstVisibleSlot = pSlot;		// we need to find first visible slot, in case that we will want to focus on it
+
 				if (!visible)
 					continue;
 
@@ -1242,7 +1270,10 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 				}
 			}
 		}
-				
+
+		if (!m_pLastFocusedSlot) // if we didnt have, or slot that was focused last time, got disabled
+			m_pLastFocusedSlot = firstVisibleSlot; // then we need to point to something that has a button, meaning that it can be focused
+
 		if( m_iNrOfPages > 1 )
 			ShowPagesCounter( true, iPage+1, m_iNrOfPages );
 		else
@@ -1719,20 +1750,45 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			sText += "-";
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	// ! creates the simple matrix of dimension [ m_iMaxRows, m_iMaxColumns ]
-	protected void CreateEmptyLayout()
+	//! \param[in] recreate set to true will first destroy previously created empty slots. If it is false, then game will only create new slots if current number of empty slots is different than (m_iMaxRows * m_iMaxColumns)
+	protected void CreateEmptyLayout(bool recreate = false)
 	{
+		if (!m_aEmptySlotWidget)
+			m_aEmptySlotWidget = {};
+		else if (recreate)
+			DestroyEmptySlots();
+		else if (m_aEmptySlotWidget.Count() == m_iMaxRows * m_iMaxColumns)
+			return; // if number of slots has not changed then dont make new ones
+
 		for( int iLoop = 0; iLoop < m_iMaxRows; iLoop++ )
 		{
 			for( int jLoop = 0; jLoop < m_iMaxColumns; jLoop++ )
 			{
-				CreateEmptySlotUI( iLoop, jLoop );
+				m_aEmptySlotWidget.Insert(CreateEmptySlotUI( iLoop, jLoop ));
 			}
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! Destroys all empty slots which were created by this handler
+	protected void DestroyEmptySlots()
+	{
+		if (!m_aEmptySlotWidget)
+			return;
+
+		foreach (Widget emptySlot : m_aEmptySlotWidget)
+		{
+			if (!emptySlot)
+				continue;
+
+			emptySlot.RemoveFromHierarchy();
+		}
+
+		m_aEmptySlotWidget.Clear();
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	// ! get the item inventory component
@@ -1788,23 +1844,15 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	//!
 	void SetSlotFocused( SCR_InventorySlotUI pSlotUI = null, bool bSelected = true )
 	{
-		SCR_InventoryMenuUI menuHandler = GetInventoryMenuHandler();
-		
-		if( bSelected )
+		if(bSelected)
 		{
 			m_pFocusedSlot = pSlotUI;
-			/*
-			if( menuHandler )
-				menuHandler.SetActiveStorage( this );
-			*/
+			if (m_pFocusedSlot)
+				SetLastFocusedSlot(m_pFocusedSlot);
 		}
 		else
 		{
 			m_pFocusedSlot = null;
-			/*
-			if( menuHandler )
-				menuHandler.SetActiveStorage( null );
-			*/
 		}
 	}
 		
@@ -1918,7 +1966,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		{
 			if ( pSlot )
 			{
-				if ( !pSlot.IsSlotSelected() )
+				if ( !pSlot.IsSelected() )
 				{
 					pSlot.SetEnabledForMove( !bDim );
 				}
@@ -1961,6 +2009,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			m_ResourceComponent.TEMP_GetOnInteractorReplicated().Remove(RefreshConsumer);
 		
 		m_ResourceSubscriptionHandleConsumer = null;
+		DeleteSlots();
 	}
 			
 	//------------------------------------------------------------------------------------------------

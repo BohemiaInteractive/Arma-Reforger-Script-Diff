@@ -31,6 +31,7 @@ class SCR_InventoryGearInspectionPointUI : SCR_InventoryAttachmentPointUI
 		}
 		
 		super.HandlerDeattached(w);
+		ClearSlots();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -125,38 +126,51 @@ class SCR_InventoryGearInspectionPointUI : SCR_InventoryAttachmentPointUI
 	//------------------------------------------------------------------------------------------------
 	override protected void UpdateOwnedSlots(notnull array<IEntity> pItemsInStorage)
 	{
-		int count = pItemsInStorage.Count();
-		
-		if (count < m_aSlots.Count())
+		const int numberOfItems = pItemsInStorage.Count();
+		const int initialNumberOfSlots = m_aSlots.Count();
+		if (numberOfItems < initialNumberOfSlots)
 		{
-			for (int i = m_aSlots.Count() - count; i > 0; i--)
+			SCR_InventorySlotUI slotUI;
+			for (int i = initialNumberOfSlots - numberOfItems - 1; i > 0; i--)
 			{
-				SCR_InventorySlotUI slotUI = m_aSlots[m_aSlots.Count() - 1];
+				slotUI = m_aSlots[i + numberOfItems];
 				if (slotUI)
 					slotUI.Destroy();
 			}
 		}
-		m_aSlots.Resize(count);
-		for (int i = 0; i < count; i++)
-		{
-			InventoryItemComponent pComponent = GetItemComponentFromEntity( pItemsInStorage[i] );
 
-			if (m_aSlots[i])
-				m_aSlots[i].UpdateReferencedComponent(pComponent);
+		m_aSlots.Resize(numberOfItems);
+		IEntity item;
+		InventoryItemComponent iic;
+		SCR_InventorySlotGearInspectionUI inspectionSlot;
+		foreach (int i, SCR_InventorySlotUI slot : m_aSlots)
+		{
+			item = pItemsInStorage[i];
+			if (item)
+				iic = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+			else
+				iic = null;
+
+			if (slot)
+			{
+				slot.UpdateReferencedComponent(iic);
+			}
 			else
 			{
-				m_aSlots[i] = CreateSlotUI(pComponent);
+				slot = CreateSlotUI(iic);
+				m_aSlots[i] = slot;
 			}
 
 			string slotName;
-			typename slotType = GetSlotType(m_Storage.GetSlot(i), slotName);
-			if (!slotName.Empty && slotType)
-			{
-				SCR_InventorySlotGearInspectionUI slot = SCR_InventorySlotGearInspectionUI.Cast(m_aSlots[i]);
-				if (slot)
-					slot.m_tAttachmentType = slotType;
-				m_MenuHandler.AddItemToAttachmentSelection(slotName, slot);
-			}
+			const typename slotType = GetSlotType(m_Storage.GetSlot(i), slotName);
+			if (!slotType || slotName.IsEmpty())
+				continue;
+
+			inspectionSlot = SCR_InventorySlotGearInspectionUI.Cast(slot);
+			if (inspectionSlot)
+				inspectionSlot.m_tAttachmentType = slotType;
+
+			m_MenuHandler.AddItemToAttachmentSelection(slotName, inspectionSlot);
 		}
 	}
 		
@@ -212,6 +226,7 @@ class SCR_InventoryGearInspectionPointUI : SCR_InventoryAttachmentPointUI
 		callBack.m_pStorageTo = this;
 		callBack.m_pStorageMan = m_InventoryManager;
 		callBack.m_eAttachAction = EAttachAction.ATTACH;
+		callBack.m_pStorageToFocus = callBack.m_pStorageFrom;
 		
 		m_InventoryManager.EquipAny(m_Storage, item, -1, callBack);
 		

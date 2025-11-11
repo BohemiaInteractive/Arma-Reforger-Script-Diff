@@ -228,29 +228,15 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		SCR_Faction scrPlayerFaction = SCR_Faction.Cast(playerFaction);
 		if (scrPlayerFaction)
 		{
-			SCR_GroupRolePresetConfig groupPreset;
-			SCR_EGroupRole groupRole = group.GetGroupRole();
-
 			// Commander can only join group with Commander role
+			SCR_EGroupRole groupRole = group.GetGroupRole();
 			if (scrPlayerFaction.GetCommanderId() == playerID && groupRole != SCR_EGroupRole.COMMANDER)
 				return false;
 
 			// Check if player has required rank for group loadouts
-			array<SCR_GroupRolePresetConfig> availableGroupRolePresetConfigs = {};
-			scrPlayerFaction.GetGroupRolePresetConfigs(availableGroupRolePresetConfigs);
-			foreach (SCR_GroupRolePresetConfig groupRolePreset : availableGroupRolePresetConfigs)
-			{
-				if (groupRolePreset.GetGroupRole() == group.GetGroupRole())
-				{
-					groupPreset = groupRolePreset;
-					break;
-				}
-			}
-
+			SCR_GroupRolePresetConfig groupPreset = groupsManager.FindGroupRolePresetConfig(scrPlayerFaction, groupRole);
 			if (groupPreset)
-			{
 				return groupsManager.HasPlayerRequiredRank(groupPreset, playerID, true);
-			}
 		}
 
 		return true;
@@ -598,7 +584,20 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 			if (inviterComponent && socialComp.IsRestricted(inviterComponent.GetPlayerId(), EUserInteraction.Invitation))
 				return;
 		}
-		
+
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		SCR_AIGroup group = groupsManager.FindGroup(m_iGroupID);
+		if (!group)
+			return;
+
+		SCR_GroupRolePresetConfig groupPreset = groupsManager.FindGroupRolePresetConfig(group.GetFaction(), group.GetGroupRole());
+		if (groupPreset && !groupsManager.HasPlayerRequiredRank(groupPreset, playerID, true))
+		{
+			// Show "Insufficient rank" notification to client
+			SCR_NotificationsComponent.SendToPlayer(GetPlayerID(), ENotification.GROUPS_INVITE_CANCELLED_INSUFFICIENT_RANK);
+			return;
+		}
+
 		invitedPlayerGroupComponent.InviteThisPlayer(m_iGroupID, GetPlayerID());
 	}
 	

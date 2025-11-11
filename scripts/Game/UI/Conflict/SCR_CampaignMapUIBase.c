@@ -1448,7 +1448,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		}
 
 		MapConfiguration mapConfig = SCR_MapEntity.GetMapInstance().GetMapConfig();
-		if (!mapConfig || mapConfig.MapEntityMode != EMapEntityMode.FULLSCREEN)
+		if (!mapConfig || (mapConfig.MapEntityMode != EMapEntityMode.FULLSCREEN && mapConfig.MapEntityMode != EMapEntityMode.SPAWNSCREEN))
 		{
 			SetRallyPointVisible(false);
 			return;

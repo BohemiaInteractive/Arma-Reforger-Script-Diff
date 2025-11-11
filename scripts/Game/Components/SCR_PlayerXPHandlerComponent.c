@@ -28,6 +28,8 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 	protected bool m_bSeizingRewardCycleActive;
 	protected SCR_CampaignMilitaryBaseComponent m_SeizedBaseComponent;
 
+	protected ref map<SCR_EXPRewards, WorldTimestamp> m_mRewardCooldowns = new map<SCR_EXPRewards, WorldTimestamp>(); //!< <XPReward type, cooldownTimestamp>
+
 	//------------------------------------------------------------------------------------------------
 	//! Getter for player XP
 	int GetPlayerXP()
@@ -384,6 +386,35 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] rewardID
+	//! returns true if player has active reward cooldown
+	protected bool HasPlayerRewardCooldown(SCR_EXPRewards rewardID)
+	{
+		ChimeraWorld world = GetGame().GetWorld();
+		if (!world)
+			return false;
+
+		WorldTimestamp cooldownTimestamp;
+		if (!m_mRewardCooldowns.Find(rewardID, cooldownTimestamp))
+			return false;
+
+		return !world.GetServerTimestamp().Greater(cooldownTimestamp);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Sets to player reward cooldown
+	//! \param[in] rewardID
+	//! \param[in] cooldown
+	protected void SetPlayerRewardCooldown(SCR_EXPRewards rewardID, float cooldown)
+	{
+		ChimeraWorld world = GetGame().GetWorld();
+		if (!world)
+			return;
+
+		m_mRewardCooldowns.Set(rewardID, world.GetServerTimestamp().PlusSeconds(cooldown));
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Addition to player XP
 	//! \param[in] rewardID
 	//! \param[in] multiplier
@@ -403,6 +434,16 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 		
 		if (!comp)
 			return;
+
+		// checks whether the player can receive an XP reward depending on if the reward cooldown has expired
+		SCR_XPRewardInfo rewardInfo = comp.GetXpRewardInfo(rewardID);
+		if (rewardInfo && rewardInfo.CanUseRewardCooldown())
+		{
+			if (HasPlayerRewardCooldown(rewardID))
+				return;
+
+			SetPlayerRewardCooldown(rewardID, rewardInfo.GetRewardCooldown());
+		}
 
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetOwner());
 

@@ -335,6 +335,13 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 			return false;
 		}
 
+		SCR_CampaignBuildingPlacingHQBaseEditorComponent hqBaseEditorComponent = SCR_CampaignBuildingPlacingHQBaseEditorComponent.Cast(FindEditorComponent(SCR_CampaignBuildingPlacingHQBaseEditorComponent, true, true));
+		if (hqBaseEditorComponent && hqBaseEditorComponent.IsNearAnyHQ(outNotification))
+		{
+			previewStateToShow = SCR_EPreviewState.BLOCKED;
+			return false;
+		}
+
 		return obstructionComponent.CanCreate(outNotification, previewStateToShow);
 	}
 
