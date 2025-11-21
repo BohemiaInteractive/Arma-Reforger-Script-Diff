@@ -47,7 +47,7 @@ class SCR_AdditionalGameModeSettingsComponent : SCR_BaseGameModeComponent
 	protected bool m_bAdditionalArtilleryOrderDistancePenalty;
 
 	[RplProp(onRplName: "OnNightNoiseSettingChanged"), Attribute(desc: "Disable noise effect which will be visible in dark places")]
-	protected bool m_bDisableNightNoiseEffect;
+	protected bool m_bDisableNightNoiseEffect = true;
 	
 	protected ref ScriptInvokerInt m_OnNametagRelationFilterUpdated;
 	protected ref ScriptInvokerInt m_OnNametagControllerFilterUpdated;
@@ -328,6 +328,7 @@ class SCR_AdditionalGameModeSettingsComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] disabled set to true will disable night grain effect for the host and all clients
 	void SetNightNoiseEffectState_S(bool disabled)
 	{
 		m_bDisableNightNoiseEffect = disabled;

@@ -13,7 +13,7 @@ class SCR_NoiseFilterEffect : SCR_BaseScreenEffect
 	protected ref CurveFloat m_BrightnessIntensityMap;
 
 	protected static float s_fGrainIntensity;
-	protected static bool s_bDisableNightNoiseEffect;
+	protected static bool s_bDisableNightNoiseEffect = true;
 
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] newState
@@ -135,6 +135,6 @@ class SCR_NoiseFilterEffect : SCR_BaseScreenEffect
 	{
 		SCR_DeployMenuBase.SGetOnMenuOpen().Remove(OnRespawnMenuOpen);
 		s_fGrainIntensity = 0;
-		s_bDisableNightNoiseEffect = false;
+		s_bDisableNightNoiseEffect = true;
 	}
 }

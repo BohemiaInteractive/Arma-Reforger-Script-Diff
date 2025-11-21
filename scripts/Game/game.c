@@ -690,8 +690,8 @@ class ArmaReforgerScripted : ChimeraGame
 #endif
 
 		const SCR_AdditionalGameModeSettingsComponent additionalSettingsComp = SCR_AdditionalGameModeSettingsComponent.GetInstance();
-		if (additionalSettingsComp && (currentMode == RplMode.None || (currentMode == RplMode.Listen || currentMode == RplMode.Dedicated) && System.IsCLIParam("forceDisableNightGrain")))
-			additionalSettingsComp.SetNightNoiseEffectState_S(true);
+		if (additionalSettingsComp && ((currentMode == RplMode.Listen || currentMode == RplMode.Dedicated) && System.IsCLIParam("enableNightGrain")))
+			additionalSettingsComp.SetNightNoiseEffectState_S(false);
 
 		return true;
 	}

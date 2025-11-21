@@ -1200,9 +1200,8 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	{
 		super.DisplayOnResumed();
 
-		Show(true, UIConstants.FADE_RATE_SLOW); // Pausing hides this display thus we should show it again when it is resumed
-		if (m_eWeaponStateEvent == 0)
-			m_eWeaponStateEvent = EWeaponFeature.WEAPON; // we just gained control of this weapon thus we should request fading in of the weapon HUD
+		if (m_WeaponManager)
+			OnWeaponChanged(m_WeaponManager.GetCurrentWeapon(), null); // treat this as if we have changed the weapon, to properly reevaluate if we should show this HUD element
 	}
 
 	//------------------------------------------------------------------------------------------------
