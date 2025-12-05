@@ -9,9 +9,8 @@ Do not modify, this script is generated
 \{
 */
 
-class NavmeshCustomLinkComponent: GenericComponent
+class NavmeshCustomLinkComponentClass: GenericComponentClass
 {
-	proto external bool HasLinkOfNavmeshType(string navmeshName);
 }
 
 /*!

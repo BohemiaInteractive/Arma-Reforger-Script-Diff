@@ -43,7 +43,6 @@ class SCR_GroupPreset
 		group.SetPrivate(m_bIsPrivate);
 		group.SetCustomDescription(m_sGroupDescription, 0);
 		group.SetPrivacyChangeable(m_bIsPrivacyChangeable);
-		group.SetGroupRole(m_eGroupRole);
 		group.SetRequiredRank(m_eRequiredRank);
 		
 		if (!m_sGroupFlag.IsEmpty())
@@ -99,9 +98,6 @@ class SCR_GroupPreset
 			group.SetDefaultActiveRadioChannel(overridingGroupPreset.GetDefaultActiveRadioChannel());
 		else
 			group.SetDefaultActiveRadioChannel(m_iDefaultActiveRadioChannel);
-
-		// cannot be overridden
-		group.SetGroupRole(m_eGroupRole);
 	}
 	
 	//------------------------------------------------------------------------------------------------

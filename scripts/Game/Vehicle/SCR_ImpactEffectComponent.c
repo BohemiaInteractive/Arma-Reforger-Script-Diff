@@ -422,8 +422,6 @@ class SCR_ImpactEffectComponent : ScriptComponent
 	[RplRpc(RplChannel.Unreliable, RplRcver.Broadcast)]
 	protected void RPC_OnImpactSoundAndParticlesBroadcast(vector impactPosition, float collisionDM, vector contactNormal, int magnitude)
 	{
-		if(IsPhysicActive())
-			return;
 		
 		vector transform[4];
 		Math3D.MatrixIdentity4(transform);

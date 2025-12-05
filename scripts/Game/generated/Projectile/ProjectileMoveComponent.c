@@ -13,6 +13,11 @@ class ProjectileMoveComponent: BaseProjectileComponent
 {
 	proto external void EnableSimulation(IEntity owner);
 	proto external void Launch(vector direction, vector parentVelocity, float initSpeedCoef, IEntity projectileEntity, IEntity gunner, IEntity parentEntity, IEntity lockedTarget, IEntity weaponComponent);
+	/*!
+	* Predicts the projectile simulation result (there's no interaction with the world)
+	*
+	*/
+	proto external vector GetProjectileSimulationResult(vector initPosition, float initSpeed, float initElevationAngle, float initAzimuth = 0, vector windSpeed = Vector(0,0,0), float targetHeight = 0, float maxSimulationTime = 0);
 	proto external vector GetVelocity();
 	/*!
 	* Queries the rewind duration (equal to the RTT of the remote shooter's connection at the time of the shot) from the projectile for lag compensation.

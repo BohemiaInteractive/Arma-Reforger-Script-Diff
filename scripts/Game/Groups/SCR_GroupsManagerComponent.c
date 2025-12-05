@@ -218,7 +218,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 						continue;
 				}
 
-				newGroup = CreateNewPlayableGroup(faction);
+				newGroup = CreateNewPlayableGroup(faction, gr.GetGroupRole());
 				if (!newGroup)
 					continue;
 
@@ -1115,8 +1115,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] faction
+	//! \param[in] groupRole
 	//! \return
-	SCR_AIGroup CreateNewPlayableGroup(Faction faction)
+	SCR_AIGroup CreateNewPlayableGroup(Faction faction, SCR_EGroupRole groupRole = SCR_EGroupRole.NONE)
 	{
 		RplComponent rplComp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
 		if (!rplComp)
@@ -1141,6 +1142,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		RegisterGroup(group);
 		AssignGroupFrequency(group);
 		AssignGroupID(group);
+		group.SetGroupRole(groupRole);
 
 		//if there is commanding present, we create the slave group for AIs at the creation of the group
 		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();

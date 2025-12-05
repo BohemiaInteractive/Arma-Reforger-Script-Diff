@@ -77,6 +77,8 @@ sealed class UUID: string
 	\endcode
 	*/
 	static proto bool IsUUID(string uuid);
+	//! Returns UUID version
+	proto external int GetVersion();
 	/*!
 	Will generate UUID of version 4 (random).
 	Every bit is random except those used for version and variant.

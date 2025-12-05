@@ -665,7 +665,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 			return;
 
 		// No empty group found, we allow creation of new group
-		SCR_AIGroup newGroup = groupsManager.CreateNewPlayableGroup(faction);
+		SCR_AIGroup newGroup = groupsManager.CreateNewPlayableGroup(faction, groupRole);
 
 		// No new group was created, return
 		if (!newGroup)

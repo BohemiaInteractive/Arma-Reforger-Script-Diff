@@ -26,8 +26,11 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	//equivalent of colliding with s105 while it is moving at around ~3.5m/s (~10km/h)
 	protected const int MIN_OTHER_MOMENTUM = 3000;
 	
+	// time for resetting minimum impulse. 
+	protected const int MINIMUM_IMPULSE_RESET_TIME = 2500;
+	
 	// Physics variables
-	protected float m_fHighestContact;
+	protected float m_fHighestContact = 0;
 	protected float m_fMinImpulse;
 	protected float m_fWaterFallDamageMultiplier = 0.33;
 	protected int m_fMinWaterFallDamageVelocity = 10;
@@ -1653,7 +1656,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		physics.GetDirectWorldTransform(ownerTransform);
 		
 		m_fHighestContact = totalVelocity.Length() * m_fWaterFallDamageMultiplier;
-		CalculateCollisionDamage(GetOwner(), null, ownerTransform[3], false);
+		CalculateCollisionDamage(GetOwner(), null, ownerTransform[3], m_fHighestContact, false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1686,8 +1689,11 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		if (!ownerPhys)
 			return false;
 
-		vector otherDirectionToCollisionPoint = vector.Direction(other.GetOrigin(), contact.Position).Normalized();
-		vector ownerDirectionToCollisionPoint = vector.Direction(owner.GetOrigin(), contact.Position).Normalized();
+		vector otherPositionBeforeContact  = contact.Position - (contact.VelocityBefore2.Normalized());
+		vector ownerPositionBeforeContact  = contact.Position - (contact.VelocityBefore1.Normalized());
+		
+		vector otherDirectionToCollisionPoint = vector.Direction(otherPositionBeforeContact, contact.Position).Normalized();
+		vector ownerDirectionToCollisionPoint = vector.Direction(ownerPositionBeforeContact, contact.Position).Normalized();
 
 		float otherDot = vector.Dot(contact.VelocityBefore2.Normalized(), otherDirectionToCollisionPoint);
 		if (otherDot > 0.7)
@@ -1706,8 +1712,27 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 			return false;
 
 		m_fHighestContact = relativeNormalVelocityBefore;
+		
+		int remainingTime = GetGame().GetCallqueue().GetRemainingTime(ResetContact);
+		if (remainingTime == -1)
+		{
+			GetGame().GetCallqueue().CallLater(ResetContact, MINIMUM_IMPULSE_RESET_TIME, false);
+		}
+		else
+		{
+			GetGame().GetCallqueue().Remove(ResetContact);
+			GetGame().GetCallqueue().CallLater(ResetContact, MINIMUM_IMPULSE_RESET_TIME, false);
+		}
+		
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void ResetContact()
+	{
+		m_fHighestContact = 0;
+		GetGame().GetCallqueue().Remove(ResetContact);
+	}	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Calculate damage from collision event based on contact data
@@ -1715,13 +1740,15 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	//! \param other Other is the entity that collided with the owner
 	//! \param contact Contact data class should contain all collisiondata needed to compute damage
 	override protected void OnFilteredContact(IEntity owner, IEntity other, Contact contact)
-	{
-		CalculateCollisionDamage(owner, other, contact.Position);
+	{		
+		float relativeNormalVelocityBefore = Math.AbsFloat(contact.GetRelativeNormalVelocityBefore());
+
+		CalculateCollisionDamage(owner, other, contact.Position, relativeNormalVelocityBefore);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//
-	protected void CalculateCollisionDamage(IEntity owner, IEntity other, vector collisionPosition, bool instantUnconsciousness = true)
+	protected void CalculateCollisionDamage(IEntity owner, IEntity other, vector collisionPosition, float highestCachedImpulse = 0, bool instantUnconsciousness = true)
 	{
 		HitZone defaultHitZone = GetDefaultHitZone();
 		if (!defaultHitZone || defaultHitZone.GetDamageState() == EDamageState.DESTROYED)
@@ -1734,7 +1761,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		float momentumCharacterDestroy = m_fMinImpulse * 100 * Physics.KMH2MS;
 		float damageScaleToCharacter = (momentumCharacterDestroy - momentumCharacterThreshold) * 0.0001;
 		
-		float impactMomentum = Math.AbsFloat(m_fMinImpulse * m_fHighestContact);
+		float impactMomentum = Math.AbsFloat(m_fMinImpulse * highestCachedImpulse);
 		
 		float damageValue = damageScaleToCharacter * (impactMomentum - momentumCharacterThreshold);
 		if (damageValue <= 0)
@@ -1879,8 +1906,6 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 			context.struckHitZone = characterHitZone;
 			HandleDamage(context);
 		}
-		
-		m_fHighestContact = 0;
 	}
 
 	//------------------------------------------------------------------------------------------------

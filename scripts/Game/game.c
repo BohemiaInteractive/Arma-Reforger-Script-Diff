@@ -355,97 +355,49 @@ class ArmaReforgerScripted : ChimeraGame
 	{
 		groupInt = KickCauseCodeAPI.GetGroup(kickCode);
 		reasonInt = KickCauseCodeAPI.GetReason(kickCode);
+		
 
 		group = "<unknown>";
 		reason = "<unknown>";
+		
 		switch (groupInt)
 		{
 			case RplKickCauseGroup.REPLICATION:
+			{
 				group = "REPLICATION";
-				switch (reasonInt)
-				{
-					case RplError.SYSTEM_FAILURE: reason = "SYSTEM_FAILURE"; return true;
-					case RplError.DISCONNECTION: reason = "DISCONNECTION"; return true;
-					case RplError.CONNECTION_FAILURE: reason = "CONNECTION_FAILURE"; return true;
-					case RplError.TIMEOUT: reason = "TIMEOUT"; return true;
-					case RplError.FLOODED: reason = "FLOODED"; return true;
-					case RplError.STALLED: reason = "STALLED"; return true;
-					case RplError.SERVICE_FAILURE: reason = "SERVICE_FAILURE"; return true;
-					case RplError.JIP_ERROR: reason = "JIP_ERROR"; return true;
-					case RplError.SHUTDOWN: reason = "SHUTDOWN"; return true;
-					case RplError.CREATION_FAILURE: reason = "CREATION_FAILURE"; return true;
-				}
-			break;
-
+				reason = typename.EnumToString(RplError, reasonInt);
+				return true;
+			}
 			case KickCauseGroup.BATTLEYE_INIT:
+			{
 				group = "BATTLEYE_INIT";
-				switch (reasonInt)
-				{
-					case BattlEyeInitError.LOAD_ERROR: reason = "LOAD_ERROR"; return true;
-					case BattlEyeInitError.UNSUPPORTED_VERSION: reason = "UNSUPPORTED_VERSION"; return true;
-					case BattlEyeInitError.OTHER_ERROR: reason = "OTHER_ERROR"; return true;
-				}
-			break;
-
+				reason = typename.EnumToString(BattlEyeInitError, reasonInt);
+				return true;
+			}
 			case KickCauseGroup.BATTLEYE:
+			{
 				group = "BATTLEYE";
-				switch (reasonInt)
-				{
-					case BattlEyeKickReason.CLIENT_NOT_RESPONDING: reason = "CLIENT_NOT_RESPONDING"; return true;
-					case BattlEyeKickReason.QUERY_TIMEOUT: reason = "QUERY_TIMEOUT"; return true;
-					case BattlEyeKickReason.GAME_RESTART_REQUIRED: reason = "GAME_RESTART_REQUIRED"; return true;
-					case BattlEyeKickReason.BAD_SERVICE_VERSION: reason = "BAD_SERVICE_VERSION"; return true;
-					case BattlEyeKickReason.DISALLOWED_PROGRAM: reason = "DISALLOWED_PROGRAM"; return true;
-					case BattlEyeKickReason.CORRUPTED_MEMORY: reason = "CORRUPTED_MEMORY"; return true;
-					case BattlEyeKickReason.CORRUPTED_DATA: reason = "CORRUPTED_DATA"; return true;
-					case BattlEyeKickReason.WINAPI_FAILURE: reason = "WINAPI_FAILURE"; return true;
-					case BattlEyeKickReason.GLOBAL_BAN: reason = "GLOBAL_BAN"; return true;
-					case BattlEyeKickReason.ADMIN_BAN: reason = "ADMIN_BAN"; return true;
-					case BattlEyeKickReason.ADMIN_KICK: reason = "ADMIN_KICK"; return true;
-					case BattlEyeKickReason.INVALID_SERVER_CONFIG: reason = "INVALID_SERVER_CONFIG"; return true;
-				}
-			break;
-
+				reason = typename.EnumToString(BattlEyeKickReason, reasonInt);
+				return true;
+			}
 			case KickCauseGroup.DATA:
+			{
 				group = "DATA";
-				switch (reasonInt)
-				{
-					case DataError.VERSION_MISMATCH: reason = "VERSION_MISMATCH"; return true;
-					case DataError.RDB_MISMATCH: reason = "RDB_MISMATCH"; return true;
-					case DataError.SCRIPT_MISMATCH: reason = "SCRIPT_MISMATCH"; return true;
-					case DataError.WORLD_LOAD_ERROR: reason = "WORLD_LOAD_ERROR"; return true;
-					case DataError.WORLD_LOAD_INCONSISTENCY: reason = "WORLD_LOAD_INCONSISTENCY"; return true;
-					case DataError.ADDON_LOAD_ERROR: reason = "ADDON_LOAD_ERROR"; return true;
-					case DataError.IS_DEV_BINARY_MISMATCH: reason = "IS_DEV_BINARY_MISMATCH"; return true;
-				}
-			break;
-
+				reason = typename.EnumToString(DataError, reasonInt);
+				return true;
+			}
 			case KickCauseGroup2.PLATFORM:
+			{
 				group = "PLATFORM";
-				switch (reasonInt)
-				{
-					case PlatformKickReason.ACTIVE_USER_LOST: reason = "ACTIVE_USER_LOST"; return true;
-					case PlatformKickReason.NO_MP_PRIVILEGE: reason = "NO_MP_PRIVILEGE"; return true;
-					case PlatformKickReason.NO_CROSSPLAY_PRIVILEGE: reason = "NO_CROSSPLAY_PRIVILEGE"; return true;
-					case PlatformKickReason.USER_SIGNED_OUT: reason = "USER_SIGNED_OUT"; return true;
-				}
-			break;
-
+				reason = typename.EnumToString(PlatformKickReason, reasonInt);
+				return true;
+			}
 			case KickCauseGroup2.PLAYER_MANAGER:
+			{
 				group = "PLAYER_MANAGER";
-				switch (reasonInt)
-				{
-					case PlayerManagerKickReason.KICK: reason = "KICK"; return true;
-					case PlayerManagerKickReason.KICK_VOTED: reason = "KICK_VOTED"; return true;
-					case PlayerManagerKickReason.DUPLICATE_PLAYER_IDENTITY: reason = "DUPLICATE_PLAYER_IDENTITY"; return true;
-					case PlayerManagerKickReason.BAN: reason = "BAN"; return true;
-					case PlayerManagerKickReason.TEMP_BAN: reason = "TEMP_BAN"; return true;
-					case SCR_PlayerManagerKickReason.KICKED_BY_GM: reason = "KICKED_BY_GM"; return true;
-					case SCR_PlayerManagerKickReason.BANNED_BY_GM: reason = "BANNED_BY_GM"; return true;
-					case SCR_PlayerManagerKickReason.FRIENDLY_FIRE: reason = "FRIENDLY_FIRE"; return true;
-					case SCR_PlayerManagerKickReason.DISRUPTIVE_BEHAVIOUR: reason = "DISRUPTIVE_BEHAVIOUR"; return true;
-				}
-			break;
+				reason = typename.EnumToString(SCR_PlayerManagerKickReason, reasonInt);
+				return true;
+			}
 		}
 
 		return false;

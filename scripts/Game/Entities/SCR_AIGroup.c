@@ -144,7 +144,7 @@ class SCR_AIGroup : ChimeraAIGroup
 	protected int m_iLeaderID = -1;
 	protected ref SCR_AIGroupUIInfo m_UiInfo;
 	protected SCR_EGroupRole m_eGroupRole;
-	protected bool m_bIsPrivacyChangeable;
+	protected bool m_bIsPrivacyChangeable = 1;
 	protected bool m_bIsCreatedByCommander;
 	protected bool m_bIsPredefinedGroup;
 

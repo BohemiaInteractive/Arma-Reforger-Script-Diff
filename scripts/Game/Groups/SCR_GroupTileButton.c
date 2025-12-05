@@ -222,10 +222,19 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		group.GetOnMemberStateChange().Insert(RefreshPlayers);
 
 		RichTextWidget squadName = RichTextWidget.Cast(GetRootWidget().FindAnyWidget("Callsign"));
-		RichTextWidget squadType = RichTextWidget.Cast(GetRootWidget().FindAnyWidget("Type"));
-		if (squadName && squadType)
+		if (squadName)
 		{
-			SetSquadName(squadName, squadType, group);
+			// This function can only be used in UI menu, where to change the language you need to close and open the shown menu, so it will be renewed.
+			squadName.SetText(SCR_GroupHelperUI.GetTranslatedGroupName(group));
+		}
+
+		RichTextWidget squadType = RichTextWidget.Cast(GetRootWidget().FindAnyWidget("Type"));
+		Widget squadFrameType = GetRootWidget().FindAnyWidget("FrameType");
+		if (squadType && squadFrameType)
+		{
+			string roleName = SCR_GroupHelperUI.GetRoleName(group);
+			squadFrameType.SetVisible(!roleName.IsEmpty());
+			squadType.SetText(roleName);
 		}
 
 		RichTextWidget frequency = RichTextWidget.Cast(GetRootWidget().FindAnyWidget("Frequency"));
@@ -521,7 +530,16 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		else
 			m_JoinGroupButton.SetEnabled(true);
 		
-		SetSquadName(squadName, groupDetailType, group);
+		// This function can only be used in UI menu, where to change the language you need to close and open the shown menu, so it will be renewed.
+		squadName.SetText(SCR_GroupHelperUI.GetTranslatedGroupName(group));
+
+		Widget groupTypeOverlay = m_ParentSubMenu.GetRootWidget().FindAnyWidget("GroupTypeOverlay");
+		if (groupTypeOverlay)
+		{
+			string roleName = SCR_GroupHelperUI.GetRoleName(group);
+			groupTypeOverlay.SetVisible(!roleName.IsEmpty());
+			groupDetailType.SetText(roleName);
+		}
 
 		if (!group.GetCustomDescription().IsEmpty())
 			description.SetText(group.GetCustomDescription());
@@ -1004,12 +1022,16 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 
 		if (group.IsPlayerLeader(playerID) && playerID != m_PlayerTileComponent.GetTilePlayerID() && m_PlayerTileComponent.GetTilePlayerID() != -1)
 		{
-			m_PlayerTileComponent.GetOptionsComboComponent().AddItem(OPTIONS_COMBO_KICK);
+			m_PlayerTileComponent.GetOptionsComboComponent().AddItem(OPTIONS_COMBO_KICK);			
 			m_PlayerTileComponent.GetOptionsComboComponent().AddItem(OPTIONS_COMBO_PROMOTE);
 		}
 
-		if (m_PlayerTileComponent.GetOptionsComboComponent().GetNumItems() == 0)
+		if (m_PlayerTileComponent.GetOptionsComboComponent().GetNumItems() == 0 || group.GetGroupRole() != SCR_EGroupRole.NONE)
+		{
 			m_PlayerTileComponent.SetOpacity(0.3);
+			m_PlayerTileComponent.GetOptionsComboComponent().SetVisible(false);
+			m_PlayerTileComponent.GetOptionsComboComponent().SetEnabled(false);
+		}
 
 		m_PlayerTileComponent.GetOptionsComboComponent().m_OnOpened.Insert(DisableConfirmButton);
 		m_PlayerTileComponent.GetOptionsComboComponent().m_OnClosed.Insert(EnableConfirmButton);
@@ -1165,14 +1187,6 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		badgeTop.SetColor(color);
 		badgeMiddle.SetColor(color);
 		badgeBottom.SetColor(color);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void SetSquadName(RichTextWidget squadName, RichTextWidget squadType, SCR_AIGroup group)
-	{
-		// This function can only be used in UI menu, where to change the language you need to close and open the shown menu, so it will be renewed.
-		squadName.SetText(SCR_GroupHelperUI.GetTranslatedGroupName(group));
-		squadType.SetText(SCR_GroupHelperUI.GetTranslatedRoleName(group));
 	}
 
 	//------------------------------------------------------------------------------------------------
