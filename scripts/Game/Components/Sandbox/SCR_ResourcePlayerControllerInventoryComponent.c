@@ -377,6 +377,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 			return;
 		
 		float resourceCost = 0;
+		int personalResourceCost;
 		
 		SCR_ArsenalItem data;
 		SCR_Faction faction;
@@ -419,11 +420,18 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 						
 				}
 			}
+
+			if (arsenalComponent)
+			{
+				SCR_ArsenalManagerComponent arsenalManager;
+				if (SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager))
+					personalResourceCost = arsenalManager.GetItemMilitarySupplyAllocationCost(resourceNameItem, arsenalComponent, true);
+			}
 		}
 
 		//~ If Military Supply Allocation is enabled, check if player has enough Available Allocated Supplies
 		SCR_PlayerSupplyAllocationComponent playerSupplyAllocationComponent = SCR_PlayerSupplyAllocationComponent.Cast(GetOwner().FindComponent(SCR_PlayerSupplyAllocationComponent));
-		if (playerSupplyAllocationComponent && faction && data && data.GetUseMilitarySupplyAllocation() && SCR_ArsenalManagerComponent.IsMilitarySupplyAllocationEnabled())
+		if (playerSupplyAllocationComponent && faction && personalResourceCost > 0)
 		{
 			SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 			if (factionManager)
@@ -431,7 +439,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 				SCR_Faction playerFaction = SCR_Faction.Cast(factionManager.GetPlayerFaction(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(SCR_PlayerController.Cast(GetOwner()).GetControlledEntity())));
 				if (playerFaction)
 				{
-					if (playerFaction == faction && !playerSupplyAllocationComponent.HasPlayerEnoughAvailableAllocatedSupplies(resourceCost))
+					if (playerFaction == faction && !playerSupplyAllocationComponent.HasPlayerEnoughAvailableAllocatedSupplies(personalResourceCost))
 						return;
 				}
 			}
@@ -495,6 +503,12 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		if (resourceCost > 0 && !TryPerformResourceGeneration(generator, resourceCost))
 			return;
 		
+		int personalResourceCost;
+
+		SCR_ArsenalManagerComponent arsenalManager;
+		if (SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager) && arsenalManager.IsMilitarySupplyAllocationEnabled())
+			personalResourceCost = arsenalManager.GetItemMilitarySupplyAllocationRefundAmount(inventoryItemEntity, arsenalComponent);
+
 		IEntity parentEntity = inventoryItemEntity.GetParent();
 		SCR_InventoryStorageManagerComponent inventoryManagerComponent;
 		ResourceName resourceNameItem = inventoryItemEntity.GetPrefabData().GetPrefabName();
@@ -510,47 +524,13 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		else if (!inventoryManagerComponent)
 			RplComponent.DeleteRplEntity(inventoryItemEntity, false);
 		
-		if (resourceCost <= 0)
-			return;
-
-		if (!SCR_ArsenalManagerComponent.IsMilitarySupplyAllocationEnabled())
-			return;
-
-		SCR_EntityCatalogManagerComponent entityCatalogManager = SCR_EntityCatalogManagerComponent.GetInstance();
-		if (!entityCatalogManager)
-			return;
-
-		SCR_Faction faction = arsenalComponent.GetAssignedFaction();
-
-		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-		if (!factionManager)
-			return;
-
-		SCR_Faction playerFaction = SCR_Faction.Cast(factionManager.GetPlayerFaction(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(SCR_PlayerController.Cast(GetOwner()).GetControlledEntity())));
-		if (faction && playerFaction && faction != playerFaction)
-			return;
-
-		SCR_EntityCatalogEntry entry;
-
-		if (faction)
-			entry = entityCatalogManager.GetEntryWithPrefabFromFactionCatalog(EEntityCatalogType.ITEM, resourceNameItem, faction);
-		else 
-			entry = entityCatalogManager.GetEntryWithPrefabFromCatalog(EEntityCatalogType.ITEM, resourceNameItem);
-
-		if (!entry)
-			return;
-
-		SCR_ArsenalItem data = SCR_ArsenalItem.Cast(entry.GetEntityDataOfType(SCR_ArsenalItem));
-		if (!data)
-			return;
-
-		if (!data.GetUseMilitarySupplyAllocation())
+		if (personalResourceCost == 0)
 			return;
 
 		//~ Add refund cost to player's Available Allocated Supplies
 		SCR_PlayerSupplyAllocationComponent playerSupplyAllocationComponent = SCR_PlayerSupplyAllocationComponent.Cast(GetOwner().FindComponent(SCR_PlayerSupplyAllocationComponent));
 		if (playerSupplyAllocationComponent)
-			playerSupplyAllocationComponent.AddPlayerAvailableAllocatedSupplies(resourceCost);
+			playerSupplyAllocationComponent.AddPlayerAvailableAllocatedSupplies(personalResourceCost);
 	}
 	void RpcAsk_ArsenalRefundItem(RplId rplIdResourceComponent, RplId rplIdInventoryItem, EResourceType resourceType)
 	{

@@ -46,9 +46,11 @@ class SCR_AIGetSmartActionSentinelParams : AITaskScripted
 			return ENodeResult.FAIL;
 		}
 		
-		vector worldPosition = smartAction.GetActionOffset(), worldPositionToLook = smartAction.GetLookPosition(), smartObjectPos = smartAction.m_Owner.GetOrigin();
+		IEntity actionOwner = smartAction.GetOwner();
+		
+		vector worldPosition = smartAction.GetActionOffset(), worldPositionToLook = smartAction.GetLookPosition(), smartObjectPos = actionOwner.GetOrigin();
 		vector mat[4];
-		smartAction.m_Owner.GetWorldTransform(mat);
+		actionOwner.GetWorldTransform(mat);
 		worldPosition = smartObjectPos + worldPosition.Multiply3(mat);
 		if (worldPositionToLook == vector.Zero)
 			worldPositionToLook = smartObjectPos + (10 * vector.Forward).Multiply3(mat);

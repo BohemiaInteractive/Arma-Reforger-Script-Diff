@@ -60,6 +60,22 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] playerUID
+	//! \return the Military Supply Allocation cost of the provided id player's loadout or 0 on error or player not found
+	static float GetLoadoutMilitarySupplyAllocationCost(string playerUID)
+	{
+		SCR_ArsenalManagerComponent arsenalManager;
+		if (SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager))
+		{
+			SCR_ArsenalPlayerLoadout arsenalLoadout;
+			if (arsenalManager.GetPlayerArsenalLoadout(playerUID, arsenalLoadout))
+				return arsenalLoadout.m_fMilitarySupplyAllocationCost;
+		}
+
+		return 0;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! \param[in] playerId
 	//! \return required rank of player arsenal loadout
 	SCR_ECharacterRank GetRequiredRank(int playerId)

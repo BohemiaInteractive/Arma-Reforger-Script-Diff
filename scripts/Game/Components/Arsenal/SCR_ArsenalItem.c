@@ -176,6 +176,47 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 		
 		return GetRefundAmountValue() + additionalCost;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetMilitarySupplyAllocationCost(SCR_EArsenalSupplyCostType supplyCostType, bool addAdditionalCosts = true)
+	{
+		if (!m_bUseMilitarySupplyAllocation)
+			return 0;
+
+		int additionalCost;
+
+		if (addAdditionalCosts)
+		{
+			//~ Get the cost of any attachments on the item that are not in arsenal but still have a cost
+			if (m_aNonArsenalAdditionalCosts)
+			{
+				foreach (SCR_NonArsenalItemCostCatalogData data : m_aNonArsenalAdditionalCosts)
+				{
+					additionalCost += data.GetSupplyCost(supplyCostType);
+				}
+			}
+			//~ Get the cost of any attachments on the item that can be in the arsenal
+			if (m_aAdditionalCosts)
+			{
+				foreach (SCR_ArsenalItem data : m_aAdditionalCosts)
+				{
+					if (!data.GetUseMilitarySupplyAllocation())
+						continue;
+
+					additionalCost += data.GetSupplyCost(supplyCostType);
+				}
+			}
+		}
+
+		if (supplyCostType != SCR_EArsenalSupplyCostType.DEFAULT && m_mArsenalAlternativeCostData != null)
+		{
+			SCR_ArsenalAlternativeCostData alternativeCost; 
+			if (m_mArsenalAlternativeCostData.Find(supplyCostType, alternativeCost))
+				return alternativeCost.m_iSupplyCost + additionalCost;
+		}
+
+		return m_iSupplyCost + additionalCost;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected int GetRefundAmountValue()

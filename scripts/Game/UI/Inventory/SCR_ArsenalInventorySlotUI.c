@@ -8,6 +8,7 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 	protected const string AVAILABLE_RESOURCES_WIDGET_NAME = "SuppliesAvailable";
 	protected const string COST_RESOURCES_WIDGET_NAME = "SuppliesCost";
 	protected const string RANK_ICON_WIDGET_NAME = "RankIcon";
+	protected const string MSAR_ICON_WIDGET_NAME = "MSARIcon";
 	protected const string AMMOTYPE_WIDGET_NAME = "AmmoTypeContainer";
 	
 	protected Widget m_CostResourceHolder;
@@ -22,6 +23,7 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 	
 	protected float m_fSupplyCost;
 	protected SCR_ECharacterRank m_eRequiredRank;	
+	protected ImageWidget m_wMSARIcon;
 	
 	//------------------------------------------------------------------------------------------------
 	SCR_ResourceComponent GetArsenalResourceComponent()
@@ -107,6 +109,8 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 		if (resourceComponent)
 			resourceContainer = resourceComponent.GetContainer(EResourceType.SUPPLIES);
 		
+		m_wMSARIcon = ImageWidget.Cast(m_widget.FindAnyWidget(MSAR_ICON_WIDGET_NAME));
+		
 		UpdateTotalResources(GetTotalResources());
 		
 		// Check if player has enough Military Allocated Supplies
@@ -154,6 +158,9 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 		SetItemAvailability(false);
 		rankIcon.SetVisible(true);
 		
+		if (m_wMSARIcon)
+			m_wMSARIcon.SetVisible(false);
+		
 		ResourceName rankIconImageSet = SCR_XPInfoDisplay.GetRankIconImageSet();
 		if (rankIconImageSet.IsEmpty())
 			return;
@@ -177,6 +184,9 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 	//------------------------------------------------------------------------------------------------
 	protected void CheckPersonalResources(int cost)
 	{
+		if (m_wMSARIcon)
+			m_wMSARIcon.SetVisible(false);
+
 		if (cost == 0)
 			return;
 
@@ -188,11 +198,17 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 		if (!playerSupplyAllocationComponent)
 			return;
 
-		SetItemAvailability(cost <= playerSupplyAllocationComponent.GetPlayerAvailableAllocatedSupplies() && m_bIsAvailable)
+		int msarBalance = playerSupplyAllocationComponent.GetPlayerAvailableAllocatedSupplies() - cost;
+		SetItemAvailability(msarBalance >= 0  && m_bIsAvailable);
+
+		if (!m_wMSARIcon)
+			return;
+
+		m_wMSARIcon.SetVisible(msarBalance < 0);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected int GetPersonalResourceCost()
+	int GetPersonalResourceCost()
 	{
 		SCR_ArsenalManagerComponent arsenalManagerComponent;
 		SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManagerComponent);
@@ -203,7 +219,15 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 		if (resourceName.IsEmpty())
 			return 0;
 
-		return arsenalManagerComponent.GetItemMilitarySupplyAllocationCost(resourceName, true);
+		IEntity storageEnt = GetStorageUI().GetCurrentNavigationStorage().GetOwner();
+		if (!storageEnt)
+			return 0;
+
+		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(storageEnt.FindComponent(SCR_ArsenalComponent));
+		if (!arsenalComponent)
+			return 0;
+
+		return arsenalManagerComponent.GetItemMilitarySupplyAllocationCost(resourceName, arsenalComponent, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -22,6 +22,7 @@ class BaseMuzzleComponent: GameComponent
 	proto external BaseFireMode GetFireMode(int fireModeIndex);
 	proto external void SetTriggerEffect(int fireModeIndex, bool bEnable, WeaponGamepadEffectsManagerComponent pEffectsManager, bool isCharged = true);
 	proto external void SetFiringTriggerEffectEnabled(int fireModeIndex, bool bEnable, WeaponGamepadEffectsManagerComponent pEffectsManager);
+	proto external float GetBulletInitSpeedCoef();
 	// Barrels
 	proto external int GetBarrelsCount();
 	proto external int GetCurrentBarrelIndex();

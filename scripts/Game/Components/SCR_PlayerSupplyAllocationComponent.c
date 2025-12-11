@@ -200,6 +200,10 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 		if (m_PlayerController.GetPlayerId() != playerId)
 			return;
 
+		SCR_PlayerXPHandlerComponent playerXPHandler = SCR_PlayerXPHandlerComponent.Cast(m_PlayerController.FindComponent(SCR_PlayerXPHandlerComponent));
+		if (playerXPHandler)
+			playerXPHandler.GetOnPlayerXPChanged().Remove(OnPlayerXPChanged);
+
 		IEntity playerCharacter = m_PlayerController.GetMainEntity();
 		if (!playerCharacter)
 			return;
@@ -248,7 +252,7 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 		if (!playerXPHandler)
 			return;
 
-		playerXPHandler.GetOnPlayerXPChanged().Insert(OnUnspawnedPlayerXPChanged);
+		playerXPHandler.GetOnPlayerXPChanged().Insert(OnPlayerXPChanged);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -257,18 +261,24 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 	//! \param[in] currentXP
 	//! \param[in] XPToAdd
 	//! \param[in] rewardId
-	protected void OnUnspawnedPlayerXPChanged(int playerId, int currentXP, int XPToAdd, SCR_EXPRewards rewardId)
+	protected void OnPlayerXPChanged(int playerId, int currentXP, int XPToAdd, SCR_EXPRewards rewardId)
 	{
 		if (m_PlayerController.GetPlayerId() != playerId)
 			return;
 
-		SCR_PlayerXPHandlerComponent playerXPHandler = SCR_PlayerXPHandlerComponent.Cast(m_PlayerController.FindComponent(SCR_PlayerXPHandlerComponent));
-		if (!playerXPHandler)
-			return;
+		// Player receiving XP after reconnect, set Military Supply Allocation to his rank
+		if (rewardId == SCR_EXPRewards.UNDEFINED)
+		{
+			SCR_PlayerXPHandlerComponent playerXPHandler = SCR_PlayerXPHandlerComponent.Cast(m_PlayerController.FindComponent(SCR_PlayerXPHandlerComponent));
+			if (!playerXPHandler)
+				return;
 
-		playerXPHandler.GetOnPlayerXPChanged().Remove(OnUnspawnedPlayerXPChanged);
-		SCR_ECharacterRank rank = playerXPHandler.GetPlayerRankByXP();
-		SetSupplyAllocationValuesByRank(rank);
+			SetSupplyAllocationValuesByRank(playerXPHandler.GetPlayerRankByXP());
+		}
+
+		// Replenish Available Allocated Supplies on Supply delivery
+		if (rewardId == SCR_EXPRewards.SUPPLIES_DELIVERED)
+			AddPlayerAvailableAllocatedSupplies(XPToAdd * m_MilitarySupplyAllocationConfig.GetAvailableAllocatedSuppliesReplenishmentOnSupplyDeliveryMultiplier());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -358,24 +368,17 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 		if (!arsenalComponent || !arsenalComponent.IsArsenalUsingSupplies())
 			return;
 
-		SCR_Faction faction = arsenalComponent.GetAssignedFaction();
-		SCR_Faction playerFaction = SCR_Faction.Cast(SCR_FactionManager.SGetPlayerFaction(playerController.GetPlayerId()));
-		if (!faction || !playerFaction || faction != playerFaction)
-			return;
-
-		SCR_EntityCatalogEntry entry = entityCatalogManager.GetEntryWithPrefabFromFactionCatalog(EEntityCatalogType.ITEM, resourceName, faction);
-		if (!entry)
-			return;
-
-		SCR_ArsenalItem data = SCR_ArsenalItem.Cast(entry.GetEntityDataOfType(SCR_ArsenalItem));
-		if (!data || !data.GetUseMilitarySupplyAllocation())
-			return;
-
 		SCR_ResourceConsumer consumer = resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
 		if (!consumer)
 			return;
 
-		AddPlayerAvailableAllocatedSupplies(-1 * itemCost * consumer.GetBuyMultiplier());
+		SCR_ArsenalManagerComponent arsenalManager;
+		if (!SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager))
+			return;
+
+		int msarCost = arsenalManager.GetItemMilitarySupplyAllocationCost(resourceName, arsenalComponent, true);
+
+		AddPlayerAvailableAllocatedSupplies(-1 * msarCost * consumer.GetBuyMultiplier());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -481,7 +484,7 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 			SCR_PlayerXPHandlerComponent playerXPHandler = SCR_PlayerXPHandlerComponent.Cast(m_PlayerController.FindComponent(SCR_PlayerXPHandlerComponent));
 			if (playerXPHandler)
 			{
-				playerXPHandler.GetOnPlayerXPChanged().Remove(OnUnspawnedPlayerXPChanged);
+				playerXPHandler.GetOnPlayerXPChanged().Remove(OnPlayerXPChanged);
 			}
 
 			m_PlayerController.m_OnPossessed.Remove(OnCharacterPossessed);

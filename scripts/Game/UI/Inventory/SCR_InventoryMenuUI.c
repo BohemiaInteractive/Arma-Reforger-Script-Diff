@@ -350,6 +350,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	protected ref SCR_ArsenalItemRankHintUIInfo 			m_ArsenalItemRankUIInfo;
 	protected const ResourceName 							VALUABLE_INTEL_UIINFO_PREFAB = "{5EE3196892CA5142}Configs/Inventory/ItemHints/ValuableIntel_ItemHint.conf";
 	protected ref SCR_ValuableIntelItemHintUIInfo 			m_ValuableIntelUIInfo;
+	protected const ResourceName							PLAYER_SUPPLY_ALLOCATION_UIINFO_PREFAB = "{4A370E79EF2FCC54}Configs/Inventory/ItemHints/MSARCost_ItemHint.conf";
+	protected ref SCR_PlayerSupplyAllocationItemHintUIInfo	m_PlayerSupplyAllocationUIInfo;
 	
 	protected const ResourceName 										ITEM_FACTION_INFO_CONFIG = "{80DCFB729B7255F7}Configs/Inventory/ItemHints/ItemFaction_ItemHint.conf";
 	protected ref map<FactionKey, ref SCR_FactionOutfitItemHintUIInfo> 	m_mItemFactionUIInfos = new map<FactionKey, ref SCR_FactionOutfitItemHintUIInfo>();
@@ -439,6 +441,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	protected const LocalizedString GAMEPAD_HINT_DESELECT = "#AR-Inventory_Deselect";
 	
 	protected static ref ScriptInvokerInventorySlotHover m_OnItemHover;
+	protected static ref ScriptInvoker m_OnItemHoverEnd;
 	
 	//------------------------------------------------------------------------------------------------
 	static ScriptInvokerInventorySlotHover GetOnItemHover()
@@ -447,6 +450,15 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			m_OnItemHover = new ScriptInvokerInventorySlotHover();
 		
 		return m_OnItemHover;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvoker GetOnItemHoverEnd()
+	{
+		if(!m_OnItemHoverEnd)
+			m_OnItemHoverEnd = new ScriptInvoker();
+
+		return m_OnItemHoverEnd;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1886,6 +1898,14 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 						hintsInfo.InsertAt(m_ArsenalItemRankUIInfo, arsenalCostSet);
 					}
 				}
+				
+				//~ Set MSAR cost info
+				if (m_PlayerSupplyAllocationUIInfo)
+				{
+					m_PlayerSupplyAllocationUIInfo.SetMSARCost(arsenalSlot.GetPersonalResourceCost());
+					hintsInfo.Insert(m_PlayerSupplyAllocationUIInfo);
+				}
+				
 			}
 		}
 		
@@ -1916,6 +1936,25 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 						{
 							m_SupplyRefundUIInfo.SetSupplyRefund(supplyRefundAmount, isSupplyStorageAvailable);
 							hintsInfo.InsertAt(m_SupplyRefundUIInfo, 0);
+						}
+
+						//~ Set MSAR cost info
+						if (m_PlayerSupplyAllocationUIInfo)
+						{
+							InventoryItemComponent item = m_pFocusedSlotUI.GetInventoryItemComponent();
+							if (item)
+							{
+								IEntity itemEntity = item.GetOwner();
+								if (itemEntity)
+								{
+									SCR_ArsenalManagerComponent arsenalManager;
+									if (SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager))
+									{
+										m_PlayerSupplyAllocationUIInfo.SetMSARCost(arsenalManager.GetItemMilitarySupplyAllocationRefundAmount(itemEntity, arsenalComp));
+										hintsInfo.Insert(m_PlayerSupplyAllocationUIInfo);
+									}
+								}
+							}
 						}
 					}
 				}
@@ -2198,6 +2237,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				m_pFocusedSlotUI = null;
 				m_pNavigationBar.SetAllButtonEnabled(false);
 			}
+
+			if (m_OnItemHoverEnd)
+				m_OnItemHoverEnd.Invoke();
 
 			pFocusedSlot.CheckCompatibility(null);
 		}
@@ -5641,6 +5683,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		m_NonrefundableUIInfo = SCR_NonrefundableItemHintUIInfo.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(m_sNonrefundableUIInfoPrefab));
 		m_ArsenalItemRankUIInfo = SCR_ArsenalItemRankHintUIInfo.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(ITEM_RANK_PREFAB));
 		m_ValuableIntelUIInfo = SCR_ValuableIntelItemHintUIInfo.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(VALUABLE_INTEL_UIINFO_PREFAB));
+		m_PlayerSupplyAllocationUIInfo = SCR_PlayerSupplyAllocationItemHintUIInfo.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(PLAYER_SUPPLY_ALLOCATION_UIINFO_PREFAB));
 		
 		//~ Create generic hint info for items with factions
 		FactionManager factionManager = GetGame().GetFactionManager();

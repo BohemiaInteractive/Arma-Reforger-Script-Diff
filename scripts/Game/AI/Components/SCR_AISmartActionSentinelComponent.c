@@ -1,7 +1,3 @@
-class SCR_AISmartActionSentinelComponentClass : SCR_AISmartActionComponentClass
-{
-}
-
 enum ELeaningType
 {
 	LEFT = -1,
@@ -9,9 +5,8 @@ enum ELeaningType
 	RIGHT = 1,
 }
 
-class SCR_AISmartActionSentinelComponent : SCR_AISmartActionComponent
-{	
-	
+class SCR_AISmartActionSentinelComponentClass : SCR_AISmartActionComponentClass
+{
 	[Attribute("0 0 0", UIWidgets.EditBox, desc: "Position where AI will look from action offset (in local coords of the object entity)", params: "inf inf 0 purpose=coords space=entity")]
 	protected vector m_vLookPosition;
 	
@@ -32,7 +27,7 @@ class SCR_AISmartActionSentinelComponent : SCR_AISmartActionComponent
 	
 	[Attribute("false", UIWidgets.CheckBox, "Holster weapon during loiter animation?")];
 	protected bool m_bHolsterWeapon;
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	vector GetLookPosition()
@@ -62,13 +57,6 @@ class SCR_AISmartActionSentinelComponent : SCR_AISmartActionComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] useBinoculars
-	void SetUseBinoculars(bool useBinoculars)
-	{
-		m_bUseBinoculars = useBinoculars;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	//! \return
 	ELeaningType GetLeaningType()
 	{
@@ -85,5 +73,67 @@ class SCR_AISmartActionSentinelComponent : SCR_AISmartActionComponent
 	bool GetHolsterWeapon()
 	{
 		return m_bHolsterWeapon;
+	}
+}
+
+class SCR_AISmartActionSentinelComponent : SCR_AISmartActionComponent
+{
+	SCR_AISmartActionSentinelComponentClass GetPrefabData()
+	{
+		return SCR_AISmartActionSentinelComponentClass.Cast(GetComponentData(GetOwner()));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	vector GetLookPosition()
+	{
+		SCR_AISmartActionSentinelComponentClass prefabData = GetPrefabData();
+		return prefabData.GetLookPosition();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetLookDirectionRange()
+	{
+		SCR_AISmartActionSentinelComponentClass prefabData = GetPrefabData();
+		return prefabData.GetLookDirectionRange();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	int GetDesiredStance()
+	{
+		SCR_AISmartActionSentinelComponentClass prefabData = GetPrefabData();
+		return prefabData.GetDesiredStance();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	bool GetUseBinoculars()
+	{
+		SCR_AISmartActionSentinelComponentClass prefabData = GetPrefabData();
+		return prefabData.GetUseBinoculars();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	ELeaningType GetLeaningType()
+	{
+		SCR_AISmartActionSentinelComponentClass prefabData = GetPrefabData();
+		return prefabData.GetLeaningType();
+	}
+	
+	//----------------------------------------------------------------------------------------
+	ELoiteringType GetLoiterAnimation()
+	{
+		SCR_AISmartActionSentinelComponentClass prefabData = GetPrefabData();
+		return prefabData.GetLoiterAnimation();
+	}
+	
+	//----------------------------------------------------------------------------------------
+	bool GetHolsterWeapon()
+	{
+		SCR_AISmartActionSentinelComponentClass prefabData = GetPrefabData();
+		return prefabData.GetHolsterWeapon();
 	}
 }

@@ -878,6 +878,15 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 		if (!m_bUseMilitarySupplyAllocation)
 			return 0;
 
+		if (SCR_PlayerController.GetLocalPlayerId() == playerId)
+		{
+			SCR_ArsenalManagerComponent arsenalManager;
+			if (!GetArsenalManager(arsenalManager))
+				return 0;
+
+			return arsenalManager.m_LocalPlayerLoadoutData.LoadoutPlayerSupplyAllocationCost;
+		}
+
 		const UUID playerUID = SCR_PlayerIdentityUtils.GetPlayerIdentityId(playerId);
 		SCR_ArsenalPlayerLoadout playerLoadout = m_aPlayerLoadouts.Get(playerUID);
 		if (!playerLoadout)
@@ -965,7 +974,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	int GetItemMilitarySupplyAllocationCost(ResourceName resource, bool addAdditionalCosts = false)
+	int GetItemMilitarySupplyAllocationCost(ResourceName resource, SCR_ArsenalComponent arsenalComponent, bool addAdditionalCosts = false)
 	{
 		if (!m_bUseMilitarySupplyAllocation)
 			return 0;
@@ -974,18 +983,90 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 		if (!entityCatalogManager)
 			return 0;
 
-		SCR_EntityCatalogEntry catalogEntry = entityCatalogManager.GetEntryWithPrefabFromAnyCatalog(EEntityCatalogType.ITEM, resource);
+		SCR_EntityCatalogEntry catalogEntry = entityCatalogManager.GetEntryWithPrefabFromAnyCatalog(EEntityCatalogType.ITEM, resource, arsenalComponent.GetAssignedFaction());
 		if (!catalogEntry)
 			return 0;
 
 		SCR_ArsenalItem arsenalItemData = SCR_ArsenalItem.Cast(catalogEntry.GetEntityDataOfType(SCR_ArsenalItem));
 		if (!arsenalItemData)
-			return 0;
+		{
+			SCR_NonArsenalItemCostCatalogData nonArsenalItemData = SCR_NonArsenalItemCostCatalogData.Cast(catalogEntry.GetEntityDataOfType(SCR_NonArsenalItemCostCatalogData));
+			if (nonArsenalItemData)
+				return nonArsenalItemData.GetSupplyCost(SCR_EArsenalSupplyCostType.DEFAULT, addAdditionalCosts);
+			else
+				return 0;
+		}
 
 		if (!arsenalItemData.GetUseMilitarySupplyAllocation())
 			return 0;
 
-		return arsenalItemData.GetSupplyCost(SCR_EArsenalSupplyCostType.GADGET_ARSENAL, addAdditionalCosts);
+		return arsenalItemData.GetMilitarySupplyAllocationCost(SCR_EArsenalSupplyCostType.DEFAULT, addAdditionalCosts);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetItemMilitarySupplyAllocationRefundAmount(notnull IEntity item, SCR_ArsenalComponent arsenalComponent)
+	{
+		if (!m_bUseMilitarySupplyAllocation)
+			return 0;
+
+		if (!arsenalComponent || !arsenalComponent.IsArsenalUsingSupplies())
+			return 0;
+
+		SCR_Faction faction = arsenalComponent.GetAssignedFaction();
+		if (!faction)
+			return 0;
+
+		SCR_EntityCatalogManagerComponent entityCatalogManager = SCR_EntityCatalogManagerComponent.GetInstance();
+		if (!entityCatalogManager)
+			return 0;
+
+		set<IEntity> countedItems = new set<IEntity>();
+		return GetItemMilitarySupplyAllocationRefundCost(item, countedItems, entityCatalogManager, arsenalComponent, faction);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected int GetItemMilitarySupplyAllocationRefundCost(notnull IEntity item, inout set<IEntity> countedItems, SCR_EntityCatalogManagerComponent entityCatalogManager, SCR_ArsenalComponent arsenalComponent, SCR_Faction faction)
+	{
+		if (countedItems.Contains(item))
+			return 0;
+
+		int storedItemRefundAmount;
+		BaseInventoryStorageComponent inventoryStorage = BaseInventoryStorageComponent.Cast(item.FindComponent(BaseInventoryStorageComponent));
+		if (inventoryStorage)
+		{
+			array<IEntity> storedItems = {};
+			inventoryStorage.GetAll(storedItems);
+
+			foreach (IEntity storedItem : storedItems)
+			{
+				storedItemRefundAmount += GetItemMilitarySupplyAllocationRefundCost(storedItem, countedItems, entityCatalogManager, arsenalComponent, faction);
+			}
+		}
+
+		EntityPrefabData prefabData = item.GetPrefabData();
+		if (!prefabData)
+			return storedItemRefundAmount;
+
+		ResourceName itemPrefab = prefabData.GetPrefabName();
+		if (itemPrefab.IsEmpty())
+			return storedItemRefundAmount;
+
+		SCR_EntityCatalogEntry entry = entityCatalogManager.GetEntryWithPrefabFromAnyCatalog(EEntityCatalogType.ITEM, itemPrefab, faction);
+		if (!entry)
+			return storedItemRefundAmount;
+
+		float refundMultiplier = 1;
+		// Adjust refund multiplier based on arsenal and item factions
+		if (entry.GetCatalogParent() == entityCatalogManager.GetFactionEntityCatalogOfType(EEntityCatalogType.ITEM, faction.GetFactionKey()))
+			refundMultiplier *= m_fRefundSameFactionItemMultiplier;
+		else
+			refundMultiplier *= m_fRefundDifferentFactionItemMultiplier;
+
+		// Calculate refund cost
+		int refundCost = SCR_ResourceSystemHelper.RoundRefundSupplyAmount(GetItemMilitarySupplyAllocationCost(itemPrefab, arsenalComponent) * refundMultiplier);
+		countedItems.Insert(item);
+
+		return refundCost + storedItemRefundAmount;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1142,7 +1223,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 				continue;
 			
 			//~ Add item supply cost to Military Supply Allocation cost
-			loadoutMilitarySupplyAllocationCost += GetItemMilitarySupplyAllocationCost(resourceName);
+			loadoutMilitarySupplyAllocationCost += GetItemMilitarySupplyAllocationRefundAmount(item, arsenalComponent);
 			
 			//~ Do not check the same prefab twice
 			if (!validatedPrefabs.Insert(resourceName))
@@ -1418,6 +1499,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 
 				playerLoadout.loadoutData = GetPlayerLoadoutData(characterEntity);
 				playerLoadout.loadoutData.LoadoutCost = SCR_PlayerArsenalLoadout.GetLoadoutSuppliesCost(playerUID);
+				playerLoadout.loadoutData.LoadoutPlayerSupplyAllocationCost = SCR_PlayerArsenalLoadout.GetLoadoutMilitarySupplyAllocationCost(playerUID);
 				playerLoadout.loadoutData.FactionIndex = GetGame().GetFactionManager().GetFactionIndex(SCR_FactionManager.SGetPlayerFaction(playerId));
 			}
 		}

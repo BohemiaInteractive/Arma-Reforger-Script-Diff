@@ -4,6 +4,9 @@ class SCR_MilitarySupplyAllocationConfig
 	[Attribute("600", desc: "Duration of Available Allocated Supplies replenishment cooldown in seconds.", params: "0 inf 1")]
 	protected int m_iAvailableAllocatedSuppliesReplenishmentTimer;
 
+	[Attribute("1", desc: "Multiplier of amount of Available Allocated Supplies (AAS) replenished when player receives Supplies Delivery XP reward. By Default 1 XP awarded = 1 AAS replenished.", params: "0 inf 0.01")]
+	protected float m_fAvailableAllocatedSuppliesReplenishmentOnSupplyDeliveryMultiplier;
+
 	[Attribute()]
 	protected ref array<ref SCR_MilitarySupplyAllocationRankInfo> m_aMilitarySupplyAllocationRankList;
 
@@ -44,6 +47,12 @@ class SCR_MilitarySupplyAllocationConfig
 		}
 
 		return 0;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetAvailableAllocatedSuppliesReplenishmentOnSupplyDeliveryMultiplier()
+	{
+		return m_fAvailableAllocatedSuppliesReplenishmentOnSupplyDeliveryMultiplier;
 	}
 }
 

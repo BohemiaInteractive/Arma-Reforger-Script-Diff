@@ -740,7 +740,18 @@ class SCR_CampaignMilitaryBaseManager
 	{
 		bool newSettingsDetected = SCR_RadioCoverageSystem.UpdateAll();
 		if (newSettingsDetected)
-			EvaluateControlPoints();
+			DelayedEvaluateControlPoints(0);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Calls Evaluate Control Points with a delay. Should be used in need of a delay of the evalution so that Control Points are properly updated.
+	//! \param[in] delay in ms
+	void DelayedEvaluateControlPoints(int delay)
+	{
+		if (delay < 0)
+			delay = 0;
+
+		GetGame().GetCallqueue().CallLater(EvaluateControlPoints, delay);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1084,7 +1095,7 @@ class SCR_CampaignMilitaryBaseManager
 	protected void OnBaseFactionChanged(SCR_MilitaryBaseComponent base, Faction newFaction)
 	{
 		if (!m_Campaign.IsProxy())
-			EvaluateControlPoints();
+			DelayedEvaluateControlPoints(0);
 	}
 
 	//------------------------------------------------------------------------------------------------

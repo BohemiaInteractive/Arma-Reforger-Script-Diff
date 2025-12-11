@@ -70,6 +70,7 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	protected SCR_ArsenalManagerComponent m_ArsenalManagerComp;
 	protected SCR_PlayerFactionAffiliationComponent m_PlyFactionAffilComp;
 	protected SCR_PlayerControllerGroupComponent m_PlayerControllerGroupComponent;
+	protected SCR_PlayerSupplyAllocationUI m_PlayerSupplyAllocationUI;
 	protected IEntity m_PreviewedEntity;
 
 	protected Widget m_wLoadouty;
@@ -77,6 +78,9 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	protected Widget m_wSuppliesWrapper;
 	protected ResourceName m_sLoadoutImageSet;
 	protected RichTextWidget m_wSuppliesText;
+	protected RichTextWidget m_wLoadoutNameText;
+	protected Widget m_wMSARSupplies;
+	protected string m_sMSARSuppliesName = "MSAR_Supplies";
 
 	protected const int LOADOUTS_PER_ROW = 2;
 	
@@ -156,8 +160,15 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 
 		if (m_wLoadouty)
 			m_wSupplies = m_wLoadouty.FindAnyWidget("w_Supplies");
-		if (m_wSupplies)		
+		if (m_wSupplies)
+		{
 			m_wSuppliesText = RichTextWidget.Cast(m_wSupplies.FindAnyWidget("SuppliesText"));
+			m_wLoadoutNameText = RichTextWidget.Cast(m_wSupplies.FindAnyWidget("LoadoutNameText"));
+		}
+
+		m_wMSARSupplies = w.FindAnyWidget(m_sMSARSuppliesName);
+		if (m_wMSARSupplies)
+			m_PlayerSupplyAllocationUI = SCR_PlayerSupplyAllocationUI.Cast(m_wMSARSupplies.FindHandler(SCR_PlayerSupplyAllocationUI));
 
 		m_PlayerControllerGroupComponent = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
 		if (m_PlayerControllerGroupComponent)
@@ -509,7 +520,7 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 
 	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//------------------------------------------------------------------------------------------------
-	protected float GetLoadoutCost()
+	protected float GetLoadoutCost(SCR_BasePlayerLoadout loadout = null)
 	{
 		IEntity spawnPoint;
 		
@@ -527,7 +538,10 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			}
 		}
 		
-		return SCR_ArsenalManagerComponent.GetLoadoutCalculatedSupplyCost(m_PlyLoadoutComp.GetLoadout(), true, -1, SCR_Faction.Cast(m_PlyFactionAffilComp.GetAffiliatedFaction()), spawnPoint);
+		if (loadout)
+			return SCR_ArsenalManagerComponent.GetLoadoutCalculatedSupplyCost(loadout, true, -1, SCR_Faction.Cast(m_PlyFactionAffilComp.GetAffiliatedFaction()), spawnPoint);
+		else
+			return SCR_ArsenalManagerComponent.GetLoadoutCalculatedSupplyCost(m_PlyLoadoutComp.GetLoadout(), true, -1, SCR_Faction.Cast(m_PlyFactionAffilComp.GetAffiliatedFaction()), spawnPoint);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -548,9 +562,10 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 
 			if (m_wSuppliesText)
 			{
-				int supplyCost = GetLoadoutCost();
+				int supplyCost = GetLoadoutCost(loadout);
 
-				if(supplyCost <= 0)
+				// Don't show supply cost outside of Deploy Menu
+				if (supplyCost < 0 || !SCR_DeployMenuMain.GetDeployMenu())
 				{
 					m_wSupplies.SetVisible(false);
 				}
@@ -561,6 +576,12 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 				}
 			}
 			
+			if (m_wMSARSupplies && m_PlayerSupplyAllocationUI && SCR_ArsenalManagerComponent.IsMilitarySupplyAllocationEnabled())
+				m_PlayerSupplyAllocationUI.OnLoadoutSelected(loadout);
+
+			if (m_wLoadoutNameText && m_wSupplies.IsVisible())
+				m_wLoadoutNameText.SetText(loadout.GetLoadoutName());
+
 			if (m_wExpandButtonName)
 				m_wExpandButtonName.SetText(loadout.GetLoadoutName());
 			
@@ -602,7 +623,8 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		{
 			int supplyCost = GetLoadoutCost();
 			
-			if(supplyCost <= 0)
+			// Don't show supply cost outside of Deploy Menu
+			if (supplyCost < 0 || !SCR_DeployMenuMain.GetDeployMenu())
 			{
 				m_wSupplies.SetVisible(false);
 			}
@@ -613,6 +635,12 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			}
 		}
 		
+		if (m_wMSARSupplies && loadout && m_PlayerSupplyAllocationUI && SCR_ArsenalManagerComponent.IsMilitarySupplyAllocationEnabled())
+			m_PlayerSupplyAllocationUI.OnLoadoutSelected(loadout);
+
+		if (m_wLoadoutNameText && loadout && m_wSupplies.IsVisible())
+			m_wLoadoutNameText.SetText(loadout.GetLoadoutName());
+
 		ImageWidget LoadoutBackground = ImageWidget.Cast((m_wLoadoutSelector.GetParent()).GetParent().FindAnyWidget("Background"));
 		
 		ChimeraWorld world = GetGame().GetWorld();
