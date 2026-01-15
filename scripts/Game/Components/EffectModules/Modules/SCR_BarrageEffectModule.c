@@ -228,6 +228,13 @@ class SCR_BarrageEffectsModule : SCR_EffectsModule
 		if (world.IsGameTimePaused())
 			return;
 
+		if (!m_Owner || m_Owner.IsDeleted())
+		{
+			Print("SCR_BarrageEffectsModule.BarrageUpdateLoop: Effect module owner no longer exists. Spawning of " + m_sModuleEntityPrefab + " aborted.", LogLevel.WARNING);
+			GetGame().GetCallqueue().Remove(BarrageUpdateLoop);
+			return;
+		}
+
 		//~ Update time
 		m_fCurrentProjectileDelay -= UPDATE_TIME;
 

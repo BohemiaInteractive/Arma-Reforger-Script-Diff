@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class AIFormationComponentClass: AIComponentClass
-{
-}
-
 class AIFormationComponent: AIComponent
 {
 	proto external vector GetOffsetPosition();

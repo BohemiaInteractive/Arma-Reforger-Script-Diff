@@ -130,6 +130,13 @@ class SCR_EffectsModule
 	*/
 	void SetSpawnParams(notnull out EntitySpawnParams spawnParams, out vector targetPosition)
 	{
+		if (!m_Owner || m_Owner.IsDeleted())
+		{
+			Print("SCR_EffectsModule.SetSpawnParams: Effect module owner no longer exists. Spawning of " + m_sModuleEntityPrefab + " aborted.", LogLevel.WARNING);
+			spawnParams = null;
+			return;
+		}
+
 		spawnParams.TransformMode = ETransformMode.LOCAL;
 		spawnParams.Parent = m_Owner;
 
