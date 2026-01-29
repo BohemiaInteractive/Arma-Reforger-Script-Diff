@@ -83,8 +83,12 @@ class SCR_MapRulerUI : SCR_MapUIBaseComponent
 			if (!mapGadget)
 				return;
 
-			m_fRulerLength = mapGadget.GetRulerLength();
-			if (m_wImage.LoadImageTexture(0, mapGadget.GetProtractorTexture()))
+			SCR_MapGadgetComponentClass mapGadgetData = SCR_MapGadgetComponentClass.Cast(mapGadget.GetComponentData(mapItem));
+			if (!mapGadgetData)
+				return;
+
+			m_fRulerLength = mapGadgetData.GetRulerLength();
+			if (m_wImage.LoadImageTexture(0, mapGadgetData.GetProtractorTexture()))
 				m_wImage.SetImage(0);
 
 			float zoomVal = m_MapEntity.GetCurrentZoom();

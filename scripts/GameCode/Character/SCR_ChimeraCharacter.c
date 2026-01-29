@@ -279,6 +279,10 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 		if (!specialCollisionComponent)
 			return;
 
+		SCR_SpecialCollisionHandlerComponentClass data = SCR_SpecialCollisionHandlerComponentClass.Cast(specialCollisionComponent.GetComponentData(newContact));
+		if (!data)
+			return;
+
 		RplComponent characterRplComp = GetRplComponent();
 		bool isAuthority = characterRplComp && characterRplComp.Role() == RplRole.Authority;
 		if (isAuthority)
@@ -286,8 +290,8 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 			SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(GetDamageManager());
 			if (!damageMgr)
 				return;
-			
-			specialCollisionComponent.GetSpecialCollisionDamageEffects(specialDamageEffects);
+
+			data.GetSpecialCollisionDamageEffects(specialDamageEffects);
 	
 			foreach(SCR_SpecialCollisionDamageEffect effect : specialDamageEffects)
 			{
@@ -302,10 +306,10 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 			return;
 
 		int contactSignalId = signalsMgr.AddOrFindMPSignal(SIGNAL_NAME_SPECIAL_CONTACT, 1, 1);
-		if (contactSignalId < 0 || specialCollisionComponent.GetContactType() < 1)
+		if (contactSignalId < 0 || data.GetContactType() < 1)
 			return;
 
-		signalsMgr.SetSignalValue(contactSignalId, specialCollisionComponent.GetContactType());
+		signalsMgr.SetSignalValue(contactSignalId, data.GetContactType());
 
 		int heightSignalId = signalsMgr.AddOrFindMPSignal(SIGNAL_NAME_SPECIAL_ENTITY_HEIGHT, 0.2, 1);
 		if (heightSignalId < 0)
@@ -384,13 +388,20 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 		}
 
 		SCR_SpecialCollisionHandlerComponent specialCollisionComponent;
+		SCR_SpecialCollisionHandlerComponentClass data;
+		if (!data)
+			return;
+
 		if (oldContact)
 		{
 			specialCollisionComponent = SCR_SpecialCollisionHandlerComponent.Cast(oldContact.FindComponent(SCR_SpecialCollisionHandlerComponent));
 			if (specialCollisionComponent)
+			{
 				specialCollisionComponent.OnContactEnd(this);
+				data = SCR_SpecialCollisionHandlerComponentClass.Cast(specialCollisionComponent.GetComponentData(oldContact));
+			}
 
-			if (specialCollisionComponent && signalsMgr.GetSignalValue(contactSignalId) != specialCollisionComponent.GetContactType())
+			if (data && signalsMgr.GetSignalValue(contactSignalId) != data.GetContactType())
 				return;//if something changed signal value then we should leave it as is
 
 			if (oldContact && lastContact.GetPrefabData() == oldContact.GetPrefabData())
@@ -401,12 +412,13 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 		if (!specialCollisionComponent)
 			return;
 
-		signalsMgr.SetSignalValue(contactSignalId, specialCollisionComponent.GetContactType());
+		data = SCR_SpecialCollisionHandlerComponentClass.Cast(specialCollisionComponent.GetComponentData(lastContact));
+		signalsMgr.SetSignalValue(contactSignalId, data.GetContactType());
 		if (heightSignalId < 0)
 			return;
 
 		float height;
-		if (specialCollisionComponent.GetContactType() != 0)
+		if (data.GetContactType() != 0)
 			height = specialCollisionComponent.GetContactHeight();
 
 		signalsMgr.SetSignalValue(heightSignalId, height);

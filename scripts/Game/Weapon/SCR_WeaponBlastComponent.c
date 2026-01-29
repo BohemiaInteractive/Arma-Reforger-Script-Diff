@@ -3,28 +3,6 @@ class SCR_WeaponBlastComponentClass : ScriptComponentClass
 	[Attribute(desc: "List effects that will be applied")]
 	protected ref array<ref SCR_WeaponBlastEffect> m_aBlastEffects;
 
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] outBlastEffects array to which blast effects are going to be added
-	//! \return
-	int GetBlastEffects(out notnull array<SCR_WeaponBlastEffect> outBlastEffects)
-	{
-		foreach (SCR_WeaponBlastEffect effect : m_aBlastEffects)
-		{
-			if (!effect)
-				continue;
-
-			outBlastEffects.Insert(effect);
-		}
-
-		return outBlastEffects.Count();
-	}
-}
-
-class SCR_WeaponBlastComponent : ScriptComponent
-{
-	[Attribute(desc: "Position and direction in which blast will propagate\nDirection is determined by forward vector (blue arrow)")]
-	protected ref PointInfo m_BlastOrigin;
-
 	[Attribute("3.0", desc: "How far will the blast propagate. Also limits propagation sideways.", params: "0.1 inf")]
 	protected float m_fBlastLength;
 
@@ -51,6 +29,81 @@ class SCR_WeaponBlastComponent : ScriptComponent
 
 	[Attribute("0", desc: "Determines if blast that was caused by AI character can damage it when it bouces from f.e. a wall.\nIf m_bAICanBlastCharacters or m_bIgnoreAIUnits is true then this will be considered true", category: "AI")]
 	protected bool m_bAICanDamageItself;
+
+	//------------------------------------------------------------------------------------------------
+	float GetBlastLength()
+	{
+		return m_fBlastLength;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetBlastConeAngle()
+	{
+		return m_fBlastConeAngle;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool CanBlastRicochet()
+	{
+		return m_bCanBlastRicochet;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetDeflectionFlatteningStrength()
+	{
+		return m_fDeflectionFlatteningStrength;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetDestructibleDamageMultiplier()
+	{
+		return m_fDestructibleDamageMultiplier;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool ShouldIgnoreAIUnits()
+	{
+		return m_bIgnoreAIUnits;
+	}
+
+	bool CanAIBlastCharacters()
+	{
+		return m_bAICanBlastCharacters;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool CanAIBlastDestructible()
+	{
+		return m_bAICanBlastDestructible;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool CanAIDamageItself()
+	{
+		return m_bAICanDamageItself;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] outBlastEffects array to which blast effects are going to be added
+	//! \return
+	int GetBlastEffects(out notnull array<SCR_WeaponBlastEffect> outBlastEffects)
+	{
+		foreach (SCR_WeaponBlastEffect effect : m_aBlastEffects)
+		{
+			if (!effect)
+				continue;
+
+			outBlastEffects.Insert(effect);
+		}
+
+		return outBlastEffects.Count();
+	}
+}
+
+class SCR_WeaponBlastComponent : ScriptComponent
+{
+	[Attribute(desc: "Position and direction in which blast will propagate\nDirection is determined by forward vector (blue arrow)")]
+	protected ref PointInfo m_BlastOrigin;
 
 	protected ref TraceSphere m_Trace;
 	protected ref Instigator m_Instigator;
@@ -114,7 +167,7 @@ class SCR_WeaponBlastComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Method used for calculating the outcome direction from impact
-	protected void CalculateRicochetDirection(vector hitPosDirNorm[3], out vector ricochetTransform[4])
+	protected void CalculateRicochetDirection(vector hitPosDirNorm[3], out vector ricochetTransform[4], float ricochetFlatteningStrength = 1)
 	{
 		if (!ricochetTransform)
 			ricochetTransform = {};
@@ -141,7 +194,7 @@ class SCR_WeaponBlastComponent : ScriptComponent
 
 		// Create vector perpendicular to surface normal and combine with deflected vector scaled by m_fDeflectionFlatteningStrength
 		vector outDirectionPerpendicular = (dirInverted * hitPosDirNorm[2]) * hitPosDirNorm[2];
-		vector outDirection = (outDirectionDeflected + outDirectionPerpendicular * m_fDeflectionFlatteningStrength).Normalized();
+		vector outDirection = (outDirectionDeflected + outDirectionPerpendicular * ricochetFlatteningStrength).Normalized();
 		Math3D.DirectionAndUpMatrix(outDirection, outDirection.Perpend(), ricochetTransform);
 		ricochetTransform[3] = hitPosDirNorm[0] + outDirection * 0.1;//move away from that surface to not block the trace or start the trace inside of it
 	}
@@ -341,8 +394,14 @@ class SCR_WeaponBlastComponent : ScriptComponent
 		else
 			m_aFoundCharacters.Clear();
 
+		SCR_WeaponBlastComponentClass data = SCR_WeaponBlastComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return;
+
+		const float blastLength = data.GetBlastLength();
+		const float coneAngle = data.GetBlastConeAngle();
 		const BaseWorld world = GetOwner().GetWorld();
-		const float radius = Math.Clamp(length * Math.Tan(m_fBlastConeAngle * Math.DEG2RAD), 0, length);
+		const float radius = Math.Clamp(length * Math.Tan(coneAngle * Math.DEG2RAD), 0, length);
 		const vector mins = {-radius, -radius, 0};
 		const vector maxs = {radius, radius, length};
 
@@ -364,9 +423,9 @@ class SCR_WeaponBlastComponent : ScriptComponent
 
 			//WHITE == AoE of the main blast
 			if (additionalDistance == 0)
-				m_DebugShapeMgr.Add(CreateCone(startingPos[3], direction, m_fBlastConeAngle, m_fBlastConeAngle, length / Math.Cos(m_fBlastConeAngle * Math.DEG2RAD), Color.WHITE, DEBUG_CONE_SUBDIV, ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP));
+				m_DebugShapeMgr.Add(CreateCone(startingPos[3], direction, coneAngle, coneAngle, length / Math.Cos(coneAngle * Math.DEG2RAD), Color.WHITE, DEBUG_CONE_SUBDIV, ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP));
 			else //YELLOW == AoE of the ricochet
-				m_DebugShapeMgr.AddTrapezoidalPrism(startingPos[3], direction, additionalDistance * Math.Tan(m_fBlastConeAngle * Math.DEG2RAD), (length + additionalDistance) * Math.Tan(m_fBlastConeAngle * Math.DEG2RAD), length, DEBUG_CONE_SUBDIV, Color.YELLOW, ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP);
+				m_DebugShapeMgr.AddTrapezoidalPrism(startingPos[3], direction, additionalDistance * Math.Tan(coneAngle * Math.DEG2RAD), (length + additionalDistance) * Math.Tan(coneAngle * Math.DEG2RAD), length, DEBUG_CONE_SUBDIV, Color.YELLOW, ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP);
 		}
 #endif
 
@@ -379,7 +438,7 @@ class SCR_WeaponBlastComponent : ScriptComponent
 			m_aFoundCharacters.Resize(MAX_BLAST_MEMBERS);
 		}
 
-		const float maxCos = Math.Cos(m_fBlastConeAngle * Math.DEG2RAD);
+		const float maxCos = Math.Cos(coneAngle * Math.DEG2RAD);
 		float distance, dot;
 		vector hitPosDirNorm[3];
 		vector entDirection, entPosition, nearestPosition;
@@ -400,14 +459,14 @@ class SCR_WeaponBlastComponent : ScriptComponent
 			if (!character)
 				continue;//Shouldnt happen but just in case reject those
 
-			if (m_bIsAiCharacter && !m_bAICanDamageItself && character == m_Instigator.GetInstigatorEntity())
+			if (m_bIsAiCharacter && !data.CanAIDamageItself() && character == m_Instigator.GetInstigatorEntity())
 				continue;//Skip if ai shouldnt harm itself
 
 			controller = character.GetCharacterController();
 			if (!controller || controller.GetLifeState() == ECharacterLifeState.DEAD)
 				continue;//Ignore the dead to not waste time
 
-			if (!controller.IsPlayerControlled() && m_bIgnoreAIUnits)
+			if (!controller.IsPlayerControlled() && data.ShouldIgnoreAIUnits())
 				continue;
 
 			nearestPosition = FindClosestCharacterPoint(startingPos[3], direction, character, distance);
@@ -580,18 +639,24 @@ class SCR_WeaponBlastComponent : ScriptComponent
 		}
 #endif
 
-		if (!m_bIsAiCharacter || m_bAICanBlastCharacters)
-			QueryBlastedCharacters(startTransform, m_fBlastLength, blastedEntities);
+		IEntity owner = GetOwner();
+		SCR_WeaponBlastComponentClass data = SCR_WeaponBlastComponentClass.Cast(GetComponentData(owner));
+		if (!data)
+			return;
 
-		if (m_bCanBlastRicochet)
+		float blastLength = data.GetBlastLength();
+		if (!m_bIsAiCharacter || data.CanAIBlastCharacters())
+			QueryBlastedCharacters(startTransform, blastLength, blastedEntities);
+
+		if (data.CanBlastRicochet())
 		{
 			//Trace for a surface to ricochet from
-			BaseWorld world = GetOwner().GetWorld();
+			BaseWorld world = owner.GetWorld();
 			TraceParam traceParam = new TraceParam();
 			traceParam.Start = startTransform[3];
-			traceParam.End = vector.Forward.Multiply3(startTransform) * m_fBlastLength + traceParam.Start;
+			traceParam.End = vector.Forward.Multiply3(startTransform) * blastLength + traceParam.Start;
 			traceParam.Flags = TraceFlags.ENTS | TraceFlags.WORLD;
-			array<IEntity> excludeArray = {GetOwner(), m_Instigator.GetInstigatorEntity()};
+			array<IEntity> excludeArray = {owner, m_Instigator.GetInstigatorEntity()};
 			traceParam.ExcludeArray = excludeArray;
 			traceParam.LayerMask = EPhysicsLayerDefs.Projectile;
 			float hit = world.TraceMove(traceParam, TraceFilter);
@@ -615,12 +680,12 @@ class SCR_WeaponBlastComponent : ScriptComponent
 				hitPosDirNorm[1] = dir.Normalized();
 				hitPosDirNorm[2] = traceParam.TraceNorm.Normalized();
 
-				float hitDistance = m_fBlastLength * hit;
+				float hitDistance = blastLength * hit;
 				bool ricochetFromCharacter = ChimeraCharacter.Cast(traceParam.TraceEnt) != null;
-				if (!ricochetFromDamageEnt && (!m_bIsAiCharacter || !ricochetFromCharacter && m_bAICanBlastDestructible || ricochetFromCharacter && m_bAICanBlastCharacters))
+				if (!ricochetFromDamageEnt && (!m_bIsAiCharacter || !ricochetFromCharacter && data.CanAIBlastDestructible() || ricochetFromCharacter && data.CanAIBlastCharacters()))
 					blastedEntities.Insert(new SCR_BlastedEntityEntry(traceParam.TraceEnt, hitPosDirNorm[0], hitPosDirNorm[1], hitPosDirNorm[2], 1, hitDistance, traceParam.NodeIndex, traceParam.ColliderIndex, traceParam.SurfaceProps));
 
-				CalculateRicochetDirection(hitPosDirNorm, startTransform);
+				CalculateRicochetDirection(hitPosDirNorm, startTransform, data.GetDeflectionFlatteningStrength());
 #ifdef ENABLE_DIAG
 				if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_WEAPONS_BLAST) != 0)
 				{
@@ -630,8 +695,8 @@ class SCR_WeaponBlastComponent : ScriptComponent
 #endif
 				m_VerifiedEntity = traceParam.TraceEnt;//to ignore it in the query
 
-				if (!m_bIsAiCharacter || m_bAICanBlastCharacters)
-					QueryBlastedCharacters(startTransform, m_fBlastLength - hitDistance, blastedEntities, hitDistance);
+				if (!m_bIsAiCharacter || data.CanAIBlastCharacters())
+					QueryBlastedCharacters(startTransform, blastLength - hitDistance, blastedEntities, hitDistance);
 			}
 		}
 
@@ -680,6 +745,8 @@ class SCR_WeaponBlastComponent : ScriptComponent
 		float maxHealth;
 		float computedDamageAmount;
 		float damageValue;
+		const float blastLength = data.GetBlastLength();
+		const float destructibleDamageMultiplier = data.GetDestructibleDamageMultiplier();
 
 		foreach (SCR_BlastedEntityEntry entry : blastedEntities)
 		{
@@ -689,14 +756,14 @@ class SCR_WeaponBlastComponent : ScriptComponent
 			{
 				foreach (int i, SCR_WeaponBlastEffect effect : blastEffects)
 				{
-					damageValue = effect.GetComputedDamage(entry.GetDistanceToTarget() / m_fBlastLength, entry.GetAngleToTarget()) * m_fDestructibleDamageMultiplier;
+					damageValue = effect.GetComputedDamage(entry.GetDistanceToTarget() / blastLength, entry.GetAngleToTarget()) * destructibleDamageMultiplier;
 
 					entry.GetTargetHitPosDirNorm(hitPosDirNorm);
 					destructibleEntity.HandleDamage(effect.GetDamageType(), damageValue, hitPosDirNorm);
 #ifdef ENABLE_DIAG
 					if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_WEAPONS_BLAST) != 0)
 					{//TEAL SPHERE == Damage amount for destructible entity
-						float factor = Math.Lerp(0, 1, (1 - entry.GetDistanceToTarget() / m_fBlastLength) * entry.GetAngleToTarget());
+						float factor = Math.Lerp(0, 1, (1 - entry.GetDistanceToTarget() / blastLength) * entry.GetAngleToTarget());
 						Color damageColor = new Color(factor * 0.1, factor, factor, 1);
 						m_DebugShapeMgr.AddSphere(hitPosDirNorm[0], DEBUG_SPHERE_RADIUS + i * 0.05, damageColor.PackToInt(), DEBUG_SHAPE_FLAGS);
 
@@ -717,9 +784,9 @@ class SCR_WeaponBlastComponent : ScriptComponent
 			maxHealth = hitZone.GetMaxHealth();
 			foreach (int i, SCR_WeaponBlastEffect effect : blastEffects)
 			{
-				damageValue = effect.GetComputedDamage(entry.GetDistanceToTarget() / m_fBlastLength, entry.GetAngleToTarget());
+				damageValue = effect.GetComputedDamage(entry.GetDistanceToTarget() / blastLength, entry.GetAngleToTarget());
 				if (!isCharacter)
-					damageValue *= m_fDestructibleDamageMultiplier;//Damage multiplier for destructibles
+					damageValue *= destructibleDamageMultiplier;//Damage multiplier for destructibles
 
 				context = new SCR_DamageContext(effect.GetDamageType(), damageValue, hitPosDirNorm,
 												entry.GetTargetEntity(), hitZone, m_Instigator,
@@ -841,10 +908,14 @@ class SCR_WeaponBlastComponent : ScriptComponent
 		if (rplComp && rplComp.Role() != RplRole.Authority)
 			return;
 
+		SCR_WeaponBlastComponentClass data = SCR_WeaponBlastComponentClass.Cast(GetComponentData(owner));
+		if (!data)
+			return;
+
 		if (!m_BlastOrigin)
 			return;
 
-		if (m_fBlastLength == 0)
+		if (data.GetBlastLength() == 0)
 			return;
 
 		SCR_MuzzleEffectComponent muzzleEffectComponent = SCR_MuzzleEffectComponent.Cast(owner.FindComponent(SCR_MuzzleEffectComponent));

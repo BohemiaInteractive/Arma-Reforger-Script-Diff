@@ -1,23 +1,41 @@
 class SCR_MortarMuzzleComponentClass : MortarMuzzleComponentClass
 {
-}
-
-class SCR_MortarMuzzleComponent : MortarMuzzleComponent
-{
 	[Attribute(desc: "Name of the action for which user will wait befor transfering the shell to the mortar - f.e. CharacterFire which is LMB")]
 	protected string m_sFireActionName;
 
 	[Attribute(desc: "Name of the signal that will be used to adjust the volume of the fired projectile based on the number of used charge rings")]
 	protected string m_sFirePowerSignalName;
+	
+	[Attribute("45 85 0", desc: "Minimum (X) and maximum (Y) vertical angle for the mortar's muzzle")]
+	protected vector m_vVerticalAngleLimits;
+
+	//------------------------------------------------------------------------------------------------
+	string GetFireActionName()
+	{
+		return m_sFireActionName;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	string GetFirePowerSignalName()
+	{
+		return m_sFirePowerSignalName;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	vector GetVerticalAngleLimits()
+	{
+		return m_vVerticalAngleLimits;
+	}
+}
+
+class SCR_MortarMuzzleComponent : MortarMuzzleComponent
+{
 
 	[Attribute(desc: "Position and rotation that will be used to play animation of dropping the shell")]
 	protected ref PointInfo m_LoaderPosition;
 
 	[Attribute(desc: "Position and rotation that will be used to play animation of dropping the shell but from the left side")]
 	protected ref PointInfo m_LoaderPositionLeft;
-	
-	[Attribute("45 85 0", desc: "Minimum (X) and maximum (Y) vertical angle for the mortar's muzzle")]
-	protected vector m_vVerticalAngleLimits;
 
 	protected SCR_CharacterControllerComponent m_CharController;
 	protected SCR_MortarShellGadgetComponent m_ShellComponent;
@@ -125,6 +143,10 @@ class SCR_MortarMuzzleComponent : MortarMuzzleComponent
 		if (!m_CharController)
 			return;
 
+		SCR_MortarMuzzleComponentClass data = SCR_MortarMuzzleComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return;
+
 		if (!m_CharController.CanPlayItemGesture())
 			return;
 
@@ -147,9 +169,9 @@ class SCR_MortarMuzzleComponent : MortarMuzzleComponent
 			weaponBlastComponent.OverrideInstigator(character);
 
 		SignalsManagerComponent signalsMgr = SignalsManagerComponent.Cast(GetOwner().FindComponent(SignalsManagerComponent));
-		if (!m_sFirePowerSignalName.IsEmpty() && signalsMgr)
+		if (!data.GetFirePowerSignalName().IsEmpty() && signalsMgr)
 		{
-			int signalId = signalsMgr.AddOrFindSignal(m_sFirePowerSignalName);//if such signal does not exist then we need to create it for long range sound replication to work properly
+			int signalId = signalsMgr.AddOrFindSignal(data.GetFirePowerSignalName()); // if such signal does not exist then we need to create it for long range sound replication to work properly
 			if (signalId > -1)
 				signalsMgr.SetSignalValue(signalId, shellComp.GetCurentChargeRingConfig()[0]);
 		}
@@ -227,13 +249,17 @@ class SCR_MortarMuzzleComponent : MortarMuzzleComponent
 		if (!animationComponent)
 			return;
 
-		float elevation = Math.Clamp(GetMuzzleElevation(), m_vVerticalAngleLimits[0], m_vVerticalAngleLimits[1]);
+		SCR_MortarMuzzleComponentClass data = SCR_MortarMuzzleComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return;
+
+		const vector angleLimit = data.GetVerticalAngleLimits();
+		float elevation = Math.Clamp(GetMuzzleElevation(), angleLimit[0], angleLimit[1]);
 		animationComponent.SetAnimAimY(elevation);
 
 		TAnimGraphVariable varId = animationComponent.BindVariableBool(ANIM_VARIABLE_LEFT_SIDE);
 		if (varId >= 0)
 			animationComponent.SetSharedVariableBool(varId, loadedFromLeftSide, true);
-		
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -368,7 +394,11 @@ class SCR_MortarMuzzleComponent : MortarMuzzleComponent
 		if (m_CharController)
 			owner = m_CharController.GetOwner();
 
-		if (m_ShellComponent.SetLoadedState(true, this, m_sFireActionName, owner))
+		SCR_MortarMuzzleComponentClass data = SCR_MortarMuzzleComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return;
+
+		if (data && m_ShellComponent.SetLoadedState(true, this, data.GetFireActionName(), owner))
 			m_ShellComponent.GetOnShellUsed().Insert(TransferShellToMortar);
 		else
 			TransferShellToMortar();

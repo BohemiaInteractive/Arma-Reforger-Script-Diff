@@ -26,8 +26,12 @@ class SCR_SightsHasIlluminationCondition : SCR_AvailableActionCondition
 		if (!sights)
 			return false;
 
+		SCR_2DOpticsComponentClass sightsData = SCR_2DOpticsComponentClass.Cast(sights.GetComponentData(sights.GetOwner()));
+		if (!sightsData)
+			return false;
+
 		// Has illumination
-		return GetReturnResult(sights.HasIllumination());
+		return GetReturnResult(sightsData.HasIllumination());
 	}
 
 	//------------------------------------------------------------------------------------------------

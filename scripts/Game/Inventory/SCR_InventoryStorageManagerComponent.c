@@ -16,8 +16,7 @@ enum ECallbackState
 	DROP = 0,
 	INSERT = 1,
 	MOVE = 2,
-	DELETE = 3,
-	FINAL = 4
+	FINAL = 3
 }
 
 enum EResupplyUnavailableReason
@@ -297,9 +296,8 @@ class DropAndMoveOperationCallback : ScriptedInventoryOperationCallback
 	SCR_InventoryStorageManagerComponent m_Manager;
 	SCR_InvCallBack m_FinalCB;
 	bool m_bIstakenFromArsenal;
-	bool m_bDeleteItemIfEmpty;
 	ref array<IEntity> m_aItemsToMove = {};
-	ECallbackState m_ECurrentState = 0; // 0 - drop, 1 - insert, 2 - move, 3 - delete, 4 - final
+	ECallbackState m_ECurrentState = 0; // 0 - drop, 1 - insert, 2 - move, 3 - final
 	
 	//------------------------------------------------------------------------------------------------
 	override protected void OnComplete()
@@ -321,12 +319,6 @@ class DropAndMoveOperationCallback : ScriptedInventoryOperationCallback
 			case ECallbackState.MOVE:
 			{
 				OnMoveComplete();
-			}
-			break;
-
-			case ECallbackState.DELETE:
-			{
-				OnDeleteComplete();
 			}
 			break;
 
@@ -376,32 +368,10 @@ class DropAndMoveOperationCallback : ScriptedInventoryOperationCallback
 //		BaseInventoryStorageComponent storage = m_Manager.FindStorageForItem(item, EStoragePurpose.PURPOSE_ANY);
 //		if (!m_Manager.TryMoveItemToStorage(item, storage, -1, this))
 //			OnMoveComplete();
-		
-		if (m_bDeleteItemIfEmpty)
-		{
-			m_ECurrentState++;
-			OnDeleteComplete();
-		}
-		else
-		{		
-			m_ECurrentState = ECallbackState.FINAL;
-			OnFinalState();
-		}
-			
-		return;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void OnDeleteComplete()
-	{			
-		m_aItemsToMove.Clear();
-		BaseInventoryStorageComponent itemIsStorage = BaseInventoryStorageComponent.Cast(m_ItemBefore);
-		m_Manager.GetAllItems(m_aItemsToMove, itemIsStorage);
-			
-		if (m_aItemsToMove.IsEmpty())
-			m_Manager.AskServerToDeleteEntity(m_ItemBefore.GetOwner());
-		
+
+		m_ECurrentState = ECallbackState.FINAL;
 		OnFinalState();
+		return;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1138,7 +1108,6 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			chainedCallback.m_ItemBefore = InventoryItemComponent.Cast(m_TargetSlot.GetAttachedEntity().FindComponent(InventoryItemComponent));
 			chainedCallback.m_TargetSlot = m_TargetSlot;
 			chainedCallback.m_FinalCB = cb;
-			chainedCallback.m_bDeleteItemIfEmpty = true;
 			chainedCallback.m_bIstakenFromArsenal = isTakenFromArsenal;
 	
 			return TryRemoveItemFromStorage(m_TargetSlot.GetAttachedEntity(), m_TargetSlot.GetStorage(), chainedCallback);
@@ -1219,7 +1188,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	//! \param[in] isTakenFromArsenal
 	//! \param[in] deleteOriginalItemIfEmpty
 	//! \return
-	bool TryReplaceAndDropItemAtSlot(BaseInventoryStorageComponent storage, IEntity item, int slotID, SCR_InvCallBack cb = null, bool isTakenFromArsenal = false, bool deleteOriginalItemIfEmpty = false)
+	bool TryReplaceAndDropItemAtSlot(BaseInventoryStorageComponent storage, IEntity item, int slotID, SCR_InvCallBack cb = null, bool isTakenFromArsenal = false)
 	{
 		if (!storage || !item)
 			return false;
@@ -1265,7 +1234,6 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		chainedCallback.m_ItemAfter = itemComp;
 		chainedCallback.m_ItemBefore = InventoryItemComponent.Cast(m_TargetSlot.GetAttachedEntity().FindComponent(InventoryItemComponent));
 		chainedCallback.m_TargetSlot = m_TargetSlot;
-		chainedCallback.m_bDeleteItemIfEmpty = deleteOriginalItemIfEmpty; 
 		chainedCallback.m_bIstakenFromArsenal = isTakenFromArsenal;
 		chainedCallback.m_FinalCB = cb;
 		
@@ -1766,34 +1734,6 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 
 			}
 		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_ServerToDeleteEntity(RplId targetRplId)
-	{
-	    RplComponent rplComp = RplComponent.Cast(Replication.FindItem(targetRplId));
-        if (!rplComp)
-            return;
-
-        IEntity entity = rplComp.GetEntity();
-        if (!entity)
-            return;
-
-      	RplComponent.DeleteRplEntity(entity, false);	
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] ent
-	void AskServerToDeleteEntity(IEntity ent)
-	{
-		RplComponent rplComp = RplComponent.Cast(ent.FindComponent(RplComponent));
-		if (!rplComp)
-			return;
-			
-		RplId rplId = rplComp.Id();
-		Rpc(RpcAsk_ServerToDeleteEntity, rplId);
 	}
 	
 	//------------------------------------------------------------------------------------------------

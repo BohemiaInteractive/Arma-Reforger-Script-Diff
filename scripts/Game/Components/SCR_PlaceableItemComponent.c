@@ -16,6 +16,24 @@ class SCR_PlaceableItemComponentClass : ScriptComponentClass
 	[Attribute(SCR_ECharacterDistanceMeasurementMethod.FROM_EYES.ToString(), UIWidgets.ComboBox, "How the distance between player and placment position should be calculated", enums: ParamEnumArray.FromEnum(SCR_ECharacterDistanceMeasurementMethod))]
 	protected SCR_ECharacterDistanceMeasurementMethod m_eMeasurementMethod;
 
+	[Attribute(params: "xob")]
+	protected ResourceName m_sPreviewObject;
+	
+	[Attribute("0.5084", desc: "Max placement distance in meters.")]
+	protected float m_fMaxPlacementDistance;
+	
+	[Attribute(uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_EPlacementType))]
+	protected SCR_EPlacementType m_ePlacementType;
+
+	[Attribute(defvalue: "0", desc: "Should forward vector be facing away from the player when item is placed.")]
+	protected bool m_bForwardAwayFromPlayer;
+
+	[Attribute(defvalue: "1", desc: "Should item be attached to the hierachy of the entity on which item is placed")]
+	protected bool m_bAttachPlacedItemToTheSurfaceEntity;
+
+	[Attribute(defvalue: "0", desc: "Determines if player should be able to force game to place the item.\nWhen force placment is used, then game does not care about having enough space, but tilt is still evaluated")]
+	protected bool m_bCanBeForcedPlaced;
+
 	protected ref array<typename> m_aIgnoredComponentTypes = {};
 	protected bool m_bValidated;
 
@@ -61,6 +79,42 @@ class SCR_PlaceableItemComponentClass : ScriptComponentClass
 	}
 
 	//------------------------------------------------------------------------------------------------
+	ResourceName GetPreviewObjectResource()
+	{
+		return m_sPreviewObject;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetMaxPlacementDistance()
+	{
+		return m_fMaxPlacementDistance;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_EPlacementType GetPlacementType()
+	{
+		return m_ePlacementType;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsForwardFacingAwayFromPlayer()
+	{
+		return m_bForwardAwayFromPlayer;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool CanAttachToTheSurfaceEntity()
+	{
+		return m_bCanAttachToDynamicObject;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool CanBeForcePlaced()
+	{
+		return m_bCanBeForcedPlaced;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Removes unwanted types from ignored components list
 	void ValidateIgnoredComponents()
 	{
@@ -90,57 +144,59 @@ class SCR_PlaceableItemComponentClass : ScriptComponentClass
 
 class SCR_PlaceableItemComponent : ScriptComponent
 {
-	[Attribute(params: "xob")]
-	protected ResourceName m_sPreviewObject;
-	
-	[Attribute("0.5084", desc: "Max placement distance in meters.")]
-	protected float m_fMaxPlacementDistance;
-	
-	[Attribute(uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_EPlacementType))]
-	protected SCR_EPlacementType m_ePlacementType;
-
-	[Attribute(defvalue: "0", desc: "Should forward vector be facing away from the player when item is placed.")]
-	protected bool m_bForwardAwayFromPlayer;
-
-	[Attribute(defvalue: "1", desc: "Should item be attached to the hierachy of the entity on which item is placed")]
-	protected bool m_bAttachPlacedItemToTheSurfaceEntity;
-
-	[Attribute(defvalue: "0", desc: "Determines if player should be able to force game to place the item.\nWhen force placment is used, then game does not care about having enough space, but tilt is still evaluated")]
-	protected bool m_bCanBeForcedPlaced;
-	
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	SCR_EPlacementType GetPlacementType()
 	{
-		return m_ePlacementType;
+		SCR_PlaceableItemComponentClass data = SCR_PlaceableItemComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return false;
+
+		return data.GetPlacementType();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	float GetMaxPlacementDistance()
 	{
-		return m_fMaxPlacementDistance;
+		SCR_PlaceableItemComponentClass data = SCR_PlaceableItemComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return 0;
+
+		return data.GetMaxPlacementDistance();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	bool GetForwardAwayFromPlayer()
 	{
-		return m_bForwardAwayFromPlayer;
+		SCR_PlaceableItemComponentClass data = SCR_PlaceableItemComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return false;
+
+		return data.IsForwardFacingAwayFromPlayer();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	bool GetAttachPlacedItemToTheSurfaceEntity()
 	{
-		return m_bAttachPlacedItemToTheSurfaceEntity;
+		SCR_PlaceableItemComponentClass data = SCR_PlaceableItemComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return false;
+
+		return data.CanAttachToTheSurfaceEntity();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \return true if item can be forced to be placed at specified position, despite not having enough space for it
 	bool GetCanBeForcedPlaced()
 	{
-		return m_bCanBeForcedPlaced;
+		SCR_PlaceableItemComponentClass data = SCR_PlaceableItemComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return false;
+
+		return data.CanBeForcePlaced();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -196,10 +252,14 @@ class SCR_PlaceableItemComponent : ScriptComponent
 	//! \return
 	VObject GetPreviewVobject()
 	{
-		if (m_sPreviewObject.IsEmpty())
+		SCR_PlaceableItemComponentClass data = SCR_PlaceableItemComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return GetOwner().GetVObject();
+
+		if (data.GetPreviewObjectResource().IsEmpty())
 			return GetOwner().GetVObject();
 		
-		Resource resource = Resource.Load(m_sPreviewObject);
+		Resource resource = Resource.Load(data.GetPreviewObjectResource());
 		if (!resource.IsValid())
 			return GetOwner().GetVObject();
 		

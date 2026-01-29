@@ -1,10 +1,6 @@
 [EntityEditorProps(category: "GameScripted/Components", description: "Mine inventory item component.")]
 class SCR_DeployableInventoryItemInventoryComponentClass : SCR_PlaceableInventoryItemComponentClass
 {
-}
-
-class SCR_DeployableInventoryItemInventoryComponent : SCR_PlaceableInventoryItemComponent
-{
 	[Attribute(desc: "Additional offset to the position at which entity will be dropped from inventory.\nGame will use position of the user that dropped this item on the groun and add to it this offset.\nWhen both rotation and position offsets are set to zero. then default placement mechanism will be used, unless forced by m_bForceItemDropOnCharacterPosition.", category: "Setup")]
 	protected vector m_vAdditionalDropOffset;
 
@@ -13,6 +9,28 @@ class SCR_DeployableInventoryItemInventoryComponent : SCR_PlaceableInventoryItem
 
 	[Attribute(desc: "Ensures that even when item offsets are not defined, then game will place dropped item on the position of the character that dropped it.", category: "Setup")]
 	protected bool m_bForceItemDropOnCharacterPosition;
+
+	//------------------------------------------------------------------------------------------------
+	vector GetAdditionalDropOffset()
+	{
+		return m_vAdditionalDropOffset;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	vector GetAdditionalDropRotation()
+	{
+		return m_vAdditionalDropRotation;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsItemForceDroppedOnCharacterPosition()
+	{
+		return m_bForceItemDropOnCharacterPosition;
+	}
+}
+
+class SCR_DeployableInventoryItemInventoryComponent : SCR_PlaceableInventoryItemComponent
+{
 
 	//------------------------------------------------------------------------------------------------
 	override bool ShouldHideInVicinity()
@@ -38,7 +56,11 @@ class SCR_DeployableInventoryItemInventoryComponent : SCR_PlaceableInventoryItem
 		if (!character)
 			return false;
 
-		if (!m_bForceItemDropOnCharacterPosition && m_vAdditionalDropOffset == vector.Zero && m_vAdditionalDropRotation == vector.Zero)
+		SCR_DeployableInventoryItemInventoryComponentClass data = SCR_DeployableInventoryItemInventoryComponentClass.Cast(GetComponentData(owner));
+		if (!data)
+			return false;
+
+		if (!data.IsItemForceDroppedOnCharacterPosition() && data.GetAdditionalDropOffset() == vector.Zero && data.GetAdditionalDropRotation() == vector.Zero)
 			return false;
 
 		TraceParam param = new TraceParam();
@@ -58,8 +80,8 @@ class SCR_DeployableInventoryItemInventoryComponent : SCR_PlaceableInventoryItem
 
 		//apply offsets
 		vector additiveMat[4];
-		Math3D.AnglesToMatrix(m_vAdditionalDropRotation, additiveMat);
-		additiveMat[3] = m_vAdditionalDropOffset;
+		Math3D.AnglesToMatrix(data.GetAdditionalDropRotation(), additiveMat);
+		additiveMat[3] = data.GetAdditionalDropOffset();
 		Math3D.MatrixMultiply4(computedTransform, additiveMat, computedTransform);
 
 		return true;

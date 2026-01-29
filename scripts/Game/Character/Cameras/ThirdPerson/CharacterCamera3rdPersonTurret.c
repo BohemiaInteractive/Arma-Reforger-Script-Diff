@@ -38,14 +38,20 @@ class CharacterCamera3rdPersonTurret extends CharacterCamera3rdPersonVehicle
 			if (turret)
 			{
 				bool bUsingVehicleCameraData;
-				
-				SCR_VehicleCameraDataComponent vehicleCamData = SCR_VehicleCameraDataComponent.Cast(turret.FindComponent(SCR_VehicleCameraDataComponent));
-				if (!vehicleCamData)
+
+				SCR_VehicleCameraDataComponent vehicleCamDataComp = SCR_VehicleCameraDataComponent.Cast(turret.FindComponent(SCR_VehicleCameraDataComponent));
+				if (!vehicleCamDataComp)
 				{
-					vehicleCamData = SCR_VehicleCameraDataComponent.Cast(m_OwnerVehicle.FindComponent(SCR_VehicleCameraDataComponent));
+					vehicleCamDataComp = SCR_VehicleCameraDataComponent.Cast(m_OwnerVehicle.FindComponent(SCR_VehicleCameraDataComponent));
 					bUsingVehicleCameraData = true;
 				}
-				
+
+				SCR_VehicleCameraDataComponentClass vehicleCamData;
+				if (bUsingVehicleCameraData)
+					vehicleCamData = SCR_VehicleCameraDataComponentClass.Cast(vehicleCamDataComp.GetComponentData(m_OwnerVehicle));
+				else
+					vehicleCamData = SCR_VehicleCameraDataComponentClass.Cast(vehicleCamDataComp.GetComponentData(turret));
+
  				if (vehicleCamData)
 				{
 					m_fHeight = vehicleCamData.m_fHeight;

@@ -916,7 +916,8 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 		if (m_bShowNotificationOnZoneEntered && notification > -1)
 			SCR_NotificationsComponent.SendToPlayer(userID, notification);
 
-		if (m_bEnableSounds && m_bPlaySoundOnZoneEntered)
+		SCR_BaseDeployableInventoryItemComponentClass data = SCR_BaseDeployableInventoryItemComponentClass.Cast(GetComponentData(GetOwner()));
+		if (data && data.IsSoundEnabled() && m_bPlaySoundOnZoneEntered)
 		{
 			RPC_PlaySoundOnZoneEnteredBroadcast(canBeDeployedAtPos);
 			Rpc(RPC_PlaySoundOnZoneEnteredBroadcast, canBeDeployedAtPos);

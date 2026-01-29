@@ -1,12 +1,17 @@
 class SCR_DetonatorGadgetComponentClass : SCR_GadgetComponentClass
 {
+	[Attribute("100", UIWidgets.Auto, desc: "If connected charges are outside of this range then they will not detonate. -1 == unlimited", params: "-1 inf")]
+	protected float m_fMaxDetonationRange;
+
+	//------------------------------------------------------------------------------------------------
+	float GetmaxDetonationRange()
+	{
+		return m_fMaxDetonationRange;
+	}
 }
 
 class SCR_DetonatorGadgetComponent : SCR_GadgetComponent
 {
-	[Attribute("100", UIWidgets.Auto, desc: "If connected charges are outside of this range then they will not detonate. -1 == unlimited", params: "-1 inf")]
-	protected float m_fMaxDetonationRange;
-
 	[RplProp(onRplName: "OnNumberOfConnectedChargesChanged")]
 	protected int m_iNumberOfConnectedCharges;
 
@@ -65,7 +70,12 @@ class SCR_DetonatorGadgetComponent : SCR_GadgetComponent
 	//! \return true if explosive charge can be detonated from that position in case that detonators' range is set to -1 then it will always be true
 	bool IsChargeInRange(vector pos, SCR_ExplosiveChargeComponent explosiveChargeComp)
 	{
-		if (m_fMaxDetonationRange == -1)//range is unlimited
+		IEntity owner = GetOwner();
+		SCR_DetonatorGadgetComponentClass data = SCR_DetonatorGadgetComponentClass.Cast(GetComponentData(owner));
+		if (!data)
+			return true;
+
+		if (data.GetmaxDetonationRange() == -1)//range is unlimited
 			return true;
 
 		if (!explosiveChargeComp)
@@ -75,7 +85,7 @@ class SCR_DetonatorGadgetComponent : SCR_GadgetComponent
 			pos = GetOwner().GetOrigin();
 
 		vector chargePos = explosiveChargeComp.GetOwner().GetOrigin();
-		if (vector.Distance(pos, chargePos) > m_fMaxDetonationRange)
+		if (vector.Distance(pos, chargePos) > data.GetmaxDetonationRange())
 			return false;
 
 		return true;
@@ -88,7 +98,12 @@ class SCR_DetonatorGadgetComponent : SCR_GadgetComponent
 	//! \return true if explosive charge can be detonated from that position in case that detonators' range is set to -1 then it will always be true
 	bool IsChargeInRange(vector pos, RplId explosiveChargeCompId)
 	{
-		if (m_fMaxDetonationRange == -1)//range is unlimited
+		IEntity owner = GetOwner();
+		SCR_DetonatorGadgetComponentClass data = SCR_DetonatorGadgetComponentClass.Cast(GetComponentData(owner));
+		if (!data)
+			return true;
+
+		if (data.GetmaxDetonationRange() == -1)//range is unlimited
 			return true;
 
 		if (!m_aConnectedCharges.Contains(explosiveChargeCompId))
@@ -99,7 +114,7 @@ class SCR_DetonatorGadgetComponent : SCR_GadgetComponent
 			return false;
 
 		if (pos == vector.Zero)
-			pos = GetOwner().GetOrigin();
+			pos = owner.GetOrigin();
 
 		return IsChargeInRange(pos, explosiveChargeComp);
 	}

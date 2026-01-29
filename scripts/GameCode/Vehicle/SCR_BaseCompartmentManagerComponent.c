@@ -1,12 +1,17 @@
 class SCR_BaseCompartmentManagerComponentClass : BaseCompartmentManagerComponentClass
 {
+	[Attribute("0", desc: "Will block supply actions if one or more compartments are occupied as well as blocking player get in actions if there are supplies. This is a hotfix until proper solution as it simply disables some player actions on the surface rather than with proper logic and does not effect AI")]
+	protected bool m_bBlockSuppliesIfOccupied;
+
+	//------------------------------------------------------------------------------------------------
+	bool ShouldBlockSuppliesIfOccupied()
+	{
+		return m_bBlockSuppliesIfOccupied;
+	}
 }
 
 class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 {
-	[Attribute("0", desc: "Will block supply actions if one or more compartments are occupied as well as blocking player get in actions if there are supplies. This is a hotfix until proper solution as it simply disables some player actions on the surface rather than with proper logic and does not effect AI")]
-	protected bool m_bBlockSuppliesIfOccupied;
-	
 	//Compartment slots associated with crew
 	static const ref array<ECompartmentType> CREW_COMPARTMENT_TYPES = {ECompartmentType.PILOT, ECompartmentType.TURRET};
 	
@@ -26,9 +31,13 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 	//! \return True if the get in actions and supply actions care if the compartments are occupied or if there are supplies stored in the vehicle
 	bool BlockSuppliesIfOccupied()
 	{
-		return m_bBlockSuppliesIfOccupied;
+		SCR_BaseCompartmentManagerComponentClass data = SCR_BaseCompartmentManagerComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return false;
+
+		return data.ShouldBlockSuppliesIfOccupied();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Get compartments of specific type
 	//! \param[in,out] outCompartments

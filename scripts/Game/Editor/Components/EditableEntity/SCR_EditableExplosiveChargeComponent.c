@@ -1,17 +1,28 @@
 [ComponentEditorProps(category: "GameScripted/Editor (Editables)", description: "", icon: "WBData/ComponentEditorProps/componentEditor.png")]
 class SCR_EditableExplosiveChargeComponentClass : SCR_EditableSystemComponentClass
 {
-}
-
-//! @ingroup Editable_Entities
-class SCR_EditableExplosiveChargeComponent : SCR_EditableSystemComponent
-{
 	[Attribute(desc: "If charge should be armed by default when spawned by the GM.")]
 	protected bool m_bArmedByDefault;
 
 	[Attribute("120", desc: "Default fuze time that will be used when object is spawned by GM.")]
 	protected float m_fDefaultFuzeTime;
 
+	//------------------------------------------------------------------------------------------------
+	bool IsArmedByDefault()
+	{
+		return m_bArmedByDefault;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetDefaultFuzeTime()
+	{
+		return m_fDefaultFuzeTime;
+	}
+}
+
+//! @ingroup Editable_Entities
+class SCR_EditableExplosiveChargeComponent : SCR_EditableSystemComponent
+{
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
@@ -26,11 +37,15 @@ class SCR_EditableExplosiveChargeComponent : SCR_EditableSystemComponent
 	//! Arms the charge with 120s fuze
 	protected void ActivateCharge()
 	{
+		SCR_EditableExplosiveChargeComponentClass data = SCR_EditableExplosiveChargeComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return;
+
 		SCR_ExplosiveChargeComponent explosiveChargeComp = SCR_ExplosiveChargeComponent.Cast(GetOwner().FindComponent(SCR_ExplosiveChargeComponent));
 		if (explosiveChargeComp)
 		{
-			explosiveChargeComp.SetFuzeTime(m_fDefaultFuzeTime, true);
-			if (m_bArmedByDefault)
+			explosiveChargeComp.SetFuzeTime(data.GetDefaultFuzeTime(), true);
+			if (data.IsArmedByDefault())
 				explosiveChargeComp.ArmWithTimedFuze(true);
 		}
 	}

@@ -1,11 +1,6 @@
 [ComponentEditorProps(category: "GameScripted/Vehicle", description:"Vehicle camera data")]
 class SCR_VehicleCameraDataComponentClass: ScriptComponentClass
 {
-};
-
-
-class SCR_VehicleCameraDataComponent : ScriptComponent
-{
 	[Attribute("false", UIWidgets.CheckBox, "Override the vehicle camera data component of the parent Vehicle\n")]
 	bool m_bOverrideVehicleSettings;
 	[Attribute("1", UIWidgets.EditBox, "Height the camera should stay above the vehicle's bounding box center\n[m]")]
@@ -60,4 +55,9 @@ class SCR_VehicleCameraDataComponent : ScriptComponent
  	float m_HorizontalSpringLag;
 	[Attribute("30", UIWidgets.EditBox, "Spring lag max angle used for horizontal movement\n")]
 	float m_HorizontalSpringLagMaxAngle;
-};
+}
+
+
+class SCR_VehicleCameraDataComponent : ScriptComponent
+{
+}

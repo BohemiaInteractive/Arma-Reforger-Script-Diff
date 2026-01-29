@@ -131,8 +131,12 @@ class SCR_SpecialCollisionDamageEffect : SCR_PersistentDamageEffect
 		if (!specialCollisionComp)
 			return;
 
+		SCR_SpecialCollisionHandlerComponentClass data = SCR_SpecialCollisionHandlerComponentClass.Cast(specialCollisionComp.GetComponentData(srcEnt));
+		if (!data)
+			return;
+
 		array<SCR_SpecialCollisionDamageEffect> damageEffects = {};
-		specialCollisionComp.GetSpecialCollisionDamageEffects(damageEffects);
+		data.GetSpecialCollisionDamageEffects(damageEffects);
 		typename thisType = Type();
 		foreach (SCR_SpecialCollisionDamageEffect effect : damageEffects)
 		{

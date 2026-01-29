@@ -644,7 +644,9 @@ class CharacterCameraADS : CharacterCameraBase
 		vector cameraAngles;
 		if (sights2D && weapon && weapon.IsSightADSActive())
 		{
-			vector sightsOffset = sights2D.GetSightsFrontPosition(true) + sights2D.GetCameraOffset() - sights2D.GetSightsOffset();
+			IEntity sightOwner = sights2D.GetOwner();
+			SCR_2DOpticsComponentClass sightData = SCR_2DOpticsComponentClass.Cast(sights2D.GetComponentData(sightOwner));
+			vector sightsOffset = sights2D.GetSightsFrontPosition(true) + sightData.GetCameraOffset() - sights2D.GetSightsOffset();
 			vector cameraOffset = sightsOffset.Multiply3(cameraData.m_mSightsLocalMat);
 			cameraData.m_mSightsLocalMat[3] = cameraData.m_mSightsLocalMat[3] + cameraOffset;
 			
@@ -654,7 +656,7 @@ class CharacterCameraADS : CharacterCameraBase
 			sights2D.GetSightsTransform(sightMat, true);
 
 			vector ownerMat[4];
-			sights2D.GetOwner().GetWorldTransform(ownerMat);
+			sightOwner.GetWorldTransform(ownerMat);
 			Math3D.MatrixMultiply3(ownerMat, sightMat, sightMat);
 
 			// Get optic transformation in world coordinates

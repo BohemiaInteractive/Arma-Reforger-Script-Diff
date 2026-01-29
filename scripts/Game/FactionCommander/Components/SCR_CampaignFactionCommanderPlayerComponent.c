@@ -219,6 +219,20 @@ class SCR_CampaignFactionCommanderPlayerComponent : SCR_FactionCommanderPlayerCo
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected bool IsValidRequest(SCR_CampaignMilitaryBaseComponent base)
+	{
+		if (!base)
+			return false;
+
+		SCR_Faction faction = SCR_Faction.Cast(base.GetFaction(true));
+		if (!faction)
+			return false;
+
+		PlayerController sender = PlayerController.Cast(GetOwner());
+		return sender && faction.IsPlayerCommander(sender.GetPlayerId());
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Create campaign military base task
 	//! \param[in] taskPrefab
 	//! \param[in] group
@@ -257,8 +271,12 @@ class SCR_CampaignFactionCommanderPlayerComponent : SCR_FactionCommanderPlayerCo
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RpcAsk_CreateCampaignMilitaryBaseTask(ResourceName taskPrefab, int assigneeId, int factionIndex, int playerId, int data, int baseCallsign, vector positionOffset)
 	{
-		Faction faction = GetGame().GetFactionManager().GetFactionByIndex(factionIndex);
-		if (!faction)
+		PlayerController sender = PlayerController.Cast(GetOwner());
+		if (!sender)
+			return;
+
+		SCR_Faction faction = SCR_Faction.Cast(GetGame().GetFactionManager().GetFactionByIndex(factionIndex));
+		if (!faction || !faction.IsPlayerCommander(sender.GetPlayerId()))
 			return;
 
 		if (!m_GroupTaskManager.CanCreateNewTaskWithResourceName(taskPrefab, faction))
@@ -331,6 +349,7 @@ class SCR_CampaignFactionCommanderPlayerComponent : SCR_FactionCommanderPlayerCo
 			taskSystem.AssignTask(task, SCR_TaskExecutorGroup.FromGroup(assigneeId), true, playerId); // force assign
 	}
 
+#ifdef ENABLE_DIAG
 	//------------------------------------------------------------------------------------------------
 	//! Cheat method to set a local player as commander
 	void CheatCommander()
@@ -341,11 +360,15 @@ class SCR_CampaignFactionCommanderPlayerComponent : SCR_FactionCommanderPlayerCo
 
 		Rpc(RpcAsk_CheatCommander, playerId);
 	}
+#endif
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RpcAsk_CheatCommander(int playerId)
 	{
+		if (!GetGame().IsDev())
+			return;
+
 		SCR_Faction playerFaction = SCR_Faction.Cast(SCR_FactionManager.SGetPlayerFaction(playerId));
 		if (!playerFaction)
 			return;
@@ -371,7 +394,7 @@ class SCR_CampaignFactionCommanderPlayerComponent : SCR_FactionCommanderPlayerCo
 	protected void RpcAsk_SetSuppliesLimit(int baseCallsign, float value)
 	{
 		SCR_CampaignMilitaryBaseComponent base = SCR_GameModeCampaign.GetInstance().GetBaseManager().FindBaseByCallsign(baseCallsign);
-		if (!base)
+		if (!IsValidRequest(base))
 			return;
 
 		base.SetSupplyLimit(value);
@@ -391,7 +414,7 @@ class SCR_CampaignFactionCommanderPlayerComponent : SCR_FactionCommanderPlayerCo
 	protected void RpcAsk_SetReservedSupplyAmount(int baseCallsign, float value)
 	{
 		SCR_CampaignMilitaryBaseComponent base = SCR_GameModeCampaign.GetInstance().GetBaseManager().FindBaseByCallsign(baseCallsign);
-		if (!base)
+		if (!IsValidRequest(base))
 			return;
 
 		base.SetReservedSupplyAmount(value);
@@ -411,7 +434,7 @@ class SCR_CampaignFactionCommanderPlayerComponent : SCR_FactionCommanderPlayerCo
 	protected void RpcAsk_SetSupplyRequestExecutionPriority(int baseCallsign, int priority)
 	{
 		SCR_CampaignMilitaryBaseComponent base = SCR_GameModeCampaign.GetInstance().GetBaseManager().FindBaseByCallsign(baseCallsign);
-		if (!base)
+		if (!IsValidRequest(base))
 			return;
 
 		base.SetSupplyRequestExecutionPriority(priority);

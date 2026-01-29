@@ -355,8 +355,17 @@ class SCR_2DOpticsDisplay : SCR_InfoDisplayExtended
 
 		m_bActivated = true;
 
+		int activationDelay;
+		int enterTime;
+		SCR_2DOpticsComponentClass data = SCR_2DOpticsComponentClass.Cast(m_Optic.GetComponentData(m_Optic.GetOwner()));
+		if (data)
+		{
+			activationDelay = data.GetAnimationActivationDelay();
+			enterTime = data.GetAnimationEnterTime();
+		}
+
 		//Play fadeIn animation after given delay
-		GetGame().GetCallqueue().CallLater(PlayEntryAnimation, m_Optic.GetAnimationActivationDelay(), false, m_Optic.GetAnimationEnterTime());
+		GetGame().GetCallqueue().CallLater(PlayEntryAnimation, activationDelay, false, enterTime);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -369,9 +378,16 @@ class SCR_2DOpticsDisplay : SCR_InfoDisplayExtended
 		AnimateWidget.StopAnimation(m_wRoot, WidgetAnimationOpacity);
 		GetGame().GetCallqueue().Remove(PlayEntryAnimation);
 
+		if (!m_Optic)
+			return;
+		
+		int deactivationDelay;
+		SCR_2DOpticsComponentClass data = SCR_2DOpticsComponentClass.Cast(m_Optic.GetComponentData(m_Optic.GetOwner()));
+		if (data)
+			deactivationDelay = data.GetAnimationDeactivationDelay();
+
 		//Deactivate the HUD after set delay
-		if (m_Optic)
-			GetGame().GetCallqueue().CallLater(DeactivateWidget, m_Optic.GetAnimationDeactivationDelay(), false);
+		GetGame().GetCallqueue().CallLater(DeactivateWidget, deactivationDelay, false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -400,21 +416,25 @@ class SCR_2DOpticsDisplay : SCR_InfoDisplayExtended
 	//! Get optic data for quick retrieval later
 	void GetOpticData()
 	{
-		m_Optic.GetReticleTextures(m_sReticleTexture, m_sReticleGlowTexture, m_sFilterTexture);
+		SCR_2DOpticsComponentClass data = SCR_2DOpticsComponentClass.Cast(m_Optic.GetComponentData(m_Optic.GetOwner()));
+		if (!data)
+			return;
+
+		data.GetReticleTextures(m_sReticleTexture, m_sReticleGlowTexture, m_sFilterTexture);
 		m_Optic.GetReticleData(m_fReticleAngularSize, m_fReticlePortion, m_fReticleBaseZoom);
 		m_fOpticBaseFov = m_Optic.GetFovZoomed();
 		m_fObjectiveFov = m_Optic.GetObjectiveFov();
 		m_fObjectiveScale = m_Optic.GetObjectiveScale();
-		m_fVignetteScale = m_Optic.GetVignetteScale();
-		m_fVignetteMoveSpeed = m_Optic.GetVignetteMoveSpeed();
-		m_fMisalignmentScale = m_Optic.GetMisalignmentScale();
-		m_fMisalignmentDampingSpeed = m_Optic.GetMisalignmentDampingSpeed();
-		m_fRotationScale = m_Optic.GetRotationScale();
-		m_fRotationDampingSpeed = m_Optic.GetRotationDampingSpeed();
-		m_fMovementScale = m_Optic.GetMovementScale();
-		m_fMovementDampingSpeed = m_Optic.GetMovementDampingSpeed();
-		m_fRollScale = m_Optic.GetRollScale();
-		m_fRollDampingSpeed = m_Optic.GetRollDampingSpeed();
+		m_fVignetteScale = data.GetVignetteScale();
+		m_fVignetteMoveSpeed = data.GetVignetteMoveSpeed();
+		m_fMisalignmentScale = data.GetMisalignmentScale();
+		m_fMisalignmentDampingSpeed = data.GetMisalignmentDampingSpeed();
+		m_fRotationScale = data.GetRotationScale();
+		m_fRotationDampingSpeed = data.GetRotationDampingSpeed();
+		m_fMovementScale = data.GetMovementScale();
+		m_fMovementDampingSpeed = data.GetMovementDampingSpeed();
+		m_fRollScale = data.GetRollScale();
+		m_fRollDampingSpeed = data.GetRollDampingSpeed();
 
 #ifdef ENABLE_DIAG
 		s_bDebugOpticsReset = true;
@@ -702,15 +722,19 @@ class SCR_2DOpticsDisplay : SCR_InfoDisplayExtended
 		if (!m_Optic.GetIsMoving() || !m_Optic.GetIsRotating())
 			return;
 
+		SCR_2DOpticsComponentClass data = SCR_2DOpticsComponentClass.Cast(m_Optic.GetComponentData(m_Optic.GetOwner()));
+		if (!data)
+			return;
+
 		// Pick axis
 		float intensity = Math.AbsFloat(posX);
 		if (intensity > Math.AbsFloat(posY))
 			intensity = Math.AbsFloat(posY);
 
 		// Scale and limit
-		intensity = intensity * m_Optic.GetMotionBlurScale();
-		if (intensity > m_Optic.GetMotionBlurMax())
-			intensity = m_Optic.GetMotionBlurMax();
+		intensity = intensity * data.GetMotionBlurScale();
+		if (intensity > data.GetMotionBlurMax())
+			intensity = data.GetMotionBlurMax();
 
 		m_wBlur.SetIntensity(intensity);
 	}

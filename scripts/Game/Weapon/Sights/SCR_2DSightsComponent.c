@@ -1,18 +1,24 @@
 [EntityEditorProps(category: "GameScripted/Weapon/Sights", description: "", color: "0 0 255 255")]
 class SCR_2DSightsComponentClass : SCR_2DOpticsComponentClass
 {
+	[Attribute("0", UIWidgets.CheckBox, "Should hide parent of parent object when using 2D sights", category: "2DSights")]
+	protected bool m_bShouldHideParentParentObject;
+
+	//------------------------------------------------------------------------------------------------
+	bool ShouldHideParentParentObject()
+	{
+		return m_bShouldHideParentParentObject;
+	}
 }
 
 //------------------------------------------------------------------------------------------------
 class SCR_2DSightsComponent : SCR_2DOpticsComponent
 {
-	[Attribute("0", UIWidgets.CheckBox, "Should hide parent of parent object when using 2D sights", category: "2DSights")]
-	protected bool m_bShouldHideParentParentObject;
-
 	protected SCR_SightsZoomFOVInfo m_SightsFovInfo;
 	
 	protected static bool s_bIsUsingSights;
 	
+	//------------------------------------------------------------------------------------------------
 	static bool IsUsingSights()
 	{
 		return s_bIsUsingSights;
@@ -61,33 +67,35 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 
 		// Set parent
 		IEntity owner = GetOwner();
-		if (owner)
+		if (!owner)
+			return;
+
+		SCR_2DSightsComponentClass data = SCR_2DSightsComponentClass.Cast(GetComponentData(owner));
+
+		IEntity parent = owner.GetParent();
+		if (data && data.ShouldHideParentObject())
 		{
-			IEntity parent = owner.GetParent();
-			if (m_bShouldHideParentObject)
-			{
-				owner.ClearFlags(EntityFlags.VISIBLE, false);
-				if (parent && m_bShouldHideParentParentObject)
-					parent.ClearFlags(EntityFlags.VISIBLE, false);
-			}
+			owner.ClearFlags(EntityFlags.VISIBLE, false);
+			if (parent && data.ShouldHideParentParentObject())
+				parent.ClearFlags(EntityFlags.VISIBLE, false);
+		}
 
-			TurretControllerComponent turretController = TurretControllerComponent.Cast(owner.FindComponent(TurretControllerComponent));
-			if (turretController)
+		TurretControllerComponent turretController = TurretControllerComponent.Cast(owner.FindComponent(TurretControllerComponent));
+		if (turretController)
+		{
+			BaseCompartmentSlot slot = turretController.GetCompartmentSlot();
+			if (slot)
+				m_ParentCharacter = ChimeraCharacter.Cast(slot.GetOccupant());
+		}
+		else
+		{
+			while (parent)
 			{
-				BaseCompartmentSlot slot = turretController.GetCompartmentSlot();
-				if (slot)
-					m_ParentCharacter = ChimeraCharacter.Cast(slot.GetOccupant());
-			}
-			else
-			{
-				while (parent)
-				{
-					m_ParentCharacter = ChimeraCharacter.Cast(parent);
-					if (m_ParentCharacter)
-						break;
+				m_ParentCharacter = ChimeraCharacter.Cast(parent);
+				if (m_ParentCharacter)
+					break;
 
-					parent = parent.GetParent();
-				}
+				parent = parent.GetParent();
 			}
 		}
 	}
@@ -96,15 +104,19 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 	protected override void HandleSightDeactivation()
 	{
 		IEntity owner = GetOwner();
-		if (m_bShouldHideParentObject && owner && !owner.IsDeleted())
+		SCR_2DSightsComponentClass data = SCR_2DSightsComponentClass.Cast(GetComponentData(owner));
+		if (!data)
+			return;
+
+		if (data.ShouldHideParentObject() && owner && !owner.IsDeleted())
 		{
 			owner.SetFlags(EntityFlags.VISIBLE, true);
 			IEntity parent = owner.GetParent();
-			if (parent && m_bShouldHideParentParentObject)
+			if (parent && data.ShouldHideParentParentObject())
 				parent.SetFlags(EntityFlags.VISIBLE, true);
 		}
 
-		if (m_bShouldHideParentCharacter && m_ParentCharacter)
+		if (data.ShouldHideParentCharacter() && m_ParentCharacter)
 		{
 			if (!m_ParentCharacter.IsDeleted())
 				m_ParentCharacter.SetFlags(EntityFlags.VISIBLE, false);
@@ -332,7 +344,11 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 	//------------------------------------------------------------------------------------------------
 	protected override float GetReticleOffsetYTarget()
 	{
-		if (m_eZeroingType == SCR_EPIPZeroingType.EPZ_RETICLE_OFFSET)
+		SCR_2DOpticsComponentClass data = SCR_2DOpticsComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return 0;
+
+		if (data.GetZeroType() == SCR_EPIPZeroingType.EPZ_RETICLE_OFFSET)
 			return m_fReticleOffsetY + GetCurrentSightsRange()[0];
 
 		return m_fReticleOffsetY;

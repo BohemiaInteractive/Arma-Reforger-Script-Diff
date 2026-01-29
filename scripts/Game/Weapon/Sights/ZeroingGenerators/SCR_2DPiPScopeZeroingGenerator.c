@@ -37,7 +37,11 @@ class SCR_2DPiPScopeZeroingGenerator : ScriptedBaseZeroingGenerator
 	//------------------------------------------------------------------------------------------------
 	override float WB_CalculateWeaponZeroingAnimationValue(float pitch, float distance, out vector offset, out vector angles)
 	{
-		if (m_SightsComponent.GetZeroType() == SCR_EPIPZeroingType.EPZ_CAMERA_TURN)
+		SCR_2DOpticsComponentClass data = SCR_2DOpticsComponentClass.Cast(m_SightsComponent.GetComponentData(m_SightsComponent.GetOwner()));
+		if (!data)
+			return 0;
+
+		if (data.GetZeroType() == SCR_EPIPZeroingType.EPZ_CAMERA_TURN)
 		{
 			return angles[0];
 		}

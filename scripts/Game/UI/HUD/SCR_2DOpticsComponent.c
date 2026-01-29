@@ -1,27 +1,6 @@
 [EntityEditorProps(category: "GameScripted/Weapon/Sights", description: "", color: "0 0 255 255")]
 class SCR_2DOpticsComponentClass : ScriptedSightsComponentClass
 {
-}
-
-void OnSightsADSChanged(bool inADS, float fov);
-typedef func OnSightsADSChanged;
-
-//------------------------------------------------------------------------------------------------
-//! Base class for 2D optics
-//! Unifiying binoculars and optic sight
-class SCR_2DOpticsComponent : ScriptedSightsComponent
-{
-	// Action names
-	const string ACTION_ZOOM_IN = "WeaponOpticsZoomIn";
-	const string ACTION_ZOOM_OUT = "WeaponOpticsZoomOut";
-	const string ACTION_ILLUMINATION = "WeaponToggleSightsIllumination";
-
-	const float REFERENCE_FOV = 28;
-	const float OPACITY_INITIAL = 0.75;
-
-	const float NEAR_PLANE_DEFAULT = 0.05;
-	const float NEAR_PLANE_ZOOMED = 0.05;
-
 	// Optics setup
 	[Attribute("", UIWidgets.ResourceNamePicker, desc: "Texture of reticle\n", params: "edds imageset", category: "Resources")]
 	protected ResourceName m_sReticleTexture;
@@ -46,24 +25,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 
 	[Attribute("", UIWidgets.ResourceNamePicker, desc: "Texture of lens filter\n", params: "edds imageset", category: "Resources")]
 	protected ResourceName m_sFilterTexture;
-
-	[Attribute("10", UIWidgets.EditBox, desc: "Optic magnification\n[ x ]", params: "0.1 200 0.001", category: "Sights", precision: 3)]
-	protected float m_fMagnification;
-
-	[Attribute("0", UIWidgets.Slider, "Angular size of reticle\n[ ° ]", params: "0 60 0.001", category: "Sights", precision: 3)]
-	protected float m_fReticleAngularSize;
-
-	[Attribute("1", UIWidgets.Slider, "Portion of reticle with specified angular size\n[ % ]", params: "0 10 0.00001", category: "Sights", precision: 5)]
-	protected float m_fReticlePortion;
-
-	[Attribute("0", UIWidgets.Slider, "POSITIVE:\n Rear focal plane - magnification at which reticle markings are valid\n\nZERO:\n Front focal plane reticle scaling with magnification.\n\nNEGATIVE:\n Enforced base FOV in degrees\n", params: "-60 200 0.001", category: "Sights", precision: 5)]
-	protected float m_fReticleBaseZoom;
-
-	[Attribute("10", UIWidgets.EditBox, desc: "Field of view of the objective\n[ ° ]", params: "0.001 60 0.001", category: "2DSights", precision: 3)]
-	protected float m_fObjectiveFov;
-
-	[Attribute("1", UIWidgets.EditBox, desc: "Ocular texture scale\n", params: "0.001 10 0.001", category: "2DSights", precision: 3)]
-	protected float m_fObjectiveScale;
 
 	[Attribute("1.1", UIWidgets.EditBox, desc: "Vignette texture scale\n", params: "0.001 10 0.001", category: "2DSights", precision: 3)]
 	protected float m_fVignetteScale;
@@ -132,12 +93,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	[Attribute("0", UIWidgets.ComboBox, "Type of zeroing for this sights.", "", ParamEnumArray.FromEnum(SCR_EPIPZeroingType), category: "Sights")]
 	protected SCR_EPIPZeroingType m_eZeroingType;
 
-	[Attribute("0", UIWidgets.Slider, "Reticle Offset of scope center in X", params: "-1 1 0.0001", precision: 5, category: "Sights")]
-	protected float m_fReticleOffsetX;
-
-	[Attribute("0", UIWidgets.Slider, "Reticle Offset of scope center in Y", params: "-1 1 0.0001", precision: 5, category: "Sights")]
-	protected float m_fReticleOffsetY;
-
 	[Attribute("25", UIWidgets.Slider, "Interpolation speed for zeroing interpolation", params: "1 100.0 0.1", category: "Sights")]
 	protected float m_fReticleOffsetInterpSpeed;
 
@@ -147,71 +102,81 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	[Attribute("0 0 0", UIWidgets.EditBox, "Camera angles when looking through scope", category: "Sights", params: "inf inf 0 purpose=angles space=entity anglesVar=m_vCameraAngles")]
 	protected vector m_vCameraAngles;
 
-	protected float m_fCurrentReticleOffsetY;
-	protected float m_fCurrentCameraPitch;
+	//------------------------------------------------------------------------------------------------
+	// Needed for zeroing
+	SCR_EPIPZeroingType GetZeroType()
+	{
+		return m_eZeroingType;
+	}
+
+	bool ShouldHideParentObject()
+	{
+		return m_bShouldHideParentObject;
+	}
+
+	bool ShouldHideParentCharacter()
+	{
+		return m_bShouldHideParentCharacter;
+	}
 
 	//------------------------------------------------------------------------------------------------
-	override float GetADSActivationPercentageScript()
+	bool HasIllumination()
+	{
+		return m_bHasIllumination;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	Color GetReticleColor()
+	{
+		return Color.FromInt(m_ReticleColor.PackToInt());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	Color GetReticleOutlineColor()
+	{
+		return Color.FromInt(m_ReticleOutlineColor.PackToInt());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	Color GetReticleIlluminationColor()
+	{
+		return Color.FromInt(m_cReticleTextureIllumination.PackToInt());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetReticleTextureGlowAlpha()
+	{
+		return m_fReticleTextureGlowAlpha;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetReticleOffsetInterpSpeed()
+	{
+		return m_fReticleOffsetInterpSpeed;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetADSActivationPercentage()
 	{
 		return m_fADSActivationPercentage;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override float GetADSDeactivationPercentageScript()
+	float GetADSDeactivationPercentage()
 	{
 		return m_fADSDeactivationPercentage;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Getters for attributes
-	float GetReticleOffsetX()
+	vector GetCameraOffset()
 	{
-		return m_fReticleOffsetX;
-	}
-
-	void GetReticleTextures(out ResourceName reticleTexture, out ResourceName reticleTextureGlow, out ResourceName filterTexture)
-	{
-		reticleTexture = m_sReticleTexture;
-		reticleTextureGlow = m_sReticleGlowTexture;
-		filterTexture = m_sFilterTexture;
+		return m_vCameraOffset;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void GetReticleData(out float reticleAngularSize, out float reticlePortion, out float reticleBaseZoom)
+	vector GetCameraAngles()
 	{
-		reticleAngularSize = m_fReticleAngularSize;
-		reticlePortion = m_fReticlePortion;
-		reticleBaseZoom = m_fReticleBaseZoom;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetObjectiveFov()
-	{
-		return m_fObjectiveFov;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetObjectiveScale()
-	{
-		return m_fObjectiveScale;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetVignetteScale()
-	{
-		return m_fVignetteScale;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetMisalignmentDampingSpeed()
-	{
-		return m_fMisalignmentDampingSpeed;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetRotationScale()
-	{
-		return m_fRotationScale;
+		return m_vCameraAngles;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -269,10 +234,133 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Needed for zeroing
-	SCR_EPIPZeroingType GetZeroType()
+	float GetVignetteScale()
 	{
-		return m_eZeroingType;
+		return m_fVignetteScale;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetMisalignmentDampingSpeed()
+	{
+		return m_fMisalignmentDampingSpeed;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetRotationScale()
+	{
+		return m_fRotationScale;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void GetReticleTextures(out ResourceName reticleTexture, out ResourceName reticleTextureGlow, out ResourceName filterTexture)
+	{
+		reticleTexture = m_sReticleTexture;
+		reticleTextureGlow = m_sReticleGlowTexture;
+		filterTexture = m_sFilterTexture;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetAnimationActivationDelay()
+	{
+		return m_iAnimationActivationDelay;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetAnimationDeactivationDelay()
+	{
+		return m_iAnimationDeactivationDelay;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetAnimationEnterTime()
+	{
+		return m_fAnimationEnterTime;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetAnimationSpeedBlur()
+	{
+		return m_fAnimationSpeedBlur;
+	}
+}
+
+void OnSightsADSChanged(bool inADS, float fov);
+typedef func OnSightsADSChanged;
+
+//------------------------------------------------------------------------------------------------
+//! Base class for 2D optics
+//! Unifiying binoculars and optic sight
+class SCR_2DOpticsComponent : ScriptedSightsComponent
+{
+	[Attribute("0", UIWidgets.Slider, "Reticle Offset of scope center in X", params: "-1 1 0.0001", precision: 5, category: "Sights")]
+	protected float m_fReticleOffsetX;
+
+	[Attribute("0", UIWidgets.Slider, "Reticle Offset of scope center in Y", params: "-1 1 0.0001", precision: 5, category: "Sights")]
+	protected float m_fReticleOffsetY;
+
+	[Attribute("10", UIWidgets.EditBox, desc: "Field of view of the objective\n[ ° ]", params: "0.001 60 0.001", category: "2DSights", precision: 3)]
+	protected float m_fObjectiveFov;
+
+	[Attribute("1", UIWidgets.EditBox, desc: "Ocular texture scale\n", params: "0.001 10 0.001", category: "2DSights", precision: 3)]
+	protected float m_fObjectiveScale;
+
+	[Attribute("0", UIWidgets.Slider, "Angular size of reticle\n[ ° ]", params: "0 60 0.001", category: "Sights", precision: 3)]
+	protected float m_fReticleAngularSize;
+
+	[Attribute("1", UIWidgets.Slider, "Portion of reticle with specified angular size\n[ % ]", params: "0 10 0.00001", category: "Sights", precision: 5)]
+	protected float m_fReticlePortion;
+
+	[Attribute("0", UIWidgets.Slider, "POSITIVE:\n Rear focal plane - magnification at which reticle markings are valid\n\nZERO:\n Front focal plane reticle scaling with magnification.\n\nNEGATIVE:\n Enforced base FOV in degrees\n", params: "-60 200 0.001", category: "Sights", precision: 5)]
+	protected float m_fReticleBaseZoom;
+
+	[Attribute("10", UIWidgets.EditBox, desc: "Optic magnification\n[ x ]", params: "0.1 200 0.001", category: "Sights", precision: 3)]
+	protected float m_fMagnification;
+
+	// Action names
+	const string ACTION_ZOOM_IN = "WeaponOpticsZoomIn";
+	const string ACTION_ZOOM_OUT = "WeaponOpticsZoomOut";
+	const string ACTION_ILLUMINATION = "WeaponToggleSightsIllumination";
+
+	const float REFERENCE_FOV = 28;
+	const float OPACITY_INITIAL = 0.75;
+
+	const float NEAR_PLANE_DEFAULT = 0.05;
+	const float NEAR_PLANE_ZOOMED = 0.05;
+
+	protected float m_fCurrentReticleOffsetY;
+	protected float m_fCurrentCameraPitch;
+
+	//------------------------------------------------------------------------------------------------
+	// Getters for attributes
+	float GetReticleOffsetX()
+	{
+		return m_fReticleOffsetX;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void GetReticleData(out float reticleAngularSize, out float reticlePortion, out float reticleBaseZoom)
+	{
+		reticleAngularSize = m_fReticleAngularSize;
+		reticlePortion = m_fReticlePortion;
+		reticleBaseZoom = m_fReticleBaseZoom;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetObjectiveFov()
+	{
+		return m_fObjectiveFov;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetObjectiveScale()
+	{
+		return m_fObjectiveScale;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool GetIsOpticsHidden()
+	{
+		return m_bIsOpticsHidden;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -282,9 +370,33 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool GetIsOpticsHidden()
+	float GetAnimationSpeedBlur()
 	{
-		return m_bIsOpticsHidden;
+		SCR_2DOpticsComponentClass data = SCR_2DOpticsComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return 0;
+
+		return data.GetAnimationSpeedBlur();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override float GetADSActivationPercentageScript()
+	{
+		SCR_2DOpticsComponentClass data = SCR_2DOpticsComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return 1;
+
+		return data.GetADSActivationPercentage();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override float GetADSDeactivationPercentageScript()
+	{
+		SCR_2DOpticsComponentClass data = SCR_2DOpticsComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return 0;
+
+		return data.GetADSDeactivationPercentage();
 	}
 
 	protected int m_iSelectedZoomLevel;
@@ -352,30 +464,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	int GetAnimationActivationDelay()
-	{
-		return m_iAnimationActivationDelay;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetAnimationDeactivationDelay()
-	{
-		return m_iAnimationDeactivationDelay;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetAnimationEnterTime()
-	{
-		return m_fAnimationEnterTime;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetAnimationSpeedBlur()
-	{
-		return m_fAnimationSpeedBlur;
-	}
-
-	//------------------------------------------------------------------------------------------------
 	bool GetIsMoving()
 	{
 		return m_bIsMoving;
@@ -410,14 +498,17 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	//------------------------------------------------------------------------------------------------
 	protected void HandleSightActivation()
 	{
-		m_ParentCharacter = ChimeraCharacter.Cast(GetOwner().GetParent());
+		IEntity owner = GetOwner();
+		m_ParentCharacter = ChimeraCharacter.Cast(owner.GetParent());
 
 		s_On2DOpticADSChanged.Invoke(this, true);
 		s_OnSightsADSChanged.Invoke(true, GetFovZoomed());
 
 		// Play cover fade in animaiton
 		m_fNearPlaneCurrent = NEAR_PLANE_DEFAULT;
-		GetGame().GetCallqueue().CallLater(HideObjects, m_iAnimationActivationDelay, false);
+		SCR_2DOpticsComponentClass data = SCR_2DOpticsComponentClass.Cast(GetComponentData(owner));
+		if (data)
+			GetGame().GetCallqueue().CallLater(HideObjects, data.GetAnimationActivationDelay(), false);
 
 		m_bIsOpticsHidden = false;
 
@@ -473,7 +564,11 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	//------------------------------------------------------------------------------------------------
 	protected override void OnSightADSPostFrame(IEntity owner, float timeSlice)
 	{
-		float interp = Math.Min(1, timeSlice * m_fReticleOffsetInterpSpeed);
+		SCR_2DOpticsComponentClass data = SCR_2DOpticsComponentClass.Cast(GetComponentData(owner));
+		if (!data)
+			return;
+
+		float interp = Math.Min(1, timeSlice * data.GetReticleOffsetInterpSpeed());
 		// Interpolate zeroing values
 		float reticleTarget = GetReticleOffsetYTarget();
 		m_fCurrentReticleOffsetY = Math.Lerp(m_fCurrentReticleOffsetY, reticleTarget, interp);
@@ -488,10 +583,14 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		// Near plane
 		m_fNearPlaneCurrent = NEAR_PLANE_ZOOMED;
 
+		IEntity owner = GetOwner();
+		SCR_2DOpticsComponentClass data = SCR_2DOpticsComponentClass.Cast(GetComponentData(owner));
+		if (!data)
+			return;
+
 		// Hide rendering
-		if (m_bShouldHideParentObject)
+		if (data.ShouldHideParentObject())
 		{
-			IEntity owner = GetOwner();
 			if (owner)
 				owner.ClearFlags(EntityFlags.VISIBLE, false);
 
@@ -500,7 +599,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		}
 
 		// Hide parent character
-		if (m_bShouldHideParentCharacter)
+		if (data.ShouldHideParentCharacter())
 		{
 			if (m_ParentCharacter)
 				m_ParentCharacter.ClearFlags(EntityFlags.VISIBLE, false);
@@ -546,13 +645,18 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	*/
 	vector GetMisalignmentAngles(notnull CameraBase camera)
 	{
+		SCR_2DOpticsComponentClass data = SCR_2DOpticsComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return vector.Zero;
+
 		// Get camera to sight matrix
 		vector cameraToSightMat[4];
 		SCR_EntityHelper.GetRelativeLocalTransform(GetOwner(), camera, cameraToSightMat);
 
+		vector cameraAngles = data.GetCameraAngles();
 		// Sight camera angles offset
 		vector sightMat[3];
-		vector sightAngles = {-m_vCameraAngles[1], - m_vCameraAngles[0] - m_fCurrentCameraPitch, 0};
+		vector sightAngles = {-cameraAngles[1], - cameraAngles[0] - m_fCurrentCameraPitch, 0};
 		Math3D.AnglesToMatrix(sightAngles, sightMat);
 
 		// Sight camera angles mat in sight space
@@ -567,7 +671,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		vector angles = Math3D.MatrixToAngles(sightMat);
 
 		// Account for additional optic camera roll
-		angles[2] = angles[2] + m_vCameraAngles[2];
+		angles[2] = angles[2] + cameraAngles[2];
 
 		// Misalignment should not exceed 180 degrees
 		angles = SCR_Math3D.FixEulerVector180(angles);
@@ -650,48 +754,28 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool HasIllumination()
-	{
-		return m_bHasIllumination;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	Color GetReticleColor()
-	{
-		return Color.FromInt(m_ReticleColor.PackToInt());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	Color GetReticleOutlineColor()
-	{
-		return Color.FromInt(m_ReticleOutlineColor.PackToInt());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	Color GetReticleIlluminationColor()
-	{
-		return Color.FromInt(m_cReticleTextureIllumination.PackToInt());
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Toggle between illumination modes
 	protected void EnableReticleIllumination(bool enable)
 	{
 		Color reticleTint;
 		Color glowTint;
+		
+		SCR_2DOpticsComponentClass data = SCR_2DOpticsComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return;
 
-		if (m_bHasIllumination && enable)
+		if (data.HasIllumination() && enable)
 		{
-			reticleTint = GetReticleIlluminationColor();
-			glowTint = GetReticleIlluminationColor();
+			reticleTint = data.GetReticleIlluminationColor();
+			glowTint = data.GetReticleIlluminationColor();
 		}
 		else
 		{
-			reticleTint = GetReticleColor();
-			glowTint = GetReticleOutlineColor();
+			reticleTint = data.GetReticleColor();
+			glowTint = data.GetReticleOutlineColor();
 		}
 
-		glowTint.SetA(m_fReticleTextureGlowAlpha * glowTint.A());
+		glowTint.SetA(data.GetReticleTextureGlowAlpha() * glowTint.A());
 		s_OnIlluminationChange.Invoke(reticleTint, glowTint);
 	}
 
@@ -710,28 +794,20 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	//------------------------------------------------------------------------------------------------
 	protected float GetCameraPitchTarget()
 	{
-		if (m_eZeroingType == SCR_EPIPZeroingType.EPZ_CAMERA_TURN)
+		SCR_2DOpticsComponentClass data = SCR_2DOpticsComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return 0;
+
+		if (data.GetZeroType() == SCR_EPIPZeroingType.EPZ_CAMERA_TURN)
 			return -GetCurrentSightsRange()[0];
 
-		return 0.0;
+		return 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	float GetCurrentCameraPitchOffset()
 	{
 		return m_fCurrentCameraPitch;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	vector GetCameraOffset()
-	{
-		return m_vCameraOffset;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	vector GetCameraAngles()
-	{
-		return m_vCameraAngles;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -742,9 +818,15 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	*/
 	IEntity GetCameraLocalTransform(out vector matrix[4])
 	{
+		IEntity parent = GetOwner();
+		SCR_2DOpticsComponentClass data = SCR_2DOpticsComponentClass.Cast(GetComponentData(parent));
+		if (!data)
+			return parent;
+
 		// Apply offset and angles as configured against front sight position
-		vector position = m_vCameraOffset + GetSightsFrontPosition(true);
-		vector yawPitchRoll = Vector(m_vCameraAngles[1], m_vCameraAngles[0] + m_fCurrentCameraPitch, m_vCameraAngles[2]);
+		vector position = data.GetCameraOffset() + GetSightsFrontPosition(true);
+		vector cameraAngles = data.GetCameraAngles();
+		vector yawPitchRoll = Vector(cameraAngles[1], cameraAngles[0] + m_fCurrentCameraPitch, cameraAngles[2]);
 
 		// Construct the local matrix in relation to original parent
 		Math3D.AnglesToMatrix(yawPitchRoll, matrix);
@@ -754,7 +836,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		vector temp[4];
 		Math3D.MatrixCopy(matrix, temp);
 
-		IEntity parent = GetOwner();
 		IEntity lastNode = parent;
 
 		BaseWeaponComponent weaponRoot;

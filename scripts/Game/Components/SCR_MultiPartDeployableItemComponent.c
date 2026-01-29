@@ -22,6 +22,9 @@ class SCR_MultiPartDeployableItemComponentClass : SCR_BaseDeployableInventoryIte
 	[Attribute(defvalue: SCR_ESurfaceMonitoringBehaviour.DONT_MONITOR.ToString(), desc: "How this entity should react if the object on which it was deployed was deleted/destroyed/dismantled.", uiwidget: UIWidgets.ComboBox, enumType: SCR_ESurfaceMonitoringBehaviour)]
 	protected SCR_ESurfaceMonitoringBehaviour m_eSurfaceObservationBehaviour;
 
+	[Attribute(desc: "If forward vector of spawned entity should face the player (by default it will face away from player)", category: "Setup")]
+	protected bool m_bFrontTowardPlayer;
+
 	protected IEntity m_PreviewEntity;
 	protected int m_iPreviewVariant = -1;
 	protected SCR_EPreviewState m_ePreviewState;
@@ -94,6 +97,12 @@ class SCR_MultiPartDeployableItemComponentClass : SCR_BaseDeployableInventoryIte
 	bool MustDropAllStoredItems()
 	{
 		return m_bRemoveAllItemsWhenDeleted;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsFrontFacingPlayer()
+	{
+		return m_bFrontTowardPlayer;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -181,9 +190,6 @@ class SCR_MultiPartDeployableItemComponentClass : SCR_BaseDeployableInventoryIte
 
 class SCR_MultiPartDeployableItemComponent : SCR_BaseDeployableInventoryItemComponent
 {
-	[Attribute(desc: "If forward vector of spawned entity should face the player (by default it will face away from player)", category: "Setup")]
-	protected bool m_bFrontTowardPlayer;
-
 	protected ref SCR_DeployableVariantContainer m_VariantContainer;
 	protected ref array<ref SCR_RequiredDeployablePart> m_aFoundElements;
 	protected float m_fReplacementPrefabHealthScaled = 1;
@@ -343,7 +349,11 @@ class SCR_MultiPartDeployableItemComponent : SCR_BaseDeployableInventoryItemComp
 	//! \return true if forward vector should face toward the player
 	bool GetFrontTowardPlayer()
 	{
-		return m_bFrontTowardPlayer;
+		SCR_MultiPartDeployableItemComponentClass data = SCR_MultiPartDeployableItemComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return false;
+
+		return data.IsFrontFacingPlayer();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -780,7 +790,8 @@ class SCR_MultiPartDeployableItemComponent : SCR_BaseDeployableInventoryItemComp
 		m_bIsDeployed = state;
 		Replication.BumpMe();
 
-		if (m_bEnableSounds && !reload)
+		SCR_BaseDeployableInventoryItemComponentClass data = SCR_BaseDeployableInventoryItemComponentClass.Cast(GetComponentData(GetOwner()));
+		if (data && data.IsSoundEnabled() && !reload)
 		{
 			RPC_PlaySoundOnDeployBroadcast(m_bIsDeployed);
 			Rpc(RPC_PlaySoundOnDeployBroadcast, m_bIsDeployed);
@@ -951,7 +962,9 @@ class SCR_MultiPartDeployableItemComponent : SCR_BaseDeployableInventoryItemComp
 		vector forward = transform[1] * right;
 		right.Normalize();
 		forward.Normalize();
-		if (m_bFrontTowardPlayer)
+
+		SCR_MultiPartDeployableItemComponentClass data = SCR_MultiPartDeployableItemComponentClass.Cast(GetComponentData(GetOwner()));
+		if (data && data.IsFrontFacingPlayer())
 		{
 			transform[0] = forward;
 			transform[2] = right;

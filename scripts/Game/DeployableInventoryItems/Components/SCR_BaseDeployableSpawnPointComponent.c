@@ -34,7 +34,8 @@ class SCR_BaseDeployableSpawnPointComponent : SCR_BaseDeployableInventoryItemCom
 	//------------------------------------------------------------------------------------------------
 	protected override void OnRplDeployed()
 	{
-		if (m_bEnableSounds)
+		SCR_BaseDeployableInventoryItemComponentClass data = SCR_BaseDeployableInventoryItemComponentClass.Cast(GetComponentData(GetOwner()));
+		if (data && data.IsSoundEnabled())
 			ToggleRadioChatter(m_bIsDeployed);
 	}
 
@@ -92,7 +93,8 @@ class SCR_BaseDeployableSpawnPointComponent : SCR_BaseDeployableInventoryItemCom
 
 		s_aActiveDeployedSpawnPoints.Insert(this);
 
-		if (m_bEnableSounds)
+		SCR_BaseDeployableInventoryItemComponentClass data = SCR_BaseDeployableInventoryItemComponentClass.Cast(GetComponentData(GetOwner()));
+		if (data && data.IsSoundEnabled())
 			ToggleRadioChatter(m_bIsDeployed);
 	}
 
@@ -124,7 +126,8 @@ class SCR_BaseDeployableSpawnPointComponent : SCR_BaseDeployableInventoryItemCom
 		if (s_OnSpawnPointDismantled)
 			s_OnSpawnPointDismantled.Invoke(userID);
 
-		if (m_bEnableSounds)
+		SCR_BaseDeployableInventoryItemComponentClass data = SCR_BaseDeployableInventoryItemComponentClass.Cast(GetComponentData(GetOwner()));
+		if (data && data.IsSoundEnabled())
 			ToggleRadioChatter(m_bIsDeployed);
 	}
 

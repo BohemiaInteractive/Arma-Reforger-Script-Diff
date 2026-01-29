@@ -39,7 +39,11 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 		if (!m_OwnerVehicle)
 			return;
 
-		SCR_VehicleCameraDataComponent vehicleCamData = SCR_VehicleCameraDataComponent.Cast(m_OwnerVehicle.FindComponent(SCR_VehicleCameraDataComponent));
+		SCR_VehicleCameraDataComponent vehicleCamDataComp = SCR_VehicleCameraDataComponent.Cast(m_OwnerVehicle.FindComponent(SCR_VehicleCameraDataComponent));
+		if (!vehicleCamDataComp)
+			return;
+
+		SCR_VehicleCameraDataComponentClass vehicleCamData = SCR_VehicleCameraDataComponentClass.Cast(vehicleCamDataComp.GetComponentData(m_OwnerVehicle));
 		if (!vehicleCamData)
 			return;
 

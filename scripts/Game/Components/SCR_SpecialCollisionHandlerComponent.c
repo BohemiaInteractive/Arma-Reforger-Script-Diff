@@ -1,9 +1,5 @@
 class SCR_SpecialCollisionHandlerComponentClass : ScriptComponentClass
 {
-}
-
-class SCR_SpecialCollisionHandlerComponent : ScriptComponent
-{
 	[Attribute()]
 	protected ref array<ref SCR_SpecialCollisionDamageEffect> m_aSpecialCollisions;
 
@@ -30,15 +26,38 @@ class SCR_SpecialCollisionHandlerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	float GetContactHeightOverride()
+	{
+		return m_fContactHeightOverride;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! This sets the value in share memory space, which affects all instances of this prefab
+	//! \param[in] height
+	void SetContactHeight(float height)
+	{
+		m_fContactHeightOverride = height;
+	}
+}
+
+class SCR_SpecialCollisionHandlerComponent : ScriptComponent
+{
+	//------------------------------------------------------------------------------------------------
 	float GetContactHeight()
 	{
-		if (m_fContactHeightOverride > 0)
-			return m_fContactHeightOverride;
+		IEntity owner = GetOwner();
+		SCR_SpecialCollisionHandlerComponentClass data = SCR_SpecialCollisionHandlerComponentClass.Cast(GetComponentData(owner));
+		if (!data)
+			return 0;
+
+		if (data.GetContactHeightOverride() > 0)
+			return data.GetContactHeightOverride();
 
 		vector mins, maxs;
-		GetOwner().GetBounds(mins, maxs);
-		m_fContactHeightOverride = maxs[1] - mins[1];
-		return m_fContactHeightOverride;
+		owner.GetBounds(mins, maxs);
+		float newHeight = maxs[1] - mins[1];
+		data.SetContactHeight(newHeight);
+		return newHeight;
 	}
 
 	//------------------------------------------------------------------------------------------------

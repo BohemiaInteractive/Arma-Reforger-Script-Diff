@@ -93,8 +93,9 @@ class SCR_AdjustShellTimeFuzeAction : SCR_AdjustSignalAction
 	//------------------------------------------------------------------------------------------------
 	override float GetActionProgressScript(float fProgress, float timeSlice)
 	{
-		if (m_ShellGadgetComp.IsUsingTimeFuze() && m_ShellGadgetComp.GetMaxFuzeTime() > m_ShellGadgetComp.GetMinFuzeTime())
-			return (m_fTargetValue - m_ShellGadgetComp.GetMinFuzeTime()) / (m_ShellGadgetComp.GetMaxFuzeTime() - m_ShellGadgetComp.GetMinFuzeTime());
+		SCR_MortarShellGadgetComponentClass data = SCR_MortarShellGadgetComponentClass.Cast(m_ShellGadgetComp.GetComponentData(m_ShellGadgetComp.GetOwner()));
+		if (data && data.IsUsingTimeFuze() && data.GetMaxFuzeTime() > data.GetMinFuzeTime())
+			return (m_fTargetValue - data.GetMinFuzeTime()) / (data.GetMaxFuzeTime() - data.GetMinFuzeTime());
 
 		return 0;
 	}

@@ -81,18 +81,24 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		if (compartmentAccess && compartmentAccess.IsInCompartment())
 		{
 			m_pCompartment = compartmentAccess.GetCompartment();
-			IEntity vehicle = m_pCompartment.GetOwner().GetRootParent();
+			
+			IEntity compartmentOwner = m_pCompartment.GetOwner();
+			IEntity vehicle = compartmentOwner.GetRootParent();
 			if (vehicle)
 			{
 				m_OwnerVehicle = vehicle;
 
-				SCR_VehicleCameraDataComponent vehicleCamData = SCR_VehicleCameraDataComponent.Cast(vehicle.FindComponent(SCR_VehicleCameraDataComponent));
+				SCR_VehicleCameraDataComponent vehicleCamDataComp = SCR_VehicleCameraDataComponent.Cast(vehicle.FindComponent(SCR_VehicleCameraDataComponent));
 				// Can owner replace Vehicle's camera data?
-				SCR_VehicleCameraDataComponent ownerCamData = SCR_VehicleCameraDataComponent.Cast(m_pCompartment.GetOwner().FindComponent(SCR_VehicleCameraDataComponent));
-				if (ownerCamData && ownerCamData.m_bOverrideVehicleSettings)
-					vehicleCamData = ownerCamData;
-				
-				if( vehicleCamData )
+				SCR_VehicleCameraDataComponent ownerCamDataComp = SCR_VehicleCameraDataComponent.Cast(compartmentOwner.FindComponent(SCR_VehicleCameraDataComponent));
+				SCR_VehicleCameraDataComponentClass vehicleCamData;
+				if (ownerCamDataComp)
+					vehicleCamData = SCR_VehicleCameraDataComponentClass.Cast(ownerCamDataComp.GetComponentData(compartmentOwner));
+
+				if (!vehicleCamData || !vehicleCamData.m_bOverrideVehicleSettings)
+					vehicleCamData = SCR_VehicleCameraDataComponentClass.Cast(vehicleCamDataComp.GetComponentData(vehicle));
+					
+				if(vehicleCamData)
 				{
 					m_fHeight = vehicleCamData.m_fHeight;
 					m_fDist_Desired = vehicleCamData.m_fDist_Desired;

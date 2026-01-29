@@ -57,6 +57,23 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		if (!characterId.IsValid())
 			return;
 
+		RplComponent characterRplComp = RplComponent.Cast(Replication.FindItem(characterId));
+		if (!characterRplComp)
+			return;
+
+		ChimeraCharacter placingCharacter = ChimeraCharacter.Cast(characterRplComp.GetEntity());
+		if (!placingCharacter)
+			return;
+
+		SCR_PlaceableItemComponent placebaleItemComp = SCR_PlaceableItemComponent.Cast(item.FindComponent(SCR_PlaceableItemComponent));
+		if (!placebaleItemComp)
+			return;
+
+		// +10% to compensate for minor movements that may come from the animations, as locally client evaluates the distance from the position at which he started the placement
+		float maxPlacementDistance = placebaleItemComp.GetMaxPlacementDistance() * 1.1;
+		if (SCR_PlaceableItemComponent.GetDistanceFromCharacter(placingCharacter, position, placebaleItemComp.GetDistanceMeasurementMethod()) > maxPlacementDistance)
+			return; // to ensure that someone isnt placing f.e. a explosive charge further than he should be able to
+
 		itemComponent.SetPlacementPosition(right, up, forward, position, characterId);
 	}
 

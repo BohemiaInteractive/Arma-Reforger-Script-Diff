@@ -1,15 +1,20 @@
 [EntityEditorProps(category: "GameScripted/ScriptWizard", description: "")]
 class SCR_PressureTriggerComponentClass : SCR_BaseTriggerComponentClass
 {
+	[Attribute("10", desc: "Min. weight that can set off this trigger when applied to it. [kg]")]
+	protected float m_fMinWeight;
+
+	//------------------------------------------------------------------------------------------------
+	float GetMinWeight()
+	{
+		return m_fMinWeight;
+	}
 }
 
 class SCR_PressureTriggerComponent : SCR_BaseTriggerComponent
-{	
+{
 	protected const float MIN_DELAY = 125; //time between explosion tries in ms
 	protected float m_fLastTryTime = 0;
-	
-	[Attribute("10", desc: "Min. weight that can set off this trigger when applied to it. [kg]")]
-	protected float m_fMinWeight;
 	
 	//------------------------------------------------------------------------------------------------
 	override void EOnContact(IEntity owner, IEntity other, Contact contact)
@@ -32,8 +37,12 @@ class SCR_PressureTriggerComponent : SCR_BaseTriggerComponent
 		}
 		
 		m_fLastTryTime = GetGame().GetWorld().GetWorldTime();
-		
-		if (otherMass < m_fMinWeight)
+
+		SCR_PressureTriggerComponentClass data = SCR_PressureTriggerComponentClass.Cast(GetComponentData(owner));
+		if (!data)
+			return;
+
+		if (otherMass < data.GetMinWeight())
 			return; // Too light, won't set the trigger off
 		
 		BaseTriggerComponent baseTriggerComponent = BaseTriggerComponent.Cast(GetOwner().FindComponent(BaseTriggerComponent));
@@ -100,6 +109,10 @@ class SCR_PressureTriggerComponent : SCR_BaseTriggerComponent
 	override void OnActivatedChanged()
 	{
 		super.OnActivatedChanged();
+
+		SCR_PressureTriggerComponentClass data = SCR_PressureTriggerComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return;
 
 		if (!m_bActivated)
 			HideFuse();

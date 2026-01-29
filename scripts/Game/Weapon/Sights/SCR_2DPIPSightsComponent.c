@@ -1,23 +1,6 @@
 [EntityEditorProps(category: "GameScripted/Weapon/Sights", description: "", color: "0 0 255 255")]
 class SCR_2DPIPSightsComponentClass : SCR_2DSightsComponentClass
 {
-}
-
-//! Defines different means of adjusting zeroing for PIP sights
-enum SCR_EPIPZeroingType
-{
-	EPZ_NONE = 0,
-	EPZ_RETICLE_OFFSET = 1,
-	EPZ_CAMERA_TURN = 2
-}
-
-//------------------------------------------------------------------------------------------------
-class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
-{
-	// 2D -----------------------------
-	//! Is this 2D currently enabled?
-	protected bool m_b2DIsEnabled;
-
 	// PIP -----------------------------
 	[Attribute("{EF091399D840192D}UI/layouts/Sights/PictureInPictureSightsLayout.layout", UIWidgets.ResourcePickerThumbnail, "The layout used for the PIP component", params: "layout", category: "PiPSights")]
 	protected ResourceName m_sPIPLayoutResource;
@@ -30,9 +13,6 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 
 	[Attribute("8", UIWidgets.Slider, "Camera index used for this PIP component\n", params: "0 31 1", category: "PiPSights")]
 	protected int m_iCameraIndex;
-
-	[Attribute("21", UIWidgets.Slider, "Camera field of view used by this PIP component. Determines LOD used. Set to 0 to use Focus FOV.\n[°]", params: "0 89.99 0.01", category: "PiPSights")]
-	protected float m_fMainCameraFOV;
 
 	[Attribute("0.2", UIWidgets.Slider, "Camera near clipping plane\n[m]", params: "0 1000 0.01", category: "PiPSights")]
 	protected float m_fNearPlane;
@@ -79,14 +59,8 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	[Attribute("0.0", UIWidgets.Slider, "Parallax axis offset in Y\n[°]", params: "-90 90 0.001", category: "PiPSights-Parallax")]
 	protected float m_fCenterOffsetY;
 
-	[Attribute("0.01", UIWidgets.Slider, "Radius of PIP scope ocular\n[m]", params: "0.001 1 0.0001", category: "PiPSights", precision: 5)]
-	protected float m_fScopeRadius;
-
 	[Attribute("1.05", UIWidgets.Slider, "PIP reticle additional scale to compensate discrepancy between camera and reticle\n[x]", params: "0.01 10 0.00001", category: "PiPSights", precision: 5)]
 	protected float m_fReticlePIPScale;
-
-	[Attribute("0 0 0", UIWidgets.Slider, "Offset when not unfocused to improve view\n[m]", params: "-1 1 0.001", category: "PiPSights")]
-	protected vector m_vMainCameraOffsetUnfocused;
 
 	[Attribute("0.98", UIWidgets.Slider, "PIP objective inner edge. Should be lower than max\n[x]", params: "0.001 10 0.00001", category: "PiPSights-Parallax", precision: 5)]
 	protected float m_fObjectivePIPEdgeMin;
@@ -94,11 +68,198 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	[Attribute("1.00", UIWidgets.Slider, "PIP objective outer edge\n[x]", params: "0.001 10 0.00001", category: "PiPSights-Parallax", precision: 5)]
 	protected float m_fObjectivePIPEdgeMax;
 
+	[Attribute("0 0 0", UIWidgets.Slider, "Offset when not unfocused to improve view\n[m]", params: "-1 1 0.001", category: "PiPSights")]
+	protected vector m_vMainCameraOffsetUnfocused;
+
 	[Attribute("{5366CEDE2A151631}Terrains/Common/Water/UnderWater/oceanUnderwater.emat", UIWidgets.ResourcePickerThumbnail, "Underwater postprocess material\n", params: "emat", category: "PiPSights")]
 	protected ResourceName m_sUnderwaterPPMaterial;
 
 	[Attribute("{FA4DE95A7276143D}Common/Postprocess/rain.emat", UIWidgets.ResourcePickerThumbnail, "Rain postprocess material\n", params: "emat", category: "PiPSights")]
 	protected ResourceName m_sRainPPMaterial;
+
+	//------------------------------------------------------------------------------------------------
+	int GetCameraIndex()
+	{
+		return m_iCameraIndex;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetNearPlane()
+	{
+		return m_fNearPlane;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetFarPlane()
+	{
+		return m_fFarPlane;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetResolutionScale()
+	{
+		return m_fResolutionScale;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetADSActivationPercentagePIP()
+	{
+		return m_fADSActivationPercentagePIP;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetADSDeactivationPercentagePIP()
+	{
+		return m_fADSDeactivationPercentagePIP;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetVignetteParallaxScale()
+	{
+		return m_fVignetteParallaxScale;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetCenterDistance()
+	{
+		return m_fCenterDistance;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetDistanceMoveNear()
+	{
+		return m_fDistanceMoveNear;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetDistanceMoveFar()
+	{
+		return m_fDistanceMoveFar;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetBasicParallax()
+	{
+		return m_fBasicParallax;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetMaxParallax()
+	{
+		return m_fMaxParallax;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetCenterOffsetX()
+	{
+		return m_fCenterOffsetX;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetCenterOffsetY()
+	{
+		return m_fCenterOffsetY;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetReticlePIPScale()
+	{
+		return m_fReticlePIPScale;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetObjectivePIPEdgeMin()
+	{
+		return m_fObjectivePIPEdgeMin;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetObjectivePIPEdgeMax()
+	{
+		return m_fObjectivePIPEdgeMax;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	vector GetMainCameraOffsetUnfocused()
+	{
+		return m_vMainCameraOffsetUnfocused;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	string GetRTTextureWidgetName()
+	{
+		return m_sRTTextureWidgetName;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	string GetRTargetWidgetName()
+	{
+		return m_sRTargetWidgetName;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetPIPLayoutResource()
+	{
+		return m_sPIPLayoutResource;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetScopeHDRMaterial()
+	{
+		return m_rScopeHDRMatrial;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetUnderwaterPPMaterial()
+	{
+		return m_sUnderwaterPPMaterial;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetRainPPMaterial()
+	{
+		return m_sRainPPMaterial;
+	}
+	
+#ifdef ENABLE_DIAG
+	//------------------------------------------------------------------------------------------------
+	void DrawSharedDataDiag()
+	{
+		SCR_2DPIPSightsComponent.InputFloatClamped(m_fCenterDistance, "m_fCenterDistance", -0.2, 0.2);
+		SCR_2DPIPSightsComponent.InputFloatClamped(m_fDistanceMoveNear, "m_fDistanceMoveNear", 0.0, 1.0);
+		SCR_2DPIPSightsComponent.InputFloatClamped(m_fDistanceMoveFar, "m_fDistanceMoveFar", 0.0, 1.0);
+		SCR_2DPIPSightsComponent.InputFloatClamped(m_fBasicParallax, "m_fBasicParallax", 0.0, 2.0);
+		SCR_2DPIPSightsComponent.InputFloatClamped(m_fMaxParallax, "m_fMaxParallax", 0.0, 2.0);
+		SCR_2DPIPSightsComponent.InputFloatClamped(m_fCenterOffsetX, "m_fCenterOffsetX", -90.0, 90.0);
+		SCR_2DPIPSightsComponent.InputFloatClamped(m_fCenterOffsetY, "m_fCenterOffsetY", -90.0, 90.0);
+		SCR_2DPIPSightsComponent.InputFloatClamped(m_fReticlePIPScale, "m_fReticlePIPScale", 0.01, 100.0);
+		SCR_2DPIPSightsComponent.InputFloatClamped(m_fObjectivePIPEdgeMin, "m_fObjectivePIPEdgeMin", 0.0, 10.0);
+		SCR_2DPIPSightsComponent.InputFloatClamped(m_fObjectivePIPEdgeMax, "m_fObjectivePIPEdgeMax", 0.0, 10.0);
+		SCR_2DPIPSightsComponent.InputFloatClamped(m_fVignetteParallaxScale, "m_fVignetteParallaxScale", -100.0, 100.0);
+	}
+#endif
+}
+
+//! Defines different means of adjusting zeroing for PIP sights
+enum SCR_EPIPZeroingType
+{
+	EPZ_NONE = 0,
+	EPZ_RETICLE_OFFSET = 1,
+	EPZ_CAMERA_TURN = 2
+}
+
+//------------------------------------------------------------------------------------------------
+class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
+{
+	[Attribute("0.01", UIWidgets.Slider, "Radius of PIP scope ocular\n[m]", params: "0.001 1 0.0001", category: "PiPSights", precision: 5)]
+	protected float m_fScopeRadius;
+
+	[Attribute("21", UIWidgets.Slider, "Camera field of view used by this PIP component. Determines LOD used. Set to 0 to use Focus FOV.\n[°]", params: "0 89.99 0.01", category: "PiPSights")]
+	protected float m_fMainCameraFOV;
+
+	// 2D -----------------------------
+	//! Is this 2D currently enabled?
+	protected bool m_b2DIsEnabled;
 
 	protected int m_iLastProjectionFrame = -1;
 	protected vector m_vScreenScopeCenter;
@@ -112,7 +273,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	protected IEntity m_ControlledEntity;
 
 	//! Current PIP reticle color
-	protected ref Color m_cReticleColor = m_ReticleColor;
+	protected ref Color m_cReticleColor;
 
 	/*!
 		Returns whether screen position is in located within the sights radius.
@@ -214,7 +375,11 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	*/
 	int GetPIPCameraIndex()
 	{
-		return m_iCameraIndex;
+		SCR_2DPIPSightsComponentClass data = SCR_2DPIPSightsComponentClass.Cast(GetComponentData(GetOwner()));
+		if (data)
+			return data.GetCameraIndex();
+
+		return 8; // 8 as it is the default value for m_iCameraIndex so it might be fairly safe as a default fallback option
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -223,7 +388,11 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		if (SCR_Global.IsScope2DEnabled())
 			return super.GetADSActivationPercentageScript();
 
-		return m_fADSActivationPercentagePIP;
+		SCR_2DPIPSightsComponentClass data = SCR_2DPIPSightsComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return 1;
+
+		return data.GetADSActivationPercentagePIP();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -232,7 +401,11 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		if (SCR_Global.IsScope2DEnabled())
 			return super.GetADSDeactivationPercentageScript();
 
-		return m_fADSDeactivationPercentagePIP;
+		SCR_2DPIPSightsComponentClass data = SCR_2DPIPSightsComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return 0;
+
+		return data.GetADSDeactivationPercentagePIP();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -285,7 +458,13 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 
 		PlayerCamera camera = PlayerCamera.Cast(cameraManager.CurrentCamera());
 		if (camera)
-			return vector.Lerp(m_vMainCameraOffsetUnfocused, vector.Zero, camera.GetFocusMode());
+		{
+			SCR_2DPIPSightsComponentClass data = SCR_2DPIPSightsComponentClass.Cast(GetComponentData(GetOwner()));
+			if (!data)
+				return vector.Zero;
+
+			return vector.Lerp(data.GetMainCameraOffsetUnfocused(), vector.Zero, camera.GetFocusMode());
+		}
 
 		return vector.Zero;
 	}
@@ -343,11 +522,11 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		vector mat[4];
 		parent = GetCameraLocalTransform(mat);
 
-		pipCamera.SetCameraIndex(m_iCameraIndex);
+		pipCamera.SetCameraIndex(cameraIndex);
 		pipCamera.SetVerticalFOV(fov);
 		pipCamera.SetNearPlane(nearPlane);
 		pipCamera.SetFarPlane(farPlane);
-		pipCamera.ApplyProps(m_iCameraIndex);
+		pipCamera.ApplyProps(cameraIndex);
 		baseWorld.SetCameraLensFlareSet(cameraIndex, CameraLensFlareSetType.FirstPerson, string.Empty);
 
 		// Set camera to hierarchy
@@ -390,11 +569,16 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		// Create neccessary items
 		if (enabled && !m_bPIPIsEnabled)
 		{
+			IEntity owner = GetOwner();
+			SCR_2DPIPSightsComponentClass data = SCR_2DPIPSightsComponentClass.Cast(GetComponentData(owner));
+			if (!data)
+				return;
+
 			// Try to create UI for PIP,
 			// output params are either set to valid ones,
 			// or root itself is set to null and destroyed
 			if (!m_wPIPRoot || !m_wRenderTargetTextureWidget || !m_wRenderTargetWidget)
-				m_wPIPRoot = CreateUI(m_sPIPLayoutResource, m_sRTTextureWidgetName, m_sRTargetWidgetName, m_wRenderTargetTextureWidget, m_wRenderTargetWidget);
+				m_wPIPRoot = CreateUI(data.GetPIPLayoutResource(), data.GetRTTextureWidgetName(), data.GetRTargetWidgetName(), m_wRenderTargetTextureWidget, m_wRenderTargetWidget);
 
 			if (!m_wPIPRoot)
 			{
@@ -402,17 +586,16 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 				return;
 			}
 
-			IEntity owner = GetOwner();
-
 			// Create PIP camera
 			if (!m_PIPCamera)
 			{
 				// TODO: restart camera when view distance changes
 				float viewDistance = GetGame().GetViewDistance();
-				if (m_fFarPlane > 0)
-					viewDistance = Math.Min(viewDistance, m_fFarPlane);
+				float farPlane = data.GetFarPlane();
+				if (farPlane > 0)
+					viewDistance = Math.Min(viewDistance, farPlane);
 
-				m_PIPCamera = SCR_PIPCamera.Cast(CreateCamera(owner, GetSightsFrontPosition(true) + m_vCameraOffset, m_vCameraAngles, m_iCameraIndex, GetFOV(), m_fNearPlane, viewDistance));
+				m_PIPCamera = SCR_PIPCamera.Cast(CreateCamera(owner, GetSightsFrontPosition(true) + data.GetCameraOffset(), data.GetCameraAngles(), data.GetCameraIndex(), GetFOV(), data.GetNearPlane(), viewDistance));
 			}
 
 			if (!m_PIPCamera)
@@ -424,24 +607,28 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			// Now that everything is ready, we can start observing possible changes of the game settings, so we can react to them
 			SCR_MenuHelper.GetOnMenuClose().Insert(OnSettingsMenuClosed);
 
+			const int cameraIndex = data.GetCameraIndex();
 			// Set camera index of render target widget
 			BaseWorld baseWorld = owner.GetWorld();
-			m_wRenderTargetWidget.SetWorld(baseWorld, m_iCameraIndex);
+			m_wRenderTargetWidget.SetWorld(baseWorld, cameraIndex);
 
+			float resolutionScale = data.GetResolutionScale();
 			// Set resolution scale
-			m_wRenderTargetWidget.SetResolutionScale(m_fResolutionScale, m_fResolutionScale);
+			m_wRenderTargetWidget.SetResolutionScale(resolutionScale, resolutionScale);
 
 			if (!owner.IsDeleted())
 				m_wRenderTargetTextureWidget.SetRenderTarget(owner);
 
 			if (m_pMaterial)
-				GetGame().GetWorld().SetCameraPostProcessEffect(m_iCameraIndex, 10, PostProcessEffectType.HDR, m_rScopeHDRMatrial);
+				GetGame().GetWorld().SetCameraPostProcessEffect(cameraIndex, 10, PostProcessEffectType.HDR, data.GetScopeHDRMaterial());
 
-			if (m_sUnderwaterPPMaterial != string.Empty)
-				GetGame().GetWorld().SetCameraPostProcessEffect(m_iCameraIndex, 2, PostProcessEffectType.UnderWater, m_sUnderwaterPPMaterial);
+			string material = data.GetUnderwaterPPMaterial();
+			if (!material.IsEmpty())
+				GetGame().GetWorld().SetCameraPostProcessEffect(cameraIndex, 2, PostProcessEffectType.UnderWater, material);
 
-			if (m_sRainPPMaterial != string.Empty)
-				GetGame().GetWorld().SetCameraPostProcessEffect(m_iCameraIndex, 4, PostProcessEffectType.Rain, m_sRainPPMaterial);
+			material = data.GetRainPPMaterial();
+			if (!material.IsEmpty())
+				GetGame().GetWorld().SetCameraPostProcessEffect(cameraIndex, 4, PostProcessEffectType.Rain, material);
 
 			s_bIsPIPActive = true;
 			m_bPIPIsEnabled = true;
@@ -461,18 +648,23 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	//------------------------------------------------------------------------------------------------
 	protected void DestroyCamera(CameraBase camera)
 	{
-		if (camera)
+		if (!camera)
+			return;
+
+		IEntity cameraParent = camera.GetParent();
+		if (cameraParent)
+			cameraParent.RemoveChild(camera);
+
+		SCR_2DPIPSightsComponentClass data = SCR_2DPIPSightsComponentClass.Cast(GetComponentData(GetOwner()));
+		if (data)
 		{
-			IEntity cameraParent = camera.GetParent();
-			if (cameraParent)
-				cameraParent.RemoveChild(camera);
-
-			camera.GetWorld().SetCameraPostProcessEffect(m_iCameraIndex, 10, PostProcessEffectType.HDR, string.Empty);
-			camera.GetWorld().SetCameraPostProcessEffect(m_iCameraIndex, 2, PostProcessEffectType.UnderWater, string.Empty);
-			camera.GetWorld().SetCameraLensFlareSet(m_iCameraIndex, CameraLensFlareSetType.None, string.Empty);
-
-			delete camera;
+			const int cameraIndex = data.GetCameraIndex();
+			camera.GetWorld().SetCameraPostProcessEffect(cameraIndex, 10, PostProcessEffectType.HDR, string.Empty);
+			camera.GetWorld().SetCameraPostProcessEffect(cameraIndex, 2, PostProcessEffectType.UnderWater, string.Empty);
+			camera.GetWorld().SetCameraLensFlareSet(cameraIndex, CameraLensFlareSetType.None, string.Empty);
 		}
+
+		delete camera;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -533,12 +725,16 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	//! Toggle between illumination modes
 	protected override void EnableReticleIllumination(bool enable)
 	{
+		SCR_2DOpticsComponentClass data = SCR_2DOpticsComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return;
+
 		super.EnableReticleIllumination(enable);
 
-		if (m_bHasIllumination && enable)
-			m_cReticleColor = GetReticleIlluminationColor();
+		if (data.HasIllumination() && enable)
+			m_cReticleColor = data.GetReticleIlluminationColor();
 		else
-			m_cReticleColor = GetReticleColor();
+			m_cReticleColor = data.GetReticleColor();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -551,6 +747,10 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 
 		// We make sure that we only perform any local items on our local controlled entity
 		if (!IsLocalControlledEntity(owner))
+			return;
+
+		SCR_2DOpticsComponentClass data = SCR_2DOpticsComponentClass.Cast(GetComponentData(owner));
+		if (!data)
 			return;
 
 		// Set fov TODO@AS: Copied from base?
@@ -572,7 +772,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 				UpdateScopeMaterial();
 
 			// Setup illumination
-			if (m_bHasIllumination)
+			if (data.HasIllumination())
 				EnableReticleIllumination(m_bIsIlluminationOn);
 		}
 
@@ -728,8 +928,9 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		vector parallaxDirection = (parallaxPoint - localCameraPosition).Normalized();
 		vector angles = SCR_Math3D.FixEulerVector180(parallaxDirection.VectorToAngles());
 
-		// Parallax offset
-		angles += Vector(m_fCenterOffsetX, m_fCenterOffsetY, 0);
+		SCR_2DPIPSightsComponentClass data = SCR_2DPIPSightsComponentClass.Cast(GetComponentData(GetOwner()));
+		if (data)
+			angles += Vector(data.GetCenterOffsetX(), data.GetCenterOffsetY(), 0); // Parallax offset
 
 		// Scale parallax angle with apparent FOV
 		angles *= fov / m_fMainCameraFOV;
@@ -764,16 +965,20 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			if (cam)
 				mainCameraIndex = cam.GetCameraIndex();
 		}
+
+		IEntity owner = GetOwner();
 		//don't forget to disable preexposure on scope material !
-		BaseWorld world = GetOwner().GetWorld();
+		BaseWorld world = owner.GetWorld();
 		float hdrBrightness = world.GetCameraHDRBrightness(mainCameraIndex);
-		world.SetCameraHDRBrightness(m_iCameraIndex, hdrBrightness);
+		
+		SCR_2DPIPSightsComponentClass data = SCR_2DPIPSightsComponentClass.Cast(GetComponentData(owner));
+		if (data)
+			world.SetCameraHDRBrightness(data.GetCameraIndex(), hdrBrightness);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void UpdateScopeMaterial()
 	{
-
 		CameraManager cameraManager = GetGame().GetCameraManager();
 		if (!cameraManager)
 			return;
@@ -832,9 +1037,13 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		// float centerX = locPos[0]*m_fProjectionDifferenceScale + m_fCenterOffsetX;
 		// float centerY = locPos[1]*m_fProjectionDifferenceScale + m_fCenterOffsetY;
 
+		SCR_2DPIPSightsComponentClass data = SCR_2DPIPSightsComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return;
+
 		//distance from center distance - base of the eye pos from the projection plane
 		//TODO: t is for ARTII weapon negative !
-		float distance = Math.AbsFloat(t) - m_fCenterDistance;
+		float distance = Math.AbsFloat(t) - data.GetCenterDistance();
 
 		//change some material setting based on parameters
 		float vignettePower = 0;
@@ -845,12 +1054,12 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		if (distance > 0)
 		{
 			//when we are farther to scope
-			distancePower = m_fDistanceMoveFar;
+			distancePower = data.GetDistanceMoveFar();
 		}
 		else
 		{
 			//when we are closer to scope
-			distancePower	= m_fDistanceMoveNear;
+			distancePower = data.GetDistanceMoveNear();
 			//lensPower 		= -5.5;
 		}
 
@@ -858,7 +1067,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		float fc = 1 - 1 /(Math.Log2(distancePower*Math.AbsFloat(distance) + 2));
 
 		//max vignette power is 2, let a little opened
-		vignettePower = Math.Clamp(fc* 100, m_fBasicParallax, m_fMaxParallax);
+		vignettePower = Math.Clamp(fc* 100, data.GetBasicParallax(), data.GetMaxParallax());
 
 		//how is it with lens distortion? now at zero is the -5.5
 		//lensPower = lensPower*Math.Clamp(-distance/m_fCenterDistance, 0, 5);
@@ -882,21 +1091,22 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		// Vignette
 		float vignetteParallaxScale;
 		if (m_fObjectiveFov > 0)
-			vignetteParallaxScale = m_fVignetteParallaxScale / (m_fObjectiveFov * m_fObjectiveScale);
+			vignetteParallaxScale = data.GetVignetteParallaxScale() / (m_fObjectiveFov * m_fObjectiveScale);
 		
 		m_pMaterial.SetParamByIndex(m_iVignetteCenterXIndex, -m_fParallaxX * vignetteParallaxScale / pipFOV);
 		m_pMaterial.SetParamByIndex(m_iVignetteCenterYIndex, -m_fParallaxY * vignetteParallaxScale / pipFOV);
 		m_pMaterial.SetParamByIndex(m_iVignettePowerIndex, vignettePower);
 
+		float reticlePIPScale = data.GetReticlePIPScale();
 		// Objective edge
-		m_pMaterial.SetParamByIndex(m_iEdgeCenterXIndex, m_fParallaxX * m_fReticlePIPScale / pipFOV);
-		m_pMaterial.SetParamByIndex(m_iEdgeCenterYIndex, m_fParallaxY * m_fReticlePIPScale / pipFOV);
+		m_pMaterial.SetParamByIndex(m_iEdgeCenterXIndex, m_fParallaxX * reticlePIPScale / pipFOV);
+		m_pMaterial.SetParamByIndex(m_iEdgeCenterYIndex, m_fParallaxY * reticlePIPScale / pipFOV);
 		float edgeSize = m_fObjectiveFov * m_fObjectiveScale * m_fEdgeScale / pipFOV;
-		m_pMaterial.SetParamByIndex(m_iEdgeMinIndex, 0.5 * m_fReticlePIPScale * edgeSize * edgeSize * m_fObjectivePIPEdgeMin);
-		m_pMaterial.SetParamByIndex(m_iEdgeMaxIndex, 0.5 * m_fReticlePIPScale * edgeSize * edgeSize * m_fObjectivePIPEdgeMax);
+		m_pMaterial.SetParamByIndex(m_iEdgeMinIndex, 0.5 * reticlePIPScale * edgeSize * edgeSize * data.GetObjectivePIPEdgeMin());
+		m_pMaterial.SetParamByIndex(m_iEdgeMaxIndex, 0.5 * reticlePIPScale * edgeSize * edgeSize * data.GetObjectivePIPEdgeMax());
 
 		// Reticle
-		m_pMaterial.SetParamByIndex(m_iReticleScaleIndex, m_fReticleScale / m_fReticlePIPScale);
+		m_pMaterial.SetParamByIndex(m_iReticleScaleIndex, m_fReticleScale / reticlePIPScale);
 		m_pMaterial.SetParamByIndex(m_iReticleOffsetXIndex, m_fReticleScale * (m_fParallaxX + m_fReticleOffsetX) / pipFOV);
 		m_pMaterial.SetParamByIndex(m_iReticleOffsetYIndex, m_fReticleScale * (m_fParallaxY + m_fCurrentReticleOffsetY) / pipFOV);
 
@@ -943,10 +1153,16 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	{
 		super.OnInit(owner);
 
-		if (m_rScopeHDRMatrial.IsEmpty())
+		SCR_2DPIPSightsComponentClass data = SCR_2DPIPSightsComponentClass.Cast(GetComponentData(owner));
+		if (!data)
+			return;
+
+		m_cReticleColor = data.GetReticleColor();
+
+		ResourceName mat = data.GetScopeHDRMaterial();
+		if (mat.IsEmpty())
 			Print("Scope HDR material is empty!", LogLevel.WARNING);
 
-		ResourceName mat = m_rScopeHDRMatrial;
 		m_pMaterial = Material.GetOrLoadMaterial(mat, 0);
 
 		if (m_pMaterial)
@@ -1007,10 +1223,14 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		vector ownerTransform[4];
 		owner.GetWorldTransform(ownerTransform);
 
+		SCR_2DOpticsComponentClass data = SCR_2DOpticsComponentClass.Cast(GetComponentData(owner));
+		if (!data)
+			return;
+
 		vector objectiveTransform[4];
-		Math3D.AnglesToMatrix(m_vCameraAngles, objectiveTransform);
+		Math3D.AnglesToMatrix(data.GetCameraAngles(), objectiveTransform);
 		Math3D.MatrixMultiply3(objectiveTransform, ownerTransform, objectiveTransform);
-		objectiveTransform[3] = (GetSightsFrontPosition(true) + m_vCameraOffset).Multiply4(ownerTransform);
+		objectiveTransform[3] = (GetSightsFrontPosition(true) + data.GetCameraOffset()).Multiply4(ownerTransform);
 
 		vector objectiveSide = objectiveTransform[0];
 		vector objectiveUp = objectiveTransform[1];
@@ -1062,7 +1282,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	protected static bool s_PIPDiagRegistered;
 
 	//------------------------------------------------------------------------------------------------
-	protected void InputFloatClamped(inout float value, string label, float min, float max, int pxWidth = 100)
+	static void InputFloatClamped(inout float value, string label, float min, float max, int pxWidth = 100)
 	{
 		DbgUI.InputFloat(label, value, pxWidth);
 		value = Math.Clamp(value, min, max);
@@ -1073,20 +1293,15 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	{
 		DbgUI.Begin("2DPIPSights");
 		{
-			InputFloatClamped(m_fCenterDistance, "m_fCenterDistance", -0.2, 0.2);
-			InputFloatClamped(m_fDistanceMoveNear, "m_fDistanceMoveNear", 0.0, 1.0);
-			InputFloatClamped(m_fDistanceMoveFar, "m_fDistanceMoveFar", 0.0, 1.0);
-			InputFloatClamped(m_fBasicParallax, "m_fBasicParallax", 0.0, 2.0);
-			InputFloatClamped(m_fMaxParallax, "m_fMaxParallax", 0.0, 2.0);
-			InputFloatClamped(m_fCenterOffsetX, "m_fCenterOffsetX", -90.0, 90.0);
-			InputFloatClamped(m_fCenterOffsetY, "m_fCenterOffsetY", -90.0, 90.0);
+			
+			SCR_2DPIPSightsComponentClass data = SCR_2DPIPSightsComponentClass.Cast(GetComponentData(GetOwner()));
+			if (data)
+				data.DrawSharedDataDiag();
+
 			InputFloatClamped(m_fCurrentCameraPitch, "m_fCurrentCameraPitch", -90.0, 90.0);
 			InputFloatClamped(m_fScopeRadius, "m_fScopeRadius", -90.0, 90.0);
-			InputFloatClamped(m_fReticlePIPScale, "m_fReticlePIPScale", 0.01, 100.0);
-			InputFloatClamped(m_fObjectivePIPEdgeMin, "m_fObjectivePIPEdgeMin", 0.0, 10.0);
-			InputFloatClamped(m_fObjectivePIPEdgeMax, "m_fObjectivePIPEdgeMax", 0.0, 10.0);
-			InputFloatClamped(m_fVignetteParallaxScale, "m_fVignetteParallaxScale", -100.0, 100.0);
 		}
+
 		DbgUI.End();
 	}
 	#endif

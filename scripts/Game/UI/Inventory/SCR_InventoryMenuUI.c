@@ -3488,30 +3488,20 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			}
 		}
 		
-		InventoryStorageSlot itemParentSlot = pComp.GetParentSlot();
-		
-		if (pItemToReplace && pItem)
+		if (pItemToReplace && pItem && pItemToReplace != pItem)
 		{
-			if (itemParentSlot && IsStorageArsenal(itemParentSlot.GetStorage()))
+			if (m_pSelectedSlotUI.GetSlotedItemFunction() == ESlotFunction.TYPE_MAGAZINE)
 			{
-				m_InventoryManager.TryReplaceAndDropItemAtSlot(m_pWeaponStorageComp, pItem, weaponSlot.GetWeaponSlotIndex(), m_pCallBack, true, true);
+				m_CharController.ReloadWeaponWith(pItem);
 				return;
 			}
-			else if (pItemToReplace != pItem)
-			{
-				if (m_pSelectedSlotUI.GetSlotedItemFunction() == ESlotFunction.TYPE_MAGAZINE)
-				{
-					m_CharController.ReloadWeaponWith(pItem);
-					return;
-				}
 
-				if (m_InventoryManager.TrySwapItemStorages(pItem, pItemToReplace, m_pCallBack))
-					m_InventoryManager.PlayItemSound(pItem, SCR_SoundEvent.SOUND_EQUIP);
-				else
-					SCR_UISoundEntity.SoundEvent("SOUND_INV_DROP_ERROR");
-				
-				return;
-			}
+			if (m_InventoryManager.TrySwapItemStorages(pItem, pItemToReplace, m_pCallBack))
+				m_InventoryManager.PlayItemSound(pItem, SCR_SoundEvent.SOUND_EQUIP);
+			else
+				SCR_UISoundEntity.SoundEvent("SOUND_INV_DROP_ERROR");
+			
+			return;
 		}
 		
 		DeselectSlot();

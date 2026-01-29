@@ -37,11 +37,15 @@ class CharacterCamera1stPersonTurret extends CharacterCamera1stPerson
 			{
 				m_OwnerVehicle = compartment.GetVehicle();
 				
-				SCR_VehicleCameraDataComponent vehicleCamData = SCR_VehicleCameraDataComponent.Cast(m_OwnerVehicle.FindComponent(SCR_VehicleCameraDataComponent));
-				if (vehicleCamData)
+				SCR_VehicleCameraDataComponent vehicleCamDataComp = SCR_VehicleCameraDataComponent.Cast(m_OwnerVehicle.FindComponent(SCR_VehicleCameraDataComponent));
+				if (vehicleCamDataComp)
 				{
-					m_fRollFactor = vehicleCamData.m_fRollFactor;
-					m_fPitchFactor = vehicleCamData.m_fPitchFactor;
+					SCR_VehicleCameraDataComponentClass vehicleCamData = SCR_VehicleCameraDataComponentClass.Cast(vehicleCamDataComp.GetComponentData(m_OwnerVehicle));
+					if (vehicleCamData)
+					{
+						m_fRollFactor = vehicleCamData.m_fRollFactor;
+						m_fPitchFactor = vehicleCamData.m_fPitchFactor;
+					}
 				}
 				
 				m_pTurretController = TurretControllerComponent.Cast(compartment.GetController());

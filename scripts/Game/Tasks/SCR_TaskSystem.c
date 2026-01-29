@@ -1518,6 +1518,14 @@ class SCR_TaskSystem : GameSystem
 			Print("SCR_TaskSystem: Task resource is invalid!", LogLevel.WARNING);
 			return null;
 		}
+
+		IEntitySource entitySource = taskResource.GetResource().ToEntitySource();
+		if (!entitySource)
+			return null;
+
+		typename taskType = entitySource.GetClassName().ToType();
+		if (!taskType.IsInherited(SCR_Task))
+			return null;
 		
 		vector transform[4];
 		Math3D.MatrixIdentity3(transform);

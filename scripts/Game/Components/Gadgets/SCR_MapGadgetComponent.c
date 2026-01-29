@@ -1,11 +1,6 @@
 [EntityEditorProps(category: "GameScripted/Gadgets", description: "Map gadget", color: "0 0 255 255")]
 class SCR_MapGadgetComponentClass : SCR_GadgetComponentClass
 {
-}
-
-//! Map gadget component
-class SCR_MapGadgetComponent : SCR_GadgetComponent
-{
 	[Attribute("0.3", UIWidgets.EditBox, desc: "seconds, delay before map gets activated giving time for the animation to be visible", params: "1 1000", category: "Map")]
 	protected float m_fActivationDelay;
 
@@ -15,10 +10,11 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 	[Attribute(defvalue: "1994", uiwidget: UIWidgets.EditBox, desc: "[px] Exact length of the ruler that coresponds to 1km of distance")]
 	protected float m_fRulerLength;
 
-	protected bool m_bIsMapOpen;
-	protected bool m_bIsFirstTimeOpened = true;		// whether the map has bene opened since put into a lot
-	protected SCR_MapEntity m_MapEntity;			// map instance
-	protected SCR_FadeInOutEffect m_FadeInOutEffect;
+	//------------------------------------------------------------------------------------------------
+	float GetActivationDelay()
+	{
+		return m_fActivationDelay;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	ResourceName GetProtractorTexture()
@@ -31,6 +27,16 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 	{
 		return m_fRulerLength;
 	}
+}
+
+//! Map gadget component
+class SCR_MapGadgetComponent : SCR_GadgetComponent
+{
+
+	protected bool m_bIsMapOpen;
+	protected bool m_bIsFirstTimeOpened = true;		// whether the map has bene opened since put into a lot
+	protected SCR_MapEntity m_MapEntity;			// map instance
+	protected SCR_FadeInOutEffect m_FadeInOutEffect;
 
 //---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//------------------------------------------------------------------------------------------------
@@ -40,13 +46,17 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 	{		
 		if (!m_MapEntity || !m_CharacterOwner || !GetGame().GetGameMode())
 			return;
-				
+		
+		SCR_MapGadgetComponentClass data = SCR_MapGadgetComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return;
+		
 		// no delay/fade for forced cancel
 		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(m_CharacterOwner.FindComponent(SCR_CharacterControllerComponent));
 		ECharacterLifeState lifeState = controller.GetLifeState();
 		float delay; 
 		if (lifeState != ECharacterLifeState.DEAD) 
-			delay = m_fActivationDelay * 1000;
+			delay = data.GetActivationDelay() * 1000;
 
 		GetGame().GetCallqueue().Remove(ToggleMapGadget);
 		
@@ -55,7 +65,7 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 			GetGame().GetCallqueue().CallLater(ToggleMapGadget, delay, false, true);
 			
 			if (m_FadeInOutEffect)
-				m_FadeInOutEffect.FadeOutEffect(true, m_fActivationDelay); // fade out after map open
+				m_FadeInOutEffect.FadeOutEffect(true, data.GetActivationDelay()); // fade out after map open
 		}
 		else		
 		{
@@ -64,9 +74,9 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 			if (lifeState != ECharacterLifeState.DEAD && m_FadeInOutEffect) 
 			{
 				if (m_MapEntity.IsOpen())
-					m_FadeInOutEffect.FadeOutEffect(true, m_fActivationDelay); // fade out on map close
+					m_FadeInOutEffect.FadeOutEffect(true, data.GetActivationDelay()); // fade out on map close
 				else 
-					m_FadeInOutEffect.FadeOutEffect(false, m_fActivationDelay); // in case map is closed fast before it opens, fade in from close map wont trigger, so it has to happen here
+					m_FadeInOutEffect.FadeOutEffect(false, data.GetActivationDelay()); // in case map is closed fast before it opens, fade in from close map wont trigger, so it has to happen here
 			}
 		}
 	}
@@ -105,8 +115,9 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 		if (SCR_WeaponSwitchingBaseUI.s_bOpened)
 			SCR_WeaponSwitchingBaseUI.GetWeaponSwitchingBaseUI().CloseQuickSlots(); // force close it as WeaponSelectionContext will obstruct input for MapContext
 		
-		if (m_FadeInOutEffect)
-			m_FadeInOutEffect.FadeOutEffect(false, m_fActivationDelay); // fade in after map open
+		SCR_MapGadgetComponentClass data = SCR_MapGadgetComponentClass.Cast(GetComponentData(GetOwner()));
+		if (data && m_FadeInOutEffect)
+			m_FadeInOutEffect.FadeOutEffect(false, data.GetActivationDelay()); // fade in after map open
 		
 		// first open
 		if (!m_bIsFirstTimeOpened)
@@ -121,8 +132,9 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 	//! \param[in] config
 	protected void OnMapClose(MapConfiguration config)
 	{
-		if (m_FadeInOutEffect)
-			m_FadeInOutEffect.FadeOutEffect(false, m_fActivationDelay); // fade in after map close 
+		SCR_MapGadgetComponentClass data = SCR_MapGadgetComponentClass.Cast(GetComponentData(GetOwner()));
+		if (data && m_FadeInOutEffect)
+			m_FadeInOutEffect.FadeOutEffect(false, data.GetActivationDelay()); // fade in after map close 
 		
 		SCR_MapEntity.GetOnMapOpen().Remove(OnMapOpen);
 		SCR_MapEntity.GetOnMapClose().Remove(OnMapClose);

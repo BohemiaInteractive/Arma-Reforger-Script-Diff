@@ -10,7 +10,10 @@ class SCR_AdjustShellChargeRingsAction : SCR_AdjustSignalAction
 	{
 		m_ShellGadgetComp = SCR_MortarShellGadgetComponent.Cast(pOwnerEntity.FindComponent(SCR_MortarShellGadgetComponent));
 		if (m_ShellGadgetComp)
-			m_iDefaultConfigId = m_ShellGadgetComp.FindDefaultChargeRingConfig();
+		{
+			SCR_MortarShellGadgetComponentClass data = SCR_MortarShellGadgetComponentClass.Cast(m_ShellGadgetComp.GetComponentData(pOwnerEntity));
+			m_iDefaultConfigId = data.FindDefaultChargeRingConfig();
+		}
 
 		super.Init(pOwnerEntity, pManagerComponent);
 	}
