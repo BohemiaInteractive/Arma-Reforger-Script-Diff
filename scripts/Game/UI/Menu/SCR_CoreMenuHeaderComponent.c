@@ -8,7 +8,7 @@ class SCR_CoreMenuHeaderComponent : SCR_ScriptedWidgetComponent
 	[Attribute("Title", desc: "Title of the menu")]
 	protected string m_sTitle;
 	
-	protected TextWidget m_wTitle;
+	TextWidget m_wTitle;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)

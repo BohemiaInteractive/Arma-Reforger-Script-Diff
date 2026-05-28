@@ -1,5 +1,5 @@
 [BaseContainerProps()]
-class SCR_RankIDCampaign : SCR_RankID
+class SCR_RankInfoCampaign : SCR_RankInfo
 {	
 	[Attribute("10", UIWidgets.EditBox, "How long does this rank has to wait between requests (sec).", params: "0 inf 1")]
 	protected int m_iRequestCD;
@@ -89,10 +89,11 @@ class SCR_CampaignFactionManager : SCR_FactionManager
 	
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] rankID
+	//! \param[in] playerID
 	//! \return
-	int GetRankRequestCooldown(SCR_ECharacterRank rankID)
+	int GetRankRequestCooldown(SCR_ECharacterRank rankID, int playerID)
 	{
-		SCR_RankIDCampaign rank = SCR_RankIDCampaign.Cast(GetRankByID(rankID));
+		SCR_RankInfoCampaign rank = SCR_RankInfoCampaign.Cast(GetFactionRanks(playerID).GetRankByID(rankID));
 		
 		if (!rank)
 			return int.MAX;
@@ -102,10 +103,11 @@ class SCR_CampaignFactionManager : SCR_FactionManager
 	
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] rankID
+	//! \param[in] playerID
 	//! \return
-	int GetRankRadioRespawnCooldown(SCR_ECharacterRank rankID)
+	int GetRankRadioRespawnCooldown(SCR_ECharacterRank rankID, int playerID)
 	{
-		SCR_RankIDCampaign rank = SCR_RankIDCampaign.Cast(GetRankByID(rankID));
+		SCR_RankInfoCampaign rank = SCR_RankInfoCampaign.Cast(GetFactionRanks(playerID).GetRankByID(rankID));
 		
 		if (!rank)
 			return int.MAX;
@@ -115,12 +117,13 @@ class SCR_CampaignFactionManager : SCR_FactionManager
 	
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] rankID
+	//! \param[in] playerID
 	//! \return
-	int GetRankFastTravelCooldown(SCR_ECharacterRank rankID)
+	int GetRankFastTravelCooldown(SCR_ECharacterRank rankID, int playerID)
 	{
-		SCR_RankIDCampaign rank = SCR_RankIDCampaign.Cast(GetRankByID(rankID));
+		SCR_RankInfoCampaign rank = SCR_RankInfoCampaign.Cast(GetFactionRanks(playerID).GetRankByID(rankID));
 		
-		if (!rank)
+		if (!rank)	
 			return int.MAX;
 
 		return rank.GetRankFastTravelCooldown();
@@ -131,5 +134,6 @@ enum SCR_ECampaignFaction
 {
 	INDFOR,
 	BLUFOR,
-	OPFOR
+	OPFOR,
+	RNGD
 }

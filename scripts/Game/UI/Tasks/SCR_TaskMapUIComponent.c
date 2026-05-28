@@ -11,7 +11,12 @@ class SCR_TaskMapUIComponent : SCR_MapUIElement
 	protected bool m_bEnableContext;
 	protected bool m_bSelected;
 	protected bool m_bDisplayAssigned = 1;
-
+	protected bool m_bShowAuthor;
+	
+	protected bool m_bRequestPlayerNameCacheUpdate;
+	protected ref array<string> m_aPlayerIdentitiesToUpdate = {};
+	protected ref array<ref TextWidget> m_aWidgetsToUpdate = {};
+	
 	protected SCR_TaskManagerUIComponent m_TaskManager;
 	protected ref ScriptInvokerVoid m_OnTaskIconClick;
 	protected ref SCR_TaskMapWidgets m_Widgets = new SCR_TaskMapWidgets();
@@ -117,6 +122,8 @@ class SCR_TaskMapUIComponent : SCR_MapUIElement
 
 		m_wRoot.Update();
 		m_TaskManager.SetHoveredTask(m_Task);
+		if (m_bShowAuthor)
+			m_Widgets.m_wAuthorLayout.SetVisible(true);
 
 		return false;
 	}
@@ -130,6 +137,8 @@ class SCR_TaskMapUIComponent : SCR_MapUIElement
 
 		m_bEnableContext = false;
 		m_TaskManager.SetHoveredTask(null);
+		if (m_bShowAuthor)
+			m_Widgets.m_wAuthorLayout.SetVisible(false);
 
 		return false;
 	}
@@ -303,6 +312,7 @@ class SCR_TaskMapUIComponent : SCR_MapUIElement
 	{
 		CheckTaskVisibility();
 		UpdateTaskInformation();
+		UpdatePlayerNameCache();
 		SetIconFactionColor();
 		SetMapMarkerAssigneeCount();
 	}
@@ -373,7 +383,8 @@ class SCR_TaskMapUIComponent : SCR_MapUIElement
 		m_Task = task;
 		
 		UpdateTaskInformation();
-
+		UpdatePlayerNameCache();
+		
 		SetMapMarkerAssigneeCount();
 		
 		m_Task.GetOnTaskStateChanged().Insert(UpdateTaskState);
@@ -396,8 +407,11 @@ class SCR_TaskMapUIComponent : SCR_MapUIElement
 	
 	//------------------------------------------------------------------------------------------------
 	//! Updates task title and icon to the one provided in task SCR_TaskUIInfo
-	void UpdateTaskInformation()
+	protected void UpdateTaskInformation()
 	{
+		if (!m_Task)
+			return;
+		
 		SCR_TaskUIInfo info = m_Task.GetTaskUIInfo();
 		if (!info)
 			return;
@@ -405,26 +419,93 @@ class SCR_TaskMapUIComponent : SCR_MapUIElement
 		info.SetNameTo(m_Widgets.m_wTaskTitle);
 		info.SetIconTo(m_Widgets.m_wTaskIconSymbol);
 		
-		if (m_Task.GetAuthorID() > 0)
+		m_Widgets.m_wAuthorLayout.SetVisible(false);
+		
+		int authorId = m_Task.GetAuthorID();
+		m_bShowAuthor = false;
+		
+		if (authorId <= 0)
 		{
-			m_Widgets.m_wAuthorLayout.SetVisible(true);
-			
-			string playerName = GetGame().GetPlayerManager().GetPlayerName(m_Task.GetAuthorID());
+			//add here something if authorId is not valid and still you want to show Author
+			return;
+		}	
+		// authorId is valid
+		
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		m_bShowAuthor = true;
+		string playerName;
+		PlatformKind platformKind;
+		
+		if (playerManager.IsPlayerConnected(authorId))	// author is in the session
+		{
+			playerName = playerManager.GetPlayerName(authorId);
+			platformKind = playerManager.GetPlatformKind(authorId);
 			m_Widgets.m_wMarkerAuthor.SetText(playerName);
-			
 			m_Widgets.m_wPlatformIcon.SetVisible(false);
-			
-			PlatformKind platformKind = GetGame().GetPlayerManager().GetPlatformKind(m_Task.GetAuthorID());
+		}
+		else										// author left the session
+		{
+			UUID playerIdentity = m_Task.GetAuthorIdentityID();
+			m_bRequestPlayerNameCacheUpdate = true;
+			m_aPlayerIdentitiesToUpdate.InsertAt(playerIdentity, 0);
+			m_aWidgetsToUpdate.InsertAt(m_Widgets.m_wMarkerAuthor, 0);
+			platformKind = m_Task.GetAuthorPlatformKind();
+		}
+		
+		// TODO: correct platformKind does not work for author out of the session, needs to be reworked with better identity manager handling
+		if (platformKind != PlatformKind.NONE)
+		{			
 			SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 			if (playerController)
-				playerController.SetPlatformImageToKind(platformKind, m_Widgets.m_wPlatformIcon, showOnPC: true, showOnXbox: true);
-		}
-		else
-		{
-			m_Widgets.m_wAuthorLayout.SetVisible(false);
+			{
+				bool showIconNametag = true;
+				
+				// Always show on PSN
+				PlatformKind ownPlatformKind = GetGame().GetPlayerManager().GetPlatformKind(playerController.GetLocalPlayerId());
+				if (ownPlatformKind == PlatformKind.STEAM)
+				{
+					BaseContainer settings = GetGame().GetGameUserSettings().GetModule("SCR_GameplaySettings");
+					if (settings)
+						settings.Get("m_bPlatformIconNametag", showIconNametag);
+				}
+				
+				playerController.SetPlatformImageToKind(platformKind, m_Widgets.m_wPlatformIcon, showOnPC: showIconNametag, showOnXbox: true);		
+			}
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayerNameCacheUpdate(bool success)
+	{
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		if (m_aPlayerIdentitiesToUpdate.IsEmpty())
+		{
+			PlayerManager.s_OnPlayerNameCacheUpdateInvoker.Remove(OnPlayerNameCacheUpdate);
+			return;
+		}
+		
+		int lastIndex = m_aPlayerIdentitiesToUpdate.Count() - 1;
+		string playerName = playerManager.GetPlayerNameByIdentity(m_aPlayerIdentitiesToUpdate[lastIndex]);
+		m_aWidgetsToUpdate[lastIndex].SetText(playerName);
+		m_aPlayerIdentitiesToUpdate.Remove(lastIndex);
+		m_aWidgetsToUpdate.Remove(lastIndex);
+		
+		if (lastIndex == 0)
+			PlayerManager.s_OnPlayerNameCacheUpdateInvoker.Remove(OnPlayerNameCacheUpdate);		
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Requests update of player name cache if requested by m_bRequestPlayerNameCacheUpdate
+	protected void UpdatePlayerNameCache()
+	{
+		if (!m_bRequestPlayerNameCacheUpdate || m_aPlayerIdentitiesToUpdate.IsEmpty())
+			return;
+		
+		PlayerManager.s_OnPlayerNameCacheUpdateInvoker.Insert(OnPlayerNameCacheUpdate);
+		PlayerManager.RequestPlayerNameCacheUpdate(m_aPlayerIdentitiesToUpdate);
+		m_bRequestPlayerNameCacheUpdate = false;		
+	}
+			
 	//------------------------------------------------------------------------------------------------
 	//! Sets task icon colors
 	//! \param[in] Color of background

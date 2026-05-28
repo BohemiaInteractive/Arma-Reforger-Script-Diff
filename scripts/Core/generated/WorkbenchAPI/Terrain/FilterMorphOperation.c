@@ -24,6 +24,7 @@ enum FilterMorphOperation
 	SMOOTH,
 	//! combine with other map, take map from TerrainFilterDesc.GetCombinePtr()
 	COMBINE,
+	NONCUMULATIVE,
 }
 
 /*!

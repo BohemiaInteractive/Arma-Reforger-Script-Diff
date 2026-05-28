@@ -13,6 +13,8 @@ class SCR_Math2D
 		if (points3D.IsEmpty())
 			return;
 
+		points2D.Reserve(points3D.Count() * 2);
+
 		foreach (vector point3D : points3D)
 		{
 			points2D.Insert(point3D[0]);

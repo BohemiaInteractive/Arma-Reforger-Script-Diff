@@ -50,15 +50,12 @@ class SCR_BaseDamageHealSupportStationAction : SCR_BaseUseSupportStationAction
 		{
 			HitZone defaultHitZone = m_DamageManagerComponent.GetDefaultHitZone();
 			
-			//~ Move default hitZone to end
-			if (defaultHitZone)
+			// Move default hitZone to the end
+			int defaultHitZoneIndex = m_aHitZonesToHeal.Find(defaultHitZone);
+			if (m_aHitZonesToHeal.IsIndexValid(defaultHitZoneIndex))
 			{
-				int defaultHitZoneIndex = m_aHitZonesToHeal.Find(defaultHitZone);
-				if (m_aHitZonesToHeal.IsIndexValid(defaultHitZoneIndex))
-				{
-					m_aHitZonesToHeal.RemoveOrdered(defaultHitZoneIndex);
-					m_aHitZonesToHeal.InsertAt(defaultHitZone, m_aHitZonesToHeal.Count() -1);
-				}
+				m_aHitZonesToHeal.RemoveOrdered(defaultHitZoneIndex);
+				m_aHitZonesToHeal.InsertAt(defaultHitZone, m_aHitZonesToHeal.Count() -1);
 			}
 		}
 	}

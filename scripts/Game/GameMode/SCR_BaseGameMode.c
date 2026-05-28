@@ -507,6 +507,11 @@ class SCR_BaseGameMode : BaseGameMode
 			return;
 		}
 
+#ifdef ENABLE_DIAG
+		if (!Replication.IsRunning()) // You cannot pause in MP, thus this option is only available in SP
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SINGLEPLAYER_DISABLE_TIME_PAUSE, "", "Disable time pause", "Game");
+#endif
+
 		m_fTimeElapsed = 0.0;
 		m_eGameState = SCR_EGameModeState.GAME;
 		Replication.BumpMe();
@@ -723,8 +728,8 @@ class SCR_BaseGameMode : BaseGameMode
 		// After the game completes no more saving needs to be done
 		GetGame().GetSaveGameManager().SetSavingAllowed(false);
 
-		const bool keepSessionSave = System.IsCLIParam("keepSessionSave");
-		if (keepSessionSave)
+		const PersistenceSystem persistence = PersistenceSystem.GetInstance();
+		if (System.IsCLIParam("keepSessionSave") || (persistence && persistence.ShouldKeepSessionData()))
 			return;
 
 		// We only delete on DS or workbench for now
@@ -733,13 +738,12 @@ class SCR_BaseGameMode : BaseGameMode
 			return;
 		#endif
 
+		if (persistence)
+			persistence.ClearStorage(PersistenceSessionStorage);
+
 		const SaveGame currentSave = GetGame().GetSaveGameManager().GetActiveSave();
 		if (currentSave)
-			GetGame().GetSaveGameManager().DeletePlaythrough(currentSave.GetMissionResource(), currentSave.GetPlaythroughNumber());
-
-		const PersistenceSystem persistence = PersistenceSystem.GetInstance();
-		if (persistence)
-			persistence.ClearSessionData();
+			GetGame().GetSaveGameManager().Purge(currentSave.GetMissionResource(), currentSave.GetPlaythroughNumber());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -782,10 +786,7 @@ class SCR_BaseGameMode : BaseGameMode
 		if (TryShutdownServer())
 			return;
 
-		Print("SCR_BaseGameMode::RequestScenarioRestart()", LogLevel.DEBUG);
-
-		auto manager = GetGame().GetSaveGameManager();
-		manager.StartPlaythrough(manager.GetCurrentMissionResource());
+		GameStateTransitions.RequestScenarioRestart();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -838,11 +839,6 @@ class SCR_BaseGameMode : BaseGameMode
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerAuditSuccess(int iPlayerID)
 	{
-	#ifdef RESPAWN_COMPONENT_VERBOSE
-			Print("SCR_BaseGameMode::OnPlayerAuditSuccess - playerId: " + iPlayerID, LogLevel.DEBUG);
-	#endif
-
-		super.OnPlayerAuditSuccess(iPlayerID);
 		m_OnPlayerAuditSuccess.Invoke(iPlayerID);
 
 		if (IsMaster())
@@ -858,11 +854,6 @@ class SCR_BaseGameMode : BaseGameMode
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerAuditFail(int iPlayerID)
 	{
-	#ifdef RESPAWN_COMPONENT_VERBOSE
-		Print("SCR_BaseGameMode::OnPlayerAuditFail - playerId: " + iPlayerID, LogLevel.DEBUG);
-	#endif
-
-		super.OnPlayerAuditFail(iPlayerID);
 		m_OnPlayerAuditFail.Invoke(iPlayerID);
 
 		// Dispatch event to child components
@@ -911,34 +902,14 @@ class SCR_BaseGameMode : BaseGameMode
 			Replication.BumpMe();
 		}
 
-		super.OnPlayerConnected(playerId);
 		m_OnPlayerConnected.Invoke(playerId);
-
-		// TODO: Please revisit and adjust this, this check results in some nasty branching and possible oversights/errors
-		// Wait for backend response if dedicated server is used and is not run without backend functionality
-		if (m_pRespawnSystemComponent && (RplSession.Mode() != RplMode.Dedicated || System.IsCLIParam("nobackend")))
-		{
-		#ifdef RESPAWN_COMPONENT_VERBOSE
-			Print("SCR_BaseGameMode::OnPlayerConnected - playerId: " + playerId, LogLevel.DEBUG);
-		#endif
-		}
-
 		// Dispatch event to child components
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 		{
 			comp.OnPlayerConnected(playerId);
 		}
 
-		// DON'T! Leave that up to game mode respawning
-		// SetPlayerRandomLoadout(playerId);
 
-		#ifdef TREE_DESTRUCTION
-		int count = SCR_DestructibleTree.DestructibleTrees.Count();
-		for (int i = 0; i < count; i++)
-		{
-			SCR_DestructibleTree.DestructibleTrees[i].OnPlayerConnected();
-		}
-		#endif
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -948,8 +919,6 @@ class SCR_BaseGameMode : BaseGameMode
 	*/
 	protected override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
-		super.OnPlayerDisconnected(playerId, cause, timeout);
-
 		m_OnPlayerDisconnected.Invoke(playerId, cause, timeout);
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 		{
@@ -962,28 +931,44 @@ class SCR_BaseGameMode : BaseGameMode
 			IEntity character = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId);
 			if (character)
 			{
-				// If conditions to allow reconnect pass, skip the entity delete
-				SCR_ReconnectComponent reconnect = SCR_ReconnectComponent.GetInstance();
-				if (reconnect.IsReconnectEnabled() && reconnect.OnPlayerDC(playerId, cause))
+				// If driving a vehicle it should be stopped as gracefully as possible to avoid crashing into nearby obstacles with passengers.
+				const CompartmentAccessComponent compAccess = CompartmentAccessComponent.Cast(character.FindComponent(CompartmentAccessComponent));
+				if (compAccess)
+				{
+					const PilotCompartmentSlot pilotCompartment = PilotCompartmentSlot.Cast(compAccess.GetCompartment());
+					if (pilotCompartment)
+					{
+						IEntity vehicle = pilotCompartment.GetVehicle();
+						CarControllerComponent carController = CarControllerComponent.Cast(vehicle.FindComponent(CarControllerComponent));
+						if (carController)
+						{
+							carController.Shutdown();
+							carController.StopEngine(false);
+							carController.SetPersistentHandBrake(true);
+						}
+						else
+						{
+							HelicopterControllerComponent heliController = HelicopterControllerComponent.Cast(vehicle.FindComponent(HelicopterControllerComponent));
+							if (heliController)
+							{
+								heliController.LockPilotControls(false);
+								heliController.SetPersistentWheelBrake(true);
+								heliController.SetAutohoverEnabled(true);
+							}
+						}
+					}
+				}
+			}
+
+			// If conditions to allow reconnect pass, skip the entity delete
+			SCR_ReconnectComponent reconnect = SCR_ReconnectComponent.GetInstance();
+			if (reconnect && reconnect.HandlePlayerDisconnect(playerId, cause))
+			{
+				if (character)
 				{
 					CharacterControllerComponent charController = CharacterControllerComponent.Cast(character.FindComponent(CharacterControllerComponent));
 					if (charController)
 						charController.SetMovement(0, vector.Forward);
-
-					const CompartmentAccessComponent compAccess = CompartmentAccessComponent.Cast(character.FindComponent(CompartmentAccessComponent));
-					if (compAccess)
-					{
-						const BaseCompartmentSlot compartment = compAccess.GetCompartment();
-						if (compartment)
-						{
-							CarControllerComponent carController = CarControllerComponent.Cast(compartment.GetVehicle().FindComponent(CarControllerComponent));
-							if (carController)
-							{
-								carController.Shutdown();
-								carController.StopEngine(false);
-							}
-						}
-					}
 
 					character = null; // Avoid deleting it
 				}
@@ -992,7 +977,11 @@ class SCR_BaseGameMode : BaseGameMode
 			// RespawnSystemComponent is not a SCR_BaseGameModeComponent, so for now we have to propagate these events manually.
 			m_pRespawnSystemComponent.OnPlayerDisconnected_S(playerId, cause, timeout);
 
-			RplComponent.DeleteRplEntity(character, false);
+			if (character)
+			{
+				m_pRespawnSystemComponent.OnPlayerEntityCleanup_S(character);
+				RplComponent.DeleteRplEntity(character, false);
+			}
 		}
 	}
 
@@ -1003,7 +992,6 @@ class SCR_BaseGameMode : BaseGameMode
 	*/
 	protected override void OnPlayerRegistered(int playerId)
 	{
-		super.OnPlayerRegistered(playerId);
 		m_OnPlayerRegistered.Invoke(playerId);
 
 		// RespawnSystemComponent is not a SCR_BaseGameModeComponent, so for now we have to
@@ -1049,6 +1037,181 @@ class SCR_BaseGameMode : BaseGameMode
 		}
 
 		// Handle automatically
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Server side logging of PVP kills
+	//! \param[in] instigatorContext container with all of the information available about this incident
+	protected void LogKillEvent(notnull SCR_InstigatorContextData instigatorContext)
+	{
+		int victimPlayerId = instigatorContext.GetVictimPlayerID();
+		if (victimPlayerId < 1)
+			return; // only log killed players
+
+		string incidentType;
+		SCR_ECharacterDeathStatusRelations relation = instigatorContext.GetVictimKillerRelation();
+		switch (relation)
+		{
+			case SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER:
+			case SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_AI:
+				incidentType = " ENEMY";
+				break;
+
+			case SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER:
+			case SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_AI:
+				incidentType = " TK";
+				break;
+
+			case SCR_ECharacterDeathStatusRelations.KILLED_BY_UNLIMITED_EDITOR:
+				incidentType = " GM";
+				break;
+
+			default:
+				incidentType = " " + typename.EnumToString(SCR_ECharacterDeathStatusRelations, relation);
+				break;
+		}
+
+		string victimIdentity = SCR_PlayerIdentityUtils.GetPlayerLogInfo(victimPlayerId);
+		
+		int killerPlayerId = instigatorContext.GetKillerPlayerID();
+		string killerIdentity;
+		if (killerPlayerId < 1) // AI
+			killerIdentity = " was killed by AI";
+		else if (victimPlayerId == killerPlayerId) // suicide
+			killerIdentity = " killed himself!";
+		else
+			killerIdentity = " was killed by " + SCR_PlayerIdentityUtils.GetPlayerLogInfo(killerPlayerId);
+
+		SCR_ChimeraCharacter victim = SCR_ChimeraCharacter.Cast(instigatorContext.GetVictimEntity());
+		vector corpsePosition;
+		string victimPosition;
+		string causeOfDeath;
+		if (victim)
+		{
+			Faction faction = victim.GetFaction();
+			if (faction)
+				victimIdentity += " from " + faction.GetFactionKey() + " faction";
+
+			corpsePosition = victim.GetOrigin();
+			victimPosition = " at " + corpsePosition.ToString();
+
+			if (relation != SCR_ECharacterDeathStatusRelations.KILLED_BY_UNLIMITED_EDITOR)
+			{
+				SCR_CharacterDamageManagerComponent dmgMgr = SCR_CharacterDamageManagerComponent.Cast(victim.GetDamageManager());
+				array<ref BaseDamageEffect> damageHistory = {};
+				dmgMgr.GetDamageHistory(damageHistory);
+				BaseDamageEffect effect;
+				EDamageType dmgType;
+				HitZone hitZone;
+				HitZone defaultHitZone = dmgMgr.GetDefaultHitZone();
+				for (int i = damageHistory.Count() - 1; i >= 0; i--)
+				{
+					effect = damageHistory[i];
+					if (!effect)
+					{
+						effect = null;
+						continue;
+					}
+
+					dmgType = effect.GetDamageType();
+					if (dmgType == EDamageType.HEALING && dmgType == EDamageType.REGENERATION)
+					{
+						effect = null;
+						continue;
+					}
+
+					if (dmgType == EDamageType.BLEEDING && effect.GetTotalDamage() < 1)
+					{
+						effect = null;
+						continue; // bleeding can be added at the moment when projectile deals lethal damage, and thus it may have not be the cause of death
+					}
+
+					if (effect.GetInstigator().GetInstigatorPlayerID() != killerPlayerId)
+					{
+						effect = null;
+						continue;
+					}
+
+					hitZone = effect.GetAffectedHitZone();
+					if (hitZone && hitZone != defaultHitZone && hitZone.GetName() != "Resilience")
+						break;
+
+					effect = null;
+				}
+
+				if (effect)
+				{
+					causeOfDeath = " With last inflicted damage type " + typename.EnumToString(EDamageType, dmgType);
+					if (hitZone)
+						causeOfDeath += " to the '" + hitZone.GetName() + "' hit zone";
+				}
+			}
+		}
+
+		LogLevel logLevel = LogLevel.NORMAL;
+
+		string messageType = "INFO";
+		string killerPosition;
+		string victimDisguiseState;
+		if (relation != SCR_ECharacterDeathStatusRelations.KILLED_BY_UNLIMITED_EDITOR && victimPlayerId != killerPlayerId)
+		{
+			SCR_ChimeraCharacter killer = SCR_ChimeraCharacter.Cast(instigatorContext.GetKillerEntity());
+			if (killer)
+			{
+				Faction faction = killer.GetFaction();
+				if (faction)
+					killerIdentity += " from " + faction.GetFactionKey() + " faction";
+
+				vector pos = killer.GetOrigin();
+				killerPosition = string.Format(" who was at that time at %1 [%2m away from the corpse].", pos.ToString(), vector.Distance(pos, corpsePosition).ToString(lenDec: 1));
+
+				if (killerPlayerId > 0)
+				{ // only check the position of the killer in case of players
+					TraceParam param = new TraceParam();
+					param.Start = pos + vector.Up * 0.1;
+					param.End = param.Start + vector.Up * (-1);
+					param.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
+					param.Exclude = killer;
+					param.LayerMask = EPhysicsLayerPresets.Projectile;
+					float traceDistance = killer.GetWorld().TraceMove(param, FilterCallback);
+					if (traceDistance >= 1 && param.TraceEnt == null)
+					{
+						logLevel = LogLevel.WARNING;
+						killerPosition += " No surface found within 1m under that position!";
+						messageType = "WARNING";
+					}
+				}
+			}
+			else if (killerPlayerId > 0)
+			{
+				Faction faction = SCR_FactionManager.SGetPlayerFaction(killerPlayerId);
+				if (faction)
+					killerIdentity += " from " + faction.GetFactionKey() + " faction";
+			}
+
+			if (instigatorContext.GetVictimDisguiseType() == SCR_ECharacterDisguiseType.HOSTILE_FACTION)
+				victimDisguiseState = " while being disguised as enemy";
+		}
+
+		PrintFormat("%1: KILL%2: %3%4%5%6%7%8", messageType, incidentType, victimIdentity, victimPosition, victimDisguiseState, killerIdentity, killerPosition, causeOfDeath, level: logLevel);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool FilterCallback(IEntity e)
+	{
+		if (!e)
+			return false;
+
+		IEntity parent = e.GetParent();
+		while (parent)
+		{
+			if (ChimeraCharacter.Cast(parent))
+				return false;
+
+			parent = parent.GetParent();
+		}
+
 		return true;
 	}
 
@@ -1099,7 +1262,7 @@ class SCR_BaseGameMode : BaseGameMode
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected /*override*/ void OnPlayerDeleted(int playerId, IEntity player)
+	protected void OnPlayerDeleted(int playerId, IEntity player)
 	{
 		// RespawnSystemComponent is not a SCR_BaseGameModeComponent, so for now we have to
 		// propagate these events manually.
@@ -1124,7 +1287,6 @@ class SCR_BaseGameMode : BaseGameMode
 	*/
 	protected override void OnPlayerRoleChange(int playerId, EPlayerRole roleFlags)
 	{
-		super.OnPlayerRoleChange(playerId, roleFlags);
 		m_OnPlayerRoleChange.Invoke(playerId, roleFlags);
 
 		// Dispatch events to children components
@@ -1141,7 +1303,6 @@ class SCR_BaseGameMode : BaseGameMode
 	*/
 	override event void OnWorldPostProcess(World world)
 	{
-		super.OnWorldPostProcess(world);
 		m_OnWorldPostProcess.Invoke(world);
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
@@ -1197,6 +1358,8 @@ class SCR_BaseGameMode : BaseGameMode
 
 		//~ Call extended OnControllableDestroyed
 		OnControllableDestroyedEx(instigatorContextData);
+		if (IsMaster())
+			LogKillEvent(instigatorContextData);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1222,11 +1385,10 @@ class SCR_BaseGameMode : BaseGameMode
 		}
 
 		// Ensure that controlled entity is a player
-		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(entity);
+		const int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(entity);
 		if (playerId > 0)
 			OnPlayerDeleted(playerId, entity);
 	}
-
 
 	//------------------------------------------------------------------------------------------------
 	/*!
@@ -1864,6 +2026,11 @@ class SCR_BaseGameMode : BaseGameMode
 	{
 		if (!CanBePaused())
 			return false;
+
+#ifdef ENABLE_DIAG
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SINGLEPLAYER_DISABLE_TIME_PAUSE))
+			pause = false;
+#endif
 
 		if (pause)
 			m_ePauseReasons = m_ePauseReasons | reason;

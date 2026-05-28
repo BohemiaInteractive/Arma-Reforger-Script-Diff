@@ -60,6 +60,8 @@ class ExtBaseInteractionHandlerComponent: BaseInteractionHandlerComponent
 	Only contexts that have at least one action that can be shown and performed are output.
 	\param outContexts Array of contexts that will be cleared and filled with nearby available contexts.
 	\return Returns the count of output contexts or 0 if none.
+	\warning Contexts are no longer going to be valid when their parent entity disappears.
+	         Keep this in mind and ideally do not cache these.
 	*/
 	proto external int GetNearbyAvailableContextList(out notnull array<UserActionContext> outContexts);
 	/*!
@@ -67,6 +69,8 @@ class ExtBaseInteractionHandlerComponent: BaseInteractionHandlerComponent
 	Only contexts that have at least one action that can be shown, but not performed are output.
 	\param outContexts Array of contexts that will be cleared and filled with nearby available contexts.
 	\return Returns the count of output contexts or 0 if none.
+	\warning Contexts are no longer going to be valid when their parent entity disappears.
+	         Keep this in mind and ideally do not cache these.
 	*/
 	proto external int GetNearbyShowableContextList(out notnull array<UserActionContext> outContexts);
 	/*!
@@ -74,10 +78,14 @@ class ExtBaseInteractionHandlerComponent: BaseInteractionHandlerComponent
 	Only contexts that have at least one action, but none can be shown or performed are output.
 	\param outContexts Array of contexts that will be cleared and filled with nearby available contexts.
 	\return Returns the count of output contexts or 0 if none.
+	\warning Contexts are no longer going to be valid when their parent entity disappears.
+	         Keep this in mind and ideally do not cache these.
 	*/
 	proto external int GetNearbyUnavailableContextList(out notnull array<UserActionContext> outContexts);
-	//! The last known interaction reference point.
-	proto external vector GetLastReferencePoint(float timeSlice);
+	//! Updates the last known interaction reference point's position.
+	//! \param timeSlice The amount of time passed
+	//! \return Updated position given the amount of time passed.
+	proto external vector UpdateLastReferencePoint(float timeSlice);
 
 	// callbacks
 

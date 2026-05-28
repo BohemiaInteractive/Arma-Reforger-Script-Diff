@@ -111,6 +111,13 @@ class SCR_RefuelAtSupportStationAction : SCR_BaseUseSupportStationAction
  	{				
 		bool canRefuel = true;
 		
+		Physics rootPhysics = GetOwner().GetRootParent().GetPhysics();  // Getting root parent to ensure slotted entities get the intended behaviour
+		if (rootPhysics && rootPhysics.GetVelocity().LengthSq() > MAXIMUM_VEHICLE_SPEED_FOR_INTERACTION_SQ)
+		{
+			SetCannotPerformReason(INVALID_TARGET_VEHICLE_SPEED);
+			return false;
+		}
+		
 		if (!m_FuelManager)
 		{
 			canRefuel = false;

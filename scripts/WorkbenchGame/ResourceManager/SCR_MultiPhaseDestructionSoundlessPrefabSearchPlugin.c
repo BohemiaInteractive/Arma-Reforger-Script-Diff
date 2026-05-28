@@ -3,7 +3,7 @@
 	name: "MultiPhase Destruction Soundless Prefab Search",
 	description: "Search Prefabs using multiphase destruction where Material Sound Type is set to NONE",
 	wbModules: { "ResourceManager" },
-	category: "Prefabs",
+	category: SCR_PluginCategory.RESOURCEMANAGER_PREFABS,
 	awesomeFontCode: 0xF7CE)]
 class SCR_MultiPhaseDestructionSoundlessPrefabSearchPlugin : WorkbenchPlugin
 {
@@ -82,6 +82,9 @@ class SCR_MultiPhaseDestructionSoundlessPrefabSearchPlugin : WorkbenchPlugin
 				Print("INVALID PREFAB: error loading " + resourceName, LogLevel.ERROR);
 				continue;
 			}
+			
+			if (baseContainer.GetClassName() == "Tree")
+				continue;
 
 			isDestructibleEntity = baseContainer.GetClassName() == "SCR_DestructibleEntity";
 			if (isDestructibleEntity)

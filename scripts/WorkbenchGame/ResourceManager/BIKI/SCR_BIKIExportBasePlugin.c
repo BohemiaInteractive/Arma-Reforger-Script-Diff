@@ -4,18 +4,18 @@ class SCR_BIKIExportBasePlugin : WorkbenchPlugin
 	//------------------------------------------------------------------------------------------------
 	override void Run()
 	{
-		const string error = "The Run method has not been overridden";
-		Print(error, LogLevel.ERROR);
-		Workbench.Dialog("BIKI Export Base", error);
+		SCR_WorkbenchHelper.PrintDialog("The Run method has not been overridden", "BIKI Export Base", LogLevel.ERROR);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void ShowResult(string result)
 	{
 		Workbench.ScriptDialog(
-			"Result to copy/paste",
-			"Copy/paste the text below - be sure to expand the field or use Ctrl+A to get all the content.",
-			new SCR_BIKIExportPlugin_Result(result));
+			"BIKI-formatted result",
+			"Use the \"Copy to Clipboard\" button to grab the entire result."
+			+ "\nIf you want to manually select and copy parts of the result, EXPAND the field below then copy/paste its full content;"
+			+ " copying from the inline field may truncate big data.",
+			new SCR_TextResultWorkbenchDialog(result));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -30,26 +30,6 @@ class SCR_BIKIExportBasePlugin : WorkbenchPlugin
 	protected int ButtonCancel()
 	{
 		return 0;
-	}
-}
-
-class SCR_BIKIExportPlugin_Result
-{
-	[Attribute(uiwidget: UIWidgets.EditBoxMultiline, category: "Result")]
-	protected string m_sResult;
-
-	//------------------------------------------------------------------------------------------------
-	[ButtonAttribute("Close", true)]
-	protected bool ButtonClose()
-	{
-		return true;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	// constructor
-	void SCR_BIKIExportPlugin_Result(string result)
-	{
-		m_sResult = result;
 	}
 }
 #endif // WORKBENCH

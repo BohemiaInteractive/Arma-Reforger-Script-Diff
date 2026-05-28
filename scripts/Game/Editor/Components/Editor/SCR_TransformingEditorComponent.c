@@ -270,8 +270,11 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 			return;
 		}
 
+		vector mat[4];
+		params.GetWorldTransform(mat);
+
 		bool result = false;
-		if (m_RefEntity)
+		if (m_RefEntity && SCR_Global.IsPositionWithinTerrainBounds(mat[3]))
 		{
 			m_RefEntity.ApplyReference(params);
 		
@@ -478,7 +481,7 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 		if (!m_aEditedEntities || m_aEditedEntities.Find(entity) == -1) return;
 		
 		CancelEditing();
-		SendNotification(ENotification.EDITOR_TRANSFORMING_LOST_ACCESS, Replication.FindId(entity));
+		SendNotification(ENotification.EDITOR_TRANSFORMING_LOST_ACCESS, Replication.FindItemId(entity));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -487,7 +490,7 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 		if (!m_aEditedEntities || m_aEditedEntities.Find(entity) == -1) return;
 		
 		if (!entity.GetVisibleInHierarchy()) CancelEditing();
-		SendNotification(ENotification.EDITOR_TRANSFORMING_LOST_ACCESS, Replication.FindId(entity));
+		SendNotification(ENotification.EDITOR_TRANSFORMING_LOST_ACCESS, Replication.FindItemId(entity));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -496,7 +499,7 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 		if (!m_aEditedEntities || m_aEditedEntities.Find(entity) == -1) return;
 		
 		if (!entity.HasAccessInHierarchy()) CancelEditing();
-		SendNotification(ENotification.EDITOR_TRANSFORMING_LOST_ACCESS, Replication.FindId(entity));
+		SendNotification(ENotification.EDITOR_TRANSFORMING_LOST_ACCESS, Replication.FindItemId(entity));
 	}
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////

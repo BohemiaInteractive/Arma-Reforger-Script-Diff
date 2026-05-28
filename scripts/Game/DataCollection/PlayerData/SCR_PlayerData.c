@@ -219,12 +219,13 @@ class SCR_PlayerData : JsonApiStruct
 			return;
 		}
 
-		if (ba.IsAuthenticated())
+		if (BackendAuthenticatorApi.IsAuthenticated())
 		{
 			Print("Making menuCallback request for PlayerData", LogLevel.VERBOSE);
 			m_CharacterDataCallback.SetOnSuccess(BackendDataReady);
 			m_CharacterDataCallback.SetOnError(LoadEmptyProfile);
-			ba.PlayerRequest(EBackendRequest.EBREQ_GAME_CharacterGet, m_CharacterDataCallback, this, m_iPlayerID); //ID 0 refers to the local player
+			ba.PlayerCharacterGet(m_CharacterDataCallback, this, m_iPlayerID); //ID 0 refers to the local player
+			
 			//The callback has a reference to this instance so it will automatically call the BackendDataReady or the LoadEmptyProfile methods
 		}
 		else
@@ -302,9 +303,9 @@ class SCR_PlayerData : JsonApiStruct
 			CalculateStatsChange();
 
 		#ifndef WORKBENCH
-			ba.PlayerRequest(EBackendRequest.EBREQ_GAME_CharacterUpdateS2S, m_StoringCallback, this, m_iPlayerID);
+			ba.PlayerCharacterUpdateS2S(m_StoringCallback, this, m_iPlayerID);
 		#else
-			ba.PlayerRequest(EBackendRequest.EBREQ_GAME_DevCharacterUpdate, m_StoringCallback, this, m_iPlayerID);
+			ba.PlayerDevCharacterUpdate(m_StoringCallback, this, m_iPlayerID);
 		#endif
 
 		//SCR_PlayerDataEvent dataEvent = new SCR_PlayerDataEvent();

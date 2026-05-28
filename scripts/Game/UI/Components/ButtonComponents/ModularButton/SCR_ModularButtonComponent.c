@@ -700,4 +700,10 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 	{
 		return typename.EnumToString(EModularButtonState, m_eState);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void IgnoreStandardInputs(bool ignore)
+	{
+		m_bIgnoreStandardInputs = ignore;
+	}
 }

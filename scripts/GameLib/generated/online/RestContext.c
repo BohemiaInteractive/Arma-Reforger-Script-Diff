@@ -28,6 +28,7 @@ class RestContext
 	proto external int DELETE(RestCallback cb, string request, string data);
 	proto external string DELETE_now(string request, string data);
 	proto external bool SetHeaders( string definition );
+	proto external void SetTimeout( int timeoutS );
 	// To be removed
 	[Obsolete("Not supported, will be removed!")]
 	proto external void reset();

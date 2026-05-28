@@ -1,5 +1,5 @@
 #ifdef WORKBENCH
-[WorkbenchPluginAttribute(name: "Create/Update Selected Editable Prefabs", category: "In-game Editor", shortcut: "Ctrl+Shift+U", wbModules: { "WorldEditor" }, awesomeFontCode: 0xF1B2)]
+[WorkbenchPluginAttribute(name: "Create/Update Selected Editable Prefabs", category: SCR_PluginCategory.EDITOR, shortcut: "Ctrl+Shift+U", wbModules: { "WorldEditor" }, awesomeFontCode: 0xF1B2)]
 class SCR_CreateEditablePrefabsPlugin : SCR_PrefabEditingPluginBase
 {
 	[Attribute(defvalue: "{90B4D95CF3610F3D}Configs/Workbench/EditablePrefabs/EditablePrefabsConfig.conf", desc: "", params: "conf")]
@@ -76,7 +76,7 @@ class SCR_CreateEditablePrefabsPlugin : SCR_PrefabEditingPluginBase
 	}
 }
 
-[WorkbenchPluginAttribute(name: "Create/Update Selected Editable Prefabs", category: "In-game Editor", shortcut: "Ctrl+Shift+U", wbModules: { "ResourceManager" })]
+[WorkbenchPluginAttribute(name: "Create/Update Selected Editable Prefabs", category: SCR_PluginCategory.EDITOR, shortcut: "Ctrl+Shift+U", wbModules: { "ResourceManager" })]
 class SCR_CreateEditablePrefabsPluginResourceManager : SCR_CreateEditablePrefabsPlugin
 {
 	//------------------------------------------------------------------------------------------------

@@ -1,9 +1,14 @@
 #ifdef WORKBENCH
-[WorkbenchPluginAttribute(name: "Floaters Finder", category: "Object Placement", wbModules: { "WorldEditor" }, shortcut: "Ctrl+Alt+Page Up", awesomeFontCode: 0xF338)] // 0xF338 = ↨
+[WorkbenchPluginAttribute(
+	name: "Floaters Finder",
+	category: SCR_PluginCategory.WORLDEDITOR_ENTITY_CHECK,
+	wbModules: { "WorldEditor" },
+	shortcut: "Ctrl+Alt+Page Up",
+	awesomeFontCode: 0xF338)] // 0xF338 = ↨
 class SCR_FloatersFinderPlugin : WorkbenchPlugin
 {
 	/*
-		CATEGORY: Search
+		Search
 	*/
 
 	[Attribute(defvalue: "1", desc: "Only search in the currently active layer", category: "Search")]
@@ -29,7 +34,7 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 	protected float m_fMaxTreeAngle;
 
 	/*
-		CATEGORY: Vertical Offset
+		Vertical Offset
 	*/
 
 	[Attribute(defvalue: "1", desc: "Check object's altitude from OBJECTS below it (2× slower as it uses Trace)", category: "Vertical Offset")]
@@ -48,7 +53,7 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 	protected bool m_bCheckBelowWater;
 
 	/*
-		CATEGORY: Performance
+		Performance
 	*/
 
 	[Attribute(defvalue: "1000", uiwidget: UIWidgets.Slider, desc: "Search radius around camera position - 0 = all entities", params: "0 5000 1", category: "Performance")]
@@ -67,7 +72,7 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 	protected int m_iTraceOriginDistance;
 
 	/*
-		CATEGORY: Output
+		Output
 	*/
 
 	[Attribute(defvalue: "0", desc: "If ticked, write a file with links to all findings.", category: "Output")]
@@ -104,20 +109,20 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 				WORLD_ENTITIES.Insert(worldEditorAPI.GetSelectedEntity(i));
 			}
 
-			Print(string.Format("Going with the current selection of %1 entities", WORLD_ENTITIES.Count()), LogLevel.NORMAL);
+			PrintFormat("Going with the current selection of %1 entities", WORLD_ENTITIES.Count(), level: LogLevel.NORMAL);
 		}
 		else // detect entities
 		{
 			firstTick = System.GetTickCount();
 			GetEntities(baseWorld);
-			Print(string.Format("Entity getter duration: %1ms for %2 entities", System.GetTickCount() - firstTick, WORLD_ENTITIES.Count()), LogLevel.NORMAL);
+			PrintFormat("Entity getter duration: %1ms for %2 entities", System.GetTickCount() - firstTick, WORLD_ENTITIES.Count(), level: LogLevel.NORMAL);
 		}
 
 		// filter
 		array<IEntitySource> filteredEntities = {};
 		firstTick = System.GetTickCount();
 		FilterEntities(baseWorld, filteredEntities);
-		Print(string.Format("Entity filter duration: %1ms for %2 entities (output: %3 entities)", System.GetTickCount() - firstTick, WORLD_ENTITIES.Count(), filteredEntities.Count()), LogLevel.NORMAL);
+		PrintFormat("Entity filter duration: %1ms for %2 entities (output: %3 entities)", System.GetTickCount() - firstTick, WORLD_ENTITIES.Count(), filteredEntities.Count(), level: LogLevel.NORMAL);
 
 		// select all found entities in UI
 		SelectEntities(filteredEntities);
@@ -128,7 +133,6 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 			vector cameraMatrix[4];
 			baseWorld.GetCurrentCamera(cameraMatrix);
 			s_DetectionRadiusSphere = Shape.CreateSphere(DEBUG_COLOUR, ShapeFlags.BACKFACE | ShapeFlags.NOOUTLINE | ShapeFlags.TRANSP, cameraMatrix[3], m_iCameraSearchRadius);
-			thread DeleteSphereThread();
 		}
 
 		// final report
@@ -136,7 +140,7 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 		{
 			Print(
 				string.Format(
-					"Could not select all entities: Treated %1, Detected %2, Selected %3",
+					"Cannot select all entities: Treated %1, Detected %2, Selected %3",
 					WORLD_ENTITIES.Count(),
 					filteredEntities.Count(),
 					worldEditorAPI.GetSelectedEntitiesCount()),
@@ -167,6 +171,13 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 		}
 
 		Print("Floaters Finder - Run method ended", LogLevel.NORMAL);
+
+		// delete
+		if (s_DetectionRadiusSphere)
+		{
+			Sleep(DEBUG_DURATION);
+			s_DetectionRadiusSphere = null;
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -217,13 +228,6 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 			baseWorld.GetBoundBox(minPos, maxPos);
 			baseWorld.QueryEntitiesByAABB(minPos, maxPos, InsertEntity);
 		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected static void DeleteSphereThread()
-	{
-		Sleep(DEBUG_DURATION);
-		s_DetectionRadiusSphere = null;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -337,7 +341,7 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 				)
 				{
 					if (!manyEntities)
-						Print(string.Format("ignoring pitch %1/%2 / roll %3/%4", angles[2], maxPitch, angles[0], maxRoll), LogLevel.NORMAL);
+						PrintFormat("ignoring pitch %1/%2 / roll %3/%4", angles[2], maxPitch, angles[0], maxRoll, level: LogLevel.NORMAL);
 
 					angleOffsetNb++;
 					continue;
@@ -429,16 +433,15 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 						if (!manyEntities)
 						{
 							Print("----- Tracing -----", LogLevel.NORMAL);
-							Print(string.Format("OBJ %1", entityPos), LogLevel.NORMAL);
-							Print(string.Format("FROM %1", traceParam.Start), LogLevel.NORMAL);
-							Print(string.Format("TO %1", traceParam.End), LogLevel.NORMAL);
-							Print(
-								string.Format(
+							PrintFormat("OBJ %1", entityPos, level: LogLevel.NORMAL);
+							PrintFormat("FROM %1", traceParam.Start, level: LogLevel.NORMAL);
+							PrintFormat("TO %1", traceParam.End, level: LogLevel.NORMAL);
+							PrintFormat(
 									"DONE %1pct (%2m/%3m)",
 									Math.Round(traceRatio * 10000) * 0.01,
 									vector.Distance(traceParam.Start, traceParam.End) * traceRatio,
-									vector.Distance(traceParam.Start, traceParam.End)),
-								LogLevel.NORMAL);
+									vector.Distance(traceParam.Start, traceParam.End),
+								level: LogLevel.NORMAL);
 						}
 
 						altitude -= (traceParam.Start[1] - traceParam.End[1]) * (1 - traceRatio);
@@ -449,7 +452,7 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 				if (insertEntity)
 				{
 					if (!manyEntities)
-						Print(string.Format("altitude %1 DOES NOT MATCH the [%2, %3] range", altitude, minVerticalOffset, maxVerticalOffset), LogLevel.NORMAL);
+						PrintFormat("altitude %1 DOES NOT MATCH the [%2, %3] range", altitude, minVerticalOffset, maxVerticalOffset, level: LogLevel.NORMAL);
 
 					verticalOffsetNb++;
 				}
@@ -486,6 +489,7 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 		{
 			worldEditorAPI.AddToEntitySelection(entities[i]);
 		}
+
 		worldEditorAPI.UpdateSelectionGui();
 	}
 
@@ -526,11 +530,16 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 			if (diagonal < 5)
 				diagonal = 5;
 
-			centre = entity.CoordToParent(Vector((bboxMax[0] + bboxMin[1]) * 0.5, (bboxMax[1] + bboxMin[1]) * 0.5, (bboxMax[2] + bboxMin[2]) * 0.5));
+			centre = entity.CoordToParent((vector)(bboxMax + bboxMin) * 0.5);
 			transformation[3] = centre - 1.25 * diagonal * vector.Forward; // camera South by 1.25×'diagonal' metres
 
-			fileHandle.WriteLine(SCR_CoordsTool.GetWorldEditorLink(transformation, m_bUseWebPrefix));
+			fileHandle.WriteLine(
+				SCR_WorldEditorToolHelper.GetCurrentWorldEditorLink(
+					transformation[3],
+					Math3D.MatrixToAngles(transformation),
+					m_bUseWebPrefix));
 		}
+
 		fileHandle.Close();
 	}
 

@@ -72,11 +72,11 @@ class SCR_TaskListDisplay : SCR_InfoDisplayExtended
 			return;
 
 		Show(true);
-		m_TaskListComponent.RefreshTaskList();
-				
+
 		if (m_TaskManagerUI)
 		{
 			m_TaskManagerUI.RegisterTaskList(m_TaskListComponent);
+			m_TaskListComponent.RefreshTaskList();
 			m_TaskManagerUI.TaskHUDVisibilityChanged(true);
 				
 			if (!m_TaskManagerUI.GetSelectedTask())

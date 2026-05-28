@@ -253,15 +253,6 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void UpdateBleedingHitZone(EDamageType dType, float dps, HitZone hz = null)
-	{
-		if (dType != EDamageType.BLEEDING)
-			return;
-
-		UpdateHitZoneState(SCR_HitZone.Cast(hz));
-	}
-
-	//------------------------------------------------------------------------------------------------
 	protected void UpdateBleedingHitZoneRemoved(EDamageType dType, HitZone hz = null)
 	{
 		if (dType != EDamageType.BLEEDING)
@@ -309,7 +300,7 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 		const bool bleedingVisible = (bleeding > 0 || tourniquetted || salineBagged);
 		const bool damageVisible = (health < 1 && bleeding == 0);
 		m_pDamageHandler.GetRootWidget().SetVisible(damageVisible || bleedingVisible);
-		m_pDamageHandler.UpdateHitZoneState(health, bleeding, regen, tourniquetted, salineBagged);
+		m_pDamageHandler.UpdateHitZoneState(bleeding, regen, tourniquetted, salineBagged);
 
 		SetGlowVisible(bleedingVisible);
 
@@ -790,7 +781,7 @@ class SCR_InventoryHitZonePointUI : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void UpdateHitZoneState(float health, float bleeding, float regen, bool tourniquetted, bool salineBagged)
+	void UpdateHitZoneState(float bleeding, float regen, bool tourniquetted, bool salineBagged)
 	{
 		if (!m_bAllowHoverOver || !m_DamageState)
 			return;

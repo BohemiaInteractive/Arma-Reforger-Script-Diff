@@ -51,9 +51,9 @@ class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 	//! \param[in] includeChildren Includes children objects in default restoration process.
 	//! \param[in] reinitAfterRestoration Resets object after restoration, optionally reinitializing it.
 	//! \param[in] affectRandomization Affects randomization during default restoration.
-	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true, bool deleteSpawnedEntities = true)
 	{
-		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization, deleteSpawnedEntities);
 		RemoveMapMarker();
 	}
 

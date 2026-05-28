@@ -18,6 +18,7 @@ class SCR_StringHelper
 	static const string EQUALS = "=";
 	static const string QUESTION_MARK = "?";
 	static const string EXCLAMATION_MARK = "!";
+	static const string ELLIPSIS = "…";
 	static const string DOUBLE_SPACE = SPACE + SPACE;
 	static const string QUADRUPLE_SPACE = DOUBLE_SPACE + DOUBLE_SPACE;
 	static const string SINGLE_QUOTE = "'";
@@ -221,6 +222,23 @@ class SCR_StringHelper
 //	}
 
 	//------------------------------------------------------------------------------------------------
+	//! To be used for debug texts only, NOT in-game texts as this does not support UTF-8!
+	//! \param[in] input
+	//! \param[in] maxLength
+	//! \return
+	static string Ellipsis(string input, int maxLength)
+	{
+		if (maxLength < 1)
+			return ELLIPSIS;
+
+		int length = input.Length();
+		if (length <= maxLength)
+			return input;
+
+		return input.Substring(0, maxLength - 1) + ELLIPSIS; // -1 so that adding the ellipsis does not go over the limit
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! format with string arguments in the form of an array
 	//! \param[in] format with %1, %2 etc
 	//! \param[in] arguments array
@@ -389,13 +407,9 @@ class SCR_StringHelper
 	{
 		array<string> pieces = {};
 		snakeCase.Split(UNDERSCORE, pieces, true);
-		for (int i, count = pieces.Count(); i < count; i++)
+		foreach (int i, string piece : pieces)
 		{
-			string piece = pieces[i];
-			string firstChar = piece[0];
-			firstChar.ToUpper();
-			piece.ToLower();
-			pieces[i] = firstChar + piece.Substring(1, piece.Length() - 1);
+			pieces[i] = UCFirst(piece, true);
 		}
 
 		return Join(SPACE, pieces);
@@ -1142,6 +1156,80 @@ class SCR_StringHelper
 
 		// star in the middle of the word or something
 		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Sets the first found a-zA-Z0-9 character to uppercase, e.g:
+	//! - "hello"	becomes "Hello"
+	//! - " hello "	becomes " Hello "
+	//! - "Hello"	remains "Hello"
+	//! - "1hello"	remains "1hello"
+	//! \param[in] input
+	//! \param[in] lcRest
+	//! \return
+	static string UCFirst(string input, bool lcRest = false)
+	{
+		if (IsEmptyOrWhiteSpace(input))
+			return input;
+
+		if (lcRest)
+			input.ToLower();
+
+		for (int i, length = input.Length(); i < length; ++i)
+		{
+			string c = input[i];
+			if (!CheckCharacters(c, true, true, true, false))
+				continue;
+
+			if (!CheckCharacters(c, true, false, false, false))
+				return input;
+
+			c.ToUpper();
+			if (i == 0)
+				return c + input.Substring(1, length - 1);
+
+			if (i == length - 1)
+				return input.Substring(0, length - 1) + c;
+
+			return input.Substring(0, i) + c + input.Substring(i + 1, length - i - 1);
+		}
+
+		return input;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] input
+	//! \param[in] lcRest
+	//! \return
+	static string UCFirstAll(string input, bool lcRest = false)
+	{
+		if (IsEmptyOrWhiteSpace(input))
+			return input;
+
+		if (lcRest)
+			input.ToLower();
+
+		const int separatorsCount = 6;
+		const string separators[separatorsCount] = { " ", "\n", "\t", "-", ":", ";" };
+
+		array<string> pieces = {};
+		for (int i; i < separatorsCount; ++i)
+		{
+			string separator = separators[i];
+			if (!input.Contains(separator))
+				continue;
+
+			input.Split(separator, pieces, false);
+			foreach (int j, string piece : pieces)
+			{
+				pieces[j] = UCFirst(piece, false);
+			}
+
+			input = SCR_StringHelper.Join(separator, pieces, true);
+		}
+
+		return input;
 	}
 
 	//------------------------------------------------------------------------------------------------

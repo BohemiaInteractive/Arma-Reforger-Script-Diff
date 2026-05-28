@@ -60,14 +60,14 @@ class SCR_PlacingToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected Widget CreateItem(int index)
+	protected Widget CreateItem(int index, Faction factionAffiliationOverride = null)
 	{
 		int prefabID = m_ContentBrowserManager.GetFilteredPrefabID(index);
 		if (prefabID < 0)
 			return null;
 		
 		SCR_EditableEntityUIInfo info = m_ContentBrowserManager.GetInfo(prefabID);
-		
+
 		//--- Select layout
 		m_ItemLayout = m_DefaultLayout;
 		if (info)
@@ -81,7 +81,11 @@ class SCR_PlacingToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 				}
 			}
 		}
-		
+
+		// some objects can be available for multiple factions, but we dont want to show in building menu that they are colored with other faction colors
+		if (info && factionAffiliationOverride)
+			info.OverrideFactionKey(factionAffiliationOverride.GetFactionKey());
+
 		//--- Create layout
 		Widget itemWidget;
 		SCR_BaseToolbarItemEditorUIComponent item;
@@ -89,21 +93,27 @@ class SCR_PlacingToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 			return null;
 		
 		SCR_UIInfo blockingBudgetInfo;
-		array<ref SCR_EntityBudgetValue> entityBudgetCosts = { };
-		m_ContentBrowserManager.CanPlace(prefabID, entityBudgetCosts, blockingBudgetInfo);		
-		
+		array<ref SCR_EntityBudgetValue> entityBudgetCosts = {};
+		EEditableEntityBudget blockingBudgetType;
+		m_ContentBrowserManager.CanPlace(prefabID, entityBudgetCosts, blockingBudgetInfo, false, blockingBudgetType);
+
+		if (blockingBudgetInfo && blockingBudgetType >= EEditableEntityBudget.RANK_PRIVATE && blockingBudgetType <= EEditableEntityBudget.RANK_GENERAL)
+			ValidateRankRequirement(entityBudgetCosts, blockingBudgetType, blockingBudgetInfo);
+
 		SCR_AssetCardFrontUIComponent assetCard = SCR_AssetCardFrontUIComponent.Cast(itemWidget.FindHandler(SCR_AssetCardFrontUIComponent));
 		assetCard.GetOnHover().Insert(OnCardHover);
-		assetCard.InitCard(prefabID, info, m_ContentBrowserManager.GetResourceNamePrefabID(prefabID), blockingBudgetInfo);
+		assetCard.InitCard(prefabID, info, m_ContentBrowserManager.GetResourceNamePrefabID(prefabID), blockingBudgetInfo, m_ContentBrowserManager);
 		
 		SCR_EntityBudgetValue budgetCost;
 		if (m_bShowBudgetCost && !entityBudgetCosts.IsEmpty())
+		{
 			foreach (SCR_EntityBudgetValue budgetValue: entityBudgetCosts)
 			{
 				if (budgetValue.GetBudgetType() == m_eBudgetToShow)
 					assetCard.UpdateBudgetCost(budgetValue);
 			}
-		
+		}
+
 		ButtonActionComponent.GetOnAction(itemWidget, true, 0).Insert(OnCardLMB);
 		
 		SCR_ButtonBaseComponent buttonComponent = SCR_ButtonBaseComponent.Cast(itemWidget.FindHandler(SCR_ButtonBaseComponent));
@@ -112,7 +122,48 @@ class SCR_PlacingToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 		
 		return itemWidget;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks the validity of the rank requirement against rank setup of local faction, and corrects the display data to match it
+	//! \param[in] entityBudgetCosts list of budgets used by this entry
+	//! \param[in] blockingBudgetType type of a budget which was determined to be blocking the usage of this entry
+	//! \param[in,out] blockingBudgetInfo class used for communicating to the player what is blocking him from using this entry
+	protected void ValidateRankRequirement(notnull array<ref SCR_EntityBudgetValue> entityBudgetCosts, EEditableEntityBudget blockingBudgetType, inout notnull SCR_UIInfo blockingBudgetInfo)
+	{
+		SCR_Faction localPlayerFaction = SCR_Faction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
+		if (!localPlayerFaction)
+			return;
+
+		int requiredRank;
+		foreach (SCR_EntityBudgetValue budget: entityBudgetCosts)
+		{
+			if (budget.GetBudgetType() != blockingBudgetType)
+				continue;
+
+			requiredRank = budget.GetBudgetValue();
+			break;
+		}
+
+		SCR_RankContainer ranks = localPlayerFaction.GetRanks();
+		SCR_RankInfo rankInfo = ranks.GetRankByID(requiredRank);
+		if (!rankInfo)
+		{
+			rankInfo = ranks.GetRankByID(ranks.GetNextRank(requiredRank));
+			if (!rankInfo)
+				return;
+		}
+		else if (rankInfo.GetRankInsignia() == blockingBudgetInfo.GetIconSetName())
+		{
+			return; // if such rank exists and its data matches then we dont need to change enything
+		}
+
+		SCR_BudgetUIInfo budgetInfo = SCR_BudgetUIInfo.Cast(blockingBudgetInfo);
+		if (budgetInfo)
+			blockingBudgetInfo = SCR_BudgetUIInfo.CreateInfo(budgetInfo.GetPriorityOrder(), budgetInfo.GetName(), budgetInfo.GetDescription(), budgetInfo.GetIcon(), rankInfo.GetRankInsignia());
+		else
+			blockingBudgetInfo = SCR_UIInfo.CreateInfo(blockingBudgetInfo.GetName(), blockingBudgetInfo.GetDescription(), blockingBudgetInfo.GetIcon(), rankInfo.GetRankInsignia());
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override protected void OnPageChanged(int page)
 	{
@@ -129,9 +180,14 @@ class SCR_PlacingToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 	//------------------------------------------------------------------------------------------------
 	override protected void ShowEntries(Widget contentWidget, int indexStart, int indexEnd)
 	{
+		Faction affiliatedFactionOverride;
+		SCR_CampaignBuildingPlacingEditorComponent campaignPlacingEditorComp = SCR_CampaignBuildingPlacingEditorComponent.Cast(m_PlacingManager);
+		if (campaignPlacingEditorComp)
+			affiliatedFactionOverride = campaignPlacingEditorComp.GetProviderAffiliatedFaction();
+
 		for (int i = indexStart; i < indexEnd; i++)
 		{
-			CreateItem(i);
+			CreateItem(i, affiliatedFactionOverride);
 		}
 	}
 	

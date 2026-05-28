@@ -35,7 +35,7 @@ class SCR_FactionRelationshipEditorAttribute : SCR_BaseMultiSelectPresetsEditorA
 				continue;
 			
 			// Set the state based on friendly (highlighted) or hostile(non-highlighted)
-			AddOrderedState(selectedFaction.DoCheckIfFactionFriendly(scrFaction));
+			AddOrderedState(scrFaction.DoCheckIfFactionFriendly(selectedFaction));
 		}
 		
 		return SCR_BaseEditorAttributeVar.CreateVector(GetFlagVector());
@@ -108,7 +108,7 @@ class SCR_FactionRelationshipEditorAttribute : SCR_BaseMultiSelectPresetsEditorA
 		{
 			scrFaction = SCR_Faction.Cast(factionDelegates.Get(i).GetFaction());
 			
-			if (!scrFaction)
+			if (!scrFaction || scrFaction.GetParent() != null)
 				continue;
 			
 			value = new SCR_EditorAttributeFloatStringValueHolder();

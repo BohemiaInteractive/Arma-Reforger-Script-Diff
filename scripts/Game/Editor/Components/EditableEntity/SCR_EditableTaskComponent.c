@@ -175,40 +175,27 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 	{
 		return m_TargetFaction;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	override void SetTransform(vector transform[4], bool changedByUser = false)
+	void SetTargetFaction(notnull Faction faction)
+	{
+		m_TargetFaction = faction;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool SetTransform(vector transform[4], bool changedByUser = false)
 	{	
 		//--- If it is moved by the user and has attached task, unlink it
 		
 		if (m_AttachableTask && changedByUser)
 			AttachTo(null);
 		
-		super.SetTransform(transform, changedByUser);
-		UpdateNearestLocation();
-	}
-	
-	/*
-	//------------------------------------------------------------------------------------------------
-	override bool Serialize(out SCR_EditableEntityComponent outTarget = null, out int outTargetIndex = -1, out EEditableEntitySaveFlag outSaveFlags = 0)
-	{
-		outTargetIndex = GetGame().GetFactionManager().GetFactionIndex(m_TargetFaction);
-		return super.Serialize(outTarget, outTargetIndex, outSaveFlags);
-	}
+		if (!super.SetTransform(transform, changedByUser))
+			return false;
 
-	//------------------------------------------------------------------------------------------------
-	override void Deserialize(SCR_EditableEntityComponent target, int targetValue)
-	{
-		super.Deserialize(target, targetValue);
-		
-		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
-		if (!taskSystem)
-			return;
-		
-		m_TargetFaction = GetGame().GetFactionManager().GetFactionByIndex(targetValue);
-		taskSystem.AddTaskFaction(m_Task, m_TargetFaction.GetFactionKey());
+		UpdateNearestLocation();
+		return true;
 	}
-	*/
 
 	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnUIRefresh()
@@ -263,12 +250,7 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 			m_TargetFaction = recipient.GetFaction();
 			if (m_TargetFaction)
 			{
-				//--- When the task is placed as inactive, don't assign faction yet, do it only upon manual activation
-				//if (!SCR_Enum.HasFlag(flags, EEditorPlacingFlags.TASK_INACTIVE))
-					//m_Task.SetTargetFaction(m_TargetFaction);
-				
 				UpdateNearestLocation();
-				
 				m_Task.SetTaskOwnership(SCR_ETaskOwnership.FACTION);
 				m_Task.SetTaskVisibility(SCR_ETaskVisibility.FACTION);
 				m_Task.AddOwnerFactionKey(m_TargetFaction.GetFactionKey());
@@ -284,7 +266,7 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 		{
 			AttachTo(parentEntity);
 			
-			m_AttachedToId = Replication.FindId(parentEntity);
+			m_AttachedToId = Replication.FindItemId(parentEntity);
 			Replication.BumpMe();
 			
 			super.OnParentEntityChanged(null, null, changedByUser); //--- Needed to continue entity registration

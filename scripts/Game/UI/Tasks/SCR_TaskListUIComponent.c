@@ -2,7 +2,9 @@
 enum SCR_ETaskTabType
 {
 	AVAILABLE,
-	FINISHED
+	FINISHED,
+	AVAILABLE_ASSIGNABLE,
+	ALL
 }
 
 [BaseContainerProps(configRoot: true), SCR_BaseContainerCustomTitleEnum(SCR_ETaskTabType, "m_eTabType")]
@@ -24,6 +26,33 @@ class SCR_TaskTabStates
 	SCR_ETaskState GetTaskStates()
 	{
 		return m_eStates;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsTaskVisible(notnull SCR_Task task)
+	{
+		return true;
+	}
+}
+
+[BaseContainerProps(configRoot: true), SCR_BaseContainerCustomTitleEnum(SCR_ETaskTabType, "m_eTabType")]
+class SCR_AssignableTaskTabStates : SCR_TaskTabStates
+{
+	//------------------------------------------------------------------------------------------------
+	override bool IsTaskVisible(notnull SCR_Task task)
+	{
+		if (SCR_FactionCommanderPlayerComponent.IsLocalPlayerCommander())
+			return true;
+
+		SCR_PlayerControllerGroupComponent playerControllerGroupComponent = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+		if (!playerControllerGroupComponent)
+			return false;
+
+		SCR_TaskExecutor groupExecutor = SCR_TaskExecutor.FromGroup(playerControllerGroupComponent.GetGroupID());
+		if (!groupExecutor)
+			return false;
+
+		return SCR_TaskSystem.GetInstance().CanTaskBeAssignedTo(task, groupExecutor);
 	}
 }
 
@@ -80,7 +109,7 @@ class SCR_TaskListUIComponent : SCR_ScriptedWidgetComponent
 		{
 			m_TaskManager.RegisterTaskList(this);
 			m_TaskManager.GetOnTaskSelected().Insert(OnTaskSelected);
-			InititializeTaskTabs();
+			InitializeTaskTabs();
 		}
 
 		m_TaskSystem.GetOnTaskAdded().Insert(OnTaskAdded);
@@ -307,10 +336,24 @@ class SCR_TaskListUIComponent : SCR_ScriptedWidgetComponent
 		
 		return -1;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsTaskVisibleInListByTab(notnull SCR_Task task)
+	{
+		foreach (SCR_TaskTabStates tab : m_aTaskTabStates)
+		{
+			if (tab.GetTabType() == m_eSelectedTab)
+				return tab.IsTaskVisible(task);
+		}
+
+		return true;
+	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void InititializeTaskTabs()
+	protected void InitializeTaskTabs()
 	{	
+		m_eSelectedTab = m_TaskManager.GetDefaultTaskTab();
+
 		Widget w;
 		SCR_TaskListTabEntryUIComponent comp;
 		foreach (SCR_ETaskTabType tab : m_TaskManager.GetTaskTabs())

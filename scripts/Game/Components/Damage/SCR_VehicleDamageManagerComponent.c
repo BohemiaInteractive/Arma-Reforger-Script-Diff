@@ -1659,8 +1659,6 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 			s_OnVehicleDamageStateChanged.Invoke(this);
 		
 		HitZone defaultHitZone = GetDefaultHitZone();
-		if (!defaultHitZone)
-			return;
 
 		SCR_VehicleBuoyancyComponent vehicleBuoyancy = SCR_VehicleBuoyancyComponent.Cast(GetOwner().FindComponent(SCR_VehicleBuoyancyComponent));
 		if (vehicleBuoyancy)

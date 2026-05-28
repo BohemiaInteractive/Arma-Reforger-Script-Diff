@@ -44,6 +44,7 @@ class ParticleEffectEntity: GenericEntity
 	proto external void Pause();
 	//! Stop the emitters' emission, but update ourselves until it hasn't active particles.
 	proto external void StopEmission();
+	proto external IEntity GetLeadingParent();
 
 	// callbacks
 

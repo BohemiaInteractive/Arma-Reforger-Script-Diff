@@ -56,6 +56,9 @@ class SCR_InventoryData : SCR_AnalyticsData
 class SCR_VotingResultData : SCR_AnalyticsData
 {
 	bool flag_vote_success;
+	string vote_author_id;
+	string vote_winner_id;
+	string vote_type;
 	
 	//------------------------------------------------------------------------------------------------
 	protected override string GetData()
@@ -131,3 +134,17 @@ class SCR_MenuInteractedData : SCR_MenuTimeSpentData
 	}
 }
 
+class SCR_MOBSelectedData : SCR_AnalyticsData
+{
+	string MOB_names;
+	string MOB_factions;
+	string MOB_xs;
+	string MOB_ys;
+	string MOB_zs;
+	
+	//------------------------------------------------------------------------------------------------
+	protected override string GetData()
+	{
+		return string.Format("%1, MOB_names=%2, MOB_factions=%3, MOB_xs=%4, MOB_ys=%5, MOB_zs=%6", super.GetData(), MOB_names, MOB_factions, MOB_xs, MOB_ys, MOB_zs);
+	}	
+}

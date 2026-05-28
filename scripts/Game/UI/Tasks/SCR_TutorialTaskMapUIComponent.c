@@ -62,6 +62,26 @@ class SCR_TutorialTaskMapUIComponent : SCR_TaskMapUIComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void IgnoreStandardInputs(bool ignore)
+	{
+		Widget w = GetRoot();
+		if (!w)
+			return;
+		
+		SCR_ModularButtonComponent buttonComp = SCR_ModularButtonComponent.Cast(w.FindHandler(SCR_ModularButtonComponent));
+		if (buttonComp)
+			buttonComp.IgnoreStandardInputs(ignore);
+		
+		w = w.FindAnyWidget("m_wTaskIconButton");
+		if (!w)
+			return;
+		
+		buttonComp = SCR_ModularButtonComponent.Cast(w.FindHandler(SCR_ModularButtonComponent));
+		if (buttonComp)
+			buttonComp.IgnoreStandardInputs(ignore);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		super.HandlerAttached(w);
@@ -81,6 +101,34 @@ class SCR_TutorialTaskMapUIComponent : SCR_TaskMapUIComponent
 	{
 		super.OnTaskIconClicked();
 
+		if (!m_TutorialMapMenu)
+			return;
+
+		m_TutorialMapMenu.OnTaskClick(m_Task);
+	}
+	//------------------------------------------------------------------------------------------------
+	override protected void OnTaskTitleClicked()
+	{
+		super.OnTaskTitleClicked();
+		
+		InputManager inputManager = GetGame().GetInputManager();
+		if (!inputManager)
+			return;
+
+		if (inputManager.IsUsingMouseAndKeyboard())
+			return;
+		
+		if (!m_TutorialMapMenu)
+			return;
+
+		m_TutorialMapMenu.OnTaskClick(m_Task);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void OnTaskSelected(SCR_Task task)
+	{
+		super.OnTaskSelected(task);
+		
 		if (!m_TutorialMapMenu)
 			return;
 

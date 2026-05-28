@@ -14,7 +14,10 @@ class SCR_DamageArea : DamageArea
 
 	[Attribute(defvalue: "0", desc: "Remove Effect When Leaving The Area\nNOTE:If component has many areas with same Damage Effect, then leaving one zone will cause a removal of all instances of this Damage Effects type, that was applied by this component owner.")]
 	protected bool m_bRemoveEffectWhenLeavingTheArea;
-
+	
+	[Attribute(defvalue: "1", desc: "Should the damage go through watertight compartments to be applied to its occupants")]
+	protected bool m_bPenetrateWatertightCompartments;
+	
 	[Attribute(defvalue: SCR_EHitZoneSelectionMode.DEFAULT.ToString(), desc: "Determines how hit zone is selected.\nThis attribute is also passed to the Custom Hit Zone Selector when such is present.", uiwidget: UIWidgets.ComboBox, enumType: SCR_EHitZoneSelectionMode)]
 	protected SCR_EHitZoneSelectionMode m_eHitZoneSelectionMode;
 
@@ -33,17 +36,113 @@ class SCR_DamageArea : DamageArea
 	//! \param[in] entity
 	override void OnAreaEntered(notnull IEntity entity)
 	{
-		const SCR_ExtendedDamageManagerComponent dmgMgr = SCR_ExtendedDamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(entity));
-		if (!dmgMgr)
+		if (!m_bPenetrateWatertightCompartments)
+		{
+			SCR_CompartmentAccessComponent compartmentAccessComp = SCR_CompartmentAccessComponent.Cast(entity.FindComponent(SCR_CompartmentAccessComponent));
+			if (compartmentAccessComp)
+			{			
+				compartmentAccessComp.GetOnPlayerCompartmentExit().Insert(ReevaluateDamageEffect);
+				compartmentAccessComp.GetOnPlayerCompartmentEnter().Insert(ReevaluateDamageEffect);
+				
+				BaseCompartmentSlot compartment = compartmentAccessComp.GetCompartment();
+
+				if (compartment && compartmentAccessComp.GetCompartment().GetIsWaterTight())
+					return;
+			}
+		}
+		
+		AddEffect(entity);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Callback when an entity exits this DamageArea this frame
+	//! \param[in] entity
+	override void OnAreaExit(IEntity entity)
+	{
+		if (!entity)
+			return;
+		
+		if (!m_bPenetrateWatertightCompartments)
+		{
+			SCR_CompartmentAccessComponent compartmentAccessComp = SCR_CompartmentAccessComponent.Cast(entity.FindComponent(SCR_CompartmentAccessComponent));
+			if (compartmentAccessComp)
+			{
+				compartmentAccessComp.GetOnPlayerCompartmentExit().Remove(ReevaluateDamageEffect);
+				compartmentAccessComp.GetOnPlayerCompartmentEnter().Remove(ReevaluateDamageEffect);
+			}
+		}
+		
+		if (m_bRemoveEffectWhenLeavingTheArea)
+		{
+			super.OnAreaExit(entity);
+			return;
+		}
+		
+		RemoveEffect(entity);
+	}
+	
+	
+	//------------------------------------------------------------------------------------------------
+	//! if amphibious vehicles protect from the area damage, we need to update the effect when they get in and out of the vehicle.
+	//! \param[in] playerCharacter
+	//! \param[in] compartmentEntity
+	protected void ReevaluateDamageEffect(ChimeraCharacter playerCharacter, IEntity compartmentEntity)
+	{
+		if (!playerCharacter)
+			return;
+		
+		SCR_CompartmentAccessComponent compartmentAccessComp = SCR_CompartmentAccessComponent.Cast(playerCharacter.FindComponent(SCR_CompartmentAccessComponent));
+		BaseCompartmentSlot compartment;
+		if (compartmentAccessComp)
+			compartment = compartmentAccessComp.GetCompartment();
+
+		if (compartmentAccessComp && compartment && compartmentAccessComp.GetCompartment().GetIsWaterTight())
+		{
+			RemoveEffect(playerCharacter);
+		}
+		else
+		{
+			if (!IsEffectApplied(playerCharacter) && !compartmentAccessComp.IsSwitchingSeatsAnim())
+				AddEffect(playerCharacter);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Checks if this effect is already applied to the entity
+	//! \param[in] entity
+	protected bool IsEffectApplied(notnull IEntity entity)
+	{
+		const SCR_ExtendedDamageManagerComponent damageManager = SCR_ExtendedDamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(entity));
+		array<ref SCR_PersistentDamageEffect> damageEffects = {};
+		if (damageManager.FindAllDamageEffectsOfType(GetDamageEffect().Type(), damageEffects) < 1)
+			return false;
+
+		const IEntity owner = GetParent();
+		foreach (SCR_PersistentDamageEffect effect : damageEffects)
+		{
+			if (effect.GetInstigator().GetInstigatorEntity() == owner)
+				return true;
+		}
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Attempts to add this effect to the entity
+	//! \param[in] entity
+	protected void AddEffect(notnull IEntity entity)
+	{
+		const SCR_ExtendedDamageManagerComponent damageManager = SCR_ExtendedDamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(entity));
+		if (!damageManager)
 			return;
 
-		HitZone hitZone = GetAffectedHitZone(dmgMgr, m_eHitZoneSelectionMode);
+		HitZone hitZone = GetAffectedHitZone(damageManager, m_eHitZoneSelectionMode);
 		if (!hitZone)
 			return;
 
 		if (m_fDamageValue == 0 || m_eDamageType == int.MAX) //int.MAX is equal to selecting in the prefab the option 'none' for m_eDamageType
 		{
-			dmgMgr.AddDamageEffect(GetDamageEffect(dmgMgr, hitZone));
+			damageManager.AddDamageEffect(GetDamageEffect(damageManager, hitZone));
 			return;
 		}
 
@@ -54,22 +153,16 @@ class SCR_DamageArea : DamageArea
 														entity, hitZone, Instigator.CreateInstigator(owner),
 														null, 0, 0);
 
-		context.damageEffect = GetDamageEffect(dmgMgr, hitZone);
+		context.damageEffect = GetDamageEffect(damageManager, hitZone);
 		context.damageSource = owner;
-		dmgMgr.HandleDamage(context);
+		damageManager.HandleDamage(context);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Callback when an entity exits this DamageArea this frame
-	//! \param[in] entity
-	override void OnAreaExit(IEntity entity)
+	//! Attempts to find and remove this effect from the entity
+	//! \param[in] entity	
+	protected void RemoveEffect(notnull IEntity entity)
 	{
-		if (!entity)
-			return;
-
-		if (!m_bRemoveEffectWhenLeavingTheArea)
-			return;
-
 		const SCR_ExtendedDamageManagerComponent dmgMgr = SCR_ExtendedDamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(entity));
 		if (!dmgMgr)
 			return;
@@ -85,7 +178,7 @@ class SCR_DamageArea : DamageArea
 				effect.Terminate();
 		}
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] dmgMgr damage manager of the entity which is going to receive this damage effect

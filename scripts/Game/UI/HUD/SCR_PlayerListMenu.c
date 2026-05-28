@@ -10,6 +10,7 @@ class SCR_PlayerListEntry
 	int m_iID;
 	Widget m_wRow;
 	Faction m_Faction;
+	Faction m_ParentFaction;
 	int m_iSortFrequency;
 
 	SCR_ButtonBaseComponent m_Mute;
@@ -26,6 +27,12 @@ class SCR_PlayerListEntry
 	Widget m_wFactionImage;
 	Widget m_wVotingNotification;
 	Widget m_wBlockedIcon;
+
+	//------------------------------------------------------------------------------------------------
+	bool IsPartOfFaction(Faction faction)
+	{
+		return faction == m_Faction || (m_ParentFaction && m_ParentFaction == faction);
+	}
 };
 
 //------------------------------------------------------------------------------------------------
@@ -334,7 +341,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			//if the tab is the first one, it's the All tab for now
 			if (comp.GetShownTab() == 0)
 				entry.m_wRow.SetVisible(true);
-			else if (faction == entry.m_Faction)
+			else if (entry.IsPartOfFaction(faction))
 				entry.m_wRow.SetVisible(true);
 			else
 				entry.m_wRow.SetVisible(false);
@@ -922,6 +929,9 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		{
 			SCR_FactionCommanderHandlerComponent commanderHandler = SCR_FactionCommanderHandlerComponent.GetInstance();
 
+			if (scrFaction.GetParent())
+				entry.m_ParentFaction = scrFaction.GetParent();
+
 			if (commanderHandler)
 			{
 				ToggleCommanderIndicator(entry, scrFaction.GetCommanderId() == entry.m_iID);
@@ -1396,7 +1406,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				continue;
 
 			scrFaction = SCR_Faction.Cast(faction);
-			if (scrFaction && !scrFaction.IsPlayable())
+			if (scrFaction && (!scrFaction.IsPlayable() || scrFaction.GetParent()))
 				continue; //--- ToDo: Refresh dynamically when a new faction is added/removed
 
 			string name = faction.GetFactionName();

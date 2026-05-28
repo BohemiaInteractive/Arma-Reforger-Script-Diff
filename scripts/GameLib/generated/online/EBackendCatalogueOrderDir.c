@@ -10,10 +10,10 @@ Do not modify, this script is generated
 */
 
 //! Value specifying direction of ordering in Backend Catalogue.
-enum EBackendCatalogueOrderDir
+sealed enum EBackendCatalogueOrderDir
 {
-	BCOD_ASC,
-	BCOD_DESC,
+	ASC,
+	DESC,
 }
 
 /*!

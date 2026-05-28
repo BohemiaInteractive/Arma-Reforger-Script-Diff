@@ -1,5 +1,5 @@
 #ifdef WORKBENCH
-[WorkbenchPluginAttribute(name: "Bookmark  1", category: "Bookmarks", shortcut: "Ctrl+1", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
+[WorkbenchPluginAttribute(name: "Bookmark  1", category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS, shortcut: "Ctrl+1", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
 class SCR_BookmarkPlugin1 : WorkbenchPlugin
 {
 	//------------------------------------------------------------------------------------------------
@@ -72,37 +72,37 @@ class SCR_BookmarkPlugin1 : WorkbenchPlugin
 
 	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("Close")]
-	protected bool Close()
+	protected int ButtonClose()
 	{
-		return true;
+		return 1;
 	}
 }
 
-[WorkbenchPluginAttribute(name: "Bookmark  2", category: "Bookmarks", shortcut: "Ctrl+2", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
+[WorkbenchPluginAttribute(name: "Bookmark  2", category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS, shortcut: "Ctrl+2", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
 class SCR_BookmarkPlugin2 : SCR_BookmarkPlugin1 { override protected int GetBookmarkIndex() { return 2; } }
 
-[WorkbenchPluginAttribute(name: "Bookmark  3", category: "Bookmarks", shortcut: "Ctrl+3", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
+[WorkbenchPluginAttribute(name: "Bookmark  3", category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS, shortcut: "Ctrl+3", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
 class SCR_BookmarkPlugin3 : SCR_BookmarkPlugin1 { override protected int GetBookmarkIndex() { return 3; } }
 
-[WorkbenchPluginAttribute(name: "Bookmark  4", category: "Bookmarks", shortcut: "Ctrl+4", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
+[WorkbenchPluginAttribute(name: "Bookmark  4", category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS, shortcut: "Ctrl+4", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
 class SCR_BookmarkPlugin4 : SCR_BookmarkPlugin1 { override protected int GetBookmarkIndex() { return 4; } }
 
-[WorkbenchPluginAttribute(name: "Bookmark  5", category: "Bookmarks", shortcut: "Ctrl+5", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
+[WorkbenchPluginAttribute(name: "Bookmark  5", category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS, shortcut: "Ctrl+5", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
 class SCR_BookmarkPlugin5 : SCR_BookmarkPlugin1 { override protected int GetBookmarkIndex() { return 5; } }
 
-[WorkbenchPluginAttribute(name: "Bookmark  6", category: "Bookmarks", shortcut: "Ctrl+6", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
+[WorkbenchPluginAttribute(name: "Bookmark  6", category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS, shortcut: "Ctrl+6", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
 class SCR_BookmarkPlugin6 : SCR_BookmarkPlugin1 { override protected int GetBookmarkIndex() { return 6; } }
 
-[WorkbenchPluginAttribute(name: "Bookmark  7", category: "Bookmarks", shortcut: "Ctrl+7", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
+[WorkbenchPluginAttribute(name: "Bookmark  7", category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS, shortcut: "Ctrl+7", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
 class SCR_BookmarkPlugin7 : SCR_BookmarkPlugin1 { override protected int GetBookmarkIndex() { return 7; } }
 
-[WorkbenchPluginAttribute(name: "Bookmark  8", category: "Bookmarks", shortcut: "Ctrl+8", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
+[WorkbenchPluginAttribute(name: "Bookmark  8", category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS, shortcut: "Ctrl+8", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
 class SCR_BookmarkPlugin8 : SCR_BookmarkPlugin1 { override protected int GetBookmarkIndex() { return 8; } }
 
-[WorkbenchPluginAttribute(name: "Bookmark  9", category: "Bookmarks", shortcut: "Ctrl+9", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
+[WorkbenchPluginAttribute(name: "Bookmark  9", category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS, shortcut: "Ctrl+9", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
 class SCR_BookmarkPlugin9 : SCR_BookmarkPlugin1 { override protected int GetBookmarkIndex() { return 9; } }
 
-[WorkbenchPluginAttribute(name: "Bookmark 10", category: "Bookmarks", shortcut: "Ctrl+0", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
+[WorkbenchPluginAttribute(name: "Bookmark 10", category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS, shortcut: "Ctrl+0", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
 class SCR_BookmarkPlugin0 : SCR_BookmarkPlugin1 { override protected int GetBookmarkIndex() { return 10; } }
 
 class SCR_BookmarkPluginPrompt
@@ -117,7 +117,7 @@ class SCR_BookmarkPluginPrompt
 
 	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("Open", true)]
-	protected int BtnOpen()
+	protected int ButtonOpen()
 	{
 		m_iAction = 0;
 		return 1; // action selected
@@ -125,7 +125,7 @@ class SCR_BookmarkPluginPrompt
 
 	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("Replace")]
-	protected int BtnReplace()
+	protected int ButtonReplace()
 	{
 		m_iAction = 1;
 		return 1; // action selected
@@ -133,7 +133,7 @@ class SCR_BookmarkPluginPrompt
 
 	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("Cancel")]
-	protected int BtnCancel()
+	protected int ButtonCancel()
 	{
 		m_iAction = -1;
 		return 0; // choice cancelled - same as clicking "close" on the window
@@ -143,34 +143,34 @@ class SCR_BookmarkPluginPrompt
 [WorkbenchPluginAttribute(name: "Bookmarks Configuration", description: "Configure bookmarks", wbModules: { "ResourceManager" }, awesomeFontCode: 0xF02E)]
 class SCR_BookmarkSettingsPlugin : WorkbenchPlugin
 {
-	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: "Bookmarks")]
+	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS)]
 	protected ResourceName m_sBookmark_1; // underscore to have a space between "bookmark" and "1"
 
-	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: "Bookmarks")]
+	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS)]
 	protected ResourceName m_sBookmark_2;
 
-	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: "Bookmarks")]
+	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS)]
 	protected ResourceName m_sBookmark_3;
 
-	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: "Bookmarks")]
+	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS)]
 	protected ResourceName m_sBookmark_4;
 
-	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: "Bookmarks")]
+	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS)]
 	protected ResourceName m_sBookmark_5;
 
-	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: "Bookmarks")]
+	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS)]
 	protected ResourceName m_sBookmark_6;
 
-	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: "Bookmarks")]
+	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS)]
 	protected ResourceName m_sBookmark_7;
 
-	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: "Bookmarks")]
+	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS)]
 	protected ResourceName m_sBookmark_8;
 
-	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: "Bookmarks")]
+	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS)]
 	protected ResourceName m_sBookmark_9;
 
-	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: "Bookmarks")]
+	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: SCR_PluginCategory.RESOURCEMANAGER_BOOKMARKS)]
 	protected ResourceName m_sBookmark_10;
 
 	//------------------------------------------------------------------------------------------------
@@ -241,14 +241,14 @@ class SCR_BookmarkSettingsPlugin : WorkbenchPlugin
 
 	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("Save")]
-	protected int BtnSave()
+	protected int ButtonSave()
 	{
 		return 1;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("Cancel")]
-	protected int BtnCancel()
+	protected int ButtonCancel()
 	{
 		return 0;
 	}

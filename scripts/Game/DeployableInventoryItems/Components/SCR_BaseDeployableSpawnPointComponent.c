@@ -72,10 +72,6 @@ class SCR_BaseDeployableSpawnPointComponent : SCR_BaseDeployableInventoryItemCom
 	//! \param[in] userEntity
 	override void Deploy(IEntity userEntity = null, bool reload = false)
 	{
-		//~ Not allowed to deploy
-		if (!m_bDeployableSpawnPointsEnabled)
-			return;
-
 		if (!m_RplComponent || m_RplComponent.IsProxy())
 			return;
 

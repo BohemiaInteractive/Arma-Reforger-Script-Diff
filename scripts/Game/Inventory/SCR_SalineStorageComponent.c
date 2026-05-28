@@ -55,6 +55,7 @@ class SCR_SalineStorageComponent : SCR_EquipmentStorageComponent
 			return false;
 		
 		SCR_SalineBagStorageSlot salineTargetSlot;
+		IEntity attachedEntity;
 		for (int i, count = SalineStorageComp.GetSlotsCount(); i < count; i++)
 		{
 			salineTargetSlot = SCR_SalineBagStorageSlot.Cast(SalineStorageComp.GetSlot(i));
@@ -64,10 +65,11 @@ class SCR_SalineStorageComponent : SCR_EquipmentStorageComponent
 			if (salineTargetSlot.GetAssociatedHZGroup() != eHitZoneGroup)
 				continue;
 			
-			if (salineTargetSlot.GetItem(i) == salineBag)
+			attachedEntity = salineTargetSlot.GetAttachedEntity();
+			if (attachedEntity == salineBag)
 				return false;
 			
-			if (salineTargetSlot.GetItem(i))
+			if (attachedEntity)
 			{
 				Debug.Error("salineBagSlot already contained some item");
 				return false;

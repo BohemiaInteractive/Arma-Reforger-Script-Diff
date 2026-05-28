@@ -22,8 +22,78 @@ class SCR_CharacterRankComponent : ScriptComponent
 		SCR_ECharacterRank oldRank = m_iRank;
 		m_iRank = newRank;
 		OnRankChanged(oldRank, newRank, silent);
+
+		SpecialRankHandling(newRank, prevRank);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Helper method for specific ranks with custom logic attached to them
+	protected void SpecialRankHandling(SCR_ECharacterRank newRank, SCR_ECharacterRank prevRank)
+	{
+		// this logic should currently only be triggered when the renegade faction is configured! otherwise we ignore this logic
+		SCR_CampaignFaction Renegade = SCR_GameModeCampaign.GetInstance().GetFactionByEnum(SCR_ECampaignFaction.RNGD);
+
+		if (!Renegade)
+			return;
+
+		// RNGD (Renegades) is a "hidden faction" set up for when players get kicked out of their faction.
+		if (newRank == SCR_ECharacterRank.RENEGADE && GetCharacterFaction(m_Owner).IsRenegadePunishedExile())
+		{
+			AttemptSwitchFaction(Renegade);
+			return;
+		}
+
+		// Currently FIA is the only one to use the punishment mechanic, so if they are a renegade we can assume they came from
+		// the FIA faction. When they regain their rank they are able to rejoin FIA.
+		if (prevRank == SCR_ECharacterRank.RENEGADE && (GetCharacterFaction(m_Owner) == Renegade))
+			AttemptSwitchFaction(SCR_GameModeCampaign.GetInstance().GetFactionByEnum(SCR_ECampaignFaction.INDFOR));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Helper method for attempting to switch factions
+	protected void AttemptSwitchFaction(SCR_CampaignFaction campaignFaction)
+	{
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(m_Owner);
+		if (!character)
+			return;
+
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+				return;
+
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(character);
+
+		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
+		if (!playerController)
+			return;
+
+		SCR_PlayerFactionAffiliationComponent playerFactionAffiliation = SCR_PlayerFactionAffiliationComponent.Cast(playerController.FindComponent(SCR_PlayerFactionAffiliationComponent));
+		if (!playerFactionAffiliation)
+			return;
+
+		// self hosted clients might give an immediate response so we must be sure to be ready before attempting to set the faction
+		// if we notice the faction request didnt go through we dont need to watch for the response
+		playerFactionAffiliation.GetOnPlayerFactionResponseInvoker_S().Insert(FinishFactionSwitch);
+		if (!factionManager.SetPlayerFaction(character, campaignFaction))
+			playerFactionAffiliation.GetOnPlayerFactionResponseInvoker_S().Remove(FinishFactionSwitch);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Callback method for ensuring that completed faction switches are set up correctly
+	protected void FinishFactionSwitch(SCR_PlayerFactionAffiliationComponent component, int factionIndex, bool response)
+	{
+		component.GetOnPlayerFactionResponseInvoker_S().Remove(FinishFactionSwitch);
+
+		if (!response)
+			return;
+
+		SCR_PlayerControllerGroupComponent groupController = SCR_PlayerControllerGroupComponent.GetPlayerControllerComponent(component.GetPlayerId());
+		if (!groupController)
+			return;
+
+		groupController.CreateAndJoinGroup(component.GetAffiliatedFaction());
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] unit
 	//! \return
@@ -102,7 +172,7 @@ class SCR_CharacterRankComponent : ScriptComponent
 		if (!faction)
 			return string.Empty;
 		
-		return faction.GetRankName(rank);
+		return faction.GetRanks().GetRankName(rank);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -124,7 +194,7 @@ class SCR_CharacterRankComponent : ScriptComponent
 		if (!faction)
 			return "";
 		
-		return faction.GetRankName(rank);
+		return faction.GetRanks().GetRankName(rank);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -146,7 +216,7 @@ class SCR_CharacterRankComponent : ScriptComponent
 		if (!faction)
 			return "";
 		
-		return faction.GetRankNameUpperCase(rank);
+		return faction.GetRanks().GetRankNameUpperCase(rank);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -168,7 +238,7 @@ class SCR_CharacterRankComponent : ScriptComponent
 		if (!faction)
 			return "";
 		
-		return faction.GetRankNameShort(rank);
+		return faction.GetRanks().GetRankNameShort(rank);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -189,8 +259,8 @@ class SCR_CharacterRankComponent : ScriptComponent
 		
 		if (!faction)
 			return "";
-		
-		return faction.GetRankInsignia(rank);
+
+		return faction.GetRanks().GetRankInsignia(rank);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -231,118 +301,4 @@ class SCR_CharacterRankComponent : ScriptComponent
 	{
 		m_Owner = ent;
 	}
-}
-
-[BaseContainerProps()]
-class SCR_CharacterRank
-{
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.ComboBox, desc: "Rank ID set in FactionManager", enums: ParamEnumArray.FromEnum(SCR_ECharacterRank))]
-	protected SCR_ECharacterRank m_iRank;
-	
-	[Attribute(defvalue: "", uiwidget: UIWidgets.EditBox, desc: "Rank name")]
-	protected string m_sRankName;
-	
-	[Attribute(defvalue: "", uiwidget: UIWidgets.EditBox, desc: "Rank name (upper case)")]
-	protected string m_sRankNameUpper;
-	
-	[Attribute(defvalue: "", uiwidget: UIWidgets.EditBox, desc: "Rank name (short)")]
-	protected string m_sRankNameShort;
-	
-	[Attribute("", "Rank insignia quad name in MilitaryIcons.imageset")]
-	protected string m_sInsignia;
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	SCR_ECharacterRank GetRankID()
-	{
-		return m_iRank;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	string GetRankName()
-	{
-		return m_sRankName;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	string GetRankNameUpperCase()
-	{
-		return m_sRankNameUpper;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	string GetRankNameShort()
-	{
-		return m_sRankNameShort;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	string GetRankInsignia()
-	{
-		return m_sInsignia;
-	}
-}
-
-[BaseContainerProps()]
-class SCR_RankID
-{
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.ComboBox, desc: "Rank ID", enums: ParamEnumArray.FromEnum(SCR_ECharacterRank))]
-	protected SCR_ECharacterRank m_iRank;
-	
-	[Attribute("0", UIWidgets.CheckBox, "Renegade", "Is this rank considered hostile by friendlies?")]
-	protected bool m_bIsRenegade;
-	
-	[Attribute("100", UIWidgets.EditBox, "XP required to get promoted to this rank.")]
-	protected int m_iRequiredXP;
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	SCR_ECharacterRank GetRankID()
-	{
-		return m_iRank;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \return
-	bool IsRankRenegade()
-	{
-		return m_bIsRenegade;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	int GetRequiredRankXP()
-	{
-		return m_iRequiredXP;
-	}
-}
-
-//~ Character ranks. Take note to update any changes in SCR_EntityCatalogSpawnerData and EEditableEntityBudget
-enum SCR_ECharacterRank
-{
-	RENEGADE,
-	PRIVATE,
-	CORPORAL,
-	SERGEANT,
-	LIEUTENANT,
-	CAPTAIN,
-	MAJOR,
-	COLONEL,
-	GENERAL,
-	CUSTOM1,
-	CUSTOM2,
-	CUSTOM3,
-	CUSTOM4,
-	CUSTOM5,
-	CUSTOM6,
-	CUSTOM7,
-	CUSTOM8,
-	CUSTOM9,
-	CUSTOM10,
-	INVALID
 }

@@ -33,6 +33,7 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 		m_pLastSelectedSlot = m_pSelectedSlot;
 		if ( iSlotIndex > m_aSlots.Count() - 1 )
 			return;
+		
 		m_pSelectedSlot = m_aSlots.Get( iSlotIndex );
  		if ( !m_pSelectedSlot )
 			return;	
@@ -100,7 +101,7 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 		HighlightSlot( iSlotIndex, true );
 
 		if (s_iLastSelectedSlotIndex == iSlotIndex)
-			UseItemInSlot();
+			UseItemInSlot(false);
 
 		s_iLastSelectedSlotIndex = iSlotIndex;
 	}
@@ -343,11 +344,14 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	bool UseItemInSlot()
+	// param[in] isClosingQuickSlots If true, it means that the unselected Quick Slots will be hidden
+	bool UseItemInSlot(bool isClosingQuickSlots)
 	{
 		if (!m_pSelectedSlot)
 			return false;
-		FilterOutSlots();
+		
+		if (isClosingQuickSlots)
+			FilterOutSlots();
 
 		bool useItem = true;
 		if (s_bQuickBarClosed)

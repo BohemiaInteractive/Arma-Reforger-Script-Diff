@@ -2,7 +2,7 @@
 class AssetTypes
 {	
 	[Attribute(desc: "Array of all possible bloodtypes with randomization weight. Keep combined randomization weight at 100 for ease of use", category: "Data")]
-	protected ref array<ref string> m_aAssetTypes;
+	protected ref array<string> m_aAssetTypes;
 	
 	bool GetData(inout array<string> data)
 	{

@@ -8,6 +8,7 @@ class SCR_TaskSystem : GameSystem
 	
 	protected static ref SCR_TaskInvoker s_OnTaskAdded;
 	protected static ref SCR_TaskInvoker s_OnTaskRemoved;
+	protected static ref SCR_TaskInvoker s_OnTaskCreated;
 	
 	protected static ref array<SCR_Task> s_aTasks = {};
 	
@@ -72,6 +73,17 @@ class SCR_TaskSystem : GameSystem
 			s_OnTaskRemoved = new SCR_TaskInvoker();
 		
 		return s_OnTaskRemoved;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns OnTaskCreated invoker
+	//! \return
+	static SCR_TaskInvoker GetOnTaskCreated()
+	{
+		if (!s_OnTaskCreated)
+			s_OnTaskCreated = new SCR_TaskInvoker();
+		
+		return s_OnTaskCreated;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1543,14 +1555,25 @@ class SCR_TaskSystem : GameSystem
 		}
 		
 		task.SetTaskID(taskID);
-		task.SetAuthorID(playerId);
+		
+		if (playerId > -1) 				// author is a player
+		{
+			UUID playerIdentity = SCR_PlayerIdentityUtils.GetPlayerIdentityId(playerId);
+			PlayerManager playerManager = GetGame().GetPlayerManager();
+			PlatformKind platform = playerManager.GetPlatformKind(playerId);
+			task.SetAuthorCredentials(playerId,playerIdentity,platform);
+		}	
 		
 		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(name))
 			task.SetTaskName(name);
 		
 		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(desc))
 			task.SetTaskDescription(desc);
-
+		
+		//! The invoker s_OnTaskCreated is used (an not s_OnTaskAdded) because this is called with the task initialized
+		if (s_OnTaskCreated)
+			s_OnTaskCreated.Invoke(task);
+		
 		Print("SCR_TaskSystem: Created task with ID: " + taskID, LogLevel.DEBUG);
 		return task;
 	}

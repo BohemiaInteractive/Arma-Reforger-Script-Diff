@@ -142,7 +142,11 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 		{
 			SCR_NameTagData tagData = m_aNameTagEntities.Get(ent);
 			if (tagData)
+			{
 				tagData.SetGroup(group);
+				tagData.m_Flags &= ~ENameTagFlags.OBSTRUCTED;
+				tagData.m_Flags &= ~ENameTagFlags.FADE_TIMER;
+			}
 		}
 	}
 	
@@ -239,7 +243,12 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 			return false;
 		
 		SCR_Faction scrFaction = SCR_Faction.Cast(entityFaction);
+		SCR_Faction scrCurrentFaction = SCR_Faction.Cast(m_CurrentFaction);
 		
+		// needs to go both ways to be "completely friendly" and see nametags
+		if (scrFaction && scrCurrentFaction)
+			return (scrCurrentFaction.DoCheckIfFactionFriendly(scrFaction) && scrFaction.DoCheckIfFactionFriendly(scrCurrentFaction));
+
 		//  Is friendly
 		return (scrFaction && scrFaction.DoCheckIfFactionFriendly(m_CurrentFaction)) || (!scrFaction && entityFaction.IsFactionFriendly(m_CurrentFaction));
 	}

@@ -111,10 +111,10 @@ class TerrainExportTool : WorldEditorTool
 		
 		BlenderOperatorDescription operatorDescription = new BlenderOperatorDescription("terrain");
 		operatorDescription.blIDName = "ebt.import_terrain";
-		operatorDescription.AddParam("binPath", path);
-		operatorDescription.AddParam("cellSize", m_API.GetTerrainUnitScale(0));
-		operatorDescription.AddParam("worldPath",worldpath);
-		operatorDescription.AddParam("tileCount", tileCount);
+		operatorDescription.AddParam("bin_path", path);
+		operatorDescription.AddParam("cell_size", m_API.GetTerrainUnitScale(0));
+		operatorDescription.AddParam("world_path",worldpath);
+		operatorDescription.AddParam("tile_count", tileCount);
 		
 		StartBlenderWithOperator(operatorDescription, false);
 	}

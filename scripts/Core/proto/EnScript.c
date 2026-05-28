@@ -3,74 +3,6 @@
 \{
 */
 
-/*!
-Marks method as obsolete. When is the method used, compiler just throw a compile-time
-warning, but method is called normally.
-\code
-	[Obsolete("Use different method!")]
-	void Hello()
-	{
-	}
-
-	void Test()
-	{
-		Hello(); // throws compile warning on this line: 'Hello' is obsolete: use different method!
-	}
-\endcode
-*/
-class Obsolete
-{
-	string m_Msg;
-	void Obsolete(string msg = "")
-	{
-		m_Msg = msg;
-	}
-}
-
-/*!
-Attribute allows other classes to access protected methods. Can be added on specific method or whole class.
-\code
-[Friend(ClassB)]
-class ClassA
-{
-	static protected void MethodA()
-	{
-	}
-	
-	[Friend(ClassC)]
-	static protected void MethodB()
-	{
-	}
-}
-
-
-class ClassB
-{
-	static void Do()
-	{
-		ClassA.MethodA();
-		ClassA.MethodB();
-	}
-}
-
-class ClassC
-{
-	static void Do()
-	{
-		ClassA.MethodB();
-	}
-}	
-\endcode
-*/
-class Friend
-{
-	typename m_FriendClass;
-	void Friend(typename friendClass)
-	{
-		m_FriendClass = friendClass;
-	}
-}
-
 enum EAccessLevel
 {
 	ANY = 0,
@@ -96,7 +28,7 @@ error is thrown.
 	void DangerousMethod2();
 \endcode
 */
-class Restrict
+class Restrict: Managed
 {
 	private EAccessLevel m_Level;
 	private bool m_IsError; //!< If true, throws compilation error, else it throw just warning

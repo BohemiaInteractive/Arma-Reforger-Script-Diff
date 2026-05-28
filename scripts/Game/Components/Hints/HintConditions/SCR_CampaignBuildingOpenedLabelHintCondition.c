@@ -38,6 +38,9 @@ class SCR_CampaignBuildingOpenedLabelHintCondition : SCR_BaseEditorHintCondition
 			return false;
 		
 		array<EEditableEntityLabel> providerTraits = providerComponent.GetAvailableTraits();
+		if (providerTraits.Contains(EEditableEntityLabel.SERVICE_HQ) && !SCR_CampaignBuildingProviderComponent.CanBeUsedToEstablishBase(providerComponent.GetOwner(), SCR_PlayerController.s_pLocalPlayerController.GetPlayerId()))
+			providerTraits.RemoveItem(EEditableEntityLabel.SERVICE_HQ);
+
 		return providerTraits.Contains(m_eLabel);
 	}
 }

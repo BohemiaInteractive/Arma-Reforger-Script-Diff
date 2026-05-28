@@ -335,6 +335,8 @@ class SCR_SelectionBrushTool : WorldEditorTool
 		foreach (IEntity entity2 : entities)
 		{
 			IEntitySource src2 = m_API.EntityToSource(entity2);
+			if (!src2)
+				continue;
 			
 			if (m_iMaxSelectedEntities > 0 && selectedEntitiesCount >= m_iMaxSelectedEntities)
 				break;

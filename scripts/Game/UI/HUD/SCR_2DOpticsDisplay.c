@@ -157,7 +157,7 @@ class SCR_2DOpticsDisplay : SCR_InfoDisplayExtended
 		if (!m_Optic)
 			return;
 
-		if (!m_bInADS && !SCR_BinocularsComponent.IsZoomedView() && !m_Optic.IsSightADSActive())
+		if (!m_bInADS && SCR_PlayerController.s_pLocalPlayerController && !SCR_PlayerController.s_pLocalPlayerController.GetIsBinocularsZoomed() && !m_Optic.IsSightADSActive())
 			return;
 
 		// Widget check

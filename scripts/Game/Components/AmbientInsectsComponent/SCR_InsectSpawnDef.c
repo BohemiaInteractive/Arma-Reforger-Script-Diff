@@ -31,9 +31,9 @@ class SCR_InsectSpawnDef
 	[Attribute("1", UIWidgets.ComboBox, "", "", ParamEnumArray.FromEnum(EWindCurve))]
 	EWindCurve m_eWindModifier;
 
-	[Attribute("0 0 1 1", UIWidgets.GraphDialog, "", params: "1 1 0 0")]
+	[Attribute("0 0 1 1", UIWidgets.CurveDialog, "", params: "1 1 0 0")]
 	ref Curve m_TimeModifier;
 
-	[Attribute("0 0 1 1", UIWidgets.GraphDialog, "", params: "1 1 0 0")]
+	[Attribute("0 0 1 1", UIWidgets.CurveDialog, "", params: "1 1 0 0")]
 	ref Curve m_RainModifier;
 }

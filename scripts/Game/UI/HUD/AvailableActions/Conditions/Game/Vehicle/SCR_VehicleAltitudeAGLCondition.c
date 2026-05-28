@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 //! Returns true if current vehicle speed matches the condition
 [BaseContainerProps()]
 class SCR_VehicleAltitudeAGLCondition : SCR_AvailableActionCondition
@@ -14,11 +13,8 @@ class SCR_VehicleAltitudeAGLCondition : SCR_AvailableActionCondition
 	//------------------------------------------------------------------------------------------------
 	//! Returns true when current controlled vehicle altitude matches the condition by operator
 	//! Returns opposite if m_bNegateCondition is enabled
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-
 		SignalsManagerComponent signals = data.GetCurrentVehicleSignals();
 		if (!signals || m_Signals != signals)
 		{
@@ -30,11 +26,6 @@ class SCR_VehicleAltitudeAGLCondition : SCR_AvailableActionCondition
 		if (m_iAltitudeAGLID == -1)
 			m_iAltitudeAGLID = signals.AddOrFindSignal(ALTITUDE_AGL_SIGNAL);
 
-		float altitudeAGL;
-		if (m_iAltitudeAGLID != -1)
-			altitudeAGL = signals.GetSignalValue(m_iAltitudeAGLID);
-
-		bool result = altitudeAGL >= m_fAltitudeAGL;
-		return GetReturnResult(result);
+		return GetReturnResult(m_iAltitudeAGLID != -1 && signals.GetSignalValue(m_iAltitudeAGLID) >= m_fAltitudeAGL);
 	}
 }

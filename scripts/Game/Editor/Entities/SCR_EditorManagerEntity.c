@@ -45,7 +45,7 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	private RplComponent m_RplComponent;
 	private int m_iPlayerID;
 	private bool m_bInit;
-	private ref array<SCR_EditorModeEntity> m_Modes = new array<SCR_EditorModeEntity>;
+	private ref array<SCR_EditorModeEntity> m_Modes = {};
 	protected ref map<EEditorModeAccess, EEditorMode> m_ModesByAccess = new map<EEditorModeAccess, EEditorMode>();
 	private EEditorMode m_PrevMode = -1;
 	private EEditorMode m_CurrentMode = -1;
@@ -210,7 +210,9 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		if (m_CurrentModeEntity.GetPreventClose())
 			return;
 
-		if (!m_bIsOpened || !IsAuthority()) return; //--- Exit when already closed or attempting to edit non-local editor
+		if (!m_bIsOpened || !IsAuthority())
+			return; //--- Exit when already closed or attempting to edit non-local editor
+
 		if (!CanClose())
 		{
 			if (showErrorNotification)
@@ -419,8 +421,7 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	//! \return True when it can
 	bool CanClose()
 	{
-		return
-			m_CanClose == m_CanCloseSum;
+		return m_CanClose == m_CanCloseSum;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -926,7 +927,7 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 
 		AddMode(modeEntity, isInit);
 
-		Rpc(CreateEditorModeOwner, mode, Replication.FindId(modeEntity), isInit);
+		Rpc(CreateEditorModeOwner, mode, Replication.FindItemId(modeEntity), isInit);
 		SetCanOpen(true, EEditorCanOpen.MODES);
 
 		//--- Set current mode in certain conditions
@@ -1970,11 +1971,11 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected int GetEntityAuthorUID()
+	protected string GetEntityAuthorUID()
 	{
 		SCR_EditableEntityComponent entity = SCR_BaseEditableEntityFilter.GetFirstEntity(EEditableEntityState.HOVER);
 		if (!entity)
-			return "";
+			return string.Empty;
 
 		return entity.GetAuthorUID();
 	}
@@ -2019,10 +2020,40 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			}
 		}
 
-		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EDITOR_SHOW_DEBUG)) ShowDebug();
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EDITOR_SHOW_DEBUG)) 
+			ShowDebug();
+		
+		
+		if(DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EDITOR_CLEAR_SELECTED_BUDGET))
+		{
+			if(DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_BUDGET_TO_CLEAR) == 0)
+			{
+				Rpc(Diag_RequestDeletionOfEntitiesOfBudget, EEditableEntityBudget.AI);
+				Rpc(Diag_RequestDeletionOfEntitiesOfBudget, EEditableEntityBudget.AI_SERVER);
+			}
+			else if(DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_BUDGET_TO_CLEAR) == 1)
+				Rpc(Diag_RequestDeletionOfEntitiesOfBudget, EEditableEntityBudget.VEHICLES);
+			
+			//Set Clear selected budget to false
+			DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_CLEAR_SELECTED_BUDGET, 0);
+		}
 #endif
 	}
 
+
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void Diag_RequestDeletionOfEntitiesOfBudget(EEditableEntityBudget budgetType)
+	{
+		#ifdef ENABLE_DIAG
+		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+		
+		if(!core)
+			return;
+		
+		core.DeleteAllEntitiesThatHaveBudgetOfType(budgetType);
+		#endif
+	}		
+	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Init
 
@@ -2098,6 +2129,9 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		int enumCount = enumType.GetVariableCount();
 		DiagMenu.RegisterRange(SCR_DebugMenuID.DEBUGUI_EDITOR_MODE, "", "Mode", "Editor", string.Format("0 %1 0 1", enumCount - 1));
 		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_MODE, Math.Max(m_CurrentMode, 0));
+	
+		DiagMenu.RegisterItem(SCR_DebugMenuID.DEBUGUI_EDITOR_BUDGET_TO_CLEAR, "", "Budget to clear", "Editor", "AI, Vehicles");
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_CLEAR_SELECTED_BUDGET, "", "Clear selected budget", "Editor");
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2183,6 +2217,9 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_ASYNC_LOAD_DEBUG);
 			DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_SAVE_PHOTO_SCREENSHOT_SHOW);
 			DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_NETWORK_DELAY);
+			
+			DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_BUDGET_TO_CLEAR);
+			DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_CLEAR_SELECTED_BUDGET);
 		}
 
 		ChimeraWorld world = GetGame().GetWorld();

@@ -13,8 +13,8 @@ class SCR_SupplySystem : SCR_ResourceSystem
 	//------------------------------------------------------------------------------------------------
 	void ActivateEffects(EResourcePlayerInteractionType interactionType, SCR_ResourceComponent resourceComponentFrom, SCR_ResourceComponent resourceComponentTo, EResourceType resourceType, float resourceValue)
 	{
-		Rpc_ActivateEffects(interactionType, Replication.FindId(resourceComponentFrom), Replication.FindId(resourceComponentTo), resourceType, resourceValue);
-		Rpc(Rpc_ActivateEffects, interactionType, Replication.FindId(resourceComponentFrom), Replication.FindId(resourceComponentTo), resourceType, resourceValue);
+		Rpc_ActivateEffects(interactionType, Replication.FindItemId(resourceComponentFrom), Replication.FindItemId(resourceComponentTo), resourceType, resourceValue);
+		Rpc(Rpc_ActivateEffects, interactionType, Replication.FindItemId(resourceComponentFrom), Replication.FindItemId(resourceComponentTo), resourceType, resourceValue);
 	}
 
 	//------------------------------------------------------------------------------------------------

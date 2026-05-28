@@ -108,6 +108,8 @@ class GenericEntity: IEntity
 	event bool _WB_CanCopy(IEntitySource src) { return true; };
 	//!	Editor needs to know whether this entity can be selected in scene window or not
 	event bool _WB_CanSelect(IEntitySource src) { return true; };
+	//!	Editor needs to know whether this entity is traceable at selecting entities in scene
+	event bool _WB_IsTraceable(IEntitySource src) { return true; };
 	//! Returns how many anchor points does this entity have at this time
 	event int _WB_GetAnchorCount(IEntitySource src);
 	//! Fills position of anchor at index `index` to `anchorPosition`
@@ -139,7 +141,7 @@ class GenericEntity: IEntity
 	//! Any property value has been changed. You can use editor API here and do some additional edit actions which will be part of the same "key changed" action.
 	event bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent);
 	//! Some "coords" or "angles" vector property is being to be edited. Entity can provide a world matrix which represents their local space and which is needed by editor to edit the key by a gizmo
-	event bool _WB_GetKeySpaceMatrixWorld(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent, out vector transformSpaceWorld[4]);
+	event bool _WB_GetKeySpaceMatrixWorld(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent, out vector transformSpaceWorld[4]) { return false; };
 	//! Called after updating world in Workbench. The entity must be visible in frustum, selected or named. You can use editor API here and do some edit actions if needed.
 	event void _WB_AfterWorldUpdate(float timeSlice);
 	//! Called after _WB_OnInit or also later when editor needs to know whether _WB_AfterWorldUpdate needs to be called and when. Return value can be either 0 (event will not be called at all) or any combination of EEntityFrameUpdateSpecs. Avoid CALL_ALWAYS flag whenever possible to prevent performance issues

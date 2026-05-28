@@ -11,16 +11,10 @@ class SCR_Tutorial_Obstacle_TIME : SCR_BaseTutorialStage
 	override protected void Setup()
 	{
 		ChimeraWorld world = GetGame().GetWorld();
-			
 		if (world)
 			world.GetMusicManager().Stop("SOUND_OBSTACLE_COURSE");
 		
-		float currentTime = GetGame().GetWorld().GetWorldTime();
-		float originalTime = m_TutorialComponent.GetSavedTime();
-		
-		int finalTimeMS = Math.Floor(currentTime - originalTime);
-		int finalTimeS = Math.Floor(finalTimeMS / 1000);
-		int ms = (finalTimeMS % (finalTimeS * 1000));
+		float finalTime = m_TutorialComponent.GetTimeElapsed();
 		
 		string time;
 		
@@ -28,7 +22,7 @@ class SCR_Tutorial_Obstacle_TIME : SCR_BaseTutorialStage
 		int minute;
 		int second;
 		
-		SCR_DateTimeHelper.GetHourMinuteSecondFromSeconds(finalTimeS, hour, minute, second);
+		SCR_DateTimeHelper.GetHourMinuteSecondFromSeconds(finalTime, hour, minute, second);
 		
 		string buffer;
 		
@@ -52,6 +46,7 @@ class SCR_Tutorial_Obstacle_TIME : SCR_BaseTutorialStage
 		
 		time += buffer + ":";
 		
+		int ms = ((finalTime - Math.Floor(finalTime)) * 1000);
 		buffer = ms.ToString();
 		
 		if (ms < 10)
@@ -74,11 +69,12 @@ class SCR_Tutorial_Obstacle_TIME : SCR_BaseTutorialStage
 		stringToEdit = stringToEdit + " " + time;
 		
 		SCR_HintUIInfo hintInfo = SCR_HintUIInfo.CreateInfo(stringToEdit, string.Empty, -1, EHint.UNDEFINED, EFieldManualEntryId.NONE, false);
+		hintInfo.SetPriority(1);
 		SCR_HintManagerComponent.ShowHint(hintInfo);
 
-		if (finalTimeMS < 73000)
+		if (finalTime < 73)
 			PlayNarrativeCharacterStage("OBSTACLECOURSE_Instructor", 17);	// Good
-		else if (finalTimeMS < 77000)
+		else if (finalTime < 77)
 			PlayNarrativeCharacterStage("OBSTACLECOURSE_Instructor", 16);	// Average
 		else
 			PlayNarrativeCharacterStage("OBSTACLECOURSE_Instructor", 18);	// Bad

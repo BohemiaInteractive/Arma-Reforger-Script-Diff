@@ -11,12 +11,18 @@ Do not modify, this script is generated
 
 sealed class int
 {
+	/** \name Constants
+	 * Populated by the engine.
+	 */
+	///@{
+
+	static const int MAX;
+	static const int MIN;
+	static const int INVALID_INDEX;
+	///@}
+
 	private void int();
 	private void ~int();
-
-	const int MAX = 2147483647;
-	const int MIN = -2147483648;
-	const int INVALID_INDEX = -1;
 
 	/*!
 	Converts ASCII code to string.

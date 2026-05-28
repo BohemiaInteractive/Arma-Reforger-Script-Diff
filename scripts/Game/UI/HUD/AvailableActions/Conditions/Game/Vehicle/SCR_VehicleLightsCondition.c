@@ -1,9 +1,8 @@
-//------------------------------------------------------------------------------------------------
 //! Returns true if current vehicle lights are enabled
 [BaseContainerProps()]
 class SCR_VehicleLightsCondition : SCR_AvailableActionCondition
 {
-	[Attribute(defvalue: SCR_Enum.GetDefault(ELightType.NoLight), uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(ELightType))]
+	[Attribute(defvalue: ELightType.NoLight.ToString(), desc: "Light Type", uiwidget: UIWidgets.SearchComboBox, enumType: ELightType)]
 	ELightType m_eLightType;
 
 	//! Side of turn signals
@@ -11,11 +10,8 @@ class SCR_VehicleLightsCondition : SCR_AvailableActionCondition
 	protected int m_iLightSide;
 
 	//------------------------------------------------------------------------------------------------
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-
 		VehicleControllerComponent controller = VehicleControllerComponent.Cast(data.GetCurrentVehicleController());
 		if (!controller)
 			return false;

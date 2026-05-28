@@ -95,7 +95,7 @@ class SCR_ScenarioConfirmationDialogUi : SCR_ConfigurableDialogUi
 		singlePlayerImage.SetVisible(!mp);
 		multiPlayerImage.SetVisible(mp);
 		
-		playerCountLabelText.SetText(WidgetManager.Translate("#AR-Scenario_Players", playerCount.ToString()));
+		playerCountLabelText.SetTextFormat("#AR-Scenario_Players", playerCount);
 		
 		//! Source addon
 		bool isSourceAddonValid;

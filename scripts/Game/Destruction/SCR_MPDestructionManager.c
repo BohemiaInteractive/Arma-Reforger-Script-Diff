@@ -210,16 +210,22 @@ class SCR_MPDestructionManager : GenericEntity
 		reader.ReadInt(numDestructibles); // Read num destructibles sent
 		for (int i = 0; i < numDestructibles; i++)
 		{
+			bool hasEntityID;
+			reader.ReadBool(hasEntityID);
+			
+			if (!hasEntityID)
+				continue;
+			
 			EntityID entID;
 			reader.ReadEntityId(entID); // Read entity ID of each destructible to be read
 			
 			IEntity entity = GetWorld().FindEntityByID(entID);
 			if (!entity)
-				continue;
+				continue; // this shouldn't happen
 			
 			SCR_DestructionDamageManagerComponent destructible = SCR_DestructionDamageManagerComponent.Cast(entity.FindComponent(SCR_DestructionDamageManagerComponent));
 			if (!destructible)
-				continue;
+				continue; // this shouldn't happen
 			
 			destructible.NetReadInit(reader);
 		}
@@ -248,14 +254,22 @@ class SCR_MPDestructionManager : GenericEntity
 			EntityID entID = m_ChangedDestructibles[i];
 			IEntity entity = GetWorld().FindEntityByID(entID);
 			if (!entity)
+			{
+				writer.WriteBool(false);
 				continue;
+			}
 			
 			SCR_DestructionDamageManagerComponent destructible = SCR_DestructionDamageManagerComponent.Cast(entity.FindComponent(SCR_DestructionDamageManagerComponent));
 			if (!destructible)
+			{
+				writer.WriteBool(false);
 				continue;
+			}
 			
+			writer.WriteBool(true);
 			writer.WriteEntityId(entID); // Write entity ID of each destructible to be sent
 			destructible.NetWriteInit(writer); // Tell destructible to write its data
+			
 		}
 		
 		return true;

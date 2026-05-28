@@ -15,14 +15,14 @@ class SCR_ScenarioFrameworkSlotTrigger : SCR_ScenarioFrameworkSlotBase
 	//! \param[in] includeChildren Restores default settings for all child objects, if includeChildren is true.
 	//! \param[in] reinitAfterRestoration Resets object state after restoration.
 	//! \param[in] affectRandomization Affects randomization state during restoration.
-	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true, bool deleteSpawnedEntities = true)
 	{
 		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aTriggerActions)
 		{
 			activationAction.RestoreToDefault();
 		}
 
-		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization, deleteSpawnedEntities);
 	}
 
 	//------------------------------------------------------------------------------------------------

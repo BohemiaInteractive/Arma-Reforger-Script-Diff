@@ -1,7 +1,7 @@
 class SCR_AIOpenDoor : AITaskScripted
 {
 	static const string PORT_DOOR_ENTITY = "DoorEntity";
-	static const float ANGLE_EPSILON = 0.01;
+	static const float STATE_EPSILON = 0.01;
 	
 	[Attribute("0")]
 	protected bool m_bOpenSiblingDoors;
@@ -36,10 +36,7 @@ class SCR_AIOpenDoor : AITaskScripted
 			if (!doorComp)
 				continue;
 			
-			float angle = doorComp.GetAngleRange();
-			float state = doorComp.GetDoorState();
-			
-			bool isTotallyOpen = Math.AbsFloat(doorComp.GetAngleRange() - doorComp.GetDoorState()) < ANGLE_EPSILON;
+			bool isTotallyOpen = Math.AbsFloat(doorComp.GetNormalizedDoorState()) > 1.0 - STATE_EPSILON;
 			
 			if (!isTotallyOpen && !doorComp.IsOpening())
 			{

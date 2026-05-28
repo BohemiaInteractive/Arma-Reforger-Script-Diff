@@ -14,6 +14,6 @@ class SCR_WindCurveDef
 	[Attribute("0", UIWidgets.ComboBox, "", "", ParamEnumArray.FromEnum(EWindCurve))]
 	EWindCurve m_eWindCurveType;
 	
-	[Attribute("0 0 1 1", UIWidgets.GraphDialog, "",  params: "1 1 0 0")]
+	[Attribute(uiwidget: UIWidgets.CurveDialog, desc: "", params:"type=Linear, ends=OpenFlat, default=1, paramRange=0 1 fixed, valueRange=0 1 fixed")]
 	ref Curve m_Curve;
 }

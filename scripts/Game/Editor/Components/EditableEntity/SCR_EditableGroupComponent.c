@@ -187,7 +187,7 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		if (editableLeader)
 		{
 			m_Leader = editableLeader;
-			m_LeaderId = Replication.FindId(editableLeader);
+			m_LeaderId = Replication.FindItemId(editableLeader);
 			Replication.BumpMe();
 			Refresh(); //--- Make the icon appear instantly
 		}
@@ -745,7 +745,7 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 	{
 		if (!IsServer())
 		{
-			if (isAdded && Replication.FindId(child) == m_LeaderId)
+			if (isAdded && Replication.FindItemId(child) == m_LeaderId)
 				SetLeader(child);
 			
 			return;

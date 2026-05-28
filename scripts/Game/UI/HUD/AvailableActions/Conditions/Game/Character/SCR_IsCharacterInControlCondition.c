@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 //! Returns true if character can control action and it's not obstructed by:
 //! Falling, swimming, vehicle
 [BaseContainerProps()]
@@ -8,11 +7,8 @@ class SCR_IsCharacterInControlCondition : SCR_AvailableActionCondition
 	protected bool m_bIsAvailableInVehicle;
 
 	//------------------------------------------------------------------------------------------------
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-
 		// Can be controlled in vehicle
 		bool vehicleControl = !data.GetIsCharacterInVehicle();
 		if (m_bIsAvailableInVehicle)
@@ -25,4 +21,4 @@ class SCR_IsCharacterInControlCondition : SCR_AvailableActionCondition
 
 		return GetReturnResult(inControl);
 	}
-};
+}

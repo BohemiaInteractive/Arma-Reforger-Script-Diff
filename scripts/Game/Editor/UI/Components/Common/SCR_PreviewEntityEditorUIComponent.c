@@ -358,6 +358,7 @@ class SCR_PreviewEntityEditorUIComponent : SCR_BaseEditorUIComponent
 			}
 		}
 
+		pos[1] = Math.Max(pos[1], GetGame().GetWorld().GetSurfaceY(pos[0], pos[2]));
 		transform[3] = pos;
 		m_fUnsnapProgress = 0;
 		m_PreviewEntityManager.SetIsMovingVertically(false);
@@ -692,8 +693,8 @@ class SCR_PreviewEntityEditorUIComponent : SCR_BaseEditorUIComponent
 		m_Operation = EPreviewEntityEditorOperation.MOVE_HORIZONTAL;
 				
 		SCR_EPreviewState previewState = SCR_EPreviewState.PLACEABLE;
-		ENotification outNotification;
-		m_PlacingManager.CanCreateEntity(outNotification, previewState);
+		SCR_EditorPreviewParams params = SCR_EditorPreviewParams.CreateParamsFromPreview(m_PreviewEntityManager);
+		m_PlacingManager.CanCreateEntity(previewStateToShow: previewState, params: params);
 		m_PreviewEntityManager.SetPreviewState(previewState);
 		
 		//--- There are numerous issues with editing along geometry, so it's disabled for now

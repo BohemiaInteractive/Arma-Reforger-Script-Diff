@@ -23,7 +23,7 @@ class SCR_AIAnimation_Sitting : SCR_AIAnimation_Base
 		if (!controller)
 			return false;
 		
-		controller.StartLoitering(ELoiteringType.SIT, false, true, true, vAnimationTransform);
+		controller.StartLoitering(null, ELoiteringType.SIT, false, true, true, vAnimationTransform);
 		return true;
 	}
 	
@@ -57,7 +57,7 @@ class SCR_AIAnimation_Pushups : SCR_AIAnimation_Base
 		if (!controller)
 			return false;
 		
-		controller.StartLoitering(ELoiteringType.PUSHUPS, true, true, true, vAnimationTransform);
+		controller.StartLoitering(null, ELoiteringType.PUSHUPS, true, true, true, vAnimationTransform);
 		return true;
 	}
 	
@@ -92,7 +92,7 @@ class SCR_AIAnimation_Loitering : SCR_AIAnimation_Base
 		if (!controller)
 			return false;
 		
-		controller.StartLoitering(ELoiteringType.LOITERING, true, true, true, vAnimationTransform);
+		controller.StartLoitering(null, ELoiteringType.LOITERING, true, true, true, vAnimationTransform);
 		return true;
 	}
 	
@@ -146,7 +146,7 @@ class SCR_AIAnimation_OfficerMission_Table : SCR_AIAnimation_Base
 		customAnimData.m_CustomCommand = staticTable.m_CustomCinematicCommand; 
 		customAnimData.m_GraphName = "{312D2589E4BF5BC8}anims/anm/NPC/workspaces/Officier_Mission01.agr"; 
 		customAnimData.m_GraphInstanceName = "{DC477052F8B60926}anims/anm/NPC/workspaces/Officier_Mission01.asi";   
-		controller.StartLoitering(ELoiteringType.CUSTOM, true, true, true, vAnimationTransform, true, customAnimData);
+		controller.StartLoitering(null, ELoiteringType.CUSTOM, true, true, true, vAnimationTransform, true, customAnimData);
 		
 		return true;
 	}
@@ -201,7 +201,7 @@ class SCR_AIAnimation_OfficerMission_Walking : SCR_AIAnimation_Base
 		customAnimData.m_CustomCommand = staticTable.m_CustomCinematicCommand; 
 		customAnimData.m_GraphName = "{312D2589E4BF5BC8}anims/anm/NPC/workspaces/Officier_Mission01.agr"; 
 		customAnimData.m_GraphInstanceName = "{DC477052F8B60926}anims/anm/NPC/workspaces/Officier_Mission01.asi";   
-		controller.StartLoitering(ELoiteringType.CUSTOM, true, true, true, vAnimationTransform, true, customAnimData);
+		controller.StartLoitering(null, ELoiteringType.CUSTOM, true, true, true, vAnimationTransform, true, customAnimData);
 		
 		return true;
 	}

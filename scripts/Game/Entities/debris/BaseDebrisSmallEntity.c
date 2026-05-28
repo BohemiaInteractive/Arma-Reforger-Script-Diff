@@ -16,6 +16,7 @@ class SCR_BaseDebrisSmallEntity : GenericEntity
 	bool m_bDelete = false;
 
 	//! The lifetime in seconds. 
+	[Attribute(defvalue:"30", params:"0 inf", desc:"How long until the debris despawns (seconds)")]
 	float m_fLifeTime;
 
 	//! Entity age in seconds. After this time is bigger thatn m_fLifeTime, debris will despawn.

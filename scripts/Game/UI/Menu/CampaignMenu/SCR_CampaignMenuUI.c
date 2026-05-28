@@ -1,7 +1,7 @@
 class SCR_CampaignMenuUI : SCR_SuperMenuBase
 {
 	protected const ResourceName TILES_LAYOUT = "{056BE72745839C20}UI/layouts/Menus/ContentBrowser/CampaignMenu/CampaignTile_Vertical.layout";
-	protected const ResourceName CONFIG = "{0B1DDB81597DFF04}Configs/ContentBrowser/MainMenu/CampaignMenuEntries.conf";
+	protected const ResourceName CONFIG = "{0B1DDB81597DFF04}Configs/MainMenu/CampaignMenuEntries.conf";
 	
 	//------------------------------------------------------------------------------------------------
 	protected override void OnMenuOpen()

@@ -6,13 +6,13 @@ class PauseMenuUI : ChimeraMenuBase
 	protected TextWidget m_wVersion;
 	protected Widget m_wRoot;
 	protected Widget m_wFade;
-	protected Widget m_wSystemTime;	
+	protected Widget m_wSystemTime;
 	protected BlurWidget m_wBlurEffect;
 	protected bool m_bFocused = true;
-	
+
 	protected const float DURATION_IN_BLUR = 0.75;
 	protected const float DURATION_OUT_BLUR = 0.5;
-	
+
 	protected const float VALUE_BLUR = 0.8;
 	protected const float VALUE_DISABLED = 0.0;
 
@@ -21,28 +21,30 @@ class PauseMenuUI : ChimeraMenuBase
 	protected SCR_ButtonTextComponent m_EditorUnlimitedCloseButton;
 	protected SCR_ButtonTextComponent m_EditorPhotoOpenButton;
 	protected SCR_ButtonTextComponent m_EditorPhotoCloseButton;
-	
+
 	protected SCR_ButtonTextComponent m_SettingsButton;
 
 	protected ref SCR_ConfigurableDialogUi m_ExitDialog;
+	protected ref SCR_ConfigurableDialogUi m_RespawnDialog;
 
-	const string EXIT_SAVE = "#AR-PauseMenu_ReturnSaveTitle";
-	const string EXIT_NO_SAVE = "#AR-PauseMenu_ReturnTitle";
+	protected const string EXIT_SAVE = "#AR-PauseMenu_ReturnSaveTitle";
+	protected const string EXIT_NO_SAVE = "#AR-PauseMenu_ReturnTitle";
 
-	const string EXIT_MESSAGE = "#AR-PauseMenu_ReturnText";
-	const string EXIT_TITLE = "#AR-PauseMenu_ReturnTitle";
-	const string EXIT_IMAGE = "exit";
+	protected const string EXIT_MESSAGE = "#AR-PauseMenu_ReturnText";
+	protected const string EXIT_TITLE = "#AR-PauseMenu_ReturnTitle";
+	protected const string EXIT_IMAGE = "exit";
 
-	const string RESTART_MESSAGE = "#AR-PauseMenu_RestartText";
-	const string RESTART_TITLE = "#AR-PauseMenu_Restart";
-	const string RESTART_IMAGE = "restart";
+	protected const string RESTART_MESSAGE = "#AR-PauseMenu_RestartText";
+	protected const string RESTART_TITLE = "#AR-PauseMenu_Restart";
+	protected const string RESTART_IMAGE = "restart";
 
-	const string LOAD_MESSAGE = "#AR-PauseMenu_LoadText";
-	const string LOAD_TITLE = "#AR-PauseMenu_Load";
-	const string LOAD_IMAGE = "up";
+	protected const string LOAD_MESSAGE = "#AR-PauseMenu_LoadText";
+	protected const string LOAD_TITLE = "#AR-PauseMenu_Load";
+	protected const string LOAD_IMAGE = "up";
 
-	const string DIALOG_SCENARIO_EXIT = "scenario_exit";
-	const string DIALOG_SAVE_FAILED = "pause_menu_save_failed";
+	protected const string DIALOG_SCENARIO_EXIT = "scenario_exit";
+	protected const string DIALOG_SAVE_FAILED = "pause_menu_save_failed";
+	protected const string DIALOG_CONFIRM_RESPAWN = "respawn_confirmation";
 
 	static ref ScriptInvoker m_OnPauseMenuOpened = new ScriptInvoker();
 	static ref ScriptInvoker m_OnPauseMenuClosed = new ScriptInvoker();
@@ -75,7 +77,7 @@ class PauseMenuUI : ChimeraMenuBase
 	override void OnMenuOpen()
 	{
 		bool isReplicationRunning = Replication.IsRunning();
-		
+
 		s_Instance = this;
 
 		m_wRoot = GetRootWidget();
@@ -106,28 +108,15 @@ class PauseMenuUI : ChimeraMenuBase
 			comp.m_OnClicked.Insert(OnRestart);
 		}
 
-		// Respawn
-		SCR_RespawnSystemComponent respawnComponent = SCR_RespawnSystemComponent.GetInstance();
 
 		comp = SCR_ButtonTextComponent.GetButtonText("Respawn", m_wRoot);
 		if (comp)
-		{
+		{ // Respawn
+			SCR_RespawnSystemComponent respawnComponent = SCR_RespawnSystemComponent.GetInstance();
 			if (respawnComponent && !respawnComponent.IsPauseMenuRespawnEnabled())
-			{
 				comp.SetVisible(false);
-			}
 			else
-			{
-				bool canRespawn;
-				if (gameMode)
-				{
-					RespawnSystemComponent respawn = RespawnSystemComponent.Cast(gameMode.FindComponent(RespawnSystemComponent));
-					canRespawn = (respawn != null && CanRespawn());
-				}
-
-				comp.GetRootWidget().SetVisible(canRespawn);
-				comp.m_OnClicked.Insert(OnRespawn);
-			}
+				comp.m_OnClicked.Insert(ConfirmRespawn);
 		}
 
 		// Leave faction
@@ -182,7 +171,7 @@ class PauseMenuUI : ChimeraMenuBase
 		// Rewind
 		comp = SCR_ButtonTextComponent.GetButtonText("Rewind", m_wRoot);
 		if (comp)
-		{			
+		{
 			SCR_RewindComponent rewindManager = SCR_RewindComponent.GetInstance();
 			comp.GetRootWidget().SetVisible(rewindManager != null); //--- Hide the button when rewinding is not configured for the mission
 			comp.SetEnabled(rewindManager && rewindManager.HasRewindPoint()); //--- Disable the button when the rewind point does not exist
@@ -301,7 +290,7 @@ class PauseMenuUI : ChimeraMenuBase
 		{
 			comp.m_OnClicked.Insert(OnFeedback);
 		}
-		
+
 		//Hide second separator when second menu group is empty
 		if (!m_EditorPhotoCloseButton.IsVisible() && !m_EditorPhotoOpenButton.IsVisible() && !m_EditorUnlimitedOpenButton.IsVisible() && !m_EditorUnlimitedCloseButton.IsVisible())
 		{
@@ -309,24 +298,24 @@ class PauseMenuUI : ChimeraMenuBase
 			if (separatorSecondGroup)
 				separatorSecondGroup.SetVisible(false);
 		}
-		
+
 		m_InputManager = GetGame().GetInputManager();
 
 		m_OnPauseMenuOpened.Invoke();
 
 		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_FE_HUD_PAUSE_MENU_OPEN);
-		
+
 		SCR_CampaignBuildingEditorComponent CampaignBuildingEditorComponent = SCR_CampaignBuildingEditorComponent.Cast(SCR_CampaignBuildingEditorComponent.GetInstance(SCR_CampaignBuildingEditorComponent));
 		if (!CampaignBuildingEditorComponent)
 			return;
-		
+
 		m_wBlurEffect = BlurWidget.Cast(m_wRoot.FindAnyWidget("ScreenEffectBlur"));
 		CampaignBuildingEditorComponent.GetOnObstructionEventTriggered().Insert(AreaTriggerChange);
-		
+
 		if (CampaignBuildingEditorComponent.IsViewObstructed())
 			StartObstructionAnimation(true);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] activated
 	protected void AreaTriggerChange(bool activated)
@@ -336,7 +325,7 @@ class PauseMenuUI : ChimeraMenuBase
 		else
 			FinishObstructionAnimation();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Start screen obstruction effect.
 	protected void StartObstructionAnimation(bool force = false)
@@ -347,7 +336,7 @@ class PauseMenuUI : ChimeraMenuBase
 		else
 			AnimateWidget.BlurIntensity(m_wBlurEffect, VALUE_BLUR, DURATION_IN_BLUR);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Ends screen obstruction effect.
 	protected void FinishObstructionAnimation(bool force = false)
@@ -403,7 +392,7 @@ class PauseMenuUI : ChimeraMenuBase
 		// Unpause
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode)
-			gameMode.PauseGame(false,  SCR_EPauseReason.MENU | SCR_EPauseReason.MUSIC);
+			gameMode.PauseGame(false, SCR_EPauseReason.MENU | SCR_EPauseReason.MUSIC);
 
 		SCR_HUDManagerComponent hud = GetGame().GetHUDManager();
 		if (hud)
@@ -491,6 +480,29 @@ class PauseMenuUI : ChimeraMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	private void ConfirmRespawn()
+	{
+		// Create respawn confirmation dialog
+		m_RespawnDialog = SCR_CommonDialogs.CreateDialog(DIALOG_CONFIRM_RESPAWN);
+		if (!m_RespawnDialog)
+			return;
+
+		bool canRespawn;
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (gameMode)
+		{
+			RespawnSystemComponent respawn = RespawnSystemComponent.Cast(gameMode.FindComponent(RespawnSystemComponent));
+			canRespawn = (respawn != null && CanRespawn());
+		}
+
+		m_RespawnDialog.GetRootWidget().SetVisible(canRespawn);
+		if (canRespawn)
+			m_RespawnDialog.m_OnConfirm.Insert(OnRespawn);
+		else
+			m_RespawnDialog.Close();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	private void OnRewind()
 	{
 		new SCR_RewindDialog();
@@ -501,10 +513,11 @@ class PauseMenuUI : ChimeraMenuBase
 	{
 		m_ExitDialog.m_OnConfirm.Remove(OnExitConfirm);
 
-		if (IsSavingOnExit())
+		SaveGameManager manager = GetGame().GetSaveGameManager();		
+		if (IsSavingOnExit() && !manager.IsBusy())
 		{
-			//--- Close only after the save file was created
-			GetGame().GetSaveGameManager().RequestSavePoint(ESaveGameType.SHUTDOWN, flags: ESaveGameRequestFlags.BLOCKING, callback: new SaveGameOperationCb(OnExitSaveResult))
+			//--- Close only after the save file was created, unless a save was already ongoing.
+			manager.RequestSavePoint(ESaveGameType.SHUTDOWN, flags: ESaveGameRequestFlags.BLOCKING, callback: new SaveGameOperationCallback(OnExitSaveResult))
 		}
 		else
 		{
@@ -518,6 +531,8 @@ class PauseMenuUI : ChimeraMenuBase
 	{
 		if (success)
 		{
+			// Do not trigger another shutdown save on exit transition
+			GetGame().GetSaveGameManager().SetSavingAllowed(false);
 			CloseToMainMenu();
 			return;
 		}
@@ -644,7 +659,7 @@ class PauseMenuUI : ChimeraMenuBase
 		{
 			m_EditorPhotoOpenButton.GetRootWidget().SetVisible(false);
 			m_EditorPhotoCloseButton.GetRootWidget().SetVisible(false);
-			
+
 		}
 		else
 		{
@@ -660,7 +675,7 @@ class PauseMenuUI : ChimeraMenuBase
 				{
 					m_EditorPhotoOpenButton.GetRootWidget().SetVisible(true);
 					m_EditorPhotoCloseButton.GetRootWidget().SetVisible(false);
-	
+
 					//Set enabled
 					m_EditorPhotoOpenButton.SetEnabled(!editorManager.IsLimited() || GetGame().GetPlayerController().GetControlledEntity());
 				}
@@ -671,7 +686,7 @@ class PauseMenuUI : ChimeraMenuBase
 					m_EditorPhotoCloseButton.SetEnabled(editorManager.CanClose());
 				}
 			}
-		}		
+		}
 
 	}
 
@@ -717,9 +732,7 @@ class PauseMenuUI : ChimeraMenuBase
 	private void OnRestartConfirm()
 	{
 		GetGame().GetMenuManager().CloseAllMenus();
-
-		auto manager = GetGame().GetSaveGameManager();
-		manager.StartPlaythrough(manager.GetCurrentMissionResource());
+		GameStateTransitions.RequestScenarioRestart();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -764,6 +777,8 @@ class PauseMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	private void OnRespawn()
 	{
+		m_RespawnDialog.m_OnConfirm.Remove(OnRespawn);
+		m_RespawnDialog.Close();
 		PlayerController playerController = GetGame().GetPlayerController();
 		if (!playerController)
 			return;
@@ -824,6 +839,13 @@ class PauseMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected bool IsSavingOnExit()
 	{
-		return !Replication.IsRunning() && GetGame().GetSaveGameManager().IsSavingAllowed();
+		if (Replication.IsClient())
+			return false; // No saving as proxy in MP
+
+		if (!GetGame().GetSaveGameManager().IsSavingAllowed())
+			return false;
+
+		// Check if exit saves are enabled for current mission
+		return GetGame().GetSaveGameManager().GetEnabledSaveTypes() & ESaveGameType.SHUTDOWN;
 	}
 }

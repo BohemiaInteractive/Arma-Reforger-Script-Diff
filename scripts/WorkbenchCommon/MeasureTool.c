@@ -22,6 +22,7 @@ class MeasureTool : WorldEditorTool
 	protected int m_iLinePointsCount;
 	protected float m_fLastX;
 	protected float m_fLastY;
+	protected bool m_bActivated = false;
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMouseMoveEvent(float x, float y)
@@ -29,12 +30,10 @@ class MeasureTool : WorldEditorTool
 		vector traceStart;
 		vector traceEnd;
 		vector traceDir;
-
-		m_Crosshair.SetTextColor(ARGBF(1, 1.0, 1.0, 1.0));
-		m_Text.SetTextColor(ARGBF(1, 1.0, 1.0, 1.0));
-		m_Crosshair.SetPosition(x - 9, y - 16);
+		
+		m_Crosshair.SetPosition(x, y);
 		m_Crosshair.SetText("+");
-		m_Text.SetPosition(x + 15, y);
+		m_Text.SetPosition(x, y);
 
 		TraceFlags traceFlags = TraceFlags.WORLD;
 		if (m_bCheckAgainstEntities)
@@ -47,7 +46,7 @@ class MeasureTool : WorldEditorTool
 			if (m_iLinePointsCount >= 1)
 			{
 				m_fDistanceCurrent = (m_vPrevious3DPoint - m_vCurrent3DPoint).Length();
-				m_Text.SetText((m_fDistanceCurrent + m_fDistancePrevious).ToString() + " m");
+				m_Text.SetText("  " + (m_fDistanceCurrent + m_fDistancePrevious).ToString() + " m");
 				m_aLinePoints[m_iLinePointsCount] = traceEnd;
 				m_Polyline = Shape.CreateLines(ARGB(255, 255, 255, 255), ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP, m_aLinePoints, m_iLinePointsCount + 1);
 				m_fLastX = x;
@@ -59,8 +58,8 @@ class MeasureTool : WorldEditorTool
 			// line is being drawn and cursor is out of terrain bounds, stick cursor and length info to terrain's edge
 			if (m_iLinePointsCount >= 1)
 			{
-				m_Crosshair.SetPosition(m_fLastX - 9, m_fLastY - 16);
-				m_Text.SetPosition(m_fLastX + 15, m_fLastY);
+				m_Crosshair.SetPosition(m_fLastX, m_fLastY);
+				m_Text.SetPosition(m_fLastX, m_fLastY);
 			}
 			else
 			// line is not being drawn and cursor is out of terrain bounds
@@ -134,16 +133,24 @@ class MeasureTool : WorldEditorTool
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnActivate()
+	void Init()
 	{
-		m_Text = DebugTextScreenSpace.Create(m_API.GetWorld(), "", 0, 100, 100, 14, ARGBF(1, 1, 1, 1), 0x00000000);
-		m_Crosshair = DebugTextScreenSpace.Create(m_API.GetWorld(), "", 0, 0, 0, 30, ARGBF(1, 1, 1, 1), 0x00000000);
+		m_Text = DebugTextScreenSpace.Create(
+			m_API.GetWorld(), "",
+			DebugTextFlags.DONT_SCALE_POS,
+			100, 100, 14, ARGBF(1, 1, 1, 1), 0x00000000
+		);
+		m_Crosshair = DebugTextScreenSpace.Create(
+			m_API.GetWorld(), "",
+			DebugTextFlags.DONT_SCALE_POS | DebugTextFlags.CENTER,
+			0, 0, 30, ARGBF(1, 1, 1, 1), 0x00000000
+		);
 		m_fDistancePrevious = 0.0;
 		m_aSegmentLengths = {};
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnDeActivate()
+	void Deinit()
 	{
 		m_Text = null;
 		m_Crosshair = null;
@@ -154,4 +161,38 @@ class MeasureTool : WorldEditorTool
 		m_iLinePointsCount = 0;
 		m_Polyline = null;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnActivate()
+	{ 
+		Init();
+		m_bActivated = true;
+	}
+	
+	
+	override void OnDeActivate()
+	{
+		Deinit();
+		m_bActivated = false;
+	}
+	
+	override void OnAfterLoadWorld()
+	{
+		if (m_bActivated)
+		{
+			// Loaded a world while the tool was activated
+			// => everything was deinitialized in OnBeforeUnloadWorld
+			// => reinit
+			Init();
+		}
+	}
+	override void OnBeforeUnloadWorld()
+	{
+		if (m_bActivated)
+		{
+			// Everything is invalid => deinitialize
+			Deinit();
+		}
+	}
+	
 };

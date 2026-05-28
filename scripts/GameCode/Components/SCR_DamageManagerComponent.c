@@ -9,6 +9,8 @@ class SCR_DamageManagerComponentClass : DamageManagerComponentClass
 	[Attribute(category: "Repairs")]
 	protected ref SCR_RepairConfig m_RepairConfig;
 
+	protected ref map<EHitZoneGroup, ref array<int>> m_mHitZoneGroupMap;
+
 	//------------------------------------------------------------------------------------------------
 	SCR_SecondaryExplosions GetSecondaryExplosions()
 	{
@@ -35,6 +37,51 @@ class SCR_DamageManagerComponentClass : DamageManagerComponentClass
 		}
 
 		return m_RepairConfig.GetBurnStateForHealth(health, state);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Retreives a list of ids which are corresponding to the id of the hit zones that are part of the provided group
+	//! \param[in] hitZoneGroup
+	//! \return list of ids, if none are found then null
+	array<int> GetGroupHitZoneIds(EHitZoneGroup hitZoneGroup)
+	{
+		if (!m_mHitZoneGroupMap)
+			return null;
+
+		return m_mHitZoneGroupMap.Get(hitZoneGroup);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] owner who tried to do the initialization
+	//! \param[in] dmgManager which tried to do the initialization
+	void InitPrefabData(notnull IEntity owner, notnull SCR_DamageManagerComponent dmgManager)
+	{
+		if (m_mHitZoneGroupMap)
+			return; // if it isnt null then we assume that this was already done, thus we quit
+
+		array<HitZone> allHitZones = {};
+		if (dmgManager.GetAllHitZonesInHierarchy(allHitZones) < 1)
+			return; // we have to ignore such entities as PreloadManager can spawn character prefabs on game startup, but they will not have any hit zones. This would result in us having an empty map if we wouldn't quit now
+
+		m_mHitZoneGroupMap = new map<EHitZoneGroup, ref array<int>>();
+		EHitZoneGroup group;
+		SCR_HitZone scrHitZone;
+		array<int> groupedIds;
+		foreach (int hitZoneId, HitZone hitzone : allHitZones)
+		{
+			scrHitZone = SCR_HitZone.Cast(hitzone);
+			if (!scrHitZone)
+				continue;
+
+			group = scrHitZone.GetHitZoneGroup();
+			groupedIds = m_mHitZoneGroupMap.Get(group);
+			if (groupedIds)
+				groupedIds.Insert(hitZoneId);
+			else
+				groupedIds = {hitZoneId};
+
+			m_mHitZoneGroupMap.Set(group, groupedIds);
+		}
 	}
 }
 
@@ -187,10 +234,13 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	*/
 	float GetMinDestroyDamage(EDamageType damageType, array<HitZone> hitzones)
 	{
+		if (!IsDamageHandlingEnabled())
+			return -1;
+
 		float damage;
 		float damageMultiplier;
 		HitZone defaultHitzone = GetDefaultHitZone();
-		if (!IsDamageHandlingEnabled() || defaultHitzone.GetDamageMultiplier(damageType) * defaultHitzone.GetBaseDamageMultiplier() == 0)
+		if (defaultHitzone.GetDamageMultiplier(damageType) * defaultHitzone.GetBaseDamageMultiplier() == 0)
 			return -1; // invalid damage value, because this vehicle cannot be destroyed
 
 		foreach (HitZone hitZone : hitzones)
@@ -360,12 +410,11 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get a list of all hitzones of specific hitzone group
-	\param hitZoneGroup Hitzone group to get hitzones of
-	\param[out] groupHitZones List of group hitzones found
-	\return Count of found group hitzones
-	*/
+	//! Get a list of all hit zones of specific hit zone group from entire hierarchy of the owner of this component
+	//! \param[in] hitZoneGroup group to get hit zones of
+	//! \param[out] groupHitZones List of group hit zones found
+	//! \param[in] clearArray
+	//! \return Count of found group hit zones
 	int GetHitZonesOfGroup(EHitZoneGroup hitZoneGroup, out notnull array<HitZone> groupHitZones, bool clearArray = true)
 	{
 		if (clearArray)
@@ -375,23 +424,42 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		GetAllHitZonesInHierarchy(allHitZones);
 		SCR_HitZone scrHitZone;
 
-		foreach (HitZone hitzone : allHitZones)
+		foreach (HitZone hitZone : allHitZones)
 		{
-			scrHitZone = SCR_HitZone.Cast(hitzone);
+			scrHitZone = SCR_HitZone.Cast(hitZone);
 			if (scrHitZone && scrHitZone.GetHitZoneGroup() == hitZoneGroup)
-				groupHitZones.Insert(hitzone);
+				groupHitZones.Insert(hitZone);
 		}
 
 		return groupHitZones.Count();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get a list of all hitzones of specific hitzone group
-	\param hitZoneGroups List of Hitzone groups to get hitzones of
-	\param[out] groupHitZones List of group hitzones found
-	\return Count of found group hitzones
-	*/
+	//! Get a list of all hit zones of specific hit zone group only from owner of this component
+	//! \param[in] hitZoneGroups group to get hit zones of
+	//! \param[out] groupHitZones List of group hit zones found
+	//! \param[in] clearArray
+	//! \return Count of found group hit zones
+	int GetHitZonesOfGroupFromOwner(EHitZoneGroup hitZoneGroup, out notnull array<HitZone> groupHitZones, bool clearArray = true)
+	{
+		if (clearArray)
+			groupHitZones.Clear();
+
+		SCR_DamageManagerComponentClass data = SCR_DamageManagerComponentClass.Cast(GetComponentData(GetOwner()));
+		array<int> groupedHitZoneIds = data.GetGroupHitZoneIds(hitZoneGroup);
+		if (!groupedHitZoneIds)
+			return -1;
+
+		GetHitZonesByID(groupHitZones, groupedHitZoneIds);
+
+		return groupHitZones.Count();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get a list of all hit zones of specific hit zone group from entire hierarchy of the owner of this component
+	//! \param[in] hitZoneGroups List of Hitzone groups to get hit zones of
+	//! \param[out] groupHitZones List of group hit zones found
+	//! \return Count of found group hit zones
 	int GetHitZonesOfGroups(notnull array<EHitZoneGroup> hitZoneGroups, out notnull array<HitZone> groupHitZones)
 	{
 		groupHitZones.Clear();
@@ -403,12 +471,39 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		GetAllHitZonesInHierarchy(allHitZones);
 		SCR_HitZone scrHitZone;
 
-		foreach (HitZone hitzone : allHitZones)
+		foreach (HitZone hitZone : allHitZones)
 		{
-			scrHitZone = SCR_HitZone.Cast(hitzone);
+			scrHitZone = SCR_HitZone.Cast(hitZone);
 			if (scrHitZone && hitZoneGroups.Contains(scrHitZone.GetHitZoneGroup()))
-				groupHitZones.Insert(hitzone);
+				groupHitZones.Insert(hitZone);
 		}
+
+		return groupHitZones.Count();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get a list of all hit zones of specific hit zone group only from the owner of this component
+	//! \param[in] hitZoneGroups List of Hitzone groups to get hit zones of
+	//! \param[out] groupHitZones List of group hit zones found
+	//! \return Count of found group hit zones
+	int GetHitZonesOfGroupsFromOwner(notnull array<EHitZoneGroup> hitZoneGroups, out notnull array<HitZone> groupHitZones)
+	{
+		groupHitZones.Clear();
+
+		if (hitZoneGroups.IsEmpty())
+			return 0;
+
+		SCR_DamageManagerComponentClass data = SCR_DamageManagerComponentClass.Cast(GetComponentData(GetOwner()));
+		array<EHitZoneGroup> groupedHitZoneIds = {};
+		array<EHitZoneGroup> individualHitZoneGroupIds;
+		foreach (EHitZoneGroup hitZoneGroup : hitZoneGroups)
+		{
+			individualHitZoneGroupIds = data.GetGroupHitZoneIds(hitZoneGroup);
+			if (individualHitZoneGroupIds)
+				groupedHitZoneIds.InsertAll(individualHitZoneGroupIds);
+		}
+
+		GetHitZonesByID(groupHitZones, groupedHitZoneIds);
 
 		return groupHitZones.Count();
 	}
@@ -444,13 +539,13 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		if (!owner)
 			return;
 
-		HitZone hitZone = GetDefaultHitZone();
-		if (!hitZone)
-			return;
-
 		vector hitPosDirNorm[3];
 
+		HitZone hitZone = GetDefaultHitZone();
 		SCR_DamageContext damageContext = new SCR_DamageContext(EDamageType.TRUE, hitZone.GetMaxHealth(), hitPosDirNorm, owner, hitZone, instigator, null, -1, -1);
+		if (instigator.GetInstigatorType() == InstigatorType.INSTIGATOR_GM)
+			damageContext.damageEffect = new SCR_GameMasterActionDamageEffect();
+
 		HandleDamage(damageContext);
 	}
 
@@ -716,8 +811,6 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 			return;
 
 		HitZone defaultHZ = GetDefaultHitZone();
-		if (!defaultHZ)
-			return;
 
 		array<HitZone> hitZones = {};
 		GetAllHitZones(hitZones);
@@ -1307,6 +1400,16 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 
 		if (dType == EDamageType.FIRE && !IsDamagedOverTime(dType))
 			DisconnectFromFireDamageSystem();
+	}
+
+	//------------------------------------------------------------------------------------------------ 
+	override void OnPostInit(IEntity owner)
+	{
+		if (GetGame().GetWorld() != owner.GetWorld())
+			return; // ignore entities which are in a different world, like preview world, or preload manager world
+
+		SCR_DamageManagerComponentClass data = SCR_DamageManagerComponentClass.Cast(GetComponentData(owner));
+		data.InitPrefabData(owner, this);
 	}
 
 	//------------------------------------------------------------------------------------------------

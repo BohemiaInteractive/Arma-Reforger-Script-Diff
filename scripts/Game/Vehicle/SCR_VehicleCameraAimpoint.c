@@ -14,7 +14,7 @@ class SCR_VehicleCameraAimpoint : Managed
 		Defines magnitude of offsets in local space of the camera based on vehicle speed.
 		X (horizontal) axis represents the vehicle speed in kph, Y (vertical) axis represents the amount of translation.
 	*/
-	[Attribute("0 0 1 1", UIWidgets.GraphDialog, desc: "Source data. X (horizontal) axis represents the vehicle speed in kph, Y (vertical) axis represents the amount of translation.")]
+	[Attribute("0 0 1 1", UIWidgets.CurveDialog, desc: "Source data. X (horizontal) axis represents the vehicle speed in kph, Y (vertical) axis represents the amount of translation.")]
 	private ref Curve m_pCurveData;
 	
 	/*!

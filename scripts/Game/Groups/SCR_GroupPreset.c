@@ -1,6 +1,9 @@
 [BaseContainerProps()]
-class SCR_GroupPreset
+class SCR_GroupPreset : BaseContainerObject
 {	
+	[Attribute("1")]
+	protected bool m_bIsEnabled;
+
 	[Attribute(desc: "Name of the Group")]
 	protected string m_sGroupName;
 	
@@ -16,7 +19,7 @@ class SCR_GroupPreset
 	[Attribute(desc: "Description of the Group")]
 	protected string m_sGroupDescription;
 	
-	[Attribute(desc: "Count of group members.")]
+	[Attribute(desc: "Max number of players in this group where 0 means infinite members", params: "0 inf")]
 	protected int m_iGroupSize;
 	
 	[Attribute(desc: "Radio frequency for communication in kHz.")]
@@ -126,6 +129,12 @@ class SCR_GroupPreset
 	}
 	
 	//------------------------------------------------------------------------------------------------	
+	bool IsEnabled()
+	{
+		return m_bIsEnabled;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	ResourceName GetGroupFlag()
 	{
 		return m_sGroupFlag;

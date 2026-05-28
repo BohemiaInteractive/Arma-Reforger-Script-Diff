@@ -30,7 +30,7 @@ class SCR_ArsenalItemRankHintUIInfo : SCR_InventoryItemHintUIInfo
 				return false;
 			
 			//~ Hide the hint if the faction has no rank equal to the required rank and the item is availible to be taken
-			if (playerFaction.GetRankName(m_eRequiredRank).IsEmpty())
+			if (playerFaction.GetRanks().GetRankName(m_eRequiredRank).IsEmpty())
 				return false;
 		}
 		
@@ -69,7 +69,7 @@ class SCR_ArsenalItemRankHintUIInfo : SCR_InventoryItemHintUIInfo
 			return m_sRankLessFactionFallback;
 		}
 		
-		string rankName = playerFaction.GetRankName(m_eRequiredRank);
+		string rankName = playerFaction.GetRanks().GetRankName(m_eRequiredRank);
 		
 		if (rankName.IsEmpty())
 			return m_sRankLessFactionFallback;
@@ -99,7 +99,7 @@ class SCR_ArsenalItemRankHintUIInfo : SCR_InventoryItemHintUIInfo
 		if (!playerFaction)
 			return false;
 		
-		string rankInsignia = playerFaction.GetRankInsignia(m_eRequiredRank);
+		string rankInsignia = playerFaction.GetRanks().GetRankInsignia(m_eRequiredRank);
 		if (rankInsignia.IsEmpty())
 		{
 			imageWidget.LoadImageTexture(0, m_sRankLessFactionIconFallback);

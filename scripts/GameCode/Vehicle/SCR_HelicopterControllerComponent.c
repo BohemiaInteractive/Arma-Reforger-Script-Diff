@@ -72,7 +72,7 @@ class SCR_HelicopterControllerComponent : HelicopterControllerComponent
 	override protected event void OnPrepareControls()
 	{
 		// Set the collective based on the last used input device.
-		EInputDeviceType deviceType = GetGame().GetInputManager().GetLastUsedInputDevice();
+		EInputDeviceType deviceType = GetCollectiveInputType();
 		if (deviceType == EInputDeviceType.GAMEPAD)
 		{
 			ECollectiveModeForSettings collectiveMode;

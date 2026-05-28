@@ -4,13 +4,13 @@
 #endif
 
 //! \mainpage Main Page
-//! Welcome to Arma Reforger script documentation.
+//! Welcome to the Arma Reforger script documentation.
 //!
-//! Be sure to visit the [BIKI] \
-//! and consult the scripting [guidelines] including their [conventions]
-//! [BIKI]: https://community.bistudio.com/wiki/
-//! [guidelines]: https://community.bistudio.com/wiki/Category:Arma_Reforger/Modding/Guidelines/Scripting
-//! [conventions]: https://community.bistudio.com/wiki/Arma_Reforger:Scripting:_Conventions
+//! Be sure to visit the [Community Wiki](https://community.bistudio.com/wiki/) (aka BIKI)
+//! and consult the [Scripting Guidelines](https://community.bistudio.com/wiki/Category:Arma_Reforger/Modding/Scripting/Guidelines)
+//! including their [conventions](https://community.bistudio.com/wiki/Arma_Reforger:Scripting:_Conventions).
+//!
+//! For Doxygen-related documentation, see [Doxygen](https://community.bistudio.com/wiki/Doxygen) on the BIKI.
 
 //! GameMode Game Flags represented by bit mask
 enum EGameFlags
@@ -758,6 +758,12 @@ class ArmaReforgerScripted : ChimeraGame
 			m_CoresManager.OnGameEnd();
 	}
 
+	override protected void OnBeforeWorldCleanup()
+	{
+		if (GetGame().InPlayMode() && m_CoresManager)
+			m_CoresManager.OnBeforeWorldCleanup();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnUserSettingsChangedEvent()
 	{
@@ -1099,6 +1105,12 @@ class ArmaReforgerScripted : ChimeraGame
 		}
 
 		m_pLoadoutManager = instance;
+		if (!m_pLoadoutManager)
+			return;
+
+		SCR_FactionManager factionMgr = SCR_FactionManager.Cast(GetFactionManager());
+		if (factionMgr)
+			factionMgr.UpdateCustomLoadoutSupportState(m_pLoadoutManager);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1215,10 +1227,6 @@ class ArmaReforgerScripted : ChimeraGame
 			Print(string.Format("PlayGameConfig: Empty resource passed!"), LogLevel.NORMAL);
 			return;
 		}
-
-		SaveGameManager savegameManager = GetSaveGameManager();
-		if (savegameManager && !savegameManager.GetActiveSave())
-			savegameManager.StartPlaythrough(sResource, transition: false);
 
 		if (GameStateTransitions.RequestScenarioChangeTransition(sResource, string.Empty, addonsList))
 			GetGame().GetMenuManager().CloseAllMenus();

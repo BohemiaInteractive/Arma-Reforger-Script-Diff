@@ -286,6 +286,14 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Called before a previously player controlled character is deleted from the game after e.g. disconnect or reconnect audit timeout.
+	//! \param[in] playerEntity
+	void OnPlayerEntityCleanup_S(notnull IEntity playerEntity)
+	{
+		m_SpawnLogic.OnPlayerEntityCleanup_S(playerEntity);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! \return
 	SCR_SpawnLogic GetSpawnLogic()
 	{

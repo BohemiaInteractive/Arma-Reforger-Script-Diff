@@ -142,7 +142,7 @@ class SCR_AttributesManagerEditorComponent : SCR_BaseEditorComponent
 			m_aEditedItems = {};
 			foreach (Managed item: items)
 			{
-				int id = Replication.FindId(item);
+				int id = Replication.FindItemId(item);
 				if (id != -1 && m_aEditedItems.Find(item) == -1)
 				{
 					m_aEditedItems.Insert(item);

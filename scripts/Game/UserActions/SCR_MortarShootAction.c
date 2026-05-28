@@ -193,7 +193,8 @@ class SCR_MortarShootAction : SCR_ScriptedUserAction
 	{
 		float fuzeTime;
 		reader.ReadFloat(fuzeTime);
-
+		bool loaded = super.OnLoadActionData(reader);
+		
 		if (!m_Loader)
 			return false;
 
@@ -205,6 +206,7 @@ class SCR_MortarShootAction : SCR_ScriptedUserAction
 			return false;
 
 		m_MortarMuzzleComponent.LoadShell(m_ShellComp, m_Loader, fuzeTime, m_bPerformFromTheLeftSide);
-		return super.OnLoadActionData(reader);
+		
+		return loaded;
 	}
 }

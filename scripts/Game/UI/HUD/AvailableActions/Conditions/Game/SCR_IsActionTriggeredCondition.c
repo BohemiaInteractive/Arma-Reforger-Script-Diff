@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_IsActionTriggeredCondition : SCR_AvailableActionCondition
 {
@@ -6,9 +5,8 @@ class SCR_IsActionTriggeredCondition : SCR_AvailableActionCondition
 	protected string m_sAction;
 
 	//------------------------------------------------------------------------------------------------
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		bool result = GetGame().GetInputManager().GetActionTriggered(m_sAction);
-		return GetReturnResult(result);
+		return GetReturnResult(GetGame().GetInputManager().GetActionTriggered(m_sAction));
 	}
-};
+}

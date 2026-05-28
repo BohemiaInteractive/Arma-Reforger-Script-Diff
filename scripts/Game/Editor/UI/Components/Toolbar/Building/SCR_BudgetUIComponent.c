@@ -74,7 +74,10 @@ class SCR_BudgetUIComponent : SCR_BaseEditorUIComponent
 		
 		SCR_CampaignBuildingProviderComponent providerComponent = m_CampaignBuildingComponent.GetProviderComponent();
 		if (!providerComponent)
+		{
+			m_CampaignBuildingComponent.GetManager().Close(); // build mode must have a provider
 			return;
+		}
 		
 		EEditableEntityBudget budgetToShow = m_CampaignBuildingComponent.GetShownBudget();
 		if (budgetToShow == INVALID_BUDGET)

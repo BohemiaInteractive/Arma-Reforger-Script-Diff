@@ -580,14 +580,14 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 			return true;
 
 		reader.ReadRplId(m_RplCompId);
+		reader.ReadInt(m_iBuilderId);
 		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(m_RplCompId));
 		if (!rplComp)
 		{
 			SCR_CampaignBuildingProviderComponent.GetOnProviderCreated().Insert(SetProviderFromRplID);
 			return true;
 		}
-
-		reader.ReadInt(m_iBuilderId);
+		
 		SetProviderEntity(rplComp.GetEntity());
 
 		return true;

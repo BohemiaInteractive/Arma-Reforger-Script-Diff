@@ -11,20 +11,25 @@ Do not modify, this script is generated
 
 sealed class AudioSystem
 {
-	private void AudioSystem();
-	private void ~AudioSystem();
+	/** \name Constants
+	 * Populated by the engine.
+	 */
+	///@{
 
 	// Mastering voices categories.
-	static const int SFX = 0;
-	static const int Music = 1;
-	static const int VoiceChat = 2;
-	static const int Dialog = 3;
-	static const int UI = 4;
+	static const int SFX;
+	static const int Music;
+	static const int VoiceChat;
+	static const int Dialog;
+	static const int UI;
+	static const int BV_None;
+	static const int BV_Sphere;
+	static const int BV_Box;
+	static const int BV_Cylinder;
+	///@}
 
-	static const int BV_None = 0;
-	static const int BV_Sphere = 1;
-	static const int BV_Box = 2;
-	static const int BV_Cylinder = 3;
+	private void AudioSystem();
+	private void ~AudioSystem();
 
 	//! Play *.wav file.
 	static proto AudioHandle PlaySound(string resourceName);

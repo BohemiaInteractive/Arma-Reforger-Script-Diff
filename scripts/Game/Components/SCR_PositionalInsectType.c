@@ -295,7 +295,7 @@ class SCR_PositionalAmbientLeafParticles : SCR_PositionalInsectType
 	override void Update(vector cameraPos)
 	{
 		//Get closest entities array
-		m_AmbientSoundsComponent.GetClosestEntities(EQueryType.TreeLeafy, 10, m_aClosestEntities);
+		m_AmbientSoundsComponent.GetClosestEntities(EAmbientSoundFlags.TreeLeafy, 10, m_aClosestEntities);
 
 		// Removes insects that are no longer among closest entities
 		RemoveDistantInsects();

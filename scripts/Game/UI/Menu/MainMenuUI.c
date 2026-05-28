@@ -38,6 +38,9 @@ class MainMenuUI : ChimeraMenuBase
 	protected static bool s_bDidCheckNetwork;
 	protected static const int SERVICES_STATUS_CHECK_DELAY = 2000; // needed for backend API to prepare
 	protected bool m_bFirstLoad;
+	
+	protected bool m_bCanShowTutorial;
+	protected MissionWorkshopItem m_TutorialMission;
 
 	// Privileges callback
 	protected ref SCR_ScriptPlatformRequestCallback m_CallbackGetPrivilege;
@@ -77,6 +80,7 @@ class MainMenuUI : ChimeraMenuBase
 
 			tile.m_OnClicked.Insert(OnTileClick);
 			tile.m_OnFocused.Insert(OnTileFocus);
+			
 			child = child.GetSibling();
 		}
 
@@ -202,7 +206,6 @@ class MainMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void LoadTutorial(SCR_MainMenuConfiguration menuConfig, notnull Widget root, bool isContentDisabled = false)
 	{
-		return;
 		WorkshopApi workshopAPI = GetGame().GetBackendApi().GetWorkshop();
 		ResourceName tutorial = menuConfig.m_TutorialScenario.m_sScenarioName;
 		MissionWorkshopItem itemTutorial = workshopAPI.GetInGameScenario(tutorial);
@@ -220,16 +223,20 @@ class MainMenuUI : ChimeraMenuBase
 			settings.Get("m_iPlayTutorialShowMax", playedTutorialMax);
 		}
 
-		bool canShowTutorial = !playedTutorial && playedTutorialCount < playedTutorialMax;
+		m_bCanShowTutorial = !playedTutorial && playedTutorialCount < playedTutorialMax;
 		//we do show tutorial as a first one in case of content still loading
-		if (canShowTutorial || isContentDisabled)
+		if (m_bCanShowTutorial || isContentDisabled)
+		{
 			CreateTile(tutorial, root, isContentDisabled: false);
+			m_TutorialMission = SCR_ScenarioUICommon.GetInGameScenario(tutorial);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void LoadMenuTiles(SCR_MainMenuConfiguration menuConfig, notnull Widget root, bool isContentDisabled = false)
 	{
 		array<ResourceName> customTiles = menuConfig.m_aMainMenuCustomTiles;
+		SCR_MainMenuTile_MenuComponent menuComp;
 		Widget tileWidget;
 		ImageWidget background;
 		foreach(ResourceName tile: customTiles)
@@ -239,9 +246,17 @@ class MainMenuUI : ChimeraMenuBase
 				continue;
 			
 			tileWidget.SetEnabled(!isContentDisabled);
+			
 			background = ImageWidget.Cast(tileWidget.FindAnyWidget("Image"));
 			if (background && isContentDisabled)
 				background.SetSaturation(0);
+		
+			menuComp = SCR_MainMenuTile_MenuComponent.Cast(tileWidget.GetChildren().FindHandler(SCR_MainMenuTile_MenuComponent));
+			if (!menuComp)
+				return;
+			
+			if (m_bCanShowTutorial && m_TutorialMission)
+				menuComp.SetTutorial(m_TutorialMission);
 		}
 	}
 
@@ -250,7 +265,7 @@ class MainMenuUI : ChimeraMenuBase
 	//! \param[in] root related widget
 	//! \param[in] isRecommended 
 	//! \param[in] isContentDisabled when true data is not loaded yet, content inaccessible
-	protected void CreateTile(ResourceName mission, notnull Widget root, bool isRecommended = false, bool isContentDisabled = false)
+	protected void CreateTile(ResourceName mission, notnull Widget root, bool isRecommended = false, bool isContentDisabled = false, bool isTutorialNeeded = false)
 	{
 		MissionWorkshopItem item = SCR_ScenarioUICommon.GetInGameScenario(mission);
 		if (!item)
@@ -270,12 +285,15 @@ class MainMenuUI : ChimeraMenuBase
 			tile.DisableTile();
 		
 		tile.ShowMission(item, isRecommended);
+		
+		if (isTutorialNeeded && m_TutorialMission)
+			tile.SetTutorial(m_TutorialMission);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] isContentDisabled when true data is not loaded yet, content inaccessible 
 	protected void PrepareTiles(bool isContentDisabled = false)
-	{
+	{		
 		Resource resource = BaseContainerTools.LoadContainer(CONFIG);
 		if (!resource)
 			return;
@@ -402,7 +420,7 @@ class MainMenuUI : ChimeraMenuBase
 				disabled = !entry.m_bScenarioAvailableWhenDownloadingContent;
 				break;
 			}
-			CreateTile(p.m_Item.Id(), root, p.m_bRecommended, isContentDisabled : disabled && isContentDisabled);
+			CreateTile(p.m_Item.Id(), root, p.m_bRecommended, isContentDisabled : disabled && isContentDisabled, m_bCanShowTutorial);
 		}
 		
 		//check if MP and Workshop should be accessible
@@ -457,12 +475,21 @@ class MainMenuUI : ChimeraMenuBase
 	{
 		if (!IsFocused())
 			return;
+		
+		if (IsShowingTutorial(comp))
+			return;
 
-		switch (comp.m_eMenuPreset)
+		OnTileOpenMenu();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnTileOpenMenu()
+	{
+		switch (m_FocusedTile.m_eMenuPreset)
 		{
 			case ChimeraMenuPreset.FeedbackDialog:
 			{
-				GetGame().GetMenuManager().OpenDialog(comp.m_eMenuPreset);
+				GetGame().GetMenuManager().OpenDialog(m_FocusedTile.m_eMenuPreset);
 				break;
 			}
 			case ChimeraMenuPreset.ContentBrowser:
@@ -477,10 +504,49 @@ class MainMenuUI : ChimeraMenuBase
 			}
 			default:
 			{
-				GetGame().GetMenuManager().OpenMenu(comp.m_eMenuPreset);
+				GetGame().GetMenuManager().OpenMenu(m_FocusedTile.m_eMenuPreset);
 				break;
 			}
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayTutorial()
+	{
+		SCR_ScenarioUICommon.TryPlayScenario(m_TutorialMission);
+		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.MainMenu);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool IsShowingTutorial(SCR_MenuTileComponent comp)
+	{
+		if (!comp.IgnoreTutorialWarning() && m_bCanShowTutorial)
+		{
+			BaseContainer settings = GetGame().GetGameUserSettings().GetModule("SCR_RecentGames");
+
+			if (settings)
+			{
+				int playTutorialShowCount;
+				
+				settings.Get("m_iPlayTutorialShowCount", playTutorialShowCount);
+				playTutorialShowCount++;
+				
+				settings.Set("m_iPlayTutorialShowCount", playTutorialShowCount);
+				GetGame().UserSettingsChanged();
+			}
+
+			// Tutorial confirmation dialog
+			SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateTutorialDialog();
+			if (dialog)
+			{
+				dialog.m_OnConfirm.Insert(OnPlayTutorial);
+				dialog.m_OnCancel.Insert(OnTileOpenMenu);
+				
+				return true;
+			}
+		}
+		
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -499,7 +565,6 @@ class MainMenuUI : ChimeraMenuBase
 			return;
 
 		if (m_FocusedTile)
-	//!
 			OnTileClick(m_FocusedTile);
 	}
 

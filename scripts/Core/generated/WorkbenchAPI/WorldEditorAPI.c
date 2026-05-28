@@ -136,7 +136,7 @@ sealed class WorldEditorAPI
 	/*!
 	Returns terrain height (world space) for given tile. Data are in final form - with applied roads and other modifiers. Very fast method.
 	Output array will be resized by this method and size will be:
-	(GetTerrainSizeX(terrainIndex) / GetTerrainTilesX(terrainIndex)) * (GetTerrainSizeY(terrainIndex) / GetTerrainTilesY(terrainIndex))
+	(GetTerrainResolutionX(terrainIndex) / GetTerrainTilesX(terrainIndex)) * (GetTerrainResolutionY(terrainIndex) / GetTerrainTilesY(terrainIndex))
 
 	\code
 	WorldEditor we = Workbench.GetModule(WorldEditor);
@@ -157,7 +157,7 @@ sealed class WorldEditorAPI
 	Write terrain height (world space) to given tile. Very fast method.
 	Use in combination with BeginTerrainAction(TerrainToolType.HEIGHT_EXACT) /EndTerrainAction
 	Input array must have exact size:
-	(GetTerrainSizeX(terrainIndex) / GetTerrainTilesX(terrainIndex)) * (GetTerrainSizeY(terrainIndex) / GetTerrainTilesY(terrainIndex))
+	(GetTerrainResolutionX(terrainIndex) / GetTerrainTilesX(terrainIndex)) * (GetTerrainResolutionY(terrainIndex) / GetTerrainTilesY(terrainIndex))
 
 	\code
 	WorldEditor we = Workbench.GetModule(WorldEditor);
@@ -186,6 +186,7 @@ sealed class WorldEditorAPI
 	proto external float GetTerrainUnitScale(int terrainIndex = 0);
 	//! Adds entity to list of terrain flatters and updates heightmap
 	proto external void RemoveTerrainFlatterEntity(IEntity entity, bool bUpdateTerrain = true);
+	proto external void RemoveCommentEntity(IEntity entity);
 	//--------------------------------- Rivers ----------------------------------
 	proto external void RegenerateFlowMaps(bool preview = true, bool save = true, bool asyncReturn = true, bool noWarning = false);
 	//--------------------------------- Shore -----------------------------------
@@ -202,6 +203,7 @@ sealed class WorldEditorAPI
 	//! Set world editor perspective view camera position and look direction.
 	proto external void SetCamera(vector pos, vector lookVec);
 	proto external void AddTerrainFlatterEntity(IEntity entity, vector mins, vector maxs, int iPriority, float fFalloffStart, float fFalloff, bool bForceUpdate = true, array<vector> updateMins = null, array<vector> updateMaxes = null);
+	proto external void AddCommentEntity(IEntity entity, string comment, Color commentColor = Color.White);
 	//! Fills `y` with GetTerrainSurfaceY() and returns true if on x, z position is terrain, returns false otherwise.
 	proto external bool TryGetTerrainSurfaceY(float x, float z, out float y);
 	proto external void AddToEntitySelection(notnull IEntitySource ent);
@@ -230,44 +232,19 @@ sealed class WorldEditorAPI
 	Set value of potentially nested variable. The whole path must exist, this function is just to set
 	the value. For creation, see CreateObjectArrayVariableMember().
 
-	This function traverses containers from `topLevel` using `containerIdPath`. For each entry selects property with given index.
-	If the property is an array index from entry is used to select object at given index. For array properties index must not be -1.
-
-	Let's have following config:
+	Let's have an example container from \ref ContainerID
+	To set Name in Metadata of the second shape point we do:
 	\code
-		Shape { // <- top level container
-			Points { // <- array of points
-				ShapePoint { // <- first element
-					Position 2 3 1
-					Metadata {
-						Name name1
-					}
-				}
-				ShapePoint { // <- second element
-					Position 0 1 1
-					Metadata {
-						Name name2
-					}
-				}
-			}
-		}
-	\endcode
+		ContainerID containerPath = {
+			new ContainerIdPathEntry("Points", 0), // Take the first point
+			new ContainerIdPathEntry("Metadata") // Go to metadata of the first point
+		};
 
-	To set a name of the second shape point to "secondPoint" we do:
-	\code
-		auto containerPath = new array<ref ContainerIdPathEntry>();
-
-		auto entry1 = new ContainerIdPathEntry("Points", 0); // Take the first point
-		containerPath.Insert(entry1);
-
-		auto entry2 = new ContainerIdPathEntry("Metadata"); // Go to metadata of the first point
-		containerPath.Insert(entry2);
-
-		m_API.SetVariableValue(topLevelShapeContainer, containerPath, "Name", "firstPoint"); // Set Name to given value
+		m_API.SetVariableValue(topLevelShapeContainer, containerPath, "Name", "secondPoint"); // Set Name to given value
 	\endcode
 
 	\param topLevel Container from which the search is started.
-	\param containerIdPath Path to the variable we want to set.
+	\param containerIdPath Path to the variable we want to set. \see ContainerID
 	\param key The actual variable to set.
 	\param value Value which will be set to variable.
 	\return `true` if successful, `false` otherwise.
@@ -276,7 +253,7 @@ sealed class WorldEditorAPI
 	/*!
 	Clear value of potentially nested variable. The whole path must exist, this function is just to clear the value.
 	\param topLevel Container from which the search is started.
-	\param containerIdPath Path to the variable we want to clear.
+	\param containerIdPath Path to the variable we want to clear. \see ContainerID
 	\param key The actual variable to clear.
 	\return `true` if successful, `false` otherwise.
 	*/
@@ -284,7 +261,7 @@ sealed class WorldEditorAPI
 	/*!
 	Creates a new container in object property.
 	\param topLevel Container from which the search is started
-	\param containerIdPath Path to the variable we want to set
+	\param containerIdPath Path to the variable we want to set. \see ContainerID
 	\param key How is the object property in `container` called
 	\param baseClassName What type of object should be created to the property
 	\return `true` if successful, `false` otherwise.
@@ -293,7 +270,7 @@ sealed class WorldEditorAPI
 	/*!
 	Creates a new element in array of objects property in `container`.
 	\param topLevel Container from which the search is started
-	\param containerIdPath Path to the variable we want to set
+	\param containerIdPath Path to the variable we want to set. \see ContainerID
 	\param key How is the array of object property in `container` called
 	\param baseClassName What type of object should be created to the array
 	\param memberIndex At which index should be the new element inserted
@@ -303,7 +280,7 @@ sealed class WorldEditorAPI
 	/*!
 	Removes an element from array of objects of property `key` in `container`.
 	\param topLevel Container from which the search is started
-	\param containerIdPath Path to the variable we want to set
+	\param containerIdPath Path to the variable we want to set. \see ContainerID
 	\param key How is the array of object property in `container` called
 	\param memberIndex Which element to remove
 	\return `true` if successful, `false` otherwise.

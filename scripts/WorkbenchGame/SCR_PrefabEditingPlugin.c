@@ -150,8 +150,7 @@ class SCR_PrefabEditingPlugin : SCR_PrefabEditingPluginBase
 		if (!SCR_Global.IsEditMode() || !Workbench.OpenModule(WorldEditor))
 			return;
 
-		SCR_OKCancelWorkbenchDialog dialog = new SCR_OKCancelWorkbenchDialog();
-		if (Workbench.ScriptDialog(WARNING_CAPTION, WARNING_TEXT, dialog) == 0)
+		if (Workbench.ScriptDialog(WARNING_CAPTION, WARNING_TEXT, new WorkbenchDialog_OKCancel()) == 0)
 			return;
 
 		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
@@ -246,7 +245,7 @@ class SCR_PrefabEditingPlugin : SCR_PrefabEditingPluginBase
 		int length = Math.Ceil(Math.Sqrt(entitiesCount));
 		int row;
 		int column;
-		for (int i = entitiesCount; i--; i >= 0)
+		for (int i = entitiesCount; i >= 0; --i)
 		{
 			row = Math.Floor(i / length);
 			column = i % length;
@@ -271,9 +270,9 @@ class SCR_PrefabEditingPlugin : SCR_PrefabEditingPluginBase
 
 	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("Close")]
-	protected bool ButtonClose()
+	protected int ButtonClose()
 	{
-		return false;
+		return 0;
 	}
 }
 

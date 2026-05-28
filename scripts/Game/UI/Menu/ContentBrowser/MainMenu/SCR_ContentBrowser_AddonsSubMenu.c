@@ -174,7 +174,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 				GetGame().GetCallqueue().Call(SwitchFocus, m_eFocusedWidgetState);
 		}
 		
-		SCR_AnalyticsApplication.GetInstance().WorkshopSetTab(m_iIndex);
+		//SCR_AnalyticsApplication.GetInstance().WorkshopSetTab(m_iIndex);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -373,7 +373,8 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	protected void RequestOnlinePageUnfiltered(int pageId)
 	{
 		// Hotfix: 0 is not allowed page size and there is no other way to get unfiltered total count
-		m_WorkshopApi.SetPageSize(1);
+		// Hotfix #2: 1 is now also not allowed page size
+		m_WorkshopApi.SetPageSize(2);
 
 		m_PageCallbackItemsTotal = new BackendCallback();
 		m_PageCallbackItemsTotal.SetOnSuccess(Callback_OnRequestPageGetAllAssets);
@@ -671,17 +672,17 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	protected void UpdateNavigationButtons()
 	{
 		// Filters button
-		SetNavigationButtonVisibile(m_NavFilter, !m_bPanelsModeEmpty);
+		SetNavigationButtonVisible(m_NavFilter, !m_bPanelsModeEmpty);
 
 		// Item buttons
 		SCR_WorkshopItem item = GetSelectedItem();
 		if (!item || item.GetRestricted())
 		{
-			SetNavigationButtonVisibile(m_NavDetails, false);
-			SetNavigationButtonVisibile(m_NavFavourite, false);
-			SetNavigationButtonVisibile(m_NavEnable, false);
-			SetNavigationButtonVisibile(m_NavPrimary, false);
-			SetNavigationButtonVisibile(m_NavRepair, false);			
+			SetNavigationButtonVisible(m_NavDetails, false);
+			SetNavigationButtonVisible(m_NavFavourite, false);
+			SetNavigationButtonVisible(m_NavEnable, false);
+			SetNavigationButtonVisible(m_NavPrimary, false);
+			SetNavigationButtonVisible(m_NavRepair, false);
 			return;
 		}
 		
@@ -690,11 +691,11 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 
 		SCR_EAddonPrimaryActionState state = SCR_WorkshopUiCommon.GetPrimaryActionState(item);
 		
-		SetNavigationButtonVisibile(m_NavDetails, show && m_eMode != EContentBrowserAddonsSubMenuMode.MODE_EXTERNAL_ITEM_ARRAY);
-		SetNavigationButtonVisibile(m_NavFavourite, show);
-		SetNavigationButtonVisibile(m_NavEnable, show && item.GetOffline() && !SCR_WorkshopUiCommon.IsDownloadingAddonOrDependencies(item) && !(!item.GetEnabled() && state == SCR_EAddonPrimaryActionState.DEPENDENCIES_DOWNLOAD));
-		SetNavigationButtonVisibile(m_NavPrimary, show && !primaryLabel.IsEmpty());
-		SetNavigationButtonVisibile(m_NavRepair, show && primaryLabel.IsEmpty() && item.GetCorrupted());
+		SetNavigationButtonVisible(m_NavDetails, show && m_eMode != EContentBrowserAddonsSubMenuMode.MODE_EXTERNAL_ITEM_ARRAY);
+		SetNavigationButtonVisible(m_NavFavourite, show);
+		SetNavigationButtonVisible(m_NavEnable, show && item.GetOffline() && !SCR_WorkshopUiCommon.IsDownloadingAddonOrDependencies(item) && !(!item.GetEnabled() && state == SCR_EAddonPrimaryActionState.DEPENDENCIES_DOWNLOAD));
+		SetNavigationButtonVisible(m_NavPrimary, show && !primaryLabel.IsEmpty());
+		SetNavigationButtonVisible(m_NavRepair, show && primaryLabel.IsEmpty() && item.GetCorrupted());
 		
 		// Favorite
 		if (m_NavFavourite)
@@ -890,7 +891,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		else
 			SwitchFocus(SCR_EListMenuWidgetFocus.LIST);
 
-		SCR_AnalyticsApplication.GetInstance().WorkshopUseFilterOn();
+		//SCR_AnalyticsApplication.GetInstance().WorkshopUseFilterOn();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1201,7 +1202,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	{
 		m_bClearCacheAtNextRequest = true;
 		RequestPage(0);
-		SCR_AnalyticsApplication.GetInstance().WorkshopSetFilter(filter.GetCategory().m_sInternalName, filter.m_sInternalName);
+		//SCR_AnalyticsApplication.GetInstance().WorkshopSetFilter(filter.GetCategory().m_sInternalName, filter.m_sInternalName);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1210,7 +1211,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	{
 		m_bClearCacheAtNextRequest = true;
 		RequestPage(0);
-		SCR_AnalyticsApplication.GetInstance().WorkshopUseSearch();
+		//SCR_AnalyticsApplication.GetInstance().WorkshopUseSearch();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1219,7 +1220,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	{
 		m_bClearCacheAtNextRequest = true;
 		RequestPage(0);
-		SCR_AnalyticsApplication.GetInstance().WorkshopSetSorting(sortHeader.GetSortElementName());
+		//SCR_AnalyticsApplication.GetInstance().WorkshopSetSorting(sortHeader.GetSortElementName());
 	}
 
 	//------------------------------------------------------------------------------------------------

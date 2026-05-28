@@ -355,7 +355,25 @@ class SCR_LoadoutManager : GenericEntity
 		
 		return loadouts.GetRandomElement();
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	bool IsFactionSupportingCsutomLoadouts(notnull Faction faction)
+	{
+		FactionKey factionKey = faction.GetFactionKey();
+		SCR_PlayerArsenalLoadout playerLoadout;
+		foreach (SCR_BasePlayerLoadout baseLoadout : m_aPlayerLoadouts)
+		{
+			playerLoadout = SCR_PlayerArsenalLoadout.Cast(baseLoadout);
+			if (!playerLoadout)
+				continue;
+
+			if (playerLoadout.GetFactionKey() == factionKey)
+				return true;
+		}
+
+		return false;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] faction
 	//! \param[out] outLoadouts

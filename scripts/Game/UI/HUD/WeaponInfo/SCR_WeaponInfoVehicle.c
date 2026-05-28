@@ -54,7 +54,7 @@ class SCR_WeaponInfoVehicle : SCR_WeaponInfo
 	//------------------------------------------------------------------------------------------------
 	protected void OnTurretReload(BaseWeaponComponent weapon, bool finished, TurretControllerComponent turretController)
 	{
-		if (!m_WeaponState)
+		if (!m_WeaponState || !weapon)
 			return;
 		
 		#ifdef WEAPON_INFO_DEBUG
@@ -65,6 +65,9 @@ class SCR_WeaponInfoVehicle : SCR_WeaponInfo
 		#endif	
 		
 		if (m_TurretController != turretController)
+			return;
+
+		if (!IsCurrentlyUsingWeapon(weapon))
 			return;
 		
 		m_WeaponState.m_bReloading = !finished;

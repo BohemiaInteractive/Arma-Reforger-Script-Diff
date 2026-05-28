@@ -33,7 +33,7 @@ class SCR_SelectionEditorUIComponent : SCR_BaseEditorUIComponent
 	[Attribute(defvalue: "0.5")]
 	protected float m_fGamepadSelectionDuration;
 	
-	[Attribute(desc: "Curve defining how will gamepad selection widget expand.", defvalue: "0 0 1 1", uiwidget: UIWidgets.GraphDialog, params: "1 1 0 0")]
+	[Attribute(desc: "Curve defining how will gamepad selection widget expand.", defvalue: "0 0 1 1", uiwidget: UIWidgets.CurveDialog, params: "1 1 0 0")]
 	protected ref Curve m_GamepadSelectionCurve;
 	
 	[Attribute(SCR_SoundEvent.SOUND_E_MULTI_SELECT_START_KEYBOARD, UIWidgets.EditBox)]

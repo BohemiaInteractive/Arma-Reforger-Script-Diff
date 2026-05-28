@@ -1,14 +1,17 @@
 class MotorExhaustSystem: GameSystem
 {
+	//------------------------------------------------------------------------------------------------
 	override static void InitInfo(WorldSystemInfo outInfo)
 	{
 		outInfo
 			.SetAbstract(false)
 			.AddPoint(ESystemPoint.Frame);
 	}
-
+	//------------------------------------------------------------------------------------------------
 	protected ref array<SCR_MotorExhaustEffectGeneralComponent> m_MotorsComponents = {};
-	
+	//------------------------------------------------------------------------------------------------
+	override bool ShouldBePaused() { return true; };
+	//------------------------------------------------------------------------------------------------
 	override protected void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
 		float timeSlice = args.GetTimeSliceSeconds();
@@ -18,7 +21,23 @@ class MotorExhaustSystem: GameSystem
 			comp.Update(timeSlice);
 		}
 	}
-	
+	//------------------------------------------------------------------------------------------------
+	override void OnStopped()
+	{
+		foreach (SCR_MotorExhaustEffectGeneralComponent comp: m_MotorsComponents)
+		{
+			comp.OnGamePauseChanged(true);
+		}
+	}
+	//------------------------------------------------------------------------------------------------
+	override void OnStarted()
+	{
+		foreach (SCR_MotorExhaustEffectGeneralComponent comp: m_MotorsComponents)
+		{
+			comp.OnGamePauseChanged(false);
+		}
+	}
+	//------------------------------------------------------------------------------------------------
 	override void OnDiag(float timeSlice)
 	{
 		DbgUI.Begin("MotorExhaustSystem");
@@ -35,7 +54,7 @@ class MotorExhaustSystem: GameSystem
 		
 		DbgUI.End();
 	}
-	
+	//------------------------------------------------------------------------------------------------
 	void Register(SCR_MotorExhaustEffectGeneralComponent component)
 	{
 		//About to be deleted
@@ -47,7 +66,7 @@ class MotorExhaustSystem: GameSystem
 		
 		m_MotorsComponents.Insert(component);
 	}
-	
+	//------------------------------------------------------------------------------------------------
 	void Unregister(SCR_MotorExhaustEffectGeneralComponent component)
 	{
 		int idx = m_MotorsComponents.Find(component);

@@ -39,6 +39,15 @@ class SCR_SoundHandle
 		}
 
 		m_fDensity = Math.Clamp(sampleLenght * m_aRepTime.Count() / sequenceLenght, 0, 1) * 100;
+		
+#ifdef ENABLE_DIAG	
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SOUNDS_RANDOM_POSITIONAL_SOUNDS))
+		{
+			const string eventName = typename.EnumToString(ESoundName, m_SoundDef.m_eSoundName);
+			
+			Print(eventName + ": Density = " + m_fDensity.ToString());
+		}		
+#endif
 	}
 	
 	//------------------------------------------------------------------------------------------------

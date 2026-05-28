@@ -208,12 +208,12 @@ class SCR_ServerFullDialog : SCR_ConfigurableDialogUi
 		
 		m_Widgets.m_wQueueState.SetVisible(showPosition);
 		if (showPosition)
-			m_Widgets.m_wQueueState.SetText(WidgetManager.Translate(MESSAGE_ENQUEUED_POSITION, SCR_RichTextTags.TagColor(count.ToString(), UIColors.CopyColor(UIColors.CONTRAST_COLOR))));
+			m_Widgets.m_wQueueState.SetTextFormat(MESSAGE_ENQUEUED_POSITION, SCR_RichTextTags.TagColor(count.ToString(), UIColors.CopyColor(UIColors.CONTRAST_COLOR)));
 		
 		// --- Queue max size
 		m_Widgets.m_wQueueMaxSizeOverlay.SetVisible(showPosition);
 		if (showPosition)
-			m_Widgets.m_wQueueMaxSize.SetText(WidgetManager.Translate(MESSAGE_QUEUE_MAX_SIZE, limit));
+			m_Widgets.m_wQueueMaxSize.SetTextFormat(MESSAGE_QUEUE_MAX_SIZE, limit);
 		
 		// --- Wait time
 		/*
@@ -222,7 +222,7 @@ class SCR_ServerFullDialog : SCR_ConfigurableDialogUi
 
 		m_Widgets.m_wQueueWaitTimeOverlay.SetVisible(showWaitTime);
 		if (showWaitTime)
-			m_Widgets.m_wQueueWaitTime.SetText(WidgetManager.Translate(MESSAGE_QUEUE_WAIT_TIME, UIConstants.FormatSeconds(waitTime * count)));
+			m_Widgets.m_wQueueWaitTime.SetTextFormat(MESSAGE_QUEUE_WAIT_TIME, UIConstants.FormatSeconds(waitTime * count));
 		*/
 	}
 	
@@ -243,12 +243,12 @@ class SCR_ServerFullDialog : SCR_ConfigurableDialogUi
 		}
 		else
 		{
-			m_Widgets.m_wQueueState.SetText(WidgetManager.Translate(MESSAGE_QUEUE_POPULATION, count));
+			m_Widgets.m_wQueueState.SetTextFormat(MESSAGE_QUEUE_POPULATION, count);
 			m_Widgets.m_wQueueState.SetColor(UIColors.CopyColor(UIColors.NEUTRAL_INFORMATION));
 		}
 		
 		// --- Queue max size
-		m_Widgets.m_wQueueMaxSize.SetText(WidgetManager.Translate(MESSAGE_QUEUE_MAX_SIZE, limit));
+		m_Widgets.m_wQueueMaxSize.SetTextFormat(MESSAGE_QUEUE_MAX_SIZE, limit);
 		
 		// --- State message
 		count = m_Room.PlayerCount();
@@ -262,7 +262,7 @@ class SCR_ServerFullDialog : SCR_ConfigurableDialogUi
 		}
 		else
 		{
-			m_Widgets.m_wCurrentState.SetText(WidgetManager.Translate(MESSAGE_SERVER_POPULATION, UIConstants.FormatValueOutOf(count, limit, false)));
+			m_Widgets.m_wCurrentState.SetTextFormat(MESSAGE_SERVER_POPULATION, UIConstants.FormatValueOutOf(count, limit, false));
 			m_Widgets.m_wCurrentState.SetColor(UIColors.CopyColor(UIColors.NEUTRAL_INFORMATION));
 		}
 		
@@ -273,7 +273,7 @@ class SCR_ServerFullDialog : SCR_ConfigurableDialogUi
 		
 		m_Widgets.m_wQueueWaitTimeOverlay.SetVisible(showWaitTime);
 		if (showWaitTime)
-			m_Widgets.m_wQueueWaitTime.SetText(WidgetManager.Translate(MESSAGE_QUEUE_WAIT_TIME, UIConstants.FormatSeconds(waitTime * m_Room.GetQueueSize())));
+			m_Widgets.m_wQueueWaitTime.SetTextFormat(MESSAGE_QUEUE_WAIT_TIME, UIConstants.FormatSeconds(waitTime * m_Room.GetQueueSize()));
 		*/
 		
 		// --- Confirm button
@@ -301,7 +301,7 @@ class SCR_ServerFullDialog : SCR_ConfigurableDialogUi
 		}
 		else
 		{
-			m_Widgets.m_wCurrentState.SetText(WidgetManager.Translate(MESSAGE_SERVER_POPULATION, UIConstants.FormatValueOutOf(count, limit, false)));
+			m_Widgets.m_wCurrentState.SetTextFormat(MESSAGE_SERVER_POPULATION, UIConstants.FormatValueOutOf(count, limit, false));
 			m_Widgets.m_wCurrentState.SetColor(UIColors.CopyColor(UIColors.NEUTRAL_INFORMATION));
 		}
 		
@@ -322,7 +322,7 @@ class SCR_ServerFullDialog : SCR_ConfigurableDialogUi
 		
 		// --- Time since join
 		string time = SCR_RichTextTags.TagColor(UIConstants.FormatSeconds(m_Room.GetQueueJoinTime()), UIColors.CopyColor(UIColors.CONTRAST_COLOR));
-		m_Widgets.m_wTimeSinceJoiningQueue.SetTextFormat(WidgetManager.Translate(MESSAGE_QUEUE_EXPLANATION_TIME, time));
+		m_Widgets.m_wTimeSinceJoiningQueue.SetTextFormat(MESSAGE_QUEUE_EXPLANATION_TIME, time);
 	}
 	
 	// --- Public ---

@@ -1,11 +1,6 @@
 [EntityEditorProps(category: "GameScripted/Weapon/Sights/Picture in Picture Sights", description: "", color: "0 0 255 255")]
 class SCR_PIPSightsComponentClass: ScriptedSightsComponentClass
 {
-};
-
-//------------------------------------------------------------------------------------------------
-class SCR_PIPSightsComponent : ScriptedSightsComponent
-{
 	[Attribute("{EF091399D840192D}UI/layouts/Sights/PictureInPictureSightsLayout.layout", UIWidgets.ResourceNamePicker, "The layout used for this PIP component", params: "layout")]
 	protected ResourceName m_sLayoutResource;
 
@@ -35,10 +30,64 @@ class SCR_PIPSightsComponent : ScriptedSightsComponent
 	[Attribute("0 0 0", UIWidgets.EditBox, "Camera offset used for this PIP")]
 	protected vector m_vCameraPoint;
 
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetLayoutResource()
+	{
+		return m_sLayoutResource;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetRTTextureWidgetName()
+	{
+		return m_sRTTextureWidgetName;
+	}
 
-	//! Is this PIP currently enabled?
-	protected bool m_bIsEnabled;
+	//------------------------------------------------------------------------------------------------
+	string GetRTargetWidgetName()
+	{
+		return m_sRTargetWidgetName;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetCameraIndex()
+	{
+		return m_iCameraIndex;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetCameraFOV()
+	{
+		return m_fCameraFOV;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetNearPlane()
+	{
+		return m_fNearPlane;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetFarPlane()
+	{
+		return m_fFarPlane;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetResolutionScale()
+	{
+		return m_fResolutionScale;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	vector GetCameraPoint()
+	{
+		return m_vCameraPoint;
+	}
+};
 
+//------------------------------------------------------------------------------------------------
+class SCR_PIPSightsComponent : ScriptedSightsComponent
+{
 	//! The root layout hierarchy widget
 	protected ref Widget m_wRoot;
 
@@ -53,6 +102,65 @@ class SCR_PIPSightsComponent : ScriptedSightsComponent
 
 	//! The camera to be used by this pip component
 	protected ScriptCamera m_PIPCamera;
+	
+	//! Is this PIP currently enabled?
+	protected bool m_bIsEnabled;
+	
+	// Prefab data getters
+	
+	protected ResourceName GetLayoutResource()
+	{
+		SCR_PIPSightsComponentClass data = SCR_PIPSightsComponentClass.Cast(GetComponentData(GetOwner()));
+		return data.GetLayoutResource();
+	}
+	
+	protected string GetRTTextureWidgetName()
+	{
+		SCR_PIPSightsComponentClass data = SCR_PIPSightsComponentClass.Cast(GetComponentData(GetOwner()));
+		return data.GetRTTextureWidgetName();
+	}
+
+	protected string GetRTargetWidgetName()
+	{
+		SCR_PIPSightsComponentClass data = SCR_PIPSightsComponentClass.Cast(GetComponentData(GetOwner()));
+		return data.GetRTargetWidgetName();
+	}
+	
+	protected int GetCameraIndex()
+	{
+		SCR_PIPSightsComponentClass data = SCR_PIPSightsComponentClass.Cast(GetComponentData(GetOwner()));
+		return data.GetCameraIndex();
+	}
+	
+	protected float GetCameraFOV()
+	{
+		SCR_PIPSightsComponentClass data = SCR_PIPSightsComponentClass.Cast(GetComponentData(GetOwner()));
+		return data.GetCameraFOV();
+	}
+	
+	protected float GetNearPlane()
+	{
+		SCR_PIPSightsComponentClass data = SCR_PIPSightsComponentClass.Cast(GetComponentData(GetOwner()));
+		return data.GetNearPlane();
+	}
+	
+	protected float GetFarPlane()
+	{
+		SCR_PIPSightsComponentClass data = SCR_PIPSightsComponentClass.Cast(GetComponentData(GetOwner()));
+		return data.GetFarPlane();
+	}
+	
+	protected float GetResolutionScale()
+	{
+		SCR_PIPSightsComponentClass data = SCR_PIPSightsComponentClass.Cast(GetComponentData(GetOwner()));
+		return data.GetResolutionScale();
+	}
+	
+	protected vector GetCameraPoint()
+	{
+		SCR_PIPSightsComponentClass data = SCR_PIPSightsComponentClass.Cast(GetComponentData(GetOwner()));
+		return data.GetCameraPoint();
+	}
 
 	#ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
@@ -66,7 +174,7 @@ class SCR_PIPSightsComponent : ScriptedSightsComponent
 	{
 		const float axisLength = 0.1;
 
-		vector origin = owner.GetOrigin() + m_vCameraPoint;
+		vector origin = owner.GetOrigin() + GetCameraPoint();
 		vector right = origin + owner.GetTransformAxis(0) * axisLength;
 		vector up = origin + owner.GetTransformAxis(1) * axisLength;
 		vector fwd = origin + owner.GetTransformAxis(2) * axisLength;
@@ -88,11 +196,13 @@ class SCR_PIPSightsComponent : ScriptedSightsComponent
 		// Create neccessary items
 		if (enabled && !m_bIsEnabled)
 		{
+			SCR_PIPSightsComponentClass data = SCR_PIPSightsComponentClass.Cast(GetComponentData(GetOwner()));
+			
 			// Try to create UI for PIP,
 			// output params are either set to valid ones,
 			// or root itself is set to null and destroyed
 			if (!m_wRoot || !m_wRenderTargetTextureWidget || !m_wRenderTargetWidget)
-				m_wRoot = CreateUI(m_sLayoutResource, m_sRTTextureWidgetName, m_sRTargetWidgetName, m_wRenderTargetTextureWidget, m_wRenderTargetWidget);
+				m_wRoot = CreateUI(data.GetLayoutResource(), data.GetRTTextureWidgetName(), data.GetRTargetWidgetName(), m_wRenderTargetTextureWidget, m_wRenderTargetWidget);
 
 			if (!m_wRoot)
 			{
@@ -102,14 +212,14 @@ class SCR_PIPSightsComponent : ScriptedSightsComponent
 
 			// Create PIP camera
 			if (!m_PIPCamera)
-				m_PIPCamera = CreateCamera(m_pOwner, m_vCameraPoint, m_iCameraIndex, m_fCameraFOV, m_fNearPlane, m_fFarPlane);
+				m_PIPCamera = CreateCamera(m_pOwner, data.GetCameraPoint(), data.GetCameraIndex(), data.GetCameraFOV(), data.GetNearPlane(), data.GetFarPlane());
 
 			// Set camera index of render target widget
 			BaseWorld baseWorld = m_pOwner.GetWorld();
-			m_wRenderTargetWidget.SetWorld(baseWorld, m_iCameraIndex);
+			m_wRenderTargetWidget.SetWorld(baseWorld, data.GetCameraIndex());
 
 			// Set resolution scale
-			m_wRenderTargetWidget.SetResolutionScale(m_fResolutionScale, m_fResolutionScale);
+			m_wRenderTargetWidget.SetResolutionScale(data.GetResolutionScale(), data.GetResolutionScale());
 
 			// Set RTT on parent
 			m_wRenderTargetTextureWidget.SetRenderTarget(m_pOwner);
@@ -175,6 +285,7 @@ class SCR_PIPSightsComponent : ScriptedSightsComponent
 		// Spawn camera
 		BaseWorld baseWorld = parent.GetWorld();
 		ScriptCamera pipCamera = ScriptCamera.Cast(GetGame().SpawnEntity(ScriptCamera, baseWorld));
+		SCR_PIPSightsComponentClass data = SCR_PIPSightsComponentClass.Cast(GetComponentData(GetOwner()));
 
 		// Since we use autotransform,
 		// we set camera matrix to "local" coordinates
@@ -191,13 +302,13 @@ class SCR_PIPSightsComponent : ScriptedSightsComponent
 		// scriptCamera so they will most likely not work
 
 		/*
-		pipCamera.FOV = m_fCameraFOV;
+		pipCamera.FOV = data.GetCameraFOV();
 		pipCamera.NearPlane = nearPlane;
 		pipCamera.FarPlane = farPlane;
 		*/
 
 		// Instead we do it the old fashionate way
-		baseWorld.SetCameraVerticalFOV(cameraIndex, m_fCameraFOV);
+		baseWorld.SetCameraVerticalFOV(cameraIndex, data.GetCameraFOV());
 		baseWorld.SetCameraFarPlane(cameraIndex, farPlane);
 		baseWorld.SetCameraNearPlane(cameraIndex, nearPlane);
 

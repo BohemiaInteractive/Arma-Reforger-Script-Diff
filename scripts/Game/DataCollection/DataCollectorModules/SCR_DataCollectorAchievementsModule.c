@@ -49,7 +49,7 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 				SCR_RepairSupportStationComponent.GetOnFireExtinguished().Insert(OnFireExtinguished);
 
 				// Achievement CHANGING_CHANNELS
-				SCR_CampaignNetworkComponent.GetOnBaseCaptured().Insert(OnBaseCaptured);
+				SCR_CampaignMilitaryBaseComponent.GetOnBaseCaptured().Insert(OnBaseCaptured);
 
 				// Achievement NIGHT_STALKER
 				ChimeraWorld world = GetGame().GetWorld();
@@ -119,7 +119,7 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 
 		SCR_ResourceEntityRefundAction.GetOnRefundPerformed().Remove(OnEntityRefundPerformed);
 		SCR_RepairSupportStationComponent.GetOnFireExtinguished().Remove(OnFireExtinguished);
-		SCR_CampaignNetworkComponent.GetOnBaseCaptured().Remove(OnBaseCaptured);
+		SCR_CampaignMilitaryBaseComponent.GetOnBaseCaptured().Remove(OnBaseCaptured);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -6,9 +6,6 @@ class SCR_ScenarioFrameworkActionCOKLocationSelector : SCR_ScenarioFrameworkActi
 
 	[Attribute(defvalue: "Exfil_Area", desc: "Exfil Area Name")]
 	string m_sExfilAreaName;
-
-	[Attribute(defvalue: "10", desc: "Marker Search Distance", params: "0 inf 0.01")]
-	float m_fMarkerSearchDistance;
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)

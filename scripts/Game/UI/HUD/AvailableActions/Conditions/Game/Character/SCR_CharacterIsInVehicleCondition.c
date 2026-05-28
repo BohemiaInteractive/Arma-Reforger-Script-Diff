@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 //! Returns true if character is in a vehicle
 [BaseContainerProps()]
 class SCR_CharacterIsInVehicleCondition : SCR_AvailableActionCondition
@@ -15,13 +14,9 @@ class SCR_CharacterIsInVehicleCondition : SCR_AvailableActionCondition
 	//------------------------------------------------------------------------------------------------
 	//! Returns true when current controlled entity is in vehicle
 	//! Returns opposite if m_bNegateCondition is enabled
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-
-		bool result = false;
-
+		bool result;
 		// In vehicle
 		if (data.GetIsCharacterInVehicle())
 		{
@@ -42,4 +37,4 @@ class SCR_CharacterIsInVehicleCondition : SCR_AvailableActionCondition
 
 		return GetReturnResult(result);
 	}
-};
+}

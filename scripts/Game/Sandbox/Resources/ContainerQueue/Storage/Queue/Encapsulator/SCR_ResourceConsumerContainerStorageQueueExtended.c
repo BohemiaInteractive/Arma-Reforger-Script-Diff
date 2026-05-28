@@ -8,7 +8,7 @@ class SCR_ResourceEncapsulatorContainerStorageQueueExtended : SCR_ResourceEncaps
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override int ComputePosition(SCR_ResourceContainer container, SCR_ResourceEncapsulator actor)
+	override int ComputePosition(SCR_ResourceContainer container, SCR_ResourceInteractor actor)
 	{
 		int containerComparePosition;
 		float containerCompareResource;

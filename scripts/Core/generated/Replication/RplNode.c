@@ -11,7 +11,10 @@ Do not modify, this script is generated
 
 sealed class RplNode: pointer
 {
-	proto external RplId GetId();
+	//! \deprecated Use RplNode.GetMainItemId() instead.
+	[Obsolete("Use RplNode.GetMainItemId() instead.")]
+	RplId GetId() { return this.GetMainItemId(); }
+
 	proto external RplRole GetRole();
 	proto external bool IsOwner();
 	proto external bool IsLocked();
@@ -22,7 +25,9 @@ sealed class RplNode: pointer
 	proto external RplNode GetSibling();
 	proto external int GetItemCount();
 	proto external RplId GetItemId(int idx);
+	proto external RplId GetMainItemId();
 	proto external Managed GetItem(int idx);
+	proto external Managed GetMainItem();
 	proto external void AddItem(notnull Managed item);
 }
 

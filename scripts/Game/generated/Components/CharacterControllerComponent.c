@@ -278,7 +278,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	During this ragdoll, the character stance is changed to prone.
 	To better control ragdoll time, use RefreshRagdoll method.
 	*/
-	proto external void Ragdoll();
+	proto external void Ragdoll(float extend = 0.0);
 	/*!
 	Refreshes ragdoll, so it doesn't get turned off for fWarmupTime seconds. This doesn't work if the character is already transitioning into animation from ragdoll.
 	This should be called only on owner.
@@ -296,8 +296,9 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	so heres how it works :
 	for now we have 4 items> compass adrianov, compass SY183, Radio ANPRC68 and Radio R148
 	...where they are triggered respectively by integers 1 2 3 and 4...
+	Returns true if the gadget can be successfully taken into the hand and false otherwise.
 	*/
-	proto external void TakeGadgetInLeftHand(IEntity gadget, int gadgetType, bool autoFocus = false, bool skipAnimations = false);
+	proto external bool TakeGadgetInLeftHand(IEntity gadget, int gadgetType, bool autoFocus = false, bool skipAnimations = false);
 	// Performs gadget equip validation
 	proto external bool CanEquipGadget(IEntity gadget);
 	proto external IEntity GetAttachedGadgetAtLeftHandSlot();
@@ -322,6 +323,8 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	//! Generic item
 	//! Equippes an item in right hand, if swap is true then action performed without animations, accepts optional callback that will be triggered when action is completed
 	proto external bool TryEquipRightHandItem(IEntity item, EEquipItemType type, bool swap = false, BaseUserAction callbackAction = null);
+	//! Changes item currently equipped weapon slot and puts the previous one into the inventory. Unequip is always played without animation and equip with animation.
+	proto external bool ReplaceEquippedItem(IEntity item);
 	proto external bool TryRecoverLastRightHandItem(bool swap = false, BaseUserAction callbackAction = null);
 	//! Returns generic item attached to right hand. Returns null if there's none (or if active item is weapon)
 	proto external IEntity GetRightHandItem();
@@ -514,6 +517,8 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	/*Should return true if during CharacterHeadingAnimComponent aligning, the aiming angles should influence aiming angles.*/
 	event bool ShouldAligningAdjustAimingAngles();
 	event bool ShouldGadgetBeDropped(IEntity gadget);
+	//! Triggered if item gesture is cancelled.
+	event protected void OnItemGestureCancelled();
 	//! Runs after a weapon is dropped from hands. Returns dropped weapon entity and slot that the weapon was dropped from.
 	event protected void OnWeaponDropped(IEntity pWeaponEntity, WeaponSlotComponent pWeaponSlot);
 	//! Runs after the left hand item is dropped. Returns dropped item entity.

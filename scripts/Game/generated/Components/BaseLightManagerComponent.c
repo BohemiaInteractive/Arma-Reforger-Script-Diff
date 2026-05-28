@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class BaseLightManagerComponentClass: GameComponentClass
-{
-}
-
 class BaseLightManagerComponent: GameComponent
 {
 	//! Gets the enable flag (all lights)

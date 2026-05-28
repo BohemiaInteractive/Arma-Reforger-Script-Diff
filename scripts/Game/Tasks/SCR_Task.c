@@ -198,21 +198,49 @@ class SCR_Task : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Sets author id of task
-	//! \param[in] taskID
-	void SetAuthorID(int authorId)
+	//! Sets author id, identity and platformKind of task
+	//! \param[in] authorId
+	//! \param[in] authorIdentityId
+	//! \param[in] platformKind
+	void SetAuthorCredentials(int authorId, UUID authorIdentityId, PlatformKind platformKind)
 	{
-		Rpc_SetAuthorID(authorId);
-		Rpc(Rpc_SetAuthorID, authorId);
+		Rpc_SetAuthorCredentials(authorId,authorIdentityId,platformKind);
+		Rpc(Rpc_SetAuthorCredentials,authorId,authorIdentityId,platformKind);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void Rpc_SetAuthorID(int authorId)
+	protected void Rpc_SetAuthorCredentials(int authorId, UUID authorIdentityId, PlatformKind platformKind)
 	{
 		if (m_TaskData)
+		{
 			m_TaskData.m_iAuthorId = authorId;
+			m_TaskData.m_ePlatformKind = platformKind;
+			m_TaskData.m_sAuthorIdentityId = authorIdentityId;
+		}	
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns platform kind of author from backend
+	//! \return
+	PlatformKind GetAuthorPlatformKind()
+	{
+		if (m_TaskData)
+			return m_TaskData.m_ePlatformKind;
+		
+		return PlatformKind.NONE;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns task author identity ID from backend
+	//! \return
+	UUID GetAuthorIdentityID()
+	{
+		if (m_TaskData)
+			return m_TaskData.m_sAuthorIdentityId;
+		
+		return UUID.Empty;
+	}	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns name of task
@@ -1454,6 +1482,8 @@ class SCR_Task : GenericEntity
 		WriteUIInfo(writer, m_TaskData.m_UIInfo);
 		writer.WriteVector(m_TaskData.m_vPosition);
 		writer.WriteInt(m_TaskData.m_iAuthorId);
+		writer.WriteString(m_TaskData.m_sAuthorIdentityId);
+		writer.WriteInt(m_TaskData.m_ePlatformKind);
 		
 		writer.WriteInt(m_TaskData.m_eState);
 		writer.WriteInt(m_TaskData.m_eOwnership);
@@ -1605,6 +1635,8 @@ class SCR_Task : GenericEntity
 		ReadUIInfo(reader, m_TaskData.m_UIInfo);
 		reader.ReadVector(m_TaskData.m_vPosition);
 		reader.ReadInt(m_TaskData.m_iAuthorId);
+		reader.ReadString(m_TaskData.m_sAuthorIdentityId);
+		reader.ReadInt(m_TaskData.m_ePlatformKind);
 		
 		reader.ReadInt(m_TaskData.m_eState);
 		reader.ReadInt(m_TaskData.m_eOwnership);
@@ -1621,7 +1653,7 @@ class SCR_Task : GenericEntity
 			{
 				SCR_TaskExecutor assignee;
 				ReadExecutor(reader, assignee);
-				m_TaskData.m_aAssignees.Insert(assignee);
+				AddTaskAssignee_Proxy(assignee, 0);
 			}
 		}
 		

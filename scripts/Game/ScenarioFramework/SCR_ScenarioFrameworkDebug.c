@@ -30,6 +30,18 @@ class SCR_ScenarioFrameworkDebug : ScriptAndConfig
 		
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SCENARIO_FRAMEWORK_DEBUG_ACTIONS))
 			DebugActions();
+		
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SCENARIO_FRAMEWORK_FINISH_TASK))
+		{
+			SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+	    	if (taskSystem)
+	        {
+				SCR_Task task = taskSystem.GetTaskAssignedTo(SCR_TaskExecutor.FromLocalPlayer());
+				if (task)
+					task.SetTaskState(SCR_ETaskState.COMPLETED);
+			}
+			DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_SCENARIO_FRAMEWORK_FINISH_TASK, 0);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -107,9 +119,12 @@ class SCR_ScenarioFrameworkDebug : ScriptAndConfig
 
 				bool affectRandomization = false;
 				DbgUI.Check("Restore Affects Randomization", affectRandomization);
+				
+				bool deleteSpawnedEntities = true;
+				DbgUI.Check("Delete Spawned Entities", deleteSpawnedEntities);
 
 				if (DbgUI.Button("Restore To Default"))
-					scenarioFrameworkTask.GetLayerTask().RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
+					scenarioFrameworkTask.GetLayerTask().RestoreToDefault(includeChildren, reinitAfterRestoration, deleteSpawnedEntities);
 			}
 		}
 		DbgUI.End();
@@ -732,8 +747,11 @@ class SCR_ScenarioFrameworkDebug : ScriptAndConfig
 					bool affectRandomization = true;
 					DbgUI.Check("Restore Affects Randomization", affectRandomization);
 
+					bool deleteSpawnedEntities = true;
+					DbgUI.Check("Delete Spawned Entities", deleteSpawnedEntities);
+					
 					if (DbgUI.Button("Restore To Default"))
-						layerBase.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
+						layerBase.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization, deleteSpawnedEntities);
 				}
 			}
 		}

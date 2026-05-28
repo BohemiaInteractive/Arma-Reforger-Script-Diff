@@ -10,20 +10,20 @@ class SCR_AttachementAction : SCR_InventoryAction
 {
 	#ifndef DISABLE_INVENTORY
     [Attribute("0", UIWidgets.ComboBox, "", "", ParamEnumArray.FromEnum(EWeaponAttachmentActionType) )]
-	EWeaponAttachmentActionType m_WeaponAttachmentActionType;	
+	protected EWeaponAttachmentActionType m_WeaponAttachmentActionType;	
 	
-	SCR_InventoryStorageManagerComponent m_InventoryManager;
-	IEntity attachment;
-	InventoryItemComponent m_InventoryItemComp;
+	protected SCR_InventoryStorageManagerComponent m_InventoryManager;
+	protected IEntity m_Attachment;
+	protected InventoryItemComponent m_InventoryItemComp;
     
 	//------------------------------------------------------------------------------------------------
-    override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
+	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
 		m_InventoryItemComp = InventoryItemComponent.Cast(pOwnerEntity.FindComponent(InventoryItemComponent));
 	}
 
 	//------------------------------------------------------------------------------------------------
-    override bool CanBeShownScript(IEntity user)
+	override bool CanBeShownScript(IEntity user)
     {
 		if(!m_InventoryItemComp || !m_InventoryItemComp.GetParentSlot())
 			return false;
@@ -52,31 +52,31 @@ class SCR_AttachementAction : SCR_InventoryAction
 		if(!weaponComp || weaponComp.GetOwner() != m_InventoryItemComp.GetParentSlot().GetOwner())
 			return false;	
 		
-		attachment = m_InventoryItemComp.GetOwner();
+		m_Attachment = m_InventoryItemComp.GetOwner();
 		
-		return (attachment != null);
+		return (m_Attachment != null);
     }
 
 	//------------------------------------------------------------------------------------------------
-    override bool CanBePerformedScript(IEntity user)
+	override bool CanBePerformedScript(IEntity user)
     {
 		if(!m_InventoryManager)
 			return false;
-		BaseInventoryStorageComponent storage = m_InventoryManager.FindStorageForItem(attachment);
+		BaseInventoryStorageComponent storage = m_InventoryManager.FindStorageForItem(m_Attachment);
 		if (!storage)
 			return false;
-        return m_InventoryManager.CanMoveItemToStorage(attachment, storage);
+        return m_InventoryManager.CanMoveItemToStorage(m_Attachment, storage);
     }
 
 	//------------------------------------------------------------------------------------------------
 	override protected void PerformActionInternal(SCR_InventoryStorageManagerComponent manager, IEntity pOwnerEntity, IEntity pUserEntity)
 	{
-		BaseInventoryStorageComponent storage = m_InventoryManager.FindStorageForItem(attachment, EStoragePurpose.PURPOSE_EQUIPMENT_ATTACHMENT);
+		BaseInventoryStorageComponent storage = m_InventoryManager.FindStorageForItem(m_Attachment, EStoragePurpose.PURPOSE_EQUIPMENT_ATTACHMENT);
 		
 		if (!storage)
-			storage = m_InventoryManager.FindStorageForItem(attachment);
+			storage = m_InventoryManager.FindStorageForItem(m_Attachment);
 		
-		manager.TryMoveItemToStorage(attachment, storage);
+		manager.TryMoveItemToStorage(m_Attachment, storage);
 		manager.PlayItemSound(pOwnerEntity, "SOUND_UNEQUIP");
 	}
 

@@ -186,7 +186,7 @@ class SCR_WeaponSwitchingBaseUI : SCR_InfoDisplay
 		if (wBlur)
 			wBlur.SetVisible(false);
 
-		if (s_QuickSlotStorage && s_QuickSlotStorage.UseItemInSlot())
+		if (s_QuickSlotStorage && s_QuickSlotStorage.UseItemInSlot(true))
 			GetGame().GetCallqueue().CallLater(ShowQuickSlots, 2000, false, false, UIConstants.FADE_RATE_DEFAULT, true);
 		else
 			Show(false, UIConstants.FADE_RATE_DEFAULT);

@@ -459,6 +459,8 @@ class SCR_ResupplyMagazinesCallback : ScriptedInventoryOperationCallback
 
 class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComponent
 {
+	protected ref array<ref SCR_ItemInsertionCallback> m_aQueuedInsertionCallbacks;
+
 	private SCR_CharacterInventoryStorageComponent				m_Storage;
 	private SCR_CharacterControllerComponent					m_CharacterController;
 	private	ref SCR_BandagePredicate 							m_BandagePredicate = new SCR_BandagePredicate();
@@ -469,9 +471,13 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	private bool												m_bWasRaised;
 	private IEntity 											m_StorageToOpen;
 	protected ref SCR_ResupplyMagazinesCallback						m_ResupplyMagazineCallback;
+	protected bool m_bInventoryAccessAllowed = true;
 	
 	ref ScriptInvokerBool 									m_OnInventoryOpenInvoker	= new ScriptInvokerBool();
 	ref ScriptInvokerBool 									m_OnQuickBarOpenInvoker		= new ScriptInvokerBool();
+
+	//! time in ms which is used to remove the callback from the queue
+	protected const int ITEM_INSERTION_CALLBACK_CLEANUP_TIME = 1100;
 
 	//------------------------------------------------------------------------------------------------
 	//! Get an array of all root items in the inventory storage.
@@ -529,6 +535,9 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		SCR_ConsumableItemComponent consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
 		if ( consumable && consumable.GetConsumableType() == SCR_EConsumableType.BANDAGE )
 			m_iHealthEquipment++;	//store count of the health components
+
+		if (storageOwner == m_Storage.GetWeaponStorage())
+			ExecuteItemInsertionCallback(item, storageOwner, true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -892,16 +901,40 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	//! \return
 	bool TrySwapItems( IEntity pOwnerEntity, BaseInventoryStorageComponent pStorageTo, SCR_InvCallBack cb = null )
 	{
-		if ( !pStorageTo )
+		if (!pStorageTo)
 			return false;
 						
 		InventoryStorageSlot slot =  pStorageTo.FindSuitableSlotForItem( pOwnerEntity );
-		if ( !slot )
+		if (!slot)
 			return false;
 
-		if ( slot.GetAttachedEntity() )
+		IEntity replacedEntity = slot.GetAttachedEntity();
+		if (replacedEntity)
 		{
-			if (!TrySwapItemStorages( pOwnerEntity, slot.GetAttachedEntity(), cb ))
+			BaseInventoryStorageComponent weaponStorage = m_Storage.GetWeaponStorage();
+			IEntity currentlyUsedItem = m_CharacterController.GetCurrentItemInHands();
+			if (m_CharacterController && replacedEntity == currentlyUsedItem && pStorageTo == weaponStorage)
+			{ // if we are replacing the current weapon then we need to use new API or else it may fail and cause desync
+				if (cb)
+				{
+					if (!cb.m_pStorageToDrop)
+						cb.m_pStorageToDrop = pStorageTo;
+
+					// to ensure that we will add callback on time, we do this before we try to move the item,
+					// just to be ready even in case this is happening in SP
+					AddItemInsertionCallback(pOwnerEntity, cb, pStorageTo); 
+				}
+
+				if (!m_CharacterController.ReplaceEquippedItem(pOwnerEntity))
+					return true;
+
+				if (cb)
+					ExecuteItemInsertionCallback(pOwnerEntity, pStorageTo, false);
+
+				return false;
+			}
+
+			if (!TrySwapItemStorages(pOwnerEntity, slot.GetAttachedEntity(), cb))
 			{
 				CharacterHandWeaponSlotComponent handWeaponSlot = CharacterHandWeaponSlotComponent.Cast(slot.GetParentContainer());
 				//Move 
@@ -921,10 +954,113 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		}
 		else
 		{
-			return TryMoveItemToStorage( pOwnerEntity, pStorageTo, slot.GetID(), cb );
+			return TryMoveItemToStorage(pOwnerEntity, pStorageTo, slot.GetID(), cb);
 		}
 
 		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Adds new item insertion callback to the queue to be processed when slot informs us that something was inserted
+	//! \param[in] item which is going to be inserted
+	//! \param[in] cb callback which should be informed about the result
+	//! \param[in] storage to which item should be transfered
+	protected void AddItemInsertionCallback(notnull IEntity item, notnull SCR_InvCallBack cb, notnull BaseInventoryStorageComponent storage)
+	{
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
+		if (!world)
+			return;
+
+		TimeAndWeatherManagerEntity timeAndWeatherManager = world.GetTimeAndWeatherManager();
+		if (!timeAndWeatherManager)
+			return;
+
+		if (!m_aQueuedInsertionCallbacks)
+			m_aQueuedInsertionCallbacks = {};
+
+		m_aQueuedInsertionCallbacks.Insert(new SCR_ItemInsertionCallback(item, cb, storage, timeAndWeatherManager.GetEngineTime() + 1)); // GetEngineTime() returns time in seconds
+		// since its possible that when using CharacterControllerComponent.ReplaceEquippedItem insertion will fail silently, we have to have a backup plan to remove entries in this array
+		GetGame().GetCallqueue().CallLater(CleanupCallbackQueue, ITEM_INSERTION_CALLBACK_CLEANUP_TIME); // 1100ms should be more than enough to ensure that item insertion has failed
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method used to execute queued item insertion callbacks
+	//! \param[in] item which was inserted or for which execution should happen
+	//! \param[in] storage to which item was inserted or for which execution should happen
+	//! \param[in] result of the insertions
+	protected void ExecuteItemInsertionCallback(notnull IEntity item, notnull BaseInventoryStorageComponent storage, bool result)
+	{
+		if (!m_aQueuedInsertionCallbacks || m_aQueuedInsertionCallbacks.IsEmpty())
+			return;
+
+		foreach (SCR_ItemInsertionCallback entry : m_aQueuedInsertionCallbacks)
+		{
+			if (!entry)
+				continue;
+
+			if (entry.m_Item != item || entry.m_TargetStorage != storage)
+				continue;
+
+			// ensure that no one manipulated this callback while we were waiting for item to be inserted
+			if (!entry.m_Callback || entry.m_Callback.m_pStorageToDrop != storage || entry.m_Callback.m_pItem != item)
+				continue;
+
+			if (result)
+				entry.m_Callback.InternalComplete();
+			else
+				entry.m_Callback.InternalFailed();
+
+			entry.m_Callback = null;
+			entry.m_fExpireTime = 0;
+			return;
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method used to remove expired callback requests
+	protected void CleanupCallbackQueue()
+	{
+		if (!m_aQueuedInsertionCallbacks)
+			return;
+
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
+		if (!world)
+			return;
+
+		TimeAndWeatherManagerEntity timeAndWeatherManager = world.GetTimeAndWeatherManager();
+		if (!timeAndWeatherManager)
+			return;
+
+		const array<int> garbageCollection = {};
+		float currentTimeInSec = timeAndWeatherManager.GetEngineTime();
+		foreach (int i, SCR_ItemInsertionCallback entry : m_aQueuedInsertionCallbacks)
+		{
+			if (!entry)
+			{
+				garbageCollection.InsertAt(i, 0);
+				continue;
+			}
+
+			if (entry.m_fExpireTime > currentTimeInSec)
+				continue;
+
+			// if no one manipulated this callback while we were waiting, then inform it that item transfer failed
+			 if (entry.m_Callback && entry.m_Callback.m_pStorageToDrop == entry.m_TargetStorage && entry.m_Callback.m_pItem == entry.m_Item)
+				entry.m_Callback.InternalFailed();
+
+			garbageCollection.InsertAt(i, 0); // to not have to read garbage collection from the rear, we can insert at the front so that the content will be reversed
+		}
+
+		foreach (int garbageId : garbageCollection)
+		{
+			m_aQueuedInsertionCallbacks.Remove(garbageId);
+		}
+
+		if (m_aQueuedInsertionCallbacks.IsEmpty())
+		{
+			GetGame().GetCallqueue().Remove(CleanupCallbackQueue);
+			m_aQueuedInsertionCallbacks = null;
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1598,6 +1734,9 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	//!
 	void OpenInventory()
 	{
+		if (!m_bInventoryAccessAllowed)
+			return;
+		
 		if (m_CharacterController && m_CharacterController.GetLifeState() != ECharacterLifeState.ALIVE)
 			return;
 
@@ -1626,7 +1765,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		m_bWasRaised = m_CharacterController.IsWeaponRaised();
 		m_CharacterController.SetWeaponRaised(false);
 				
-		SCR_AnalyticsApplication.GetInstance().OpenInventory(GetTotalWeightOfAllStorages());
+		//SCR_AnalyticsApplication.GetInstance().OpenInventory(GetTotalWeightOfAllStorages());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1693,7 +1832,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		if (m_CharacterController)
 			m_CharacterController.SetWeaponRaised(m_bWasRaised);		
 		
-		SCR_AnalyticsApplication.GetInstance().CloseInventory(GetTotalWeightOfAllStorages());
+		//SCR_AnalyticsApplication.GetInstance().CloseInventory(GetTotalWeightOfAllStorages());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1894,6 +2033,12 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		}
 		
 		return null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AllowInventoryAccess(bool allow)
+	{
+		m_bInventoryAccessAllowed = allow;
 	}
 
 #else

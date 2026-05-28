@@ -9,12 +9,10 @@ Do not modify, this script is generated
 \{
 */
 
-class TrackedControllerComponentClass: VehicleControllerComponentClass
-{
-}
-
 class TrackedControllerComponent: VehicleControllerComponent
 {
+	//! Returns the simulation component associated with this controller.
+	proto external VehicleTrackedSimulation GetSimulation();
 }
 
 /*!

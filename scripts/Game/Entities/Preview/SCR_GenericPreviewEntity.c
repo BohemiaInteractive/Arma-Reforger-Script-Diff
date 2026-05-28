@@ -218,7 +218,7 @@ class SCR_GenericPreviewEntity: SCR_BasePreviewEntity
 		//--- Get local transformation relative to terrain
 		Math3D.MatrixInvMultiply3(terrainTransform, worldTransform, terrainTransform);
 		entry.m_vAnglesTerrain = Math3D.MatrixToAngles(terrainTransform);
-		entry.m_vHeightTerrain = worldTransform[3][1] - surfaceBasis[3][1];
+		entry.m_fHeightTerrain = worldTransform[3][1] - surfaceBasis[3][1];
 	}
 	protected static void SaveRootTransform(out vector transform[4], out vector rootTransform[4])
 	{

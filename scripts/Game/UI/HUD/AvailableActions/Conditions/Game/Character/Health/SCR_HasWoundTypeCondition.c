@@ -1,15 +1,9 @@
 [BaseContainerProps()]
 class SCR_HasWoundTypeCondition : SCR_AvailableActionCondition
 {
-	[Attribute("0", UIWidgets.ComboBox, "Consumable type to be tested", "", ParamEnumArray.FromEnum(SCR_EConsumableType) )]
-	protected SCR_EConsumableType m_eConsumableType;
-
 	//------------------------------------------------------------------------------------------------
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
-	{		
-		if (!data)
-			return false;
-		
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
+	{
 		IEntity controlled = data.GetCharacter();
 		if (!controlled)
 			return false;

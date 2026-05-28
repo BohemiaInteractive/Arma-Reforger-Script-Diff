@@ -34,10 +34,11 @@ class SCR_DeployMultiPartInventoryItemAction : SCR_DeployInventoryItemAction
 	protected bool m_bIsSelected;
 	protected bool m_bLastCanPerformResult = true;
 	protected WorldTimestamp m_NextCheckTimestamp;
+	protected ECharacterStance m_eSavedStance = -1;
 
 	protected const LocalizedString CANNOT_PERFORM_REASON_TOO_STEEP = "#AR-UserAction_Assemble_TooSteep";
 	protected const LocalizedString CANNOT_PERFORM_REASON_NOT_EMPTY = "#AR-UserAction_Assemble_NotEmpty";
-	protected const LocalizedString CANNOT_PERFORM_REASON_NOT_INDOORS = "#AR-UserAction_Assemble_CannotPlaceHere";
+	protected const LocalizedString CANNOT_PERFORM_REASON_NOT_HERE = "#AR-UserAction_Assemble_CannotPlaceHere";
 	protected const LocalizedString CANNOT_PERFORM_REASON_ALREADY_IN_USE = "#AR-UserAction_Blocked_InUseByOther";
 
 	//! delay in ms used to control how often costly parts are executed
@@ -102,6 +103,42 @@ class SCR_DeployMultiPartInventoryItemAction : SCR_DeployInventoryItemAction
 		if (!owner)
 			return false;
 
+		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+		if (!character)
+			return false;
+
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return false;
+
+		if (m_eRequiredGadget != EGadgetType.NONE && m_GadgetManager)
+		{
+			if (!m_bActionStarted && !controller.CanUseItem())
+			{
+				SetCannotPerformReason(string.Empty);
+				return false;
+			}
+
+			if (controller.IsChangingStance())
+			{
+				SetCannotPerformReason(string.Empty);
+				return false;
+			}
+
+			if (m_eSavedStance >= 0 && m_eSavedStance != controller.GetStance())
+			{ // without this if you time it just right, you would be able to break changing stance, and also cancel item animation playback
+				SetCannotPerformReason(string.Empty);
+				return false;
+			}
+
+			SCR_GadgetComponent gadgetComp = m_GadgetManager.GetHeldGadgetComponent();
+			if (!gadgetComp || gadgetComp.GetMode() != EGadgetMode.IN_HAND)
+			{ // IN_HAND is set only when gadget is actually equipped, while CanUseItem will return true even when we play gadget equipping animation, and thus we can't actually play item animation :/
+				SetCannotPerformReason(string.Empty);
+				return false;
+			}
+		}
+
 		if (!m_bIsSelected)
 			return m_bLastCanPerformResult;
 
@@ -134,14 +171,6 @@ class SCR_DeployMultiPartInventoryItemAction : SCR_DeployInventoryItemAction
 			vector position = owner.GetOrigin() + owner.VectorToParent(multiPartComp.GetAdditionaPlacementOffset()) + vector.Up * 0.1;
 			SCR_TerrainHelper.GetTerrainBasis(position, transform, owner.GetWorld(), false, param);
 
-			ChimeraCharacter character = ChimeraCharacter.Cast(user);
-			if (!character)
-				return false;
-
-			CharacterControllerComponent controller = character.GetCharacterController();
-			if (!controller)
-				return false;
-
 			CharacterHeadAimingComponent headAiming = controller.GetHeadAimingComponent();
 			if (!headAiming)
 				return false;
@@ -152,7 +181,12 @@ class SCR_DeployMultiPartInventoryItemAction : SCR_DeployInventoryItemAction
 			angle = angle.AnglesToVector(); //Converts spherical coordinates to unit length vector
 			angle = angle.Multiply3(charMat); //Translate from local space to world space
 			angle = angle.VectorToAngles(); //Convert back to angles
-			angle = angle + multiPartComp.GetAdditionaPlacementRotation();
+
+			if (!multiPartComp.IsSurfaceValid(param.TraceEnt, transform[3], param.TraceNorm, param.NodeIndex, param.ColliderIndex, param.SurfaceProps, param.TraceMaterial, param.ColliderName))
+			{
+				SetCannotPerformReason(CANNOT_PERFORM_REASON_NOT_HERE);
+				return false;
+			}
 		}
 
 		if (m_bShowVisualisation && !m_bActionStarted)
@@ -202,7 +236,7 @@ class SCR_DeployMultiPartInventoryItemAction : SCR_DeployInventoryItemAction
 
 		if (m_bPreventIfIndoors && multiPartComp.CheckIfPositionIsIndoors(transform))
 		{
-			SetCannotPerformReason(CANNOT_PERFORM_REASON_NOT_INDOORS);
+			SetCannotPerformReason(CANNOT_PERFORM_REASON_NOT_HERE);
 			return false;
 		}
 
@@ -299,6 +333,7 @@ class SCR_DeployMultiPartInventoryItemAction : SCR_DeployInventoryItemAction
 		if (m_eRequiredGadget == EGadgetType.NONE)
 			return;
 
+		m_eSavedStance = controller.GetStance();
 		m_GadgetManager = SCR_GadgetManagerComponent.GetGadgetManager(pUserEntity);
 		if (!m_GadgetManager)
 			return;
@@ -348,9 +383,11 @@ class SCR_DeployMultiPartInventoryItemAction : SCR_DeployInventoryItemAction
 	{
 		super.OnActionCanceled(pOwnerEntity, pUserEntity);
 
+		m_CurrentUser = null;
 		if (m_bReportAsDismantling)
 			ToggleCompartmentAccess();
 
+		m_eSavedStance = -1;
 		m_vDesiredDirection = vector.Zero;
 		if (m_eRequiredGadget == EGadgetType.NONE)
 			return;
@@ -426,16 +463,5 @@ class SCR_DeployMultiPartInventoryItemAction : SCR_DeployInventoryItemAction
 			StopAction(m_CurrentUser);
 
 		m_bIsSelected = false;
-		SCR_MultiPartDeployableItemComponent multiPartComp = SCR_MultiPartDeployableItemComponent.Cast(m_DeployableItemComp);
-		if (!multiPartComp)
-			return;
-
-		if (multiPartComp.GetCurrentlyCachedVariantId() != m_iVariantId)
-			return;
-
-		if (m_bShowVisualisation)
-			multiPartComp.SetPreviewState(SCR_EPreviewState.NONE);
-
-		multiPartComp.ClearCache();
 	}
 }

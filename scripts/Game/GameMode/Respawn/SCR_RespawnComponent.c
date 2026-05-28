@@ -3,18 +3,6 @@ class SCR_RespawnComponentClass : RespawnComponentClass
 {
 }
 
-//#define RESPAWN_COMPONENT_DIAG
-//	This define can be used to enable RespawnComponent diag menu which can be accessed in-game
-//	via the Game Diag (Cmd+Alt) -> Network -> Respawn System Diag
-
-//#define RESPAWN_COMPONENT_VERBOSE
-//	Can be used to enable verbose logging of RPCs sent via SCR_RespawnComponent switch,
-//	which can be especially useful when debugging a dedicated server or so.
-
-// #define RESPAWN_COMPONENT_DIAG
-// #define RESPAWN_COMPONENT_VERBOSE
-// #define RESPAWN_COMPONENT_LOCKS_VERBOSE
-
 //! Result code for request/assign response
 enum ERespawnSelectionResult
 {

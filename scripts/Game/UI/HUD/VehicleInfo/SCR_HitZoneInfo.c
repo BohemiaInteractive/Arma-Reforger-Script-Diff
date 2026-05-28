@@ -69,8 +69,7 @@ class SCR_HitZoneInfo : SCR_BaseVehicleInfo
 		if (m_aHitZoneNames.IsEmpty())
 		{
 			HitZone hitZone = damageManager.GetDefaultHitZone();
-			if (hitZone)
-				m_aHitZones = {hitZone};
+			m_aHitZones = {hitZone};
 		}
 		else
 		{

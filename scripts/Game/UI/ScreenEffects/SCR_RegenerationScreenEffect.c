@@ -7,7 +7,7 @@ class SCR_RegenerationScreenEffect : SCR_BaseScreenEffect
 	[Attribute(defvalue: "6", uiwidget: UIWidgets.EditBox, desc: "Duration of the regeneration effect in seconds")]
 	protected float m_fRegenEffectDuration;
 
-	[Attribute("0 0 1 1", UIWidgets.GraphDialog, desc: "Trajectory of the intensity of the regenerationEffect")]
+	[Attribute("0 0 1 1", UIWidgets.CurveDialog, desc: "Trajectory of the intensity of the regenerationEffect")]
 	protected ref Curve m_Curve;
 
 	//Character

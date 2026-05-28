@@ -112,8 +112,6 @@ class InventoryStorageManagerComponent: GameComponent
 
 	// callbacks
 
-	// ------------------------------------------------------------------------------------------
-	event void OnDelete(IEntity owner);
 	//! Callback when item is added (will be performed locally after server completed the Insert/Move operation)
 	event protected void OnItemAdded(BaseInventoryStorageComponent storageOwner, IEntity item);
 	//! Callback when item is removed (will be performed locally after server completed the Remove/Move operation)

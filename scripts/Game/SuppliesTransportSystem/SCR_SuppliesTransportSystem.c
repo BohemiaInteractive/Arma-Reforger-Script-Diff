@@ -194,6 +194,9 @@ class SCR_SuppliesTransportSystem : GameSystem
 
 		m_fTimer = 0;
 
+		if (m_TransportUnits.IsEmpty())
+			return;
+
 		foreach (SCR_TransportUnitComponent transportUnit : m_TransportUnits)
 		{
 			transportUnit.Update(timeSlice);

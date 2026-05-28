@@ -47,6 +47,13 @@ class BaseUserAction: ScriptAndConfig
 	proto external bool HasLocalEffectOnly();
 	//! If HasLocalEffectOnly() is false this method tells if the server is supposed to broadcast this action to clients.
 	proto external bool CanBroadcast();
+	//! If CheckOnServerFirst returns true, the action is first sent to be verified on the server. Only if the function
+	//! succeeds on the server it will can be executed on other machines.
+	//! This does not mean that actions are not verified on the server otherwise. However, the path the action takes
+	//! is different. When this function returns true it means OnSaveActionData is evaluated on the server, not where the action
+	//! is called from.
+	//! This comes handly in situations when the use action wants to use data that is only available on the server.
+	proto external bool CheckOnServerFirst();
 	//! Should this action be performed every frame the input action is triggered?
 	proto external bool ShouldPerformPerFrame();
 	//! Return the name of this action.
@@ -57,8 +64,6 @@ class BaseUserAction: ScriptAndConfig
 	proto external string GetActionDescription();
 	//! Returns the visibility range of this action in metres.
 	proto external float GetVisibilityRange();
-	//! Sets the duration of this action in seconds.
-	proto external void SetActionDuration(float duration);
 	//! Returns the duration of this action in seconds.
 	proto external float GetActionDuration();
 	//! Returns the progress of this action in seconds.
@@ -87,6 +92,7 @@ class BaseUserAction: ScriptAndConfig
 	event protected bool OnRplLoad(ScriptBitReader reader) { return true; };
 	//! Before performing the action the caller can store some data in it which is delivered to others.
 	//! Only available for actions for which HasLocalEffectOnly returns false.
+	//! Evaluate where the action is called. However, if CheckOnServerFirst is true, it is always run from the server.
 	event protected bool OnSaveActionData(ScriptBitWriter writer) { return true; };
 	//! If the one performing the action packed some data in it everybody receiving the action.
 	//! Only available for actions for which HasLocalEffectOnly returns false.

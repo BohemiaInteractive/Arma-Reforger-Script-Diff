@@ -216,6 +216,14 @@ class ScriptedWidgetEventHandler: Managed
 	*/
 	event bool OnChildRemove(Widget w, Widget child);
 	/*!
+	Called when a widget's parent changes.
+	\param w The widget whose parent has changed.
+	\param oldParent The previous parent widget, or nullptr if there was none.
+	\param newParent The new parent widget, or nullptr if the widget was removed from its parent.
+	\return When returning true, the event is considered processed.
+	*/
+	event bool OnParentChange(Widget w, Widget oldParent, Widget newParent);
+	/*!
 	Called when event is emitted by call of Widget.EmitCustomEvent
 	\param w The widget on which the event was triggered.
 	\param iUserData User parameter passed to Widget.EmitCustomEvent

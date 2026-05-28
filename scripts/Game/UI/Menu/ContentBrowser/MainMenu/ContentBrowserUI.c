@@ -52,7 +52,7 @@ class ContentBrowserUI : SCR_SuperMenuBase
 	{
 		super.OnMenuShow();
 
-		SCR_AnalyticsApplication.GetInstance().OpenWorkshop();
+		//SCR_AnalyticsApplication.GetInstance().OpenWorkshop();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -76,7 +76,7 @@ class ContentBrowserUI : SCR_SuperMenuBase
 	{
 		super.OnMenuHide();
 
-		SCR_AnalyticsApplication.GetInstance().CloseWorkshop();
+		//SCR_AnalyticsApplication.GetInstance().CloseWorkshop();
 	}
 	
 	//------------------------------------------------------------------------------------------------

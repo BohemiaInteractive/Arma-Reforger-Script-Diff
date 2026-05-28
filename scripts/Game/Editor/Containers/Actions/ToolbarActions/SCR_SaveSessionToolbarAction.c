@@ -36,36 +36,39 @@ class SCR_SaveSessionToolbarAction : SCR_EditorToolbarAction
 			new SCR_CreateNewSaveDialog();
 			return;
 		}
+		
+		const SaveGameManager manager = GetGame().GetSaveGameManager();
+		manager.GetSaves(manager.GetCurrentMissionResource(), new SaveGameObtainCallback(OnSavesLoaded));
+	}
 
-		ESaveGameRequestFlags saveFlags;
-		if (RplSession.Mode() == RplMode.None)
-			saveFlags = ESaveGameRequestFlags.BLOCKING;
-
+	//------------------------------------------------------------------------------------------------
+	protected void OnSavesLoaded(bool success, array<SaveGame> saves)
+	{
 		const SaveGameManager manager = GetGame().GetSaveGameManager();
 		SaveGame currentSave = manager.GetActiveSave();
 		if (currentSave)
 		{
+			// Find the latest non rewind save point for current playthrough to override
 			auto rewind = SCR_RewindComponent.GetInstance();
-			if (rewind)
+			if (rewind && rewind.IsRewindPoint(currentSave))
 			{
-				if (rewind.IsRewindPoint(currentSave))
-				{
-					currentSave = null;
-					const int currentPlaythrough = manager.GetCurrentPlaythroughNumber();
+				currentSave = null;
+				const int currentPlaythrough = manager.GetCurrentPlaythroughNumber();
 
-					array<SaveGame> saves();
-					manager.GetSaves(saves, manager.GetCurrentMissionResource());
-					foreach (SaveGame save : saves)
-					{
-						if (rewind.IsRewindPoint(save))
-							continue;
-			
-						if (save.GetPlaythroughNumber() == currentPlaythrough)
-							currentSave = save;
-					}
+				foreach (SaveGame save : saves)
+				{
+					if (rewind.IsRewindPoint(save))
+						continue;
+		
+					if (save.GetPlaythroughNumber() == currentPlaythrough)
+						currentSave = save;
 				}
 			}
 		}
+
+		ESaveGameRequestFlags saveFlags;
+		if (RplSession.Mode() == RplMode.None)
+			saveFlags = ESaveGameRequestFlags.BLOCKING;
 
 		if (currentSave)
 		{

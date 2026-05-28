@@ -9,12 +9,4 @@ class SCR_SalineBagStorageSlot : SCR_EquipmentStorageSlot
 	{
 		return m_eHitZoneGroup;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] ID
-	//! \return
-	IEntity GetItem(int ID)
-	{
-		return GetStorage().Get(ID);
-	}
 }

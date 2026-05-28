@@ -2,14 +2,14 @@
 [BaseContainerProps()]
 class SCR_WeaponFiremodeCondition : SCR_AvailableActionCondition
 {
-	[Attribute("0", uiwidget: UIWidgets.ComboBox, "Fire mode to check", "", ParamEnumArray.FromEnum(EWeaponFiremodeType))]
+	[Attribute(defvalue: EWeaponFiremodeType.Safety.ToString(), desc: "Fire mode to check", uiwidget: UIWidgets.ComboBox, enumType: EWeaponFiremodeType)]
 	protected EWeaponFiremodeType m_iValue;
 
 	[Attribute("true", uiwidget: UIWidgets.CheckBox, "True = currently active, False = contains")]
 	protected bool m_bIsCurrent;
 
 	//------------------------------------------------------------------------------------------------
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
 		// Check muzzle
 		BaseMuzzleComponent muzzle = data.GetCurrentMuzzle();
@@ -17,7 +17,7 @@ class SCR_WeaponFiremodeCondition : SCR_AvailableActionCondition
 			return false;
 
 		// Get result
-		bool result = false;
+		bool result;
 
 		if (m_bIsCurrent)
 		{
@@ -50,4 +50,4 @@ class SCR_WeaponFiremodeCondition : SCR_AvailableActionCondition
 		// Not found
 		return false;
 	}
-};
+}

@@ -12,7 +12,7 @@ class EditorCommentEntity : GenericEntity
 	float m_Size;
 
 	[Attribute("1 1 1", UIWidgets.ColorPicker, "Text color")]
-	vector m_Color;
+	ref Color m_Color;
 
 	[Attribute("0", UIWidgets.Slider, "Text transparency", "0 1 0.05")]
 	float m_Transparency;
@@ -33,7 +33,7 @@ class EditorCommentEntity : GenericEntity
 	bool m_TextBackground;
 
 	[Attribute("0 0 0", UIWidgets.ColorPicker, "Background color")]
-	vector m_BackgroundColor;
+	ref Color m_BackgroundColor;
 
 	[Attribute("0.5", UIWidgets.Slider, "Background transparency", "0 1 0.05")]
 	float m_BackgroundTransparency;
@@ -88,10 +88,10 @@ class EditorCommentEntity : GenericEntity
 
 		int bgColor;
 		if (m_TextBackground)
-			bgColor = ARGBF(1 - m_BackgroundTransparency, m_BackgroundColor[0], m_BackgroundColor[1], m_BackgroundColor[2]);
+			bgColor = ARGBF(1 - m_BackgroundTransparency, m_BackgroundColor.R(), m_BackgroundColor.G(), m_BackgroundColor.B());
 		else
 			bgColor = ARGBF(0, 0, 0, 0);
-		DebugTextWorldSpace.CreateInWorld(GetWorld(), m_Comment, dtFlags, mat, size, ARGBF(1 - m_Transparency, m_Color[0], m_Color[1], m_Color[2]), bgColor);
+		DebugTextWorldSpace.CreateInWorld(GetWorld(), m_Comment, dtFlags, mat, size, ARGBF(1 - m_Transparency, m_Color.R(), m_Color.G(), m_Color.B()), bgColor);
 	}
 
 #ifdef WORKBENCH

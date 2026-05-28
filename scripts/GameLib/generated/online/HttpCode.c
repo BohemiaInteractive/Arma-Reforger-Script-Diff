@@ -87,6 +87,8 @@ enum HttpCode
 	HTTP_CODE_526,
 	//! Cloudflare was unable to resolve the origin hostname, body of the response contains an 1xxx error
 	HTTP_CODE_530,
+	//! Last possible 5XX error for handling full range or codes
+	HTTP_CODE_599,
 }
 
 /*!

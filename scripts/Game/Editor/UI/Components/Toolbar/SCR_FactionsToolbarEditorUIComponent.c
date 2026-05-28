@@ -109,7 +109,7 @@ class SCR_FactionsToolbarEditorUIComponent : SCR_EntitiesToolbarEditorUIComponen
 			{
 				SCR_Faction scrFaction = SCR_Faction.Cast(delegates[i].GetFaction());
 				
-				if (scrFaction && scrFaction.IsPlayable())
+				if (scrFaction && scrFaction.IsPlayable() && !scrFaction.GetParent())
 				{
 					m_Entities.Insert(delegates.GetOrder(i), delegates[i]);
 					playerFactionsActive = true;

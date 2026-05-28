@@ -5,6 +5,11 @@
 
 class SCR_DamageEffect : BaseDamageEffect
 {
+	void SCR_DamageEffect()
+	{
+		SetDamageType(GetDefaultDamageType());
+	}
+	
 	/*!
 	\deprecated Used to check if you are a proxy or not
 	\param SCR_ExtendedDamageManagerComponent dmgManager: manager containing this DamageEffect

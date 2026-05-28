@@ -19,10 +19,10 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 	[Attribute(defvalue: "1 1 1 0", desc: "Color of pointing light")]
 	protected ref Color m_cPointingLightColor;
 	
-	[Attribute("0 0 1 1", UIWidgets.GraphDialog, "",  params: "1 1 0 0")]
+	[Attribute("0 0 1 1", UIWidgets.CurveDialog, "", params: "1 1 0 0")]
 	protected ref Curve m_cCameraLightIntensityCurve;
 	
-	[Attribute("0 0 1 1", UIWidgets.GraphDialog, "",  params: "1 1 0 0")]
+	[Attribute("0 0 1 1", UIWidgets.CurveDialog, "", params: "1 1 0 0")]
 	protected ref Curve m_cPointingLightIntensityCurve;
 	
 	[Attribute("150", desc: "How high in the air is the light compaired to the ground at the given position if it does not follow the camera")]

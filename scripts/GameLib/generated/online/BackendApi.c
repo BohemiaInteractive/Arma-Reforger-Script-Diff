@@ -41,7 +41,17 @@ sealed class BackendApi
 	}
 
 	[Obsolete("Use GetPlayerIdentityId() instead.")]
-		string GetPlayerUID( int iPlayerId ) { return GetPlayerIdentityId(iPlayerId); }
+	string GetPlayerUID( int iPlayerId ) { return GetPlayerIdentityId(iPlayerId); }
+	[Obsolete("Use BackendAuthenticatorApi.GetIdentityId() instead.")]
+	string GetLocalIdentityId() { return BackendAuthenticatorApi.GetIdentityId(); }
+	[Obsolete("Use BackendAuthenticatorApi.IsAuthenticated() instead.")]
+	bool IsAuthenticated() { return BackendAuthenticatorApi.IsAuthenticated(); }
+	[Obsolete("Use BackendAuthenticatorApi.IsAuthInProgress() instead.")]
+	bool IsAuthInProgress() { return BackendAuthenticatorApi.IsAuthInProgress(); }
+	[Obsolete()]
+	bool IsLocalPlatformAssigned() { return false; }
+	[Obsolete()]
+	bool Shutdown() { return false; }
 
 	/*!
 	\brief Set session callback to recieve all session related events
@@ -69,12 +79,14 @@ sealed class BackendApi
 	*/
 	proto external NewsFeedItem GetNewsItem( int iIndex );
 	/*!
-	\brief Return count of Notification messages
+	\brief Return count of Notification messages - Obsolete
 	*/
+	[Obsolete("Will be substitued by Notification Api.")]
 	proto external int GetNotifyCount();
 	/*!
-	\brief Return specific Notification message
+	\brief Return specific Notification message - Obsolete
 	*/
+	[Obsolete("Will be substitued by Notification Api.")]
 	proto external NewsFeedItem GetNotifyItem( int iIndex );
 	/*!
 	\brief Return count of Popups
@@ -96,35 +108,6 @@ sealed class BackendApi
 	\brief Return specific Link by it's name
 	*/
 	proto external string GetLinkItem( string linkName );
-	/*!
-	\brief Shutdown backend - request processing
-	*/
-	proto external bool Shutdown();
-	/*!
-	\brief Invoke credentials update (authenticate with new name+password)
-	*/
-	[Obsolete("Use BohemiaAccountApi.Link() instead.")]
-	proto external void VerifyCredentials(BackendCallback callback, bool storeCredentials);
-	/*!
-	\brief Unlink the bi-account and clear credentials
-	*/
-	[Obsolete("Use BohemiaAccountApi.Unlink() instead.")]
-	proto external void Unlink(BackendCallback callback);
-	/*!
-	\brief The bi-account remains locked for X seconds
-	*/
-	[Obsolete("Use BohemiaAccountApi.GetSecondsUntilAccountUnlockTime() instead.")]
-	proto external int RemainingAccountLockedTime();
-	/*!
-	\brief Client is Authenticated - relate requests may proceed
-	*/
-	[Obsolete("Use BackendAuthenticatorApi.IsAuthenticated() instead.")]
-	proto external bool IsAuthenticated();
-	/*!
-	\brief Client is busy - Authentication in process
-	*/
-	[Obsolete("Use BackendAuthenticatorApi.IsAuthInProgress() instead.")]
-	proto external bool IsAuthInProgress();
 	/*!
 	\brief True if HTTP communication enabled (initialization, runtime or shutdown may be pending at same time)
 	*/
@@ -159,20 +142,30 @@ sealed class BackendApi
 	proto external float GetCommTimeLastFail();
 	/*!
 	\brief Ask specific request with callback result
-	\param request Is type of request, which is EBackendRequest
-	\param cb Is script callback where you will recieve result/ error or even data when request finsihes
+	\param request Is type of request, which is Request global index
+	\param cb Is script callback where you will recieve result/ error or even data when request finishes
 	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
-	*/
-	proto external void Request( int request, BackendCallback cb, JsonApiStruct dataObject );
-	/*!
-	\brief Ask player request with callback result from controller (Lobby)
-	\param request Is type of request, which is EBackendRequest
-	\param cb Is script callback where you will recieve result/ error or even data when request finsihes
-	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
-	\param iPlayerId Is Player Id used on player identity
 	*/
 	[Obsolete()]
-	proto external void PlayerRequest( int request, BackendCallback cb, JsonApiStruct dataObject, int iPlayerId );
+	proto external void Request( int request, BackendCallback cb, JsonApiStruct dataObject );
+	/*!
+	\brief Ask player character data with callback result from controller (Lobby)
+	\param cb Is script callback where you will recieve result/ error or even data when request finishes
+	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
+	*/
+	proto external void PlayerCharacterGet( BackendCallback cb, JsonApiStruct dataObject, int iPlayerId );
+	/*!
+	\brief Update player character data with callback result from controller (Lobby)
+	\param cb Is script callback where you will recieve result/ error or even data when request finishes
+	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
+	*/
+	proto external void PlayerCharacterUpdateS2S( BackendCallback cb, JsonApiStruct dataObject, int iPlayerId );
+	/*!
+	\brief Update Dev player character data with callback result from controller (Lobby)
+	\param cb Is script callback where you will recieve result/ error or even data when request finishes
+	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
+	*/
+	proto external void PlayerDevCharacterUpdate( BackendCallback cb, JsonApiStruct dataObject, int iPlayerId );
 	/*!
 	\brief Expand player data upon defined structure, this is Server-Side only!
 	\note Data are available only after player was successfully accepted into Room/ Lobby on server
@@ -190,7 +183,7 @@ sealed class BackendApi
 	proto external void SettingsData( string sFileName, JsonApiStruct dataObject );
 	/*!
 	\brief Send feedback message and/ or script object with whatever data on it (additionally it is possible to handle callback as well)
-	\param cb Is script callback where you will recieve result/ error or even data when request finsihes
+	\param cb Is script callback where you will recieve result/ error or even data when request finishes
 	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
 	\param message Is custom
 	\param data Raw image data of screenshot, if any
@@ -204,6 +197,8 @@ sealed class BackendApi
 	\brief Get Workshop Api
 	*/
 	proto external WorkshopApi GetWorkshop();
+	//! Provides singleton instance of group catalogue
+	proto external GroupCatalogue GetGroupCatalogue();
 	/*!
 	\brief Get Server Config Api
 	*/
@@ -241,11 +236,6 @@ sealed class BackendApi
 	[Obsolete()]
 	proto external string GetPlayerIdentityId(int iPlayerId);
 	/*!
-	\brief Get Local Identity ID on client
-	*/
-	[Obsolete("Use BackendAuthenticatorApi.GetIdentityId() instead.")]
-	proto external string GetLocalIdentityId();
-	/*!
 	\brief Get Player Platform Kind by Player ID
 	\param iPlayerId Is id of player in session
 	*/
@@ -258,28 +248,6 @@ sealed class BackendApi
 	*/
 	[Obsolete()]
 	proto external string GetPlayerPlatformId(int iPlayerId);
-	/*!
-	\brief Return true if local platform data are to be used for authentication/ persistency of client (meaningless on server)
-	*/
-	proto external bool IsLocalPlatformAssigned();
-	/*!
-	\brief Set credentials value per item
-	\param item Is type of EBackendCredentials parameter you want to set
-	\param str Is value itself
-	*/
-	[Obsolete("Use BohemiaAccountApi.Link() instead.")]
-	proto external void SetCredentialsItem( EBackendCredentials item, string str );
-	/*!
-	\brief Get credentials value per item
-	\param item Is type of EBackendCredentials parameter you want to read
-	*/
-	[Obsolete("Use BohemiaAccountApi.GetEmail() or BohemiaAccountApi.GetName() instead.")]
-	proto external string GetCredentialsItem( EBackendCredentials item );
-	/*!
-	\brief Return true if BI Account is linked to local Identity
-	*/
-	[Obsolete("Use BohemiaAccountApi.IsLinked() instead.")]
-	proto external bool IsBIAccountLinked();
 	/*!
 	\brief Get target backend environment
 	*/
@@ -297,18 +265,7 @@ sealed class BackendApi
 	/*!
 	\brief Debugging API for internal builds
 	*/
-	proto external void SetDebugHandling(EBackendRequest eRequest, EBackendDebugHandling eHandlingType);
-
-	// callbacks
-
-	/*!
-	\brief Called when platform ready and provided all data necessary to connect online
-	*/
-	event void OnPlatformActive();
-	/*!
-	\brief Called when platform is not ready - perhaps user is not signed-in
-	*/
-	event void OnPlatformMissing();
+	proto external void SetDebugHandling(int iRequest, EBackendDebugHandling eHandlingType);
 }
 
 /*!

@@ -37,9 +37,9 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void AddProviderEntityEditorComponent(SCR_CampaignBuildingProviderComponent providerComponent)
+	void AddProviderEntityEditorComponent(notnull SCR_CampaignBuildingProviderComponent providerComponent)
 	{
-		if (!providerComponent || m_aProvidersComponents.Contains(providerComponent))
+		if (m_aProvidersComponents.Contains(providerComponent))
 			return;
 
 		SCR_MilitaryBaseComponent base = providerComponent.GetMilitaryBaseComponent();
@@ -155,10 +155,6 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		if (m_aProvidersComponents.IsEmpty())
 			return false;
 
-		suppliesComponent = SCR_CampaignSuppliesComponent.Cast(GetProviderEntity().FindComponent(SCR_CampaignSuppliesComponent));
-		if (suppliesComponent)
-			return true;
-
 		IEntity parent = GetProviderEntity();
 		while (parent)
 		{
@@ -168,6 +164,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 
 			parent = parent.GetParent();
 		}
+
 		return false;
 	}
 
@@ -177,10 +174,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		if (m_aProvidersComponents.IsEmpty())
 			return null;
 
-		SCR_FactionAffiliationComponent factionComp = SCR_FactionAffiliationComponent.Cast(GetProviderEntity().FindComponent(SCR_FactionAffiliationComponent));
-		if (factionComp)
-			return factionComp;
-
+		SCR_FactionAffiliationComponent factionComp;
 		IEntity parent = GetProviderEntity();
 		while (parent)
 		{
@@ -232,7 +226,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 			return null;
 
 		EntitySpawnParams params = new EntitySpawnParams();
-		params.TransformMode = ETransformMode.WORLD;
+		params.TransformMode = ETransformMode.LOCAL;
 		params.Parent = provider;
 
 		return ScriptedGameTriggerEntity.Cast(GetGame().SpawnEntityPrefab(resource, provider.GetWorld(), params));
@@ -329,7 +323,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		if (!TabContainLabel(tab))
 			return false;
 
-		return tab.CanBeShown();
+		return tab.CanBeShown(GetProviderEntity(), m_Manager.GetPlayerID());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -348,6 +342,8 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 			return false;
 
 		array<EEditableEntityLabel> labels = providerComponent.GetAvailableTraits();
+		if (labels.Contains(EEditableEntityLabel.SERVICE_HQ) && !SCR_CampaignBuildingProviderComponent.CanBeUsedToEstablishBase(providerComponent.GetOwner(), m_Manager.GetPlayerID()))
+			labels.RemoveItem(EEditableEntityLabel.SERVICE_HQ);
 
 		foreach (EEditableEntityLabel label : labels)
 		{
@@ -468,7 +464,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		if (!charControl || charControl.GetLifeState() == ECharacterLifeState.DEAD)
 			return false;
 
-		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(ent);
+		int playerId = SCR_PossessingManagerComponent.GetPlayerIdFromControlledEntity(ent);
 		if (playerId == 0)
 		{			
 			AIControlComponent ctrComp = charControl.GetAIControlComponent();
@@ -528,9 +524,10 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	{
 		SCR_MilitaryBaseComponent base;
 
-		if (GetProviderEntity())
+		IEntity provider = GetProviderEntity();
+		if (provider)
 		{
-			SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(GetProviderEntity().FindComponent(SCR_CampaignBuildingProviderComponent));
+			SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(provider.FindComponent(SCR_CampaignBuildingProviderComponent));
 			if (!providerComponent)
 				return;
 
@@ -548,11 +545,12 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	{
 		ToggleBuildingTool(true);
 
-		if (!GetProviderEntity())
+		IEntity provider = GetProviderEntity();
+		if (!provider)
 			return;
 
 		// In case the provider of the building was the base, don't remove it's stamp from component. So the composition can't be build from another providers
-		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(GetProviderEntity().FindComponent(SCR_CampaignBuildingProviderComponent));
+		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(provider.FindComponent(SCR_CampaignBuildingProviderComponent));
 		if (!providerComponent)
 			return;
 
@@ -596,6 +594,90 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 			comp.SetProviderEntityServer(null);
 
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void EOnEditorPostActivate()
+	{
+		if (!m_RplComponent.IsOwner())
+			return;
+
+		if (!m_aProvidersComponents.IsEmpty() || m_ForcedProviderComponent)
+			return;
+
+		SCR_CampaignBuildingNetworkComponent buildingNetworkingComp = SCR_CampaignBuildingNetworkComponent.Cast(SCR_PlayerController.s_pLocalPlayerController.FindComponent(SCR_CampaignBuildingNetworkComponent));
+		if (buildingNetworkingComp)
+			buildingNetworkingComp.RequestBuildModeProvider();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Authority method for replicating information about currently used providers to the client who owns this editor
+	void SendProviders_S()
+	{
+		if (m_aProvidersComponents.IsEmpty() && !m_ForcedProviderComponent)
+			m_Manager.Close();
+
+		RplComponent providerRplComp;
+		array<RplId> providerIds = {};
+		foreach (SCR_CampaignBuildingProviderComponent providerComp : m_aProvidersComponents)
+		{
+			if (!providerComp)
+				continue;
+
+			providerRplComp = SCR_EntityHelper.GetEntityRplComponent(providerComp.GetOwner());
+			if (providerRplComp)
+				providerIds.Insert(providerRplComp.Id());
+		}
+
+		RplId forcedProviderId = RplId.Invalid();
+		if (m_ForcedProviderComponent)
+		{
+			providerRplComp = SCR_EntityHelper.GetEntityRplComponent(m_ForcedProviderComponent.GetOwner());
+			if (providerRplComp)
+				forcedProviderId = providerRplComp.Id();
+		}
+
+		if (forcedProviderId.IsValid() && providerIds.IsEmpty())
+		{
+			m_Manager.Close();
+			return;
+		}
+
+		Rpc(RpcDo_SyncBuildModeProviders, providerIds, forcedProviderId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void RpcDo_SyncBuildModeProviders(array<RplId> providers, RplId forcedProvider)
+	{
+		RplComponent providerRplComp = RplComponent.Cast(Replication.FindItem(forcedProvider));
+		IEntity providerEnt;
+		SCR_CampaignBuildingProviderComponent providerComp;
+		if (providerRplComp)
+		{
+			providerEnt = providerRplComp.GetEntity();
+			providerComp = SCR_CampaignBuildingProviderComponent.Cast(providerEnt.FindComponent(SCR_CampaignBuildingProviderComponent));
+			if (providerComp)
+				SetForcedProvider(providerComp);
+		}
+
+		if (providers)
+		{
+			foreach (RplId providerRplId : providers)
+			{
+				providerRplComp = RplComponent.Cast(Replication.FindItem(providerRplId));
+				if (!providerRplComp)
+					continue;
+
+				providerEnt = providerRplComp.GetEntity();
+				if (!providerEnt)
+					continue;
+
+				providerComp = SCR_CampaignBuildingProviderComponent.Cast(providerEnt.FindComponent(SCR_CampaignBuildingProviderComponent));
+				if (providerComp)
+					AddProviderEntityEditorComponent(providerComp);
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -734,19 +816,31 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	//------------------------------------------------------------------------------------------------
 	override protected bool RplSave(ScriptBitWriter writer)
 	{
-		RplId entityRplID;
-		int count = m_aProvidersComponents.Count();
-
-		writer.WriteInt(count);
-		for (int i = 0; i < count; i++)
+		array<RplId> providers = {};
+		RplComponent rplComp;
+		IEntity provider;
+		foreach (SCR_CampaignBuildingProviderComponent providerComponent : m_aProvidersComponents)
 		{
-			IEntity provider = m_aProvidersComponents[i].GetOwner();
+			if (!providerComponent)
+			{
+				Debug.Error("Error: Server found a null reference while trying to save replication data for proxy!");
+				continue;
+			}
+
+			provider = providerComponent.GetOwner();
 			if (!provider)
 				continue;
 
-			RplComponent rplCmp = RplComponent.Cast(provider.FindComponent(RplComponent));
-			entityRplID = rplCmp.Id();
-			writer.WriteRplId(entityRplID);
+			rplComp = SCR_EntityHelper.GetEntityRplComponent(provider);
+			if (rplComp)
+				providers.Insert(rplComp.Id());
+		}
+
+		int count = providers.Count();
+		writer.WriteInt(count);
+		foreach (RplId rplId : providers)
+		{
+			writer.WriteRplId(rplId);
 		}
 
 		return true;
@@ -780,7 +874,8 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 				continue;
 
 			providerComponent = SCR_CampaignBuildingProviderComponent.Cast(ent.FindComponent(SCR_CampaignBuildingProviderComponent));
-			AddProviderEntityEditorComponent(providerComponent);
+			if (providerComponent)
+				AddProviderEntityEditorComponent(providerComponent);
 		}
 
 		if (!m_aProvidersRplIds.IsEmpty())

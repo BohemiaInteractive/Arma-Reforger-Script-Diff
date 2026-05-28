@@ -201,7 +201,7 @@ class SCR_AvailableActionContext
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool IsAvailable(SCR_AvailableActionsConditionData data, float timeSlice)
+	bool IsAvailable(notnull SCR_AvailableActionsConditionData data, float timeSlice)
 	{
 		if (!m_bEnabled)
 			return false;
@@ -339,7 +339,7 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 	//! Go through the list of passed in action names of inActions
 	//! and populate the outActions list with actions that are currently active (available)
 	//! Returns count of available actions or -1 in case of error
-	protected int GetAvailableActions(SCR_AvailableActionsConditionData data, array<ref SCR_AvailableActionContext> inActions, out array<SCR_AvailableActionContext> outActions, float timeSlice)
+	protected int GetAvailableActions(notnull SCR_AvailableActionsConditionData data, array<ref SCR_AvailableActionContext> inActions, out array<SCR_AvailableActionContext> outActions, float timeSlice)
 	{
 		ArmaReforgerScripted game = GetGame();
 		if (!game)

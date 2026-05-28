@@ -85,11 +85,11 @@ class SCR_FactionCommanderCommandConflictBaseMenuHandler : SCR_FactionCommanderC
 		SCR_Task task = GetTask(hoveredEntity, commanderFaction, GetTaskPrefabClassTypename());
 		if (!task)
 		{
-			factionCommanderPlayerComponent.CreateCampaignMilitaryBaseTask(GetTaskPrefab(), group, playerId, this, m_vPositionOffset);
+			factionCommanderPlayerComponent.CreateCampaignMilitaryBaseTask(GetTaskPrefab(), group, playerId, m_vPositionOffset);
 			return;
 		}
 
 		if (group)
-			factionCommanderPlayerComponent.AssignGroupToTask(group.GetGroupID(), task.GetTaskID(), playerId);
+			factionCommanderPlayerComponent.AssignGroupToTask(group.GetGroupID(), task.GetTaskID());
 	}
 }

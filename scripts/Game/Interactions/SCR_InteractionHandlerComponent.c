@@ -686,6 +686,10 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			return;
 		}
 
+		ChimeraWorld world = ChimeraWorld.CastFrom(character.GetWorld());
+		if (!world || world.IsGameTimePaused())
+			return; // dont tick user actions when everything is paused
+
 		HandleOverride(character);
 
 		UserActionContext currentContext = GetCurrentContext();
@@ -749,6 +753,9 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 					canPerformSelectedAction = canPerform[prevActionIndex];
 				else if (m_pLastUserAction)
 					canPerformSelectedAction = m_pLastUserAction.CanBeShown(character) && m_pLastUserAction.CanBePerformed(character);
+
+				SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+				canPerformSelectedAction = canPerformSelectedAction && controller && controller.GetLifeState() == ECharacterLifeState.ALIVE;
 			}
 			else if (actionsCount > 0)
 			{

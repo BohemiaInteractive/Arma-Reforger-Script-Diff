@@ -83,10 +83,10 @@ class SCR_CommandActionsEditorComponent : SCR_BaseActionsEditorComponent
 	protected void OnPlacingSelectedPrefabChange(ResourceName prefab, ResourceName prefabPrev)
 	{
 		//--- Reset variables when placing ends
-		if (prefab.IsEmpty())
-		{
-			SetCurrentAction(null);
-		}
+		if (!prefab.IsEmpty())
+			return;
+
+		SetCurrentAction(null);
 	}
 
 	override int ValidateSelection(bool isInstant)

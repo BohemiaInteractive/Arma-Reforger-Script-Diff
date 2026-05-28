@@ -300,9 +300,16 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		if (m_PauseButton)
 			m_PauseButton.m_OnActivated.Insert(OnPauseMenu);
 
-		m_GroupOpenButton = SCR_InputButtonComponent.GetInputButtonComponent("GroupManager", GetRootWidget());
-		if (m_GroupOpenButton)
-			m_GroupOpenButton.m_OnActivated.Insert(OpenGroupMenu);
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.Cast(m_GameMode.FindComponent(SCR_GroupsManagerComponent));
+		if (groupsManager && groupsManager.IsGroupMenuAllowed())
+		{
+			m_GroupOpenButton = SCR_InputButtonComponent.GetInputButtonComponent("GroupManager", GetRootWidget());
+			if (m_GroupOpenButton)
+			{
+				m_GroupOpenButton.SetVisible(true);
+				m_GroupOpenButton.m_OnActivated.Insert(OpenGroupMenu);
+			}
+		}
 		
 		HookEvents();
 		InitMapDeploy();
@@ -726,6 +733,12 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		if (!m_bInitialSpawnPointSet || !m_MapEntity || !m_MapEntity.IsOpen())
 			return;
 
+		if (spawnPoint.IsSpawnPointRandom())
+		{	
+			m_MapEntity.CenterMap();
+			return;
+		}
+		
 		vector o = spawnPoint.GetOrigin();
 
 		float x, y;

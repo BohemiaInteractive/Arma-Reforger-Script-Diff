@@ -63,7 +63,7 @@ class SCR_MapMarkerEntryPlaced : SCR_MapMarkerEntryConfig
 	int GetIconCategoryID(int iconID)
 	{
 		if (!m_aPlacedMarkerIcons.IsIndexValid(iconID))
-			return null;
+			return 0;
 		
 		string identifier = m_aPlacedMarkerIcons[iconID].m_sCategoryIdentifier;
 		
@@ -73,7 +73,7 @@ class SCR_MapMarkerEntryPlaced : SCR_MapMarkerEntryConfig
 				return i;
 		}
 		
-		return null;
+		return 0;
 	}
 	
 	//------------------------------------------------------------------------------------------------

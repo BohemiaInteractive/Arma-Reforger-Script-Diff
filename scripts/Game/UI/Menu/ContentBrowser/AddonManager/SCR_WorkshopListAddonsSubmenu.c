@@ -111,7 +111,7 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 		
 		RefreshAll();
 		
-		SCR_AnalyticsApplication.GetInstance().WorkshopSetTab(SCR_EAnalyticsWorkshopTab.MOD_MANAGER);
+		//SCR_AnalyticsApplication.GetInstance().WorkshopSetTab(SCR_EAnalyticsWorkshopTab.MOD_MANAGER);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -300,7 +300,7 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 		// Enable
 		if (m_NavEnable)
 		{
-			SetNavigationButtonVisibile(m_NavEnable, show, false);
+			SetNavigationButtonVisible(m_NavEnable, show, false);
 
 			if (show)
 			{
@@ -321,12 +321,12 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 
 		// Details
 		if (m_NavOpenDetails)
-			SetNavigationButtonVisibile(m_NavOpenDetails, show, false);
+			SetNavigationButtonVisible(m_NavOpenDetails, show, false);
 
 		// Enable All
 		if (m_NavEnableAll)
 		{
-			SetNavigationButtonVisibile(m_NavEnableAll, show, false);
+			SetNavigationButtonVisible(m_NavEnableAll, show, false);
 
 			if (show)
 			{
@@ -366,7 +366,7 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 				}
 			}
 			
-			SetNavigationButtonVisibile(m_NavUpdate, showNavUpdate && show, false);
+			SetNavigationButtonVisible(m_NavUpdate, showNavUpdate && show, false);
 		}
 		
 		// Delete
@@ -374,7 +374,7 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 		{
 			bool visible = !downloading && show;
 			
-			SetNavigationButtonVisibile(m_NavDelete, visible, false);
+			SetNavigationButtonVisible(m_NavDelete, visible, false);
 			
 			if (visible)
 			{
@@ -392,7 +392,7 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 		
 		// Delete All
 		if (m_NavDeleteAll)
-			SetNavigationButtonVisibile(m_NavDeleteAll, show, false);
+			SetNavigationButtonVisible(m_NavDeleteAll, show, false);
 	}
 	
 	//------------------------------------------------------------------------------------------------

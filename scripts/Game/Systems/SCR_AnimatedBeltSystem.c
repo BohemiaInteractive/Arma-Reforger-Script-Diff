@@ -12,6 +12,9 @@ class SCR_AnimatedBeltSystem : GameSystem
 	}
 
 	protected ref array<SCR_AnimatedBeltComponent> m_aComponents = {};
+	protected ref array<SCR_AnimatedBeltComponent> m_aComponentsToAdd = {};
+	protected ref array<SCR_AnimatedBeltComponent> m_aComponentsToDel = {};
+	private bool m_bSimulationRunning;
 
 	//------------------------------------------------------------------------------------------------
 	protected override void OnInit()
@@ -24,7 +27,8 @@ class SCR_AnimatedBeltSystem : GameSystem
 	{
 		float timeSlice = args.GetTimeSliceSeconds();
 		bool nullValuePresent;
-		
+
+		m_bSimulationRunning = true;
 		foreach (SCR_AnimatedBeltComponent comp : m_aComponents)
 		{
 			if (!comp)
@@ -35,7 +39,9 @@ class SCR_AnimatedBeltSystem : GameSystem
 			
 			comp.Update(timeSlice);
 		}
+		m_bSimulationRunning = false;
 		
+		// Remove any null referenes
 		if (nullValuePresent)
 		{
 			for (int i = m_aComponents.Count() - 1; i >= 0; i--)
@@ -44,26 +50,76 @@ class SCR_AnimatedBeltSystem : GameSystem
 					m_aComponents.Remove(i);
 			}
 		}
+
+		// Simulation stopped running, time to update m_aComponents if necessary
+		foreach (SCR_AnimatedBeltComponent comp : m_aComponentsToAdd)
+		{
+			if (comp)
+				RegisterInternal(comp);
+		}
+		foreach (SCR_AnimatedBeltComponent comp : m_aComponentsToDel)
+		{
+			if (comp)
+				UnregisterInternal(comp);
+		}
+		m_aComponentsToAdd.Clear();
+		m_aComponentsToDel.Clear();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void Register(SCR_AnimatedBeltComponent component)
+	private void RegisterInternal(notnull SCR_AnimatedBeltComponent component)
 	{
-		if (!component)
+		int index = component.GetBeltSystemIdx();
+		if (index >= 0)
 			return;
 		
-		if (!m_aComponents.Contains(component))
-			m_aComponents.Insert(component);
-		
+		index = m_aComponents.Insert(component);
+		component.SetBeltSystemIdx(index);
+
 		if (!IsEnabled())
 			Enable(true);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void Unregister(SCR_AnimatedBeltComponent component)
+	void Register(notnull SCR_AnimatedBeltComponent component)
 	{
-		m_aComponents.RemoveItem(component);
+		if (m_bSimulationRunning)
+		{
+			m_aComponentsToAdd.Insert(component);
+			return;
+		}
+		
+		RegisterInternal(component);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	private void UnregisterInternal(notnull SCR_AnimatedBeltComponent component)
+	{
+		int index = component.GetBeltSystemIdx();
+		if (index < 0)
+			return;
+		
+		// Assign the last item in the array out current system index if possible
+		if (!m_aComponents.IsEmpty() && m_aComponents[m_aComponents.Count()-1] != component)
+			m_aComponents[m_aComponents.Count()-1].SetBeltSystemIdx(index);
+		// Swap indices with the last item in the array
+		m_aComponents.Remove(index);
+		// Invalidate current component's index
+		component.SetBeltSystemIdx(-1);
+		
 		if (m_aComponents.IsEmpty())
 			Enable(false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void Unregister(notnull SCR_AnimatedBeltComponent component)
+	{
+		if (m_bSimulationRunning)
+		{
+			m_aComponentsToDel.Insert(component);
+			return;
+		}
+		
+		UnregisterInternal(component);
 	}
 }

@@ -433,7 +433,7 @@ class SCR_NotificationDisplayData
 		
 		//~ No custom name set so get Callsign instead
 		if (SCR_StringHelper.IsEmptyOrWhiteSpace(groupName))
-			return GetEntityCallsign(Replication.FindId(aiGroup), groupName);
+			return GetEntityCallsign(Replication.FindItemId(aiGroup), groupName);
 			
 		return true;
 	}

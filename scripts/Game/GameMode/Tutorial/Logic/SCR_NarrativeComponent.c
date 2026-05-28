@@ -119,7 +119,7 @@ class SCR_NarrativeComponent : ScriptComponent
 				}
 			}
 
-			m_CharController.StartLoitering(animId, false, true, alignToPosition, targetPosition, false, customAnimData);
+			m_CharController.StartLoitering(entityToAttachTo, animId, false, true, alignToPosition, targetPosition, false, customAnimData);
 		}
 		else
 		{

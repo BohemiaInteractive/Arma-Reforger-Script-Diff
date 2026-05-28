@@ -28,6 +28,9 @@ class SCR_GroupTaskRelevance
 	[Attribute(desc: "Typename of SCR_Task class")]
 	protected string m_sTaskTypename;
 
+	[Attribute("1", desc: "If is checked, task is visible to all groups")]
+	protected bool m_bIsTaskVisibleToAllGroups;
+
 	[Attribute(desc: "List with relevant group roles for the task defined by typename")]
 	protected ref array<ref SCR_GroupRoleRelevance> m_aOrderedGroupRoleRelevanceList;
 
@@ -53,6 +56,9 @@ class SCR_GroupTaskRelevance
 	//! \return true if the task is relevant and visible for the group
 	bool IsTaskVisibleForGroup(notnull SCR_AIGroup group)
 	{
+		if (m_bIsTaskVisibleToAllGroups)
+			return true;
+
 		SCR_EGroupRole groupRole = group.GetGroupRole();
 		foreach (SCR_GroupRoleRelevance groupRoleRelevance : m_aOrderedGroupRoleRelevanceList)
 		{

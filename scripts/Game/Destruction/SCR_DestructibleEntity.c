@@ -9,6 +9,12 @@ class SCR_DestructibleEntityClass: DestructibleEntityClass
 
 	[Attribute("0", uiwidget: UIWidgets.ComboBox, "Type of material for destruction sound", "", ParamEnumArray.FromEnum(SCR_EMaterialSoundTypeBreak))]
 	SCR_EMaterialSoundTypeBreak m_eMaterialSoundType;
+
+	[Attribute("0", uiwidget: UIWidgets.CheckBox, "Total destruction: If a destructible takes too much damage from a single source while this is enabled, instead of advancing to the next phase, it will be deleted from the world without any effects. Total destruction overrides \"Destroy at no health\"", "")]
+	bool m_bTotalDestructionEnabled;
+	
+	[Attribute(defvalue: "0", uiwidget: UIWidgets.Slider, desc: "Amount of damage to take from a single source to trigger total destruction", params: "0 64000 1")]
+	float m_fTotalDestructionThreshold;
 }
 
 class SCR_DestructibleEntity: DestructibleEntity
@@ -77,8 +83,21 @@ class SCR_DestructibleEntity: DestructibleEntity
 		destructionData.m_vHitNormal = damageContext.hitNormal.Normalized();
 		destructionData.m_fHitDamage = damageContext.damageValue;
 		destructionData.m_eDamageType = damageContext.damageType;
-		destructionData.m_bTotalDestruction = damageContext.damageValue > maxHealth * TOTAL_DESTRUCTION_MAX_HEALTH_MULTIPLIER;
 		destructionData.m_iPreviousPhase = previousState;
+		
+		//if damage was too large, trigger total destruction (if enabled)		
+		SCR_DestructibleEntityClass prefabData = SCR_DestructibleEntityClass.Cast(GetPrefabData());
+		const bool totalDestruction = prefabData.m_bTotalDestructionEnabled && (damageContext.damageValue >= prefabData.m_fTotalDestructionThreshold);
+		destructionData.m_bTotalDestruction = totalDestruction;
+
+		//Total destruction plays no sound, spawns no particles, leaves no debris.
+		if(destructionData.m_bTotalDestruction)
+		{
+			//Even if they don't have rpl component, DeleteRplEntity will delete the entity for this client
+			RplComponent.DeleteRplEntity(this, false);
+			return;
+		}
+		
 		destructionData.Save(frameData);
 	}
 
@@ -113,7 +132,7 @@ class SCR_DestructibleEntity: DestructibleEntity
 			else
 				phys.SetResponseIndex(phase.m_ePhysicalResponseIndex);
 		}
-
+		
 		if (streamed)
 		{
 			if (destroyAtNoHealth && lastPhase)
@@ -153,6 +172,8 @@ class SCR_DestructibleEntity: DestructibleEntity
 
 		if (lastPhase)
 			ClearEventMask(EntityEvent.CONTACT);
+		else
+			SetEventMask(EntityEvent.CONTACT);
 
 		SCR_BaseDestructionPhase previousPhase = SCR_BaseDestructionPhase.Cast(prefabData.GetDestructionPhase(previousDamagePhaseIndex));
 		if (!previousPhase)
@@ -193,7 +214,13 @@ class SCR_DestructibleEntity: DestructibleEntity
 		SCR_DestructionData destructionData = new SCR_DestructionData();
 		if (frameData)
 			destructionData.Load(frameData);
-
+		
+		//Total destruction plays no sound, spawns no particles, leaves no debris.
+		if(destructionData.m_bTotalDestruction)
+		{
+			return;
+		}
+		
 		GoToDamagePhase(destructibleState, destructionData.m_iPreviousPhase, destructionData, JIP);
 	}
 
@@ -244,7 +271,7 @@ class SCR_DestructibleEntity: DestructibleEntity
 		EDamageType damageType = EDamageType.TRUE;
 		// If vehicle response index is the same or higher -> automatically destroy
 		// Otherwise -> apply damage
-		if (otherResponseIndex - MIN_MOMENTUM_RESPONSE_INDEX < ownerReponseIndex - MIN_DESTRUCTION_RESPONSE_INDEX)
+		if (ownerReponseIndex < MIN_DESTRUCTION_RESPONSE_INDEX || otherResponseIndex - MIN_MOMENTUM_RESPONSE_INDEX < ownerReponseIndex - MIN_DESTRUCTION_RESPONSE_INDEX)
 		{
 			float momentum = SCR_DestructionUtility.CalculateMomentum(contact, ownerMass, otherMass);
 			damage = momentum * prefabData.m_fMomentumToDamageScale;

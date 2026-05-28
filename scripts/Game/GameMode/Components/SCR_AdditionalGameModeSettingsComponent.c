@@ -46,8 +46,8 @@ class SCR_AdditionalGameModeSettingsComponent : SCR_BaseGameModeComponent
 	[Attribute(desc: "If true artillery ai command will get position offset based on the distance from the player to the position at which player ordered the artillery")]
 	protected bool m_bAdditionalArtilleryOrderDistancePenalty;
 
-	[RplProp(onRplName: "OnNightNoiseSettingChanged"), Attribute(desc: "Disable noise effect which will be visible in dark places")]
-	protected bool m_bDisableNightNoiseEffect = true;
+	[RplProp(onRplName: "OnNightNoiseSettingChanged"), Attribute(defvalue: "1", desc: "Disable noise effect which will be visible in dark places")]
+	protected bool m_bDisableNightNoiseEffect;
 	
 	protected ref ScriptInvokerInt m_OnNametagRelationFilterUpdated;
 	protected ref ScriptInvokerInt m_OnNametagControllerFilterUpdated;

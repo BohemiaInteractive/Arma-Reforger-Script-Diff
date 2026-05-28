@@ -16,7 +16,7 @@ Structure to store or generate UUIDs.
 - Null UUID "00000000-0000-0000-0000-000000000000" is default value with initialized string.
 \note If string which is not in valid UUID format is stored in UUID then it is considered as Null UUID.
 \warning UUID in Script still operates as string so "" is not equal to "00000000-0000-0000-0000-000000000000" even when both are considered as Null.
-         Use IsNull() method to verify if value is null instead.
+				 Use IsNull() method to verify if value is null instead.
 
 - Generated Version 4 is fully random UUID.
 - Generated Version 8 is custom variant of UUID based on first 128 bits of SHA-256 generated from namespace and name.
@@ -26,17 +26,22 @@ Based on RFC-9562 for Universally Unique IDentifiers (UUIDs).
 */
 sealed class UUID: string
 {
-	//! Null UUID with initialized string. To check if UUID is null use IsNull() method.
-	static const UUID NULL_UUID = "00000000-0000-0000-0000-000000000000";
+	/** \name Constants
+	 * Populated by the engine.
+	 */
+	///@{
 
+	//! Null UUID with initialized string. To check if UUID is null use IsNull() method.
+	static const UUID NULL_UUID;
 	/*!
 	Standardized UUID namespaces by RFC.
 	[RFC Namespace](https://www.rfc-editor.org/rfc/rfc9562#name-namespace-id-usage-and-allo)
 	*/
-	static const UUID NAMESPACE_DNS = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
-	static const UUID NAMESPACE_URL = "6ba7b811-9dad-11d1-80b4-00c04fd430c8";
-	static const UUID NAMESPACE_OID = "6ba7b812-9dad-11d1-80b4-00c04fd430c8";
-	static const UUID NAMESPACE_X500 = "6ba7b814-9dad-11d1-80b4-00c04fd430c8";
+	static const UUID NAMESPACE_DNS;
+	static const UUID NAMESPACE_URL;
+	static const UUID NAMESPACE_OID;
+	static const UUID NAMESPACE_X500;
+	///@}
 
 	/*!
 	Returns true if this UUID is Null("00000000-0000-0000-0000-000000000000" or "").

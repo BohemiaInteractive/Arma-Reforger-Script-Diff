@@ -662,8 +662,13 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		vector up = param.TraceNorm;
 
 		SCR_EntityHelper.OrientUpToVector(up, m_vCurrentMat);
-		m_PreviewEntity.SetTransform(m_vCurrentMat);
+		vector matCopy[4] = m_vCurrentMat;
+		m_PlaceableItem.OverridePreviewTransform(this, matCopy);
+		m_PreviewEntity.SetTransform(matCopy);
 		m_PreviewEntity.Update();
+
+		if (m_PlaceableItem.OverrideIsSurfaceValid(this, m_eCantPlaceReason, param.TraceEnt, m_vCurrentMat[3], param.TraceNorm, param.NodeIndex, param.ColliderIndex, param.SurfaceProps, param.TraceMaterial, param.ColliderName) && m_eCantPlaceReason != 0)
+			return;
 
 		ValidatePlacement(up, param.TraceEnt, world, character, m_eCantPlaceReason);
 	}
@@ -711,20 +716,19 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		if (traceDistance == 1) // Assume we didn't hit anything and snap item on the ground
 		{
 			// Trace against terrain and entities to detect new placement position
-			TraceParam paramGround = new TraceParam();
-			paramGround.Start = param.End + vector.Up;
-			paramGround.End = paramGround.Start - vector.Up * 20;
-			paramGround.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
-			paramGround.Exclude = SCR_PlayerController.GetLocalControlledEntity();
-			paramGround.LayerMask = EPhysicsLayerPresets.Projectile;
-			float traceGroundDistance = world.TraceMove(paramGround, FilterCallback);
+			param.Start = param.End + vector.Up;
+			param.End = param.Start - vector.Up * 20;
+			param.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
+			param.Exclude = SCR_PlayerController.GetLocalControlledEntity();
+			param.LayerMask = EPhysicsLayerPresets.Projectile;
+			float traceGroundDistance = world.TraceMove(param, FilterCallback);
 			m_PreviewEntity.GetTransform(m_vCurrentMat);
-			m_vCurrentMat[3] = paramGround.Start + ((paramGround.End - paramGround.Start) * traceGroundDistance) + vector.Up * 0.01; // adding 1 cm to avoid collision with object under
+			m_vCurrentMat[3] = param.Start + ((param.End - param.Start) * traceGroundDistance) + vector.Up * 0.01; // adding 1 cm to avoid collision with object under
 
 			if (traceGroundDistance < 1)
-				up = paramGround.TraceNorm;
+				up = param.TraceNorm;
 
-			tracedEntity = paramGround.TraceEnt;
+			tracedEntity = param.TraceEnt;
 		}
 
 		SCR_EntityHelper.OrientUpToVector(up, m_vCurrentMat);
@@ -753,7 +757,9 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		}
 #endif
 
-		m_PreviewEntity.SetTransform(m_vCurrentMat);
+		vector matCopy[4] = m_vCurrentMat;
+		m_PlaceableItem.OverridePreviewTransform(this, matCopy);
+		m_PreviewEntity.SetTransform(matCopy);
 		m_PreviewEntity.Update();
 
 		// Reject based on distance from character
@@ -766,6 +772,9 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		m_iTargetEntityNodeID = param.NodeIndex;
 		m_aCamDeploymentPosition = cameraMat;
 		m_aCamDeploymentPosition[3] = character.EyePosition();
+		if (m_PlaceableItem.OverrideIsSurfaceValid(this, m_eCantPlaceReason, tracedEntity, m_vCurrentMat[3], param.TraceNorm, param.NodeIndex, param.ColliderIndex, param.SurfaceProps, param.TraceMaterial, param.ColliderName) && m_eCantPlaceReason != 0)
+			return;
+
 		ValidatePlacement(m_vCurrentMat[1], tracedEntity, world, character, m_eCantPlaceReason);
 	}
 

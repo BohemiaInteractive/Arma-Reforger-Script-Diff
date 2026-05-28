@@ -95,6 +95,7 @@ class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 	protected void RPC_SetTransformBroadcast(vector transform[4])
 	{
 		GetOwner().SetTransform(transform);
+		GetOwner().Update(); // force update to ensure that bounding box covers this entity even after it was transformed
 	}
 
 	//------------------------------------------------------------------------------------------------

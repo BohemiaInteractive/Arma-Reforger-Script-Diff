@@ -222,7 +222,7 @@ class SCR_FlareAnimationComponent : WeaponAnimationComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Method used to drop the item on the ground
-	protected void DisposeOfFlare()
+	protected void DisposeOfFlare(bool doEquipNextFlare = true)
 	{
 		if (!m_UserController)
 			return;
@@ -247,8 +247,37 @@ class SCR_FlareAnimationComponent : WeaponAnimationComponent
 		if (!animationComponent)
 			return;
 
+		if (doEquipNextFlare)
+			EquipNextFlare();
+
 		CharacterCommandHandlerComponent commandHandler = animationComponent.GetCommandHandler();
 		if (commandHandler)
 			commandHandler.FinishItemUse(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method used to attempt to cycle to the next flare.
+	protected void EquipNextFlare()
+	{
+		if (!m_UserController)
+			return;
+
+		SCR_ChimeraCharacter character = m_UserController.GetCharacter();
+		if (!character)
+			return;
+
+		CharacterWeaponManagerComponent weaponManager = CharacterWeaponManagerComponent.Cast(character.GetWeaponManager());
+		if (!weaponManager)
+			return;
+
+		WeaponSlotComponent currentSlot = weaponManager.GetCurrentSlot();
+		if (!currentSlot)
+			return;
+
+		SCR_InventoryStorageManagerComponent storageManager = SCR_InventoryStorageManagerComponent.Cast(m_UserController.GetInventoryStorageManager());
+		if (!storageManager)
+			return;
+
+		storageManager.TryAssigningNextItemToQuickSlot(GetOwner(), currentSlot.GetWeaponSlotIndex(), false);
 	}
 }

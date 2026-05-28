@@ -29,7 +29,7 @@ class SCR_CurrentTaskUIComponent : SCR_ScriptedWidgetComponent
 			Color color = faction.GetOutlineFactionColor();
 			if (color)
 			{	
-				m_Widgets.m_wTaskIcon.SetColor(color);
+				m_Widgets.m_wTaskIconSymbol.SetColor(color);
 				m_Widgets.m_wTaskIconOutline.SetColor(color);
 			}
 			

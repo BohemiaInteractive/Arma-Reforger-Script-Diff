@@ -15,10 +15,14 @@ sealed class Replication
 	private void Replication();
 	private void ~Replication();
 
+	//! \deprecated Use RplId.Invalid() instead.
+	[Obsolete("Use RplId.Invalid() instead.")]
 	const RplId INVALID_ID = 0xFFFFFFFF;
 	//! \deprecated Use RplIdentity.Invalid() instead.
+	[Obsolete("Use RplIdentity.Invalid() instead.")]
 	const RplIdentity INVALID_IDENTITY = 0xFFFFFFFF;
 	//! \deprecated Use Replication.FindItemId() instead.
+	[Obsolete("Use Replication.FindItemId() instead.")]
 	static RplId FindId(Managed item) { return FindItemId(item); }
 
 	/*!

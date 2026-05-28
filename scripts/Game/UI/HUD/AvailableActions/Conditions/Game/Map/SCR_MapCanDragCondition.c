@@ -1,13 +1,9 @@
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_MapCanDragCondition : SCR_AvailableActionCondition
 {
 	//------------------------------------------------------------------------------------------------
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (data.m_bCanDragMapElement)
-			return GetReturnResult(true);
-
-		return GetReturnResult(false);
+		return GetReturnResult(data.m_bCanDragMapElement);
 	}
-};
+}

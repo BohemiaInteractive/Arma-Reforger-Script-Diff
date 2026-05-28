@@ -152,7 +152,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	//! \return
 	bool IsInGracePeriod(IEntity entity)
 	{
-		RplId entityId = Replication.FindId(entity);
+		RplId entityId = Replication.FindItemId(entity);
 		
 		if (entityId.IsValid())
 			return m_aGracePeriodEntries.Contains(entityId);
@@ -193,8 +193,8 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	//! \return
 	bool CanRefund(notnull IEntity entity, notnull IEntity user)
 	{
-		RplId entityId = Replication.FindId(entity);
-		RplId userId = Replication.FindId(user);
+		RplId entityId = Replication.FindItemId(entity);
+		RplId userId = Replication.FindItemId(user);
 		
 		if (!entityId.IsValid() || !userId.IsValid())
 			return false;
@@ -211,7 +211,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	//! \param[in] entity
 	void UnregisterGracePeriod(notnull IEntity entity)
 	{
-		RplId entityId = Replication.FindId(entity);
+		RplId entityId = Replication.FindItemId(entity);
 		
 		if (!entityId.IsValid())
 			return;
@@ -255,8 +255,8 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	//! \param[in] startingTime
 	void RegisterGracePeriod(notnull IEntity entity, notnull IEntity user, float startingTime = FLT_INF)
 	{
-		RplId entityId = Replication.FindId(entity);
-		RplId userId = Replication.FindId(user);
+		RplId entityId = Replication.FindItemId(entity);
+		RplId userId = Replication.FindItemId(user);
 		
 		if (!entityId.IsValid())
 			return;
@@ -1150,7 +1150,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 		SCR_ECharacterRank rank = SCR_CharacterRankComponent.GetCharacterRank(user);
 		WorldTimestamp lastTimestamp = networkComponent.GetLastRequestTimestamp();
-		WorldTimestamp timeout = lastTimestamp.PlusMilliseconds(factionManager.GetRankRequestCooldown(rank));
+		WorldTimestamp timeout = lastTimestamp.PlusMilliseconds(factionManager.GetRankRequestCooldown(rank, playerController.GetPlayerId()));
 		ChimeraWorld world = GetOwner().GetWorld();
 		return (lastTimestamp == 0 || timeout.Less(world.GetServerTimestamp()));
 	}

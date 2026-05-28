@@ -75,7 +75,7 @@ class RoadGeneratorEntity : GeneratorBaseEntity
 	}
 
 	//-----------------------------------------------------------------------
-	override bool _WB_CanSelect(IEntitySource src)
+	override bool _WB_IsTraceable(IEntitySource src)
 	{
 		return false;
 	}

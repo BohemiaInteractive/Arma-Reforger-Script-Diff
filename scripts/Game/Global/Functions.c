@@ -1636,7 +1636,10 @@ class SCR_Global
 	\return True if the operation was performed successfully
 	*/
 	static bool TeleportPlayer(int playerId, vector worldPosition, SCR_EPlayerTeleportedReason teleportReason = SCR_EPlayerTeleportedReason.DEFAULT)
-	{		
+	{
+		if (!IsPositionWithinTerrainBounds(worldPosition))
+			return false;
+
 		IEntity player = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId);
 		if (!player)
 			return false;
@@ -1970,4 +1973,27 @@ class SCR_Global
 
 		return resourceName;
 	}
-};
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks if provided position is within terrain bounds and over the terrain surface
+	//! \param[in] pos position in world space
+	//! \return true if it is, otherwise false
+	static bool IsPositionWithinTerrainBounds(vector pos)
+	{
+		float x = pos[0];
+		float y = pos[1];
+		float z = pos[2];
+
+		ChimeraGame game = GetGame();
+		vector mins, maxs;
+		game.GetWorldEntity().GetTerrain(0, 0).GetTerrainBoundBox(mins, maxs);
+		if (x < mins[0] || x > maxs[0])
+			return false;
+
+		if (z < mins[2] || z > maxs[2])
+			return false;
+
+		float surfaceY = game.GetWorld().GetSurfaceY(x, z);
+		return y > surfaceY || float.AlmostEqual(y, surfaceY, 0.01); // script has lower precision, thus values rounded from game code might be slightly different
+	}
+}

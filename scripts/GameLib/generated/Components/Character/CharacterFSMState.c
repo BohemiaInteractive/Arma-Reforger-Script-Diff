@@ -25,13 +25,25 @@ class CharacterFSMState: ScriptAndConfig
 	// callbacks
 
 	/*!
+	script event for initialization
+	*/
+	event protected void OnInit(CharacterEntity character);
+	/*!
 	script event called when state is created - animation controls binding should happen here
 	*/
 	event protected void OnBindAnimControls(CharacterAnimGraphComponent animGraphComponent);
 	/*!
+	script event called for activated fullbody state before the state is simulated
+	*/
+	event protected void OnProcessController(CharacterEntity character, float timeSlice);
+	/*!
+	scripted activation condition
+	*/
+	event bool ActivationCondition(CharacterEntity character);
+	/*!
 	script event called when state is activated
 	*/
-	event protected void OnActivate(CharacterEntity character, CharacterFSMState prevState, CharacterFSMStateActivateParams params);
+	event protected void OnActivate(CharacterEntity character, CharacterFSMState prevState);
 	/*!
 	script event called when state is deactivated
 	*/

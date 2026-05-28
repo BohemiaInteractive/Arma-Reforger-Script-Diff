@@ -24,6 +24,8 @@ class SCR_EditableEntityUIInfo : SCR_UIInfo
 	
 	[Attribute("1", UIWidgets.Auto, category: "Visualization", desc: "Asset card in content browser should occupy the full available area.")]
 	protected bool m_bFullBackgroundAssetCard;
+
+	protected FactionKey m_sFactionKeyOverride;
 	
 	//--- Hidden vars, used only in content browser where they're filled from component source
 	protected EEditableEntityType m_EntityType;
@@ -65,7 +67,21 @@ class SCR_EditableEntityUIInfo : SCR_UIInfo
 	//------------------------------------------------------------------------------------------------
 	FactionKey GetFactionKey()
 	{
+		if (m_sFactionKeyOverride.IsEmpty())
+			return m_sFaction;
+
+		return m_sFactionKeyOverride;
+	}
+
+	FactionKey GetDefaultFactionKey()
+	{
 		return m_sFaction;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OverrideFactionKey(FactionKey newKey)
+	{
+		m_sFactionKeyOverride = newKey;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -73,7 +89,7 @@ class SCR_EditableEntityUIInfo : SCR_UIInfo
 	{
 		FactionManager factionManager = GetGame().GetFactionManager();
 		if (factionManager)
-			return factionManager.GetFactionByKey(m_sFaction);
+			return factionManager.GetFactionByKey(GetFactionKey());
 		else
 			return null;
 	}
@@ -201,5 +217,35 @@ class SCR_EditableEntityUIInfo : SCR_UIInfo
 		}
 		
 		super.CopyFrom(source);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Extracts the ui info from editable entity prefab
+	//! \param[in] prefab
+	//! \return ui info of editable entity if such is found, otherwise null
+	static SCR_EditableEntityUIInfo ExtractEditableUIInfoFromPrefab(ResourceName prefab)
+	{
+		if (prefab.IsEmpty())
+			return null;
+
+		Resource entityResource = BaseContainerTools.LoadContainer(prefab);
+		if (!entityResource.IsValid())
+		{
+			Print(string.Format("Provided prefab '%1' is invalid!", prefab), LogLevel.ERROR);
+			return null;
+		}
+
+		IEntityComponentSource editableEntitySource = SCR_EditableEntityComponentClass.GetEditableEntitySource(entityResource);
+		if (!editableEntitySource)
+		{
+			Print(string.Format("Prefab '%1' is missing SCR_EditableEntityComponent!", prefab), LogLevel.ERROR);
+			return null;
+		}
+
+		SCR_EditableEntityUIInfo info = SCR_EditableEntityComponentClass.GetInfo(editableEntitySource);
+		if (!info)
+			Print(string.Format("Prefab '%1' is missing UI info in SCR_EditableEntityComponent!", prefab), LogLevel.ERROR);
+
+		return info;
 	}
 }

@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class ChimeraCharacterClass: GameEntityClass
-{
-}
-
 class ChimeraCharacter: GameEntity
 {
 	// Returns HUD display for this character

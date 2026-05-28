@@ -182,7 +182,7 @@ class SCR_AddonDetailsPanelComponent : SCR_ContentDetailsPanelBase
 			if (dependencies.Count() == 1)
 				m_InfoWidgets.m_wDependencies.SetText(SCR_WorkshopUiCommon.LABEL_DEPENDENCIES_NUMBER_ONE);
 			else
-				m_InfoWidgets.m_wDependencies.SetText(WidgetManager.Translate(SCR_WorkshopUiCommon.LABEL_DEPENDENCIES_NUMBER, dependencies.Count()));
+				m_InfoWidgets.m_wDependencies.SetTextFormat(SCR_WorkshopUiCommon.LABEL_DEPENDENCIES_NUMBER, dependencies.Count());
 		}
 
 		if (!dependentAddons.IsEmpty())
@@ -190,7 +190,7 @@ class SCR_AddonDetailsPanelComponent : SCR_ContentDetailsPanelBase
 			if (dependentAddons.Count() == 1)
 				m_InfoWidgets.m_wDependent.SetText(SCR_WorkshopUiCommon.LABEL_DEPENDENT_NUMBER_ONE);
 			else
-				m_InfoWidgets.m_wDependent.SetText(WidgetManager.Translate(SCR_WorkshopUiCommon.LABEL_DEPENDENT_NUMBER, dependentAddons.Count()));
+				m_InfoWidgets.m_wDependent.SetTextFormat(SCR_WorkshopUiCommon.LABEL_DEPENDENT_NUMBER, dependentAddons.Count());
 		}
 	}
 	

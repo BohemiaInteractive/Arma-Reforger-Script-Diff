@@ -67,9 +67,13 @@ class SCR_GameCoreBase
 	void OnUpdate(float timeSlice);
 	
 	//------------------------------------------------------------------------------------------------
-	//! Executed when the world ends
+	//! Executed when the gameplay stops
 	void OnGameEnd();
 	
+	//------------------------------------------------------------------------------------------------
+	//! Executed when the world is destroyed, ideal to clean up any static states before a restart.
+	void OnBeforeWorldCleanup();
+
 	//------------------------------------------------------------------------------------------------
 	//! Get core priority. Cores with higher number will be executed first.
 	//! \return priority

@@ -16,6 +16,8 @@ enum EAddChildFlags
 	AUTO_TRANSFORM,
 	//! Recalculate current world transform to local transform (child remains on the same world position)
 	RECALC_LOCAL_TRANSFORM,
+	//! Merge colliders into parent physics to enable collisions of child geometry
+	MERGE_PHYSICS,
 }
 
 /*!

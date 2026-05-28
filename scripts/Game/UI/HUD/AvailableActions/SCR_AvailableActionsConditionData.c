@@ -115,7 +115,14 @@ class SCR_AvailableActionsConditionData
 
 	//! Inventory fetching limitation
 	protected bool m_bCanFetchInventory = true;
-	
+
+	//! Editor
+	protected SCR_EditorManagerEntity m_EditorManager;
+	protected SCR_EditorModeEntity m_CurrentlyUsedEditor;
+	protected SCR_PlacingEditorComponent m_EditorPlacingComponent;
+	protected SCR_StatesEditorComponent m_EditorStatesManagerComponent;
+	protected SCR_EntitiesManagerEditorComponent m_EditorEntitiesManagerComponent
+
 	//! Map vars
 	protected SCR_MapEntity m_MapEntity;
 	bool m_bCanRotateMapElement;
@@ -151,6 +158,36 @@ class SCR_AvailableActionsConditionData
 		}
 		m_bIsQuickSlotAvailable = open;
 		m_bIsQuickSlotShown = open;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_EditorManagerEntity GetEditorManager()
+	{
+		return m_EditorManager;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_EditorModeEntity GetEditorModeEntity()
+	{
+		return m_CurrentlyUsedEditor;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_PlacingEditorComponent GetEditorPlacingComponent()
+	{
+		return m_EditorPlacingComponent;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_StatesEditorComponent GetEditorStatesManagerComponent()
+	{
+		return m_EditorStatesManagerComponent;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_EntitiesManagerEditorComponent GetEditorEntitiesManagerComponent()
+	{
+		return m_EditorEntitiesManagerComponent;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -616,6 +653,34 @@ class SCR_AvailableActionsConditionData
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected void FetchEditorData()
+	{
+		if (!m_EditorManager)
+		{
+			m_EditorManager = SCR_EditorManagerEntity.GetInstance();
+			if (!m_EditorManager)
+				return;
+		}
+
+		SCR_EditorModeEntity currentEditor = m_EditorManager.GetCurrentModeEntity();
+		if (currentEditor == m_CurrentlyUsedEditor)
+			return;
+
+		m_CurrentlyUsedEditor = currentEditor;
+		if (!m_CurrentlyUsedEditor)
+		{
+			m_EditorPlacingComponent = null;
+			m_EditorStatesManagerComponent = null;
+			m_EditorEntitiesManagerComponent = null;
+			return;
+		}
+
+		m_EditorPlacingComponent = SCR_PlacingEditorComponent.Cast(m_CurrentlyUsedEditor.FindComponent(SCR_PlacingEditorComponent));
+		m_EditorStatesManagerComponent = SCR_StatesEditorComponent.Cast(m_CurrentlyUsedEditor.FindComponent(SCR_StatesEditorComponent));
+		m_EditorEntitiesManagerComponent = SCR_EntitiesManagerEditorComponent.Cast(m_CurrentlyUsedEditor.FindComponent(SCR_EntitiesManagerEditorComponent));
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Fetches data from the provided entity
 	//! Sets the validity of the data which can be received via IsValid()
 	void FetchData(IEntity controlledEntity, float timeSlice)
@@ -636,6 +701,8 @@ class SCR_AvailableActionsConditionData
 
 		if (m_GadgetManager)
 			FetchCurrentlyPlacedItemName();
+
+		FetchEditorData();
 
 		if (!m_Character)
 		{

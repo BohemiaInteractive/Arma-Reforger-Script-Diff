@@ -9,6 +9,14 @@ class SCR_PhysicsObserverSystem : GameSystem
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		outInfo.SetAbstract(false);
+		outInfo.SetLocation(WorldSystemLocation.Both);
+		outInfo.AddPoint(WorldSystemPoint.Frame);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! \return
 	static SCR_PhysicsObserverSystem GetInstance()
 	{

@@ -265,7 +265,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		{
 			SCR_EditableCharacterComponent editableCharacterComponent = SCR_EditableCharacterComponent.Cast(killerEntity.FindComponent(SCR_EditableCharacterComponent));
 			if (editableCharacterComponent)
-				killerRplId = Replication.FindId(editableCharacterComponent);
+				killerRplId = Replication.FindItemId(editableCharacterComponent);
 			
 			//~ Invalid killer so show that player simply died
 			if (!killerRplId.IsValid())
@@ -424,12 +424,15 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 			int playerId = requestComponent.GetPlayerId();
 			//Get factions using ID
 			Faction playerFaction = m_FactionManager.GetPlayerFaction(playerId);
+			SCR_Faction scrPlayerFaction = SCR_Faction.Cast(playerFaction);
 		
-			//Faction is diffrent
+			//Faction is different
 			if (m_FactionOnSpawn != playerFaction)
 			{
 				//Send player joined faction notification
-				SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.PLAYER_JOINED_FACTION, playerId);
+				if (!scrPlayerFaction || (m_FactionOnSpawn && !scrPlayerFaction.IsRelatedFaction(m_FactionOnSpawn)))
+					SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.PLAYER_JOINED_FACTION, playerId);
+
 				m_FactionOnSpawn = playerFaction;
 			}
 		}

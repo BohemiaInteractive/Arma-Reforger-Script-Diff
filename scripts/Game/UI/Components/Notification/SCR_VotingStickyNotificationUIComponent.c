@@ -61,6 +61,14 @@ class SCR_VotingStickyNotificationUIComponent : SCR_StickyNotificationUIComponen
 					continue;
 				}
 
+				if (m_VotingManagerComponent.GetVoteAlwaysDisplayVoteInitiatorVotingTimer(voteType, value) && m_VotingManagerComponent.GetVoteAuthorId(voteType, value) == SCR_PlayerController.GetLocalPlayerId())
+				{
+					m_bIsDisplayingLocalVoteTimer = true;
+					m_eActiveVotingAboutLocalPlayerVoteType = voteType;
+					m_iActiveVotingAboutLocalPlayerVoteValue = value;
+					continue;
+				}
+
 				validActiveVotingTypes.RemoveOrdered(i);
 				votingValues.RemoveOrdered(i);
 			}	

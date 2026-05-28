@@ -9,11 +9,8 @@ class SCR_CharacterWeaponTypeCondition : SCR_AvailableActionCondition
 	//------------------------------------------------------------------------------------------------
 	//! Returns true when current controlled entity has a weapon equipped of given type
 	//! Returns opposite if m_bNegateCondition is enabled
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-
 		bool result = data.GetCurrentWeaponEntity() != null;
 
 		if (result)
@@ -21,4 +18,4 @@ class SCR_CharacterWeaponTypeCondition : SCR_AvailableActionCondition
 
 		return GetReturnResult(result);
 	}
-};
+}

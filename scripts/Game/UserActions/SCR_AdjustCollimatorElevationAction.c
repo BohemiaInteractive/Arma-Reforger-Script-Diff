@@ -32,10 +32,11 @@ class SCR_AdjustCollimatorElevationAction : SCR_AdjustCollimatorAction
 	//! Only triggered if the sender wrote anyting to the buffer.
 	override protected bool OnLoadActionData(ScriptBitReader reader)
 	{
-		if (m_bIsAdjustedByPlayer)
-			return true;
-
 		bool loaded = super.OnLoadActionData(reader);
+		
+		if (m_bIsAdjustedByPlayer)
+			return loaded;
+		
 		if (m_SightsComponent)
 			m_SightsComponent.SetVerticalAngularCorrection(m_fTargetValue * m_fAngleUnit);
 		

@@ -1,5 +1,9 @@
 #ifdef WORKBENCH
-[WorkbenchPluginAttribute(name: "Validate Prefabs", wbModules: { "ResourceManager" }, category: "Prefabs", awesomeFontCode: 0xF5BF)]
+[WorkbenchPluginAttribute(
+	name: "Validate Prefabs",
+	wbModules: { "ResourceManager" },
+	category: SCR_PluginCategory.RESOURCEMANAGER_PREFABS,
+	awesomeFontCode: 0xF5BF)]
 class SCR_PrefabValidatorPlugin : WorkbenchPlugin
 {
 	protected static const ref array<string> UNIQUE_COMPONENTS = { "SCR_DestructionMultiPhaseComponent", "MeshObject", "RigidBody", "RplComponent", "Hierarchy" };

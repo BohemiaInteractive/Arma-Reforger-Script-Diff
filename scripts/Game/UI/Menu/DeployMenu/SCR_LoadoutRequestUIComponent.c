@@ -83,6 +83,7 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	protected string m_sMSARSuppliesName = "MSAR_Supplies";
 
 	protected const int LOADOUTS_PER_ROW = 2;
+	protected const int EXTRA_ROWS_FOR_INFINITE_GROUP = 2;
 	
 	protected ref ScriptInvokerInt m_OnPlayerEntryFocused;
 	protected ref ScriptInvokerWidget m_OnPlayerEntryFocusLost;
@@ -317,7 +318,7 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Fill the loadout list with players' loadouts.
-	void ShowPlayerLoadouts(array<int> playerIds, int slotCount = -1)
+	void ShowPlayerLoadouts(array<int> playerIds, SCR_AIGroup group = null)
 	{
 		if (!m_wLoadoutList || !m_LoadoutManager)
 			return;
@@ -336,7 +337,18 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			CreatePlayerLoadoutButton(playerLoadout, pid, i);
 		}
 		
-		for (int i = playerIds.Count(); i < slotCount; ++i)
+		if (!group)
+			return;
+
+		int playerCount = playerIds.Count();
+		int slotCount = group.GetMaxMembers();
+
+		if (!group.IsMaxMembersLimited()) // get max members is technically 0, so here we are adding extra empty slots so the infinite group
+		{									// looks like it has space in it! We limit the amount to make sure it doesnt fill the screen
+			slotCount = playerCount - (playerCount % LOADOUTS_PER_ROW) + ((EXTRA_ROWS_FOR_INFINITE_GROUP + 1) * LOADOUTS_PER_ROW);
+		}
+
+		for (int i = playerCount; i < slotCount; ++i)
 		{
 			CreateEmptySlot(i);
 		}
@@ -372,7 +384,7 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		buttonComp.SetLoadout(loadout);
 		buttonComp.SetPlayer(pid);
 		buttonComp.SetSelected(pid == GetGame().GetPlayerController().GetPlayerId());
-		buttonComp.SetEnabled(loadout.IsLoadoutAvailableClient());
+		buttonComp.SetEnabled(!loadout || loadout.IsLoadoutAvailableClient());
 
 		buttonComp.m_OnFocus.Insert(OnButtonFocused);
 		buttonComp.m_OnFocusLost.Insert(OnButtonFocusLost);
@@ -564,8 +576,10 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			{
 				int supplyCost = GetLoadoutCost(loadout);
 
+				SCR_ArsenalManagerComponent arsenalManager;
+
 				// Don't show supply cost outside of Deploy Menu
-				if (supplyCost < 0 || !SCR_DeployMenuMain.GetDeployMenu())
+				if (supplyCost < 0 || !SCR_DeployMenuMain.GetDeployMenu() || !SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager) || arsenalManager.GetLoadoutSpawnSupplyCostMultiplier() == 0 || !SCR_ResourceSystemHelper.IsGlobalResourceTypeEnabled())
 				{
 					m_wSupplies.SetVisible(false);
 				}
@@ -623,8 +637,10 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		{
 			int supplyCost = GetLoadoutCost();
 			
+			SCR_ArsenalManagerComponent arsenalManager;
+
 			// Don't show supply cost outside of Deploy Menu
-			if (supplyCost < 0 || !SCR_DeployMenuMain.GetDeployMenu())
+			if (supplyCost < 0 || !SCR_DeployMenuMain.GetDeployMenu() || !SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager) || arsenalManager.GetLoadoutSpawnSupplyCostMultiplier() == 0 || !SCR_ResourceSystemHelper.IsGlobalResourceTypeEnabled())
 			{
 				m_wSupplies.SetVisible(false);
 			}

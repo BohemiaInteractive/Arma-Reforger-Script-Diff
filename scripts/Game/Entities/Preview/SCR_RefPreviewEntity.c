@@ -104,10 +104,10 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void ApplyChild(SCR_EditorPreviewParams param, bool isDirectChild, set<SCR_EditableEntityComponent> editedEntities, bool isInstant)
+	protected bool ApplyChild(SCR_EditorPreviewParams param, bool isDirectChild, set<SCR_EditableEntityComponent> editedEntities, bool isInstant)
 	{
 		if (!m_EditableEntity)
-			return;
+			return false;
 
 		vector transform[4];
 		GetWorldTransform(transform);
@@ -150,13 +150,15 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 			SCR_EditableEntityComponent editableVehicle = m_EditableEntity.GetVehicle();
 			if (!editableVehicle || editedEntities.Find(editableVehicle) == -1)
 			{
-				 if (isInstant)
+				if (isInstant)
 				{
 					vector localPos = m_EditableEntity.GetOwner().CoordToLocal(transform[3]);
 					localPos -= m_EditableEntity.GetIconPos();
 					transform[3] = m_EditableEntity.GetOwner().CoordToParent(localPos);
 				}
-				m_EditableEntity.SetTransform(transform, isDirectChild && !isInstant);
+
+				if (!m_EditableEntity.SetTransform(transform, isDirectChild && !isInstant))
+					return false;
 			}
 			
 			if (m_aChildren)
@@ -170,6 +172,8 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 				}
 			}
 		}
+
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -188,7 +192,9 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 			vector currentPos = GetWorldTransformAxis(3);
 			currentHeight = currentPos[1] - SCR_TerrainHelper.GetTerrainY(currentPos, GetWorld(), !SCR_Enum.HasFlag(m_Flags, EPreviewEntityFlag.UNDERWATER), trace);
 		}
-		float height = transform[3][1] - SCR_TerrainHelper.GetTerrainY(transform[3], GetWorld(), !isUnderwater, trace);
+
+		float terrainY = SCR_TerrainHelper.GetTerrainY(transform[3], GetWorld(), !isUnderwater, trace);
+		float height = transform[3][1] - terrainY;
 		
 		m_fHeightTerrain = 0;
 		SetPreviewTransform(transform, verticalMode, height - currentHeight, isUnderwater, trace);

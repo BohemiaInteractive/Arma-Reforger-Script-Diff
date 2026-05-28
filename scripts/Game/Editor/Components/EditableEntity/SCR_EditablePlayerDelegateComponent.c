@@ -67,7 +67,7 @@ class SCR_EditablePlayerDelegateComponent : SCR_EditableEntityComponent
 	//! \param[in] controlledEntity New controlled entity
 	void SetControlledEntity(IEntity controlledEntity)
 	{
-		RplId entityID = Replication.FindId(SCR_EditableEntityComponent.GetEditableEntity(controlledEntity));
+		RplId entityID = Replication.FindItemId(SCR_EditableEntityComponent.GetEditableEntity(controlledEntity));
 		SetControlledEntityOwner(entityID);
 		Rpc(SetControlledEntityOwner, entityID);
 	}
@@ -227,7 +227,7 @@ class SCR_EditablePlayerDelegateComponent : SCR_EditableEntityComponent
 		if (!super.RplSave(writer))
 			return false;
 		
-		RplId controlledEntityRplID = Replication.FindId(m_ControlledEntity);
+		RplId controlledEntityRplID = Replication.FindItemId(m_ControlledEntity);
 		writer.WriteRplId(controlledEntityRplID);
 		
 		return true;

@@ -97,6 +97,7 @@ class SCR_NewScriptPlugin : WorkbenchPlugin
 
 		file.Close();
 
+		Sleep(1);
 		Workbench.GetModule(ScriptEditor).SetOpenedResource(absoluteFilePath);
 	}
 }
@@ -114,14 +115,14 @@ class SCR_NewScriptPlugin_RelativeUI
 
 	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("OK", true)]
-	protected int OkButton()
+	protected int ButtonOK()
 	{
 		return 1;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("Cancel")]
-	protected int CancelButton()
+	protected int ButtonCancel()
 	{
 		return 0;
 	}
@@ -140,14 +141,14 @@ class SCR_NewScriptPlugin_AbsoluteUI
 
 	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("OK")]
-	protected int OkButton()
+	protected int ButtonOK()
 	{
 		return 1;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("Cancel")]
-	protected int CancelButton()
+	protected int ButtonCancel()
 	{
 		return 0;
 	}

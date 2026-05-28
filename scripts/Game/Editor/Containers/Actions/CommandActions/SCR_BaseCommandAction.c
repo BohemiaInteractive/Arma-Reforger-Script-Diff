@@ -3,12 +3,20 @@ class SCR_BaseCommandAction : SCR_BaseToggleToolbarAction
 {
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Objective or waypoint prefab", "et")]
 	protected ResourceName m_CommandPrefab;
-	
+
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetCommandPrefab()
+	{
+		return m_CommandPrefab;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void FilterEntities(notnull set<SCR_EditableEntityComponent> inEntities, out notnull set<SCR_EditableEntityComponent> outEntities)
 	{
 		outEntities.Copy(inEntities);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected set<SCR_EditableEntityComponent> GetSelectedEntities(notnull set<SCR_EditableEntityComponent> inEntities)
 	{
 		set<SCR_EditableEntityComponent> selectedEnities = new set<SCR_EditableEntityComponent>();
@@ -16,17 +24,18 @@ class SCR_BaseCommandAction : SCR_BaseToggleToolbarAction
 		return selectedEnities;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//--- Called from command toolbar, initiates placing mode
 	bool StartPlacing(notnull set<SCR_EditableEntityComponent> selectedEntities)
 	{
 		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true));
 		if (!placingManager)
-		{
 			return false;
-		}
-		return placingManager.SetSelectedPrefab(m_CommandPrefab, recipients: GetSelectedEntities(selectedEntities));
+
+		return placingManager.SetSelectedPrefab(m_CommandPrefab, recipients: GetSelectedEntities(selectedEntities), sourceAction: this);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//--- Called from radial menu, places the command instantly
 	override void Perform(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags, int param = -1)
 	{
@@ -49,15 +58,18 @@ class SCR_BaseCommandAction : SCR_BaseToggleToolbarAction
 		if (flags & EEditorCommandActionFlags.ATTACH)
 			holder = hoveredEntity;
 		
-		placingManager.CreateEntity(m_CommandPrefab, params, !isQueue, false, GetSelectedEntities(selectedEntities), holder);
+		placingManager.CreateEntity(m_CommandPrefab, params, !isQueue, false, GetSelectedEntities(selectedEntities), holder, this);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnCurrentActionChanged()
 	{
 		SCR_CommandActionsEditorComponent commandActionsManager = SCR_CommandActionsEditorComponent.Cast(SCR_CommandActionsEditorComponent.GetInstance(SCR_CommandActionsEditorComponent));
 		if (commandActionsManager)
 			Toggle(0, commandActionsManager.IsActionCurrent(this))
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void Track()
 	{
 		SCR_CommandActionsEditorComponent commandActionsManager = SCR_CommandActionsEditorComponent.Cast(SCR_CommandActionsEditorComponent.GetInstance(SCR_CommandActionsEditorComponent));
@@ -67,15 +79,19 @@ class SCR_BaseCommandAction : SCR_BaseToggleToolbarAction
 			OnCurrentActionChanged();
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void Untrack()
 	{
 		SCR_CommandActionsEditorComponent commandActionsManager = SCR_CommandActionsEditorComponent.Cast(SCR_CommandActionsEditorComponent.GetInstance(SCR_CommandActionsEditorComponent));
 		if (commandActionsManager)
 			commandActionsManager.GetOnCurrentActionChanged().Remove(OnCurrentActionChanged);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool IsServer()
 	{
 		//--- Must be called on client, placing handles server communication itself
 		return false;
 	}
-};
+}

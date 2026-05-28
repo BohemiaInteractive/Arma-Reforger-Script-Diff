@@ -162,18 +162,18 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	{
 		if (owner)
 		{
-			ownerId = Replication.FindId(owner.FindComponent(RplComponent));
+			ownerId = Replication.FindItemId(owner.FindComponent(RplComponent));
 			
 			if (ownerId == Replication.INVALID_ID)
 			{
 				IEntity parent = owner.GetParent();
 				if (parent)
-					ownerId = Replication.FindId(parent.FindComponent(RplComponent));
+					ownerId = Replication.FindItemId(parent.FindComponent(RplComponent));
 			}				
 		}
 		
 		if (user)
-			userId = Replication.FindId(user.FindComponent(RplComponent));
+			userId = Replication.FindItemId(user.FindComponent(RplComponent));
 		
 		PlayerManager playerManager = GetGame().GetPlayerManager();
 		if (playerManager)
@@ -634,7 +634,7 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 			if (m_ResourceSubscriptionHandler)
 				m_ResourceSubscriptionHandler.Poke();
 			else
-				m_ResourceSubscriptionHandler = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandleGraceful(m_ResourceConsumer, Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent))));
+				m_ResourceSubscriptionHandler = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandleGraceful(m_ResourceConsumer, Replication.FindItemId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent))));
 		}
 		//~ Simply update if server
 		else
@@ -658,7 +658,7 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 			if (m_ResourceSubscriptionHandler)
 				m_ResourceSubscriptionHandler.Poke();
 			else
-				m_ResourceSubscriptionHandler = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandleGraceful(m_ResourceConsumer, Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent))));
+				m_ResourceSubscriptionHandler = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandleGraceful(m_ResourceConsumer, Replication.FindItemId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent))));
 		}
 		//~ Simply update if server
 		else
@@ -702,7 +702,7 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 			if (m_ResourceSubscriptionHandleGenerator)
 				m_ResourceSubscriptionHandleGenerator.Poke();
 			else
-				m_ResourceSubscriptionHandleGenerator = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandleGraceful(m_ResourceGenerator, Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent))));
+				m_ResourceSubscriptionHandleGenerator = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandleGraceful(m_ResourceGenerator, Replication.FindItemId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent))));
 		}
 		//~ Simply update if server
 		else

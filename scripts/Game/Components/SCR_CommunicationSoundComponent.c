@@ -266,16 +266,6 @@ class SCR_CommunicationSoundComponent : CommunicationSoundComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void HandleMetadata(array<string> metadata, int priority, float distance)
-	{
-		// Hotfix: Disabled "subtitles"
-		/*
-		if (m_bShowSubtitles && distance < SUBTITLES_MAX_DISTANCE)
-			ShowSubtitles(metadata);
-		*/
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	override void OnSoundEventStarted(string eventName, AudioHandle handle, int priority)
 	{
 		if (m_OnSoundEventStarted)

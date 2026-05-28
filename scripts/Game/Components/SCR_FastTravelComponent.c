@@ -150,7 +150,7 @@ class SCR_FastTravelComponent : ScriptComponent
 	//! \return
 	RplId FindDestinationId(IEntity entity)
 	{
-		RplId id = Replication.FindId(entity);
+		RplId id = Replication.FindItemId(entity);
 
 		if (id.IsValid())
 			return id;

@@ -68,7 +68,7 @@ class SCR_FactionCommanderEstablishCommandMenuHandler : SCR_FactionCommanderConf
 			m_Group = group;
 		}
 		else if (group)
-			factionCommanderPlayerComponent.AssignGroupToTask(group.GetGroupID(), task.GetTaskID(), playerId);
+			factionCommanderPlayerComponent.AssignGroupToTask(group.GetGroupID(), task.GetTaskID());
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -40,6 +40,8 @@ class SCR_NotificationsLogComponent : MenuRootSubComponent
 	protected VerticalLayoutWidget m_wNotificationHolderParent;
 	protected ref SCR_NotificationMessageUIComponent m_PrevOverFlowNotification;
 	protected FactionManager m_FactionManager;
+	
+	protected SCR_SaveWarningComponent m_SaveWarning;
 
 	protected Widget m_wRoot;
 	protected int m_iCurrentMaxNotifications;
@@ -500,6 +502,9 @@ class SCR_NotificationsLogComponent : MenuRootSubComponent
 		{
 			OnNotification(notificationHistory[i]);
 		}
+		
+		m_SaveWarning = SCR_SaveWarningComponent.Cast(m_wRoot.FindAnyWidget("SaveWarning").FindHandler(SCR_SaveWarningComponent));
+		EventProvider.ConnectEvent(GetGame().GetSaveGameManager().OnBusyStateChanged, ShowSavingWarning);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -514,6 +519,8 @@ class SCR_NotificationsLogComponent : MenuRootSubComponent
 
 		m_NotificationsManager.GetOnNotification().Remove(OnNotification);
 		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
+		
+		EventProvider.DisconnectEvent(GetGame().GetSaveGameManager().OnBusyStateChanged, ShowSavingWarning);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -562,6 +569,24 @@ class SCR_NotificationsLogComponent : MenuRootSubComponent
 			//Set anchor right & bottom
 			FrameSlot.SetAnchorMax(m_wNotificationHolderParent, 1, 1);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateSpinner()
+	{
+		m_SaveWarning.UpdateSpinner(GetGame().GetWorld().GetTimeSlice());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[ReceiverAttribute()]
+	protected void ShowSavingWarning(bool state)
+	{		
+		m_SaveWarning.ShowWarning(state);
+		
+		if (state)
+			GetGame().GetCallqueue().CallLater(UpdateSpinner, 1.0, true);
+		else
+			GetGame().GetCallqueue().Remove(UpdateSpinner);
 	}
 }
 

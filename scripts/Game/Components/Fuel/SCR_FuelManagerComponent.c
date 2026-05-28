@@ -338,7 +338,7 @@ class SCR_FuelManagerComponent : FuelManagerComponent
 		SCR_FuelNode scrFuelNode;
 		
 		float totalFuel = 0;
-		float totalMaxFuel 0;
+		float totalMaxFuel = 0;
 		
 		GetFuelNodesList(fuelNodes);
 	

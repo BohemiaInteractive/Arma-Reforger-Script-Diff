@@ -45,6 +45,25 @@ class SCR_AITargetReaction_RetreatFromEnemy : SCR_AITargetReactionBase
 		if (utility.m_AIInfo.HasUnitState(EUnitState.PILOT))
 			return;
 		
+		// Dismount if in static weapon
+		if (utility.m_AIInfo.HasUnitState(EUnitState.IN_TURRET)) 
+		{
+			CompartmentAccessComponent compAcc = CompartmentAccessComponent.Cast(utility.m_OwnerEntity.FindComponent(CompartmentAccessComponent));
+			if (!compAcc)
+				return;
+			
+			IEntity vehicle = compAcc.GetVehicleIn(utility.m_OwnerEntity);
+			if (!vehicle)
+				return;
+			
+			SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.Cast(vehicle.FindComponent(SCR_AIVehicleUsageComponent));
+			if (!vehicleUsageComp)
+				return;
+			
+			if (vehicleUsageComp.GetVehicleType() == EAIVehicleType.STATIC_WEAPON)
+				utility.AddAction(new SCR_AIGetOutVehicle(utility, null, vehicle, priority: SCR_AIActionBase.PRIORITY_BEHAVIOR_GET_OUT_VEHICLE_HIGH_PRIORITY));
+		}
+		
 		SCR_AIRetreatFromTargetBehavior behavior = new SCR_AIRetreatFromTargetBehavior(utility, null, baseTarget);
 		utility.AddAction(behavior);
 		

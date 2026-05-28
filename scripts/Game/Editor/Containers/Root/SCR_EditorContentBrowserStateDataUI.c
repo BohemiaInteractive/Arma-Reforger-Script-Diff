@@ -8,7 +8,7 @@ class SCR_EditorContentBrowserSaveStateDataUI : SCR_EditorContentBrowserSaveStat
 	/*!
 	To be overridden in inherited classes. Adds a custom condition that allows to show the tab only with given conditions.
 	*/
-	bool CanBeShown()
+	bool CanBeShown(IEntity provider, int playerId)
 	{
 		return true;
 	}

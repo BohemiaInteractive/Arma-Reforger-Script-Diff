@@ -124,7 +124,49 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 	{
 		return GetLoiterCommand() != null;
 	}
-
+	//------------------------------------------------------------------------------------------------
+	private void StartLoiteringRpl(SCR_ScriptedCharacterInputContext inputCtx)
+	{
+		m_CharacterControllerComp.SetScrInputContext(inputCtx);
+		StartCommandLoitering(inputCtx.m_CustomAnimData);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override bool OnRplSave(ScriptBitWriter writer)
+	{
+		if (!m_CmdLoiter || !IsLoitering() || !m_CmdLoiter.GetScriptedInputContext())
+		{
+			writer.WriteBool(false);
+			return true;
+		}
+		
+		writer.WriteBool(true);
+		
+		SCR_ScriptedCharacterInputContext inputCtx = m_CmdLoiter.GetScriptedInputContext();
+		inputCtx.OnRplSave(writer);
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override bool OnRplLoad(ScriptBitReader reader)
+	{
+		bool hasLoiterData;
+		reader.ReadBool(hasLoiterData);
+		if (!hasLoiterData)
+			return true;
+		
+		SCR_ScriptedCharacterInputContext inputCtx = new SCR_ScriptedCharacterInputContext();
+		inputCtx.OnRplLoad(reader);
+		
+		if (m_CharacterControllerComp)
+			StartLoiteringRpl(inputCtx);
+		else
+			m_delayedLoiteringContext = inputCtx;
+		
+		return true;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override protected void OnInit(IEntity owner)
 	{
@@ -136,6 +178,12 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 		m_MeleeComponent 		= SCR_MeleeComponent.Cast(m_OwnerEntity.FindComponent(SCR_MeleeComponent));
 		m_WeaponManager 		= BaseWeaponManagerComponent.Cast(m_OwnerEntity.FindComponent(BaseWeaponManagerComponent));
 		m_ScrStaticTable		= new SCR_ScriptedCommandsStaticTable();
+		m_CharacterControllerComp = SCR_CharacterControllerComponent.Cast(m_OwnerEntity.GetCharacterController());
+		if (m_delayedLoiteringContext && m_CharacterControllerComp)
+		{
+			StartLoiteringRpl(m_delayedLoiteringContext);
+			m_delayedLoiteringContext = null;
+		}
 		
 		if (!m_ScrStaticTable.Bind(m_CharacterAnimComp))
 			Print("Failed to bind scripted static table (see class SCR_ScriptedCommandsStaticTable). This can be caused by missing animation commands, tags, or events in the animation graph.");
@@ -144,11 +192,11 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 	protected ChimeraCharacter 				m_OwnerEntity;
 	protected ref CharacterMovementState 	m_MovementState;
 	protected CharacterAnimationComponent	m_CharacterAnimComp;
-	protected CharacterControllerComponent  m_CharacterControllerComp;
+	protected SCR_CharacterControllerComponent  m_CharacterControllerComp;
 	protected SCR_MeleeComponent			m_MeleeComponent;
 	protected BaseWeaponManagerComponent 	m_WeaponManager;
 	protected ref SCR_ScriptedCommandsStaticTable	m_ScrStaticTable;
-	
+	protected ref SCR_ScriptedCharacterInputContext m_delayedLoiteringContext;
 	protected ref SCR_CharacterCommandLoiter m_CmdLoiter;
 	
 	protected ref ScriptInvokerInt m_OnCommandActivate;

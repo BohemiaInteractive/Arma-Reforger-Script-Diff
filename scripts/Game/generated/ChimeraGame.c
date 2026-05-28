@@ -102,6 +102,11 @@ class ChimeraGame: Game
 	//! Called when game is fully installed. Used on game consoles, where parts of game may be installled in the background.
 	event void OnGameInstallComplete();
 	/*!
+	\brief Called when the current world is about to be unloaded.
+	Can be used to disable any event listeners that would otherwise react to entities being deleted during gameplay.
+	*/
+	event protected void OnBeforeWorldCleanup();
+	/*!
 	\brief Called when a mission header is set (to both a valid one or to null as well)
 	\param mission can be passed in as null when mission is cleared, make sure to nullptr check!
 	*/

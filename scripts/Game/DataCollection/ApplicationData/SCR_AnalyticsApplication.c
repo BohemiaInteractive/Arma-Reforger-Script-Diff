@@ -8,6 +8,7 @@ enum SCR_EAnalyticalItemSlotType
 	OTHER
 }
 
+/*
 [EnumLinear()]
 enum SCR_EAnalyticsWorkshopTab
 {
@@ -92,6 +93,10 @@ class SCR_AnalyticsApplication : WorldSystem
 	/// Voting
 	protected static const string ANALYTICAL_EVENT_VOTE_ENDS = "voteEnd";
 	protected ref SCR_VotingResultData m_VotingData = new SCR_VotingResultData();
+	
+	// MOB Selections
+	protected ref SCR_MOBSelectedData m_MOBData = new SCR_MOBSelectedData();	
+	protected static const string ANALYTICAL_EVENT_MOB_SELECTED = "MOBsSelected";
 	
 	/// Tutorial
 	protected static const string ANALYTICAL_EVENT_COURSE_ENDS = "courseEnd";
@@ -487,20 +492,63 @@ class SCR_AnalyticsApplication : WorldSystem
 	/// VOTING ///
 	
 	//------------------------------------------------------------------------------------------------
-	//! Voting about kicking a player ends with a success, inform analytics.
-	void VoteToKickSucessful()
+	//! Voting of any kinds ends with a result, inform analytics.
+	void VoteToKickResult(EVotingType voteType, string author_id, string vote_winner_id, bool result)
 	{
-		m_VotingData.flag_vote_success = true;
+		m_VotingData.vote_type = typename.EnumToString(EVotingType, voteType);
+		m_VotingData.vote_author_id = author_id;
+		m_VotingData.vote_winner_id = vote_winner_id;
+		m_VotingData.flag_vote_success = result;
 		SendAnalyticalEvent(m_VotingData, ANALYTICAL_EVENT_VOTE_ENDS, SCR_EAnalyticsDataTable.SESSION);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Voting about kicking a player ends unsucessfully, inform analytics.
-	void VoteToKickFailed()
-	{
-		m_VotingData.flag_vote_success = false;
-		SendAnalyticalEvent(m_VotingData, ANALYTICAL_EVENT_VOTE_ENDS, SCR_EAnalyticsDataTable.SESSION);
+	//! Fill the session event for the analytics on the MOB selected
+	void OnMOBSelected(array<SCR_CampaignMilitaryBaseComponent> selectedHQs)
+	{			
+		m_MOBData.MOB_names = "[";
+		m_MOBData.MOB_factions = "[";
+		m_MOBData.MOB_xs = "["; 
+		m_MOBData.MOB_ys = "["; 
+		m_MOBData.MOB_zs = "["; 
+		
+		foreach(int i, SCR_CampaignMilitaryBaseComponent selectedHQ : selectedHQs)
+		{
+			
+			if(i != 0)
+			{
+				m_MOBData.MOB_names += ", ";
+				m_MOBData.MOB_factions += ", ";
+				m_MOBData.MOB_xs += ", ";
+				m_MOBData.MOB_ys += ", "; 
+				m_MOBData.MOB_zs += ", "; 
+			}
+			
+			m_MOBData.MOB_names += selectedHQ.GetBaseNameUpperCase();
+			m_MOBData.MOB_factions += selectedHQ.GetFaction().GetFactionName();
+			m_MOBData.MOB_xs += selectedHQ.GetOwner().GetOrigin()[0].ToString(); 
+			m_MOBData.MOB_ys += selectedHQ.GetOwner().GetOrigin()[1].ToString();
+			m_MOBData.MOB_zs += selectedHQ.GetOwner().GetOrigin()[2].ToString();
+			
+			PrintString(selectedHQ.GetBaseNameUpperCase());
+		}
+		
+		m_MOBData.MOB_names += "]";
+		m_MOBData.MOB_factions += "]";
+		m_MOBData.MOB_xs += "]";
+		m_MOBData.MOB_ys += "]"; 
+		m_MOBData.MOB_zs += "]";
+		
+		// We call this with a delay because the initialization is too early for the server to start
+		GetGame().GetCallqueue().CallLater(SendMOBSessionEvent, 60000, false, m_MOBData); // a minute
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Send the session event for the analytics on the MOB selected
+	void SendMOBSessionEvent(SCR_MOBSelectedData mobData)
+	{		
+		SendAnalyticalEvent(mobData, ANALYTICAL_EVENT_MOB_SELECTED, SCR_EAnalyticsDataTable.SESSION);
+	}	
 	
 	/// COURSE END ///
 	
@@ -701,3 +749,5 @@ class SCR_AnalyticsApplication : WorldSystem
 		}
 	}
 }
+
+*/

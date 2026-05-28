@@ -13,8 +13,11 @@ class SCR_RegionalDestructionManager : RegionalDestructionManager
 		foreach (SCR_DestructionInteriorBoundingBox boundingBox : m_aInteriorBoxes)
 		{
 			if (!boundingBox)
+			{
+				writer.WriteBool(false);
 				continue;
-
+			}
+			writer.WriteBool(true);
 			boundingBox.OnSave(writer);
 		}
 
@@ -29,21 +32,26 @@ class SCR_RegionalDestructionManager : RegionalDestructionManager
 		int count;
 		reader.ReadInt(count);
 		
-		SCR_DestructionManager manager = SCR_DestructionManager.GetDestructionManagerInstance();
-		if (!manager)
-			return true;
-		
 		ref array<ref vector> boxesPositions = {};
-		bool exists = manager.m_RegionalManagerHandledBoxes.Find(GetRplID(), boxesPositions);
-
-		if(!exists)
+		SCR_DestructionManager manager = SCR_DestructionManager.GetDestructionManagerInstance();
+		
+		if (manager)
 		{
-			boxesPositions = new array<ref vector>;
-			manager.m_RegionalManagerHandledBoxes.Insert(GetRplID(), boxesPositions);
+			bool exists = manager.m_RegionalManagerHandledBoxes.Find(GetRplID(), boxesPositions);
+			if (!exists)
+			{
+				boxesPositions = new array<ref vector>;
+				manager.m_RegionalManagerHandledBoxes.Insert(GetRplID(), boxesPositions);
+			}
 		}
 		
 		for (int i = 0; i < count; i++)
 		{
+			bool hasBB;
+			reader.ReadBool(hasBB);
+			if (!hasBB)
+				continue;
+			
 			SCR_DestructionInteriorBoundingBox boundingBox = new SCR_DestructionInteriorBoundingBox();
 			boundingBox.OnLoad(reader);
 			
@@ -54,9 +62,8 @@ class SCR_RegionalDestructionManager : RegionalDestructionManager
 			m_aInteriorBoxes.Insert(boundingBox);
 			boxesPositions.Insert(boundingBox.m_vMatrix[3] + boundingBox.m_center);
 		}
-
-		ProcessInteriorBoundingBoxes();
 		
+		ProcessInteriorBoundingBoxes();
 
 		return true;
 	}

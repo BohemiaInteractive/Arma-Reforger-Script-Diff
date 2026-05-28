@@ -53,7 +53,7 @@ class CharacterCamera1stPersonUnconscious extends CharacterCamera1stPerson
 			Math3D.AnglesToMatrix(lookAngles, pOutResult.m_CameraTM);
 
 			//NOTE: 2 is head bone
-			m_OwnerCharacter.GetBoneMatrix(headBoneIndex, m_ragdollHeadWorldTR);
+			m_OwnerCharacter.GetAnimation().GetBoneMatrix(headBoneIndex, m_ragdollHeadWorldTR);
 
 			Math3D.MatrixMultiply3(m_ragdollHeadWorldTR, pOutResult.m_CameraTM, m_ragdollHeadWorldTR);
 

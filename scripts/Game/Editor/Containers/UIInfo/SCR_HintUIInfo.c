@@ -28,10 +28,38 @@ class SCR_HintUIInfo : SCR_BlockUIInfo
 	[Attribute("0", desc: "Can this hint be set to don't show again?")]
 	protected bool m_bIsDontShowAgainVisible;
 	
+	[Attribute(defvalue: "", uiwidget: UIWidgets.ComboBox, desc: "Factions that should not see this hint", enums: ParamEnumArray.FromEnum(SCR_ECampaignFaction))]
+	protected ref array<SCR_ECampaignFaction> m_aHiddenForFactions;
+
 	protected int m_iSequencePage;
 	protected int m_iSequenceCount;
 	protected WorldTimestamp m_iTimeHintStarted;
 	
+	//------------------------------------------------------------------------------------------------
+	//! Check whether the player's faction is within the array of faction enums that this hint should not be shown to
+	//! \return true if the player's faction can see this hint (or if the player has no faction)
+	bool ShouldFactionSeeHint()
+	{
+		if (!m_aHiddenForFactions || m_aHiddenForFactions.Count() == 0)
+			return true;
+		
+		SCR_CampaignFaction playerfaction = SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
+		if (!playerfaction)
+			return true;
+
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		if (!campaign)
+			return true;
+
+		foreach (SCR_ECampaignFaction factionenum : m_aHiddenForFactions)
+		{
+			if (campaign.GetFactionByEnum(factionenum) == playerfaction)
+				return false;
+		}
+
+		return true;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	bool GetIsDontShowAgainVisible()
 	{
@@ -63,6 +91,12 @@ class SCR_HintUIInfo : SCR_BlockUIInfo
 		return m_bIsTimerVisible;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	void SetPriority(int priority)
+	{
+		m_iPriority = priority;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Get priority of the hint. When another hint is already shown, this one will replace it only if it has the same or higher priority.
 	//! \return priority

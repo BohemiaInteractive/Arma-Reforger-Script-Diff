@@ -11,6 +11,7 @@ Do not modify, this script is generated
 
 class BaseMagazineComponent: GameComponent
 {
+	proto external ResourceName GetAmmoType(int idx = 0);
 	proto external IEntity GetOwner();
 	proto external bool IsUsed();
 	/*!

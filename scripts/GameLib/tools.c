@@ -116,24 +116,19 @@ class ScriptCallQueue
  */
 class ScriptInvokerBase<Class T>: Managed
 {
-	//! invoke call on all inserted methods with given arguments
+	//! Invoke call on all inserted methods with given arguments.
 	proto void Invoke(void param1 = NULL, void param2 = NULL, void param3 = NULL, void param4 = NULL, void param5 = NULL, void param6 = NULL, void param7 = NULL, void param8 = NULL, void param9 = NULL);
-	//! insert method to list	
+	//! Insert method to list.	
 	proto void Insert(T fn);	
-	//! remove specific call from list
+	//! Remove specific call from list.
 	proto void Remove(T fn);
-	//! remove all calls from list
+	//! Remove all calls from list.
 	proto native void Clear();
-	//! dump all callbacks into log
+	/*!
+	Dump all callbacks into debug log. 
+	\warning Log level must be set at last to DEBUG level ('-logLevel debug' in CLI) to see debug logs.
+	*/
 	proto native void Dump();
 }
 
 typedef ScriptInvokerBase<func> ScriptInvoker;
-
-class AutotestBase
-{
-    static proto native void UpdateLastProcessingTime(float seconds);
-	static proto native bool IsLastProcessingTime_Signal();
-	static proto native void ResetLastProcessingTime_Signal();
-	static proto native void SetLastProcessingTime_Treshold(float seconds);
-}

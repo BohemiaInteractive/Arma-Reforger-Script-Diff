@@ -226,7 +226,10 @@ class SCR_AIDebugVisualization : GenericEntity
 		if (editCharacterComp)
 		{
 			outAgent = editCharacterComp.GetAgent();
-			outEntity = outAgent.GetControlledEntity();
+			if (outAgent)
+				outEntity = outAgent.GetControlledEntity();
+			else
+				outEntity = null;
 			return true;
 		}
 		

@@ -18,11 +18,11 @@ class Shape: Managed
 
 	static proto ref Shape Create(ShapeType type, int color, ShapeFlags flags, vector p1, vector p2);
 	/*!
-	Create list of lines
+	Create line strip
 	\param color Color encoded in 0xA8R8G8B8 form.
 	\param flags Flags, see ShapeFlags
 	\param p Array of points
-	\param num Number of points. Must be multiply of 2
+	\param num Number of points. Must be at last 2
 	*/
 	static proto ref Shape CreateLines(int color, ShapeFlags flags, vector p[], int num);
 	/*!

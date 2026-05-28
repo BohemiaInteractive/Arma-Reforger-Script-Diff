@@ -6,7 +6,7 @@ class SCR_CanChangeTurretFireModeCondition : SCR_AvailableActionCondition
 
 	//------------------------------------------------------------------------------------------------
 	//! Return true if character is in ADS of current controlled vehicle turret
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
 		ChimeraCharacter character = data.GetCharacter();
 		if (!character)
@@ -27,9 +27,7 @@ class SCR_CanChangeTurretFireModeCondition : SCR_AvailableActionCondition
 		switch (m_eCheckAvailable)
 		{
 			case SCR_EFireModeChange.WEAPON_GROUP:
-				array<ref SCR_WeaponGroup> output = {};
-				fireModeMgr.GetAllWeaponGroups(output);
-				availableOptions = output.Count();
+				availableOptions = fireModeMgr.GetNumberOfAvailableWeaponGroups();
 				break;
 
 			case SCR_EFireModeChange.FIRE_MODE:
@@ -37,8 +35,7 @@ class SCR_CanChangeTurretFireModeCondition : SCR_AvailableActionCondition
 				break;
 
 			case SCR_EFireModeChange.RIPPLE_QUANTITY:
-				array<int> output = {};
-				availableOptions = fireModeMgr.GetAvialableRippleQuantities(output);
+				availableOptions = fireModeMgr.GetNumberOfAvailableRippleQuantities();
 				break;
 		}
 

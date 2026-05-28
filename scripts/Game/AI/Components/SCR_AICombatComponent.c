@@ -132,6 +132,7 @@ class SCR_AICombatComponent : ScriptComponent
 	protected static const float TURRET_TARGET_EXCESS_ANGLE_THRESHOLD_DEG = 3.0;	//!< We will dismount turret when target's angle exceeds turret limits by this value
 	protected const float DISMOUNT_TURRET_TIMER_MS = 1200;							//!< How much time must pass until we decide to dismount a turret if enemy is out of turret limits.
 	protected static ref array<EVehicleType> s_aForbidDismountTurretsOfVehicleTypes = { EVehicleType.APC }; //!< Array of vehicle types we should not dismount when turret cannot shoot the target
+	protected const float SECTOR_DANGER_TRESHOLD = 0.4; 							//!< How big should threat danger from Sector threat filter be to look there when dismounting turret.
 	
 	// Perception
 	protected float m_fEquipmentPerceptionFactor = 1.0;	//!< How good we can spot targets based on our current equipment. Updated by RecalculateEquipmentPerceptionFactor().
@@ -346,7 +347,10 @@ class SCR_AICombatComponent : ScriptComponent
 		
 		m_fNextWeaponTargetEvaluation_ms = worldTime + WEAPON_TARGET_UPDATE_PERIOD_MS;
 		
-		SCR_ChimeraAIAgent myAgent = GetAiAgent();
+		SCR_ChimeraAIAgent myAgent = m_Agent;
+		if (!myAgent)
+			myAgent = GetAiAgent();
+		
 		float agentThreat = m_Utility.m_ThreatSystem.GetThreatMeasure();
 
 		AIGroup myGroup = myAgent.GetParentGroup();
@@ -555,8 +559,9 @@ class SCR_AICombatComponent : ScriptComponent
 	//! Returns true when we should dismount it immediately
 	//! \param[in,out] targetPos
 	//! \param[in] targetPosProvided
+	//! \param[out] threatPriority
 	//! \return
-	bool DismountTurretCondition(inout vector targetPos, bool targetPosProvided)
+	bool DismountTurretCondition(inout vector targetPos, bool targetPosProvided, out float threatPriority)
 	{
 		// False if not in turret
 		if (!m_CurrentTurretController)
@@ -590,12 +595,18 @@ class SCR_AICombatComponent : ScriptComponent
 		{
 			BaseTarget target = m_Perception.GetClosestTarget(ETargetCategory.DETECTED, DISMOUNT_TURRET_TARGET_LAST_SEEN_MAX_S, DISMOUNT_TURRET_TARGET_LAST_SEEN_MAX_S);
 			if (target)
+			{
 				targetPos = target.GetLastDetectedPosition();
+				threatPriority = SCR_AILookAction.PRIO_UNKNOWN_TARGET;
+			}
 			else
 			{
 				target = m_Perception.GetClosestTarget(ETargetCategory.ENEMY, DISMOUNT_TURRET_TARGET_LAST_SEEN_MAX_S, DISMOUNT_TURRET_TARGET_LAST_SEEN_MAX_S);
 				if (target)
+				{
 					targetPos = target.GetLastSeenPosition();
+					threatPriority = SCR_AILookAction.PRIO_ENEMY_TARGET;
+				}
 			}
 			
 			if (!target)
@@ -608,7 +619,12 @@ class SCR_AICombatComponent : ScriptComponent
 				if (sectorMajor == -1)
 					return false;
 				
+				// If the danger is too small, we dont even dismount
+				if (m_Utility.m_SectorThreatFilter.GetSectorDanger(sectorMajor) < SECTOR_DANGER_TRESHOLD)
+					return false;
+				
 				targetPos = m_Utility.m_SectorThreatFilter.GetSectorPos(sectorMajor);
+				threatPriority = SCR_AILookAction.PRIO_DANGER_EVENT;
 			}
 			else
 			{
@@ -620,6 +636,7 @@ class SCR_AICombatComponent : ScriptComponent
 					vector bmin, bmax;
 					targetEntity.GetBounds(bmin, bmax);
 					targetPos = targetPos + 0.5 * (bmin + bmax);
+					threatPriority = SCR_AILookAction.PRIO_ENEMY_TARGET;
 				}
 			}
 		}
@@ -636,7 +653,8 @@ class SCR_AICombatComponent : ScriptComponent
 	protected void EvaluateDismountTurret(float timeSliceMs)
 	{
 		vector targetPos;
-		bool mustDismount = DismountTurretCondition(targetPos, false);
+		float dangerLookPriority;
+		bool mustDismount = DismountTurretCondition(targetPos, false, dangerLookPriority);
 		
 		if (!mustDismount)
 		{
@@ -654,7 +672,7 @@ class SCR_AICombatComponent : ScriptComponent
 			{
 				m_fDismountTurretTimer = -1.0;
 				
-				TryAddDismountTurretActions(targetPos);
+				TryAddDismountTurretActions(targetPos, dangerLookPriority: dangerLookPriority);
 			}
 		}
 	}
@@ -664,11 +682,15 @@ class SCR_AICombatComponent : ScriptComponent
 	//! \param[in] targetPos
 	//! \param[in] addGetOut
 	//! \param[in] addGetIn
-	void TryAddDismountTurretActions(vector targetPos, bool addGetOut = true, bool addGetIn = true)
+	//! \param[in] dangerLookPriority
+	void TryAddDismountTurretActions(vector targetPos, bool addGetOut = true, bool addGetIn = true, float dangerLookPriority = 0)
 	{
 		BaseCompartmentSlot compartmentSlot = m_CurrentCompartmentSlot;
 		if (!compartmentSlot)
 			return;
+		
+		if (dangerLookPriority > 0)
+			m_Utility.m_LookAction.LookAt(targetPos, dangerLookPriority);
 		
 		if (addGetOut)
 		{
@@ -1022,7 +1044,7 @@ class SCR_AICombatComponent : ScriptComponent
 		else
 		{
 			outWeaponComp = null;
-			outMuzzleId = null;
+			outMuzzleId = -1;
 			outMagazineComp = null;
 		}
 	}
@@ -1053,7 +1075,7 @@ class SCR_AICombatComponent : ScriptComponent
 		else
 		{
 			outWeaponComp = null;
-			outMuzzleId = null;
+			outMuzzleId = -1;
 			outMagazineComp = null;
 		}
 	}

@@ -4,11 +4,9 @@ class SCR_ActiveVoNActionCondition: SCR_AvailableActionCondition
 {	
 	protected SCR_VonDisplay m_VoNDisplay;
 	
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	//------------------------------------------------------------------------------------------------
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-		
 		if (!m_VoNDisplay)
 		{
 			PlayerController playerController = GetGame().GetPlayerController();
@@ -29,4 +27,4 @@ class SCR_ActiveVoNActionCondition: SCR_AvailableActionCondition
 
 		return GetReturnResult(m_VoNDisplay.GetActiveTransmissionsCount() > 0 || m_VoNDisplay.IsCapturingTransmisionActive());
 	}
-};
+}

@@ -62,7 +62,7 @@ class SCR_FactionCommanderVolunteerUserAction : ScriptedUserAction
 
 		SCR_Faction playerFaction = SCR_Faction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
 
-		if (!playerFaction)
+		if (!playerFaction || !playerFaction.IsCommanderAvailable())
 			return false;
 
 		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(user);
@@ -97,7 +97,7 @@ class SCR_FactionCommanderVolunteerUserAction : ScriptedUserAction
 			SCR_Faction playerFaction = SCR_Faction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
 
 			if (playerFaction)
-				SetCannotPerformReason(playerFaction.GetRankName(handlerComponent.GetMinimumRank()));
+				SetCannotPerformReason(playerFaction.GetRanks().GetRankName(handlerComponent.GetMinimumRank()));
 
 			return false;
 		}

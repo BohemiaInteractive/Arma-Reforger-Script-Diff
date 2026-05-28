@@ -1,9 +1,8 @@
-//------------------------------------------------------------------------------------------------
 //! Returns true if ammo of current vehicle weapon matches the condition
 [BaseContainerProps()]
 class SCR_VehicleWeaponAmmoCondition : SCR_AvailableActionCondition
 {
-	[Attribute("3", UIWidgets.ComboBox, "Cond operator", "", ParamEnumArray.FromEnum(SCR_ComparerOperator) )]
+	[Attribute(defvalue: SCR_ComparerOperator.GREATER_THAN.ToString(), desc: "Condition operator", uiwidget: UIWidgets.ComboBox, enumType: SCR_ComparerOperator)]
 	private SCR_ComparerOperator m_eOperator;
 
 	[Attribute("1", UIWidgets.ComboBox, "Should comparison be done using percentage of ammo?", "" )]
@@ -14,11 +13,8 @@ class SCR_VehicleWeaponAmmoCondition : SCR_AvailableActionCondition
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns true when currently controled vehicle weapon in vehicle has met the specified ammo condition
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-
 		BaseWeaponComponent weapon = data.GetCurrentVehicleWeapon();
 		if (!weapon)
 			return false;
@@ -44,4 +40,4 @@ class SCR_VehicleWeaponAmmoCondition : SCR_AvailableActionCondition
 		result = SCR_Comparer<int>.Compare(m_eOperator, current, (int)m_fValue);
 		return GetReturnResult(result);
 	}
-};
+}

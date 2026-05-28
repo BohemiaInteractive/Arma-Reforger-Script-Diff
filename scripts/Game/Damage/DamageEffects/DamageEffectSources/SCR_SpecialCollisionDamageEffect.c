@@ -62,10 +62,10 @@ class SCR_SpecialCollisionDamageEffect : SCR_PersistentDamageEffect
 		return m_ResponsibleEntity;
 	}
 	
-	//------------------------------------------------------------------------------------------------
+	//-----------------------------------------------------------------------------------------------------------
 	void ApplyMobilityLimits(SCR_ExtendedDamageManagerComponent dmgManager)
 	{
-		ChimeraCharacter character = ChimeraCharacter.Cast(dmgManager.GetOwner());
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(dmgManager.GetOwner());
 		if (!character)
 		{
 			Terminate();
@@ -79,24 +79,13 @@ class SCR_SpecialCollisionDamageEffect : SCR_PersistentDamageEffect
 			return;
 		}
 		
-		float lowestLimit = 1;
-		float tempLimit;
-		SCR_SpecialCollisionDamageEffect specialEffect;
-		
-		array<ref SCR_PersistentDamageEffect> effects = {};
-		effects = dmgManager.GetAllPersistentEffectsOfType(SCR_SpecialCollisionDamageEffect, true);
-		foreach (SCR_PersistentDamageEffect effect : effects)
+		if (dmgManager.GetAllPersistentEffectsOfType(SCR_SpecialCollisionDamageEffect, true).Contains(this))
 		{
-			specialEffect = SCR_SpecialCollisionDamageEffect.Cast(effect);
-			if (!specialEffect)
-				continue;
-			
-			tempLimit = specialEffect.GetMaxSpeedLimitScaled();
-			if (tempLimit < lowestLimit)
-				lowestLimit = tempLimit;
+			character.SetSpeedLimit(this, GetMaxSpeedLimitScaled());
+			return;
 		}
 		
-		m_Controller.OverrideMaxSpeed(lowestLimit);
+		character.SetSpeedLimit(this, 1);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -112,7 +101,6 @@ class SCR_SpecialCollisionDamageEffect : SCR_PersistentDamageEffect
 	}
 
 	//------------------------------------------------------------------------------------------------
-
 	protected override void OnEffectApplied(SCR_ExtendedDamageManagerComponent dmgManager)
 	{
 		SCR_CharacterDamageManagerComponent characterDamageMgr = SCR_CharacterDamageManagerComponent.Cast(dmgManager);

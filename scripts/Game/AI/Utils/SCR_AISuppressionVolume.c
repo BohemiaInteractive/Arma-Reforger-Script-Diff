@@ -328,7 +328,10 @@ class SCR_AISuppressionVolumeBox : SCR_AISuppressionVolumeBase
 		vector centerPos = GetCenterPosition();
 		
 		// Calculate the slope of the direction vector
-		float slope = direction[0] / direction[2];
+		float zDirection = direction[2];
+		if (zDirection == 0)
+			zDirection = 0.000000000000000000000000000001;
+		float slope = direction[0] / zDirection;
 		
 		// Calculate intersection with vertical edge
 		float zEdge = m_vBBMin[2];

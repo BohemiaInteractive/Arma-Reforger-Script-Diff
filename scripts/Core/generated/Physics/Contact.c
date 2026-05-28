@@ -23,9 +23,9 @@ sealed class Contact
 	//! Impulse applied to resolve the collision
 	float	Impulse;
 	//! Index of collider on Object1
-	int ShapeIndex1
+	int ShapeIndex1;
 	//! Index of collider on Object2
-	int ShapeIndex2
+	int ShapeIndex2;
 	//! Collision axis at the contact point
 	vector	Normal;
 	//! Position of the contact point (world space)

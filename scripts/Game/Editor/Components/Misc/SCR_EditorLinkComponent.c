@@ -148,10 +148,10 @@ class SCR_EditorLinkEntry
 	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, params: "et")]
 	ResourceName m_Prefab;
 
-	[Attribute()]
+	[Attribute(params: "inf inf purpose=coords space=entity anglesVar=m_vAngles")]
 	vector m_vPosition;
 
-	[Attribute()]
+	[Attribute(params: "inf inf purpose=angles space=entity coordsVar=m_vPosition")]
 	vector m_vAngles;
 
 	[Attribute(defvalue: "1")]

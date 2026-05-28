@@ -1,4 +1,5 @@
-class CinematicTrackAttribute
+
+class CinematicTrackAttribute: UniqueAttribute
 {
 	string m_Name; //<! Custom track name if you don't want to use class name
 	string m_Description; //<! Description of usage
@@ -10,7 +11,7 @@ class CinematicTrackAttribute
 	}
 }
 
-class CinematicEventAttribute
+class CinematicEventAttribute: UniqueAttribute
 {
 	string m_Name; //<! Custom name if you don't want to use name of the method
 	
@@ -21,7 +22,7 @@ class CinematicEventAttribute
 }
 
 
-class BTNodeAttribute
+class BTNodeAttribute: UniqueAttribute
 {
 	bool m_bUpdateWhileRunning;
 	

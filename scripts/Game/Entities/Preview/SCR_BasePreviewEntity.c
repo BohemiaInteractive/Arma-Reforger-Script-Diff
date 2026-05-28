@@ -243,7 +243,7 @@ class SCR_BasePreviewEntity: GenericEntity
 			
 			//--- Set coordinates local to terrain
 			Math3D.AnglesToMatrix(entry.m_vAnglesTerrain, entity.m_vTerrainTransform);
-			entity.m_fHeightTerrain = entry.m_vHeightTerrain;
+			entity.m_fHeightTerrain = entry.m_fHeightTerrain;
 			
 			//--- Make a copy of local transform for use in SetPreviewTransform()
 			Math3D.MatrixCopy(spawnParamsLocal.Transform, entity.m_vLocalTransform);
@@ -280,6 +280,7 @@ class SCR_BasePreviewEntity: GenericEntity
 		//--- Get height difference
 		if (m_fHeightTerrain == -1)
 			m_fHeightTerrain = heightTerrain;
+
 		heightTerrain -= m_fHeightTerrain;
 		
 		SetWorldTransform(worldTransform);
@@ -338,7 +339,7 @@ class SCR_BasePreviewEntity: GenericEntity
 					
 					//--- Apply height
 					transform[3][1] = surfaceBasis[3][1] + m_fHeightTerrain + heightTerrain;
-					
+
 					//--- Preserve scale
 					if (scale != 1)
 						Math3D.MatrixScale(transform, scale);

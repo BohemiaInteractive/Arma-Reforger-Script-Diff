@@ -5,6 +5,8 @@ class SCR_TaskData
 	vector m_vPosition;
 	
 	int m_iAuthorId;
+	UUID m_sAuthorIdentityId;					// persistent after leaving session
+	PlatformKind m_ePlatformKind;				// persistent after leaving session
 	
 	ref array<ref SCR_TaskExecutor> m_aAssignees;
 	ref array<string> m_aOwnerFactionKeys;
@@ -45,11 +47,14 @@ class SCR_TaskData
 		
 		data.m_UIInfo = new SCR_TaskUIInfo();
 		data.m_UIInfo.CopyFrom(m_UIInfo);
-			
+		
 		data.m_vPosition = m_vPosition;
 		
 		data.m_iAuthorId = m_iAuthorId;
-
+		
+		data.m_sAuthorIdentityId = m_sAuthorIdentityId;
+		data.m_ePlatformKind = m_ePlatformKind;
+		
 		if (m_aAssignees && !m_aAssignees.IsEmpty())
 		{
 			data.m_aAssignees = {};

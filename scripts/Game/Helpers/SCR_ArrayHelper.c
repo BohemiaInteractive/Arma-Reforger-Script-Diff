@@ -404,6 +404,18 @@ class SCR_ArrayHelperRefT<Class T>
 			shuffles--;
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Same as InsertAll but for ref array
+	//! \param[in] destination
+	//! \param[in] source
+	static void InsertAll(notnull array<ref T> destination, notnull array<ref T> source)
+	{
+		foreach (T entry : source)
+		{
+			destination.Insert(entry);
+		}
+	}
 
 //	//------------------------------------------------------------------------------------------------
 //	//!

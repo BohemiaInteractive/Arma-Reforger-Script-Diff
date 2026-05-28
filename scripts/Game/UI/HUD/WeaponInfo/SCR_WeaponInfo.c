@@ -91,7 +91,23 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	// Other
 	ref SCR_MagazinePredicate m_pMagazineSearchPredicate = new SCR_MagazinePredicate(); // Predicate for searching for magazines
 	ref SCR_PrefabDataPredicate m_pPrefabDataPredicate = new SCR_PrefabDataPredicate();
-	
+
+	//------------------------------------------------------------------------------------------------
+	protected bool IsCurrentlyUsingWeapon(notnull BaseWeaponComponent weapon)
+	{
+		// Sometimes when events are raised, then they are passing weapon as a slot,
+		// while sometimes it will be with an actual weapon's weapon component,
+		// thus we need to be ready for both cases
+		WeaponSlotComponent weaponSlot = WeaponSlotComponent.Cast(weapon);
+		if (weaponSlot && weaponSlot != m_WeaponManager.GetCurrentSlot())
+			return false;
+
+		if (!weaponSlot && m_WeaponManager.GetCurrentWeapon() != weapon)
+			return false;
+
+		return true;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnWeaponChanged(BaseWeaponComponent weapon, BaseWeaponComponent prevWeapon)
 	{
@@ -259,7 +275,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	protected void OnMagazineChanged(BaseWeaponComponent weapon, BaseMagazineComponent magazine, BaseMagazineComponent prevMagazine)
 	{
-		if (!m_WeaponState)
+		if (!m_WeaponState || !weapon)
 			return;
 		
 		#ifdef WEAPON_INFO_DEBUG
@@ -267,7 +283,10 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		_print(string.Format("    weapon:       %1", weapon));
 		_print(string.Format("    magazine:     %1", magazine));
 		#endif
-		
+
+		if (!IsCurrentlyUsingWeapon(weapon))
+			return;
+
 		// Set weapon state change flag
 		m_eWeaponStateEvent |= EWeaponFeature.MAGAZINE;
 		
@@ -373,7 +392,10 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		_print(string.Format("    magazineCount: %1", magazineCount));
 		_print(string.Format("    isGrenade:     %1", isGrenade));
 		#endif
-		
+
+		if (!IsCurrentlyUsingWeapon(weapon))
+			return;
+
 		BaseMagazineComponent magazine = weapon.GetCurrentMagazine();
 		m_WeaponState.m_Magazine = magazine;
 		
@@ -425,7 +447,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	protected void OnAmmoCountChanged(BaseWeaponComponent weapon, BaseMuzzleComponent muzzle, BaseMagazineComponent magazine, int ammoCount, bool isBarrelChambered)
 	{
-		if (!m_WeaponState)
+		if (!m_WeaponState || !weapon)
 			return;
 
 		#ifdef WEAPON_INFO_DEBUG
@@ -436,6 +458,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		_print(string.Format("    ammoCount:         %1", ammoCount));
 		_print(string.Format("    isBarrelChambered: %1", isBarrelChambered));
 		#endif
+
+		if (!IsCurrentlyUsingWeapon(weapon))
+			return;
 
 		// Set weapon state change flag
 		m_eWeaponStateEvent |= EWeaponFeature.AMMOCOUNT;	
@@ -524,7 +549,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	protected void OnZeroingChanged(BaseWeaponComponent weapon, int zeroing)
 	{
-		if (!m_WeaponState)
+		if (!m_WeaponState || !weapon)
 			return;
 		
 		#ifdef WEAPON_INFO_DEBUG
@@ -532,6 +557,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		_print(string.Format("    weapon:  %1", weapon));
 		_print(string.Format("    zeroing: %1", zeroing));
 		#endif
+
+		if (!IsCurrentlyUsingWeapon(weapon))
+			return;
 		
 		// Set weapon state change flag
 		m_eWeaponStateEvent |= EWeaponFeature.ZEROING;

@@ -3,7 +3,7 @@
 	name: "Prefab Template Class Check",
 	description: "PrefabsLibrary templates must not have a different class than their Prefabs counterpart; this tool verifies this.",
 	wbModules: { "ResourceManager" },
-	category: "Prefabs",
+	category: SCR_PluginCategory.RESOURCEMANAGER_PREFABS,
 	awesomeFontCode: 0xF560)]
 class SCR_PrefabTemplateClassCheckPlugin : WorkbenchPlugin
 {

@@ -256,7 +256,7 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnPlayerReconnect(int state)
+	protected void OnPlayerReconnect()
 	{
 		SetWelcomeClosed();
 	}

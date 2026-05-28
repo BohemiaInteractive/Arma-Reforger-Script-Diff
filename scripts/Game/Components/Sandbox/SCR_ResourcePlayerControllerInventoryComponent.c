@@ -29,6 +29,8 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	
 	protected const float VERTICAL_SPAWN_OFFSET = 10;
 	protected const float HORIZONTAL_SPAWN_OFFSET = 2.5;
+	//! 30m to compensate for some large entities like Mi-8 which with arsenal truck can result in transaction across about 27m
+	protected const int MAX_REFUNDING_DISTANCE_SQ = 900;
 
 	//------------------------------------------------------------------------------------------------
 	//! \return
@@ -272,8 +274,29 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 			interactor = resourceComponent.GetConsumer(resourceIdentifier, resourceType);
 		else
 			return;
-		
-		GetGame().GetResourceSystemSubscriptionManager().SubscribeListener(Replication.FindId(this), interactor);
+
+		if (!interactor)
+		{
+			IEntity resourceOwner = resourceComponent.GetOwner();
+			string prefab;
+			EntityPrefabData data;
+			if (resourceOwner)
+				data = resourceOwner.GetPrefabData();
+			else
+				prefab = string.Format("(%1 doesnt have owner!)", resourceComponent);
+
+			if (data)
+				prefab = FilePath.StripPath(data.GetPrefabName().GetPath());
+			else
+				prefab = string.Format("(%1 doesnt have prefab data!)", resourceOwner);
+
+			string identifierValueName = typename.EnumToString(EResourceGeneratorID, resourceIdentifier);
+			string resourceValueName = typename.EnumToString(EResourceType, resourceType);
+			PrintFormat("SCR_ResourcePlayerControllerInventoryComponent.RpcAsk_RequestSubscription: %1 failed to provide interactor of type %2 when asked about EResourceGeneratorID=%3, and EResourceType=%4", prefab, interactorType, identifierValueName, resourceValueName, level:LogLevel.ERROR);
+			return;
+		}
+
+		GetGame().GetResourceSystemSubscriptionManager().SubscribeListener(Replication.FindItemId(this), interactor);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -306,8 +329,29 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 			interactor = resourceComponent.GetConsumer(resourceIdentifier, resourceType);
 		else
 			return;
+
+		if (!interactor)
+		{
+			IEntity resourceOwner = resourceComponent.GetOwner();
+			string prefab;
+			EntityPrefabData data;
+			if (resourceOwner)
+				data = resourceOwner.GetPrefabData();
+			else
+				prefab = string.Format("(%1 doesnt have owner!)", resourceComponent);
+
+			if (data)
+				prefab = FilePath.StripPath(data.GetPrefabName().GetPath());
+			else
+				prefab = string.Format("(%1 doesnt have prefab data!)", resourceOwner);
+
+			string identifierValueName = typename.EnumToString(EResourceGeneratorID, resourceIdentifier);
+			string resourceValueName = typename.EnumToString(EResourceType, resourceType);
+			PrintFormat("SCR_ResourcePlayerControllerInventoryComponent.RpcAsk_RequestSubscription: %1 failed to provide interactor of type %2 when asked about EResourceGeneratorID=%3, and EResourceType=%4", prefab, interactorType, identifierValueName, resourceValueName, level:LogLevel.ERROR);
+			return;
+		}
 		
-		GetGame().GetResourceSystemSubscriptionManager().UnsubscribeListener(Replication.FindId(this), interactor);
+		GetGame().GetResourceSystemSubscriptionManager().UnsubscribeListener(Replication.FindItemId(this), interactor);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -339,36 +383,58 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] rplIdResourceComponent
-	//! \param[in] rplIdInventoryManager
-	//! \param[in] rplIdStorageComponent
-	//! \param[in] resourceNameItem
+	//! \param[in] resourceComponentRplId RplId of the resource component of the arsenal which is going to be refunding the item
+	//! \param[in] storageComponentRplId RplId of the storage component inside of which item palced after it is spawned
+	//! \param[in] resourceNameItem Prefab that should be spawned
 	//! \param[in] resourceType
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_ArsenalRequestItem_(RplId rplIdResourceComponent, RplId rplIdInventoryManager, RplId rplIdStorageComponent, ResourceName resourceNameItem, EResourceType resourceType)
+	protected void RpcAsk_ArsenalRequestItem_(RplId resourceComponentRplId, RplId storageComponentRplId, ResourceName resourceNameItem, EResourceType resourceType)
 	{
-		if (!rplIdInventoryManager.IsValid())
-			return;
+		SCR_PlayerController controller = SCR_PlayerController.Cast(GetOwner());
+		SCR_ChimeraCharacter buyer = SCR_ChimeraCharacter.Cast(controller.GetControlledEntity());
+		if (!buyer)
+			return; // you cannot interact with the arsenal if you dont exist
 		
-		SCR_InventoryStorageManagerComponent inventoryManagerComponent = SCR_InventoryStorageManagerComponent.Cast(Replication.FindItem(rplIdInventoryManager));
-		
+		SCR_InventoryStorageManagerComponent inventoryManagerComponent = SCR_InventoryStorageManagerComponent.Cast(buyer.GetCharacterController().GetInventoryStorageManager());
 		if (!inventoryManagerComponent)
 			return;
-		
-		
-		if (!rplIdStorageComponent.IsValid())
+
+		if (!storageComponentRplId.IsValid())
 			return;
 		
-		BaseInventoryStorageComponent storageComponent = BaseInventoryStorageComponent.Cast(Replication.FindItem(rplIdStorageComponent));
-		
+		BaseInventoryStorageComponent storageComponent = BaseInventoryStorageComponent.Cast(Replication.FindItem(storageComponentRplId));
 		if (!storageComponent)
 			return;
-		
-		if (!rplIdResourceComponent.IsValid())
+
+		IEntity storageParent = storageComponent.GetOwner();
+		vector storagePosition = storageParent.GetOrigin();
+		while (storageParent)
+		{
+			if (ChimeraCharacter.Cast(storageParent))
+			{
+				if (storageParent != buyer)
+				{
+					PrintFormat("SCR_ResourcePlayerControllerInventoryComponent.RpcAsk_ArsenalRequestItem: Player %1 tried to buy an item to a storage container which belongs to a different character.", SCR_PlayerIdentityUtils.GetPlayerLogInfo(controller.GetPlayerId()), level: LogLevel.WARNING);
+					return; // we dont want you to request items to be placed into someone else inventory
+				}
+
+				break; // now we know that storageParent == buyer
+			}
+
+			storageParent = storageParent.GetParent(); // meanwhile in this case if we dont find characters in hierarchy, then storageParent == null
+		}
+
+		// check the distance only when storage doesnt belong to the character who is requesting this item
+		if (!storageParent && vector.DistanceSq(buyer.GetOrigin(), storagePosition) > MAX_REFUNDING_DISTANCE_SQ)
+		{
+			PrintFormat("SCR_ResourcePlayerControllerInventoryComponent.RpcAsk_ArsenalRequestItem: Player %1 tried to buy an item to a storage container which is over %2m away from his character.", SCR_PlayerIdentityUtils.GetPlayerLogInfo(controller.GetPlayerId()), MAX_REFUNDING_DISTANCE_SQ, level: LogLevel.WARNING);
+			return;
+		}
+
+		if (!resourceComponentRplId.IsValid())
 			return;
 		
-		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.Cast(Replication.FindItem(rplIdResourceComponent));
+		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.Cast(Replication.FindItem(resourceComponentRplId));
 		if (!resourceComponent)
 			return;
 		
@@ -376,73 +442,70 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		if (!consumer)
 			return;
 		
-		float resourceCost = 0;
-		int personalResourceCost;
-		
-		SCR_ArsenalItem data;
-		SCR_Faction faction;
-		//~ Get item cost
 		SCR_EntityCatalogManagerComponent entityCatalogManager = SCR_EntityCatalogManagerComponent.GetInstance();
-		if (entityCatalogManager)
+		if (!entityCatalogManager)
+			return;
+
+		IEntity resourcesOwner = resourceComponent.GetOwner();
+		if (!resourcesOwner)
+			return;
+
+		if (vector.DistanceSq(resourcesOwner.GetOrigin(), storagePosition) > MAX_REFUNDING_DISTANCE_SQ)
 		{
-			IEntity resourcesOwner = resourceComponent.GetOwner();
-			if (!resourcesOwner)
-				return;
-
-			// Spatial validation check 
-			if (!inventoryManagerComponent.ValidateStorageRequest(resourcesOwner))
-				return;
-			
-			//~ Get Supply cost only if arsenal has supplies enabled
-			SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(resourcesOwner);
-			if ((arsenalComponent && arsenalComponent.IsArsenalUsingSupplies()) || !arsenalComponent)
-			{
-				if (arsenalComponent)
-					faction = arsenalComponent.GetAssignedFaction();
-				
-				SCR_EntityCatalogEntry entry;
-				
-				if (faction)
-					 entry = entityCatalogManager.GetEntryWithPrefabFromFactionCatalog(EEntityCatalogType.ITEM, resourceNameItem, faction);
-				else 
-					entry = entityCatalogManager.GetEntryWithPrefabFromCatalog(EEntityCatalogType.ITEM, resourceNameItem);
-				
-				if (entry)
-				{
-					data = SCR_ArsenalItem.Cast(entry.GetEntityDataOfType(SCR_ArsenalItem));
-					if (data)
-					{
-						if (arsenalComponent)
-							resourceCost = data.GetSupplyCost(arsenalComponent.GetSupplyCostType());
-						else 
-							resourceCost = data.GetSupplyCost(SCR_EArsenalSupplyCostType.DEFAULT);
-					}
-						
-				}
-			}
-
-			if (arsenalComponent)
-			{
-				SCR_ArsenalManagerComponent arsenalManager;
-				if (SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager))
-					personalResourceCost = arsenalManager.GetItemMilitarySupplyAllocationCost(resourceNameItem, arsenalComponent, true);
-			}
+			PrintFormat("SCR_ResourcePlayerControllerInventoryComponent.RpcAsk_ArsenalRequestItem: Player %1 tried to buy an item from the arsenal which is over %2m away from the target storage.", SCR_PlayerIdentityUtils.GetPlayerLogInfo(controller.GetPlayerId()), MAX_REFUNDING_DISTANCE_SQ, level: LogLevel.WARNING);
+			return;
 		}
 
+		// Spatial validation check to see if player can interact with this arsenal
+		if (!inventoryManagerComponent.ValidateStorageRequest(resourcesOwner))
+			return;
+		
+		//~ Get Supply cost only if arsenal has supplies enabled
+		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(resourcesOwner);
+		if (!arsenalComponent)
+			return;
+
+		SCR_Faction faction = arsenalComponent.GetAssignedFaction();
+		
+		SCR_EntityCatalogEntry entry;
+		
+		if (faction)
+			entry = entityCatalogManager.GetEntryWithPrefabFromFactionCatalog(EEntityCatalogType.ITEM, resourceNameItem, faction);
+		else 
+			entry = entityCatalogManager.GetEntryWithPrefabFromCatalog(EEntityCatalogType.ITEM, resourceNameItem);
+			
+		if (!entry)
+		{
+			string keyInfo;
+			if (faction)
+				keyInfo = " | Arsenal faction key=" + faction.GetFactionKey();
+
+			PrintFormat("SCR_ResourcePlayerControllerInventoryComponent.RpcAsk_ArsenalRequestItem: Player %1 tried to buy an item which is not avialable in the arsenal that he used. Item=%2%3", SCR_PlayerIdentityUtils.GetPlayerLogInfo(controller.GetPlayerId()), FilePath.StripPath(resourceNameItem.GetPath()), keyInfo, level: LogLevel.WARNING);
+			return;
+		}
+
+		float resourceCost;
+		if (arsenalComponent.IsArsenalUsingSupplies())
+		{
+			SCR_ArsenalItem data = SCR_ArsenalItem.Cast(entry.GetEntityDataOfType(SCR_ArsenalItem));
+			if (!data)
+				return;
+
+			resourceCost = data.GetSupplyCost(arsenalComponent.GetSupplyCostType());
+		}
+
+		int personalResourceCost;
+		SCR_ArsenalManagerComponent arsenalManager;
+		if (SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager))
+			personalResourceCost = arsenalManager.GetItemMilitarySupplyAllocationCost(resourceNameItem, arsenalComponent, true);
+
 		//~ If Military Supply Allocation is enabled, check if player has enough Available Allocated Supplies
-		SCR_PlayerSupplyAllocationComponent playerSupplyAllocationComponent = SCR_PlayerSupplyAllocationComponent.Cast(GetOwner().FindComponent(SCR_PlayerSupplyAllocationComponent));
+		SCR_PlayerSupplyAllocationComponent playerSupplyAllocationComponent = SCR_PlayerSupplyAllocationComponent.Cast(controller.FindComponent(SCR_PlayerSupplyAllocationComponent));
 		if (playerSupplyAllocationComponent && faction && personalResourceCost > 0)
 		{
-			SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-			if (factionManager)
-			{
-				SCR_Faction playerFaction = SCR_Faction.Cast(factionManager.GetPlayerFaction(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(SCR_PlayerController.Cast(GetOwner()).GetControlledEntity())));
-				if (playerFaction)
-				{
-					if (playerFaction == faction && !playerSupplyAllocationComponent.HasPlayerEnoughAvailableAllocatedSupplies(personalResourceCost))
-						return;
-				}
-			}
+			SCR_Faction playerFaction = SCR_Faction.Cast(buyer.GetFaction());
+			if (playerFaction && playerFaction == faction && !playerSupplyAllocationComponent.HasPlayerEnoughAvailableAllocatedSupplies(personalResourceCost))
+				return;
 		}
 
 		resourceCost *= consumer.GetBuyMultiplier();
@@ -450,35 +513,78 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 			return;
 
 		if (inventoryManagerComponent.TrySpawnPrefabToStorage(resourceNameItem, storageComponent, cb: new SCR_PrefabSpawnCallback(storageComponent)) && s_OnArsenalItemRequested)
-			s_OnArsenalItemRequested.Invoke(resourceComponent, resourceNameItem, GetOwner(), storageComponent, resourceType, resourceCost);
+			s_OnArsenalItemRequested.Invoke(resourceComponent, resourceNameItem, controller, storageComponent, resourceType, resourceCost);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void RpcAsk_ArsenalRequestItem(RplId rplIdResourceComponent, RplId rplIdInventoryManager, RplId rplIdStorageComponent, ResourceName resourceNameItem, EResourceType resourceType)
+	//! \param[in] resourceComponentRplId RplId of the resource component of the arsenal which is going to be refunding the item
+	//! \param[in] storageComponentRplId RplId of the storage component inside of which item palced after it is spawned
+	//! \param[in] resourceNameItem Prefab that should be spawned
+	//! \param[in] resourceType
+	void RpcAsk_ArsenalRequestItem(RplId resourceComponentRplId, RplId storageComponentRplId, ResourceName resourceNameItem, EResourceType resourceType)
 	{
-		Rpc(RpcAsk_ArsenalRequestItem_, rplIdResourceComponent, rplIdInventoryManager, rplIdStorageComponent, resourceNameItem, resourceType);
+		Rpc(RpcAsk_ArsenalRequestItem_, resourceComponentRplId, storageComponentRplId, resourceNameItem, resourceType);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] rplIdResourceComponent
-	//! \param[in] rplIdInventoryItem
+	//! \param[in] resourceComponentRplId RplId of the resource component of the arsenal which is going to be refunding the item
+	//! \param[in] inventoryItemRplId RplId of the inventory item component of the item that is being refunded
 	//! \param[in] resourceType
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_ArsenalRefundItem_(RplId rplIdResourceComponent, RplId rplIdInventoryItem, EResourceType resourceType)
+	protected void RpcAsk_ArsenalRefundItem_(RplId resourceComponentRplId, RplId inventoryItemRplId, EResourceType resourceType)
 	{
-		if (!rplIdInventoryItem.IsValid())
+		SCR_PlayerController controller = SCR_PlayerController.Cast(GetOwner());
+		SCR_ChimeraCharacter seller = SCR_ChimeraCharacter.Cast(controller.GetControlledEntity());
+		if (!seller)
+			return; // you cannot interact with the arsenal if you dont exist
+
+		if (!inventoryItemRplId.IsValid())
 			return;
 		
-		InventoryItemComponent inventoryItemComponent = InventoryItemComponent.Cast(Replication.FindItem(rplIdInventoryItem));
-		
+		InventoryItemComponent inventoryItemComponent = InventoryItemComponent.Cast(Replication.FindItem(inventoryItemRplId));
 		if (!inventoryItemComponent)
 			return;
 		
-		if (!rplIdResourceComponent.IsValid())
+		IEntity inventoryItemEntity	= inventoryItemComponent.GetOwner();
+		if (!inventoryItemEntity)
+			return;
+
+		SCR_ItemAttributeCollection attributes = SCR_ItemAttributeCollection.Cast(inventoryItemComponent.GetAttributes());
+		if (!attributes || !attributes.IsRefundable())
+		{
+			PrintFormat("SCR_ResourcePlayerControllerInventoryComponent.RpcAsk_ArsenalRefundItem: Player %1 tried to sell an item which is not meant to be refunded. Item=%2", SCR_PlayerIdentityUtils.GetPlayerLogInfo(controller.GetPlayerId()), FilePath.StripPath(inventoryItemEntity.GetPrefabData().GetPrefabName().GetPath()), level: LogLevel.WARNING);
+			return; // if its not meant to be refunded in the arsenal then stop here
+		}
+
+		IEntity itemParent = inventoryItemEntity; // check the item itself to ensure that someone is not trying to sell the chracter itself
+		while (itemParent)
+		{
+			if (ChimeraCharacter.Cast(itemParent))
+			{
+				if (itemParent != seller)
+				{
+					PrintFormat("SCR_ResourcePlayerControllerInventoryComponent.RpcAsk_ArsenalRefundItem: Player %1 tried to sell an item which is in the inventory of a different character.", SCR_PlayerIdentityUtils.GetPlayerLogInfo(controller.GetPlayerId()), level: LogLevel.WARNING);
+					return; // we dont want you to request items to be sold from someone else storage
+				}
+
+				break; // now we know that itemParent == seller
+			}
+
+			itemParent = itemParent.GetParent(); // meanwhile in this case if we dont find character in hierarchy, then itemParent will be null, f.e. a vehicle or ground, which is reasonable
+		}
+
+		vector itemPosition = inventoryItemEntity.GetOrigin();
+		// check the distance only when storage doesnt belong to the character who is requesting this item
+		if (!itemParent && vector.DistanceSq(seller.GetOrigin(), itemPosition) > MAX_REFUNDING_DISTANCE_SQ)
+		{
+			PrintFormat("SCR_ResourcePlayerControllerInventoryComponent.RpcAsk_ArsenalRefundItem: Player %1 tried to sell an item which is over %2m away from his character.", SCR_PlayerIdentityUtils.GetPlayerLogInfo(controller.GetPlayerId()), MAX_REFUNDING_DISTANCE_SQ, level: LogLevel.WARNING);
+			return;
+		}
+
+		if (!resourceComponentRplId.IsValid())
 			return;
 		
-		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.Cast(Replication.FindItem(rplIdResourceComponent));
+		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.Cast(Replication.FindItem(resourceComponentRplId));
 		if (!resourceComponent)
 			return;
 		
@@ -486,15 +592,26 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		if (!generator)
 			return;
 		
-		IEntity inventoryItemEntity	= inventoryItemComponent.GetOwner();
-		if (!inventoryItemEntity)
-			return;
-		
 		IEntity resourcesOwner = resourceComponent.GetOwner();
 		if (!resourcesOwner)
 			return;
-		
+
+		InventoryStorageManagerComponent sellerInventoryManagerComponent = seller.GetCharacterController().GetInventoryStorageManager();
+		if (!sellerInventoryManagerComponent || !sellerInventoryManagerComponent.ValidateStorageRequest(resourcesOwner))
+		{
+			PrintFormat("SCR_ResourcePlayerControllerInventoryComponent.RpcAsk_ArsenalRefundItem: Player %1 tried to sell an item in the arsenal which too far away from him.", SCR_PlayerIdentityUtils.GetPlayerLogInfo(controller.GetPlayerId()), level: LogLevel.WARNING);
+			return;
+		}
+
+		if (vector.DistanceSq(resourcesOwner.GetOrigin(), itemPosition) > MAX_REFUNDING_DISTANCE_SQ)
+		{
+			PrintFormat("SCR_ResourcePlayerControllerInventoryComponent.RpcAsk_ArsenalRefundItem: Player %1 tried to sell an item in the arsenal which is over %2m away from the item.", SCR_PlayerIdentityUtils.GetPlayerLogInfo(controller.GetPlayerId()), MAX_REFUNDING_DISTANCE_SQ, level: LogLevel.WARNING);
+			return;
+		}
+
 		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(resourcesOwner);
+		if (!arsenalComponent)
+			return; // this is an arsenal request, thus we require an arsenal to be present for this
 		
 		//~ Get resource cost (cap at 0 minimum as function can return -1)
 		float resourceCost = Math.Clamp(SCR_ArsenalManagerComponent.GetItemRefundAmount(inventoryItemEntity, arsenalComponent, false), 0, float.MAX);
@@ -505,17 +622,16 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		
 		int personalResourceCost;
 
+		SCR_Faction arsenalFaction = arsenalComponent.GetAssignedFaction();
 		SCR_ArsenalManagerComponent arsenalManager;
-		if (SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager) && arsenalManager.IsMilitarySupplyAllocationEnabled())
+		if (arsenalFaction && arsenalFaction == seller.GetFaction() && SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager) && arsenalManager.IsMilitarySupplyAllocationEnabled())
 			personalResourceCost = arsenalManager.GetItemMilitarySupplyAllocationRefundAmount(inventoryItemEntity, arsenalComponent);
 
-		IEntity parentEntity = inventoryItemEntity.GetParent();
-		SCR_InventoryStorageManagerComponent inventoryManagerComponent;
-		ResourceName resourceNameItem = inventoryItemEntity.GetPrefabData().GetPrefabName();
-		
 		//~ On item refunded just before the item is deleted
 		SCR_ArsenalManagerComponent.OnItemRefunded_S(inventoryItemEntity, PlayerController.Cast(GetOwner()), arsenalComponent);
 		
+		IEntity parentEntity = inventoryItemEntity.GetParent();
+		SCR_InventoryStorageManagerComponent inventoryManagerComponent;
 		if (parentEntity)
 			inventoryManagerComponent = SCR_InventoryStorageManagerComponent.Cast(parentEntity.FindComponent(SCR_InventoryStorageManagerComponent));
 		
@@ -532,10 +648,16 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		if (playerSupplyAllocationComponent)
 			playerSupplyAllocationComponent.AddPlayerAvailableAllocatedSupplies(personalResourceCost);
 	}
-	void RpcAsk_ArsenalRefundItem(RplId rplIdResourceComponent, RplId rplIdInventoryItem, EResourceType resourceType)
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] resourceComponentRplId RplId of the resource component of the arsenal which is going to be refunding the item
+	//! \param[in] inventoryItemRplId RplId of the inventory item component of the item that is being refunded
+	//! \param[in] resourceType
+	void RpcAsk_ArsenalRefundItem(RplId resourceComponentRplId, RplId inventoryItemRplId, EResourceType resourceType)
 	{
-		Rpc(RpcAsk_ArsenalRefundItem_, rplIdResourceComponent, rplIdInventoryItem, resourceType);
+		Rpc(RpcAsk_ArsenalRefundItem_, resourceComponentRplId, inventoryItemRplId, resourceType);
 	}
+
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] rplIdFrom
@@ -627,18 +749,18 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//!
-	//! \param[in] rplIdResourceComponent
-	//! \param[in] rplIdInventoryManager
-	//! \param[in] rplIdStorageComponent
+	//! \param[in] resourceComponentRplId
+	//! \param[in] inventoryManagerRplId
+	//! \param[in] storageComponentRplId
 	//! \param[in] resourceType
 	//! \param[in] requestedResources
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_CreatePhysicalContainerWithContainer_(RplId rplIdResourceComponent, RplId rplIdInventoryManager, RplId rplIdStorageComponent, EResourceType resourceType, float requestedResources)
+	protected void RpcAsk_CreatePhysicalContainerWithContainer_(RplId resourceComponentRplId, RplId inventoryManagerRplId, RplId storageComponentRplId, EResourceType resourceType, float requestedResources)
 	{
-		if (!rplIdResourceComponent.IsValid())
+		if (!resourceComponentRplId.IsValid())
 			return;
 		
-		SCR_ResourceComponent resourceComponentFrom = SCR_ResourceComponent.Cast(Replication.FindItem(rplIdResourceComponent));
+		SCR_ResourceComponent resourceComponentFrom = SCR_ResourceComponent.Cast(Replication.FindItem(resourceComponentRplId));
 		
 		if (!resourceComponentFrom)
 			return;
@@ -652,7 +774,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		float resourceValueCurrentTo, resourceValueMaxTo;
 		SCR_ResourceActor actorConsumptionTo, actorGenerationTo;
 		
-		if (!rplIdInventoryManager.IsValid())
+		if (!inventoryManagerRplId.IsValid())
 		{
 			SCR_EntityCatalog resourceContainerCatalog	= SCR_EntityCatalogManagerComponent.GetInstance().GetEntityCatalogOfType(EEntityCatalogType.SUPPLY_CONTAINER_ITEM); 
 			array<SCR_EntityCatalogEntry> entries		= {};
@@ -711,15 +833,15 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 			return;
 		}
 		
-		SCR_InventoryStorageManagerComponent inventoryManagerComponent = SCR_InventoryStorageManagerComponent.Cast(Replication.FindItem(rplIdInventoryManager));
+		SCR_InventoryStorageManagerComponent inventoryManagerComponent = SCR_InventoryStorageManagerComponent.Cast(Replication.FindItem(inventoryManagerRplId));
 		
 		if (!inventoryManagerComponent)
 			return;
 		
-		if (!rplIdStorageComponent.IsValid())
+		if (!storageComponentRplId.IsValid())
 			return;
 		
-		BaseInventoryStorageComponent storageComponent = BaseInventoryStorageComponent.Cast(Replication.FindItem(rplIdStorageComponent));
+		BaseInventoryStorageComponent storageComponent = BaseInventoryStorageComponent.Cast(Replication.FindItem(storageComponentRplId));
 		
 		if (!storageComponent)
 			return;
@@ -835,9 +957,9 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void RpcAsk_CreatePhysicalContainerWithContainer(RplId rplIdResourceComponent, RplId rplIdInventoryManager, RplId rplIdStorageComponent, EResourceType resourceType, float requestedResources)
+	void RpcAsk_CreatePhysicalContainerWithContainer(RplId resourceComponentRplId, RplId inventoryManagerRplId, RplId storageComponentRplId, EResourceType resourceType, float requestedResources)
 	{
-		Rpc(RpcAsk_CreatePhysicalContainerWithContainer_, rplIdResourceComponent, rplIdInventoryManager, rplIdStorageComponent, resourceType, requestedResources);
+		Rpc(RpcAsk_CreatePhysicalContainerWithContainer_, resourceComponentRplId, inventoryManagerRplId, storageComponentRplId, resourceType, requestedResources);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -860,7 +982,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 			RplComponent replicationComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
 			
 			if (replicationComponent && !replicationComponent.IsProxy() && !replicationComponent.IsOwner())
-				Rpc(RpcAsk_OnPlayerInteraction, interactionType, Replication.FindId(resourceComponentFrom), Replication.FindId(resourceComponentTo), resourceType, resourceValue);
+				Rpc(RpcAsk_OnPlayerInteraction, interactionType, Replication.FindItemId(resourceComponentFrom), Replication.FindItemId(resourceComponentTo), resourceType, resourceValue);
 			
 			ChimeraWorld world = GetGame().GetWorld();
 			SCR_SupplySystem system = SCR_SupplySystem.Cast(world.FindSystem(SCR_SupplySystem));
@@ -889,6 +1011,6 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	{
 		super.OnDelete(owner);
 		
-		GetGame().GetResourceSystemSubscriptionManager().UnsubscribeListenerCompletely(Replication.FindId(this));
+		GetGame().GetResourceSystemSubscriptionManager().UnsubscribeListenerCompletely(Replication.FindItemId(this));
 	}
 }

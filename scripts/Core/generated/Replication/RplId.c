@@ -16,6 +16,7 @@ sealed class RplId
 	private void ~RplId();
 
 	static proto RplId Invalid();
+	proto external RplItemType GetType();
 	proto external bool IsValid();
 	proto external string AsString();
 }

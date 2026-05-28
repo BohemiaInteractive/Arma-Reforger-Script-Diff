@@ -95,6 +95,9 @@ class SCR_PlayersManagerEditorComponent : SCR_BaseEditorComponent
 		if (!editorManager || !editorManager.IsOpened())
 			return;
 		
+		if (!SCR_Global.IsPositionWithinTerrainBounds(position))
+			return;
+
 		IEntity player = SCR_PossessingManagerComponent.GetPlayerMainEntity(editorManager.GetPlayerID());
 		if (!player)
 			return;
@@ -225,11 +228,11 @@ class SCR_PlayersManagerEditorComponent : SCR_BaseEditorComponent
 		SCR_EditableEntityComponent entity = SCR_EditableEntityComponent.GetEditableEntity(controlledEntity);
 		if (!entity)
 			return;
-
+		
 		UpdatePlayerFaction(entity, controlledEntity);
 		UpdatePlayerGroup(entity, controlledEntity, playerID);
 
-		Rpc(OnSpawnOwner, playerID, Replication.FindId(entity));
+		Rpc(OnSpawnOwner, playerID, Replication.FindItemId(entity));
 	}
 
 	protected void UpdatePlayerGroup(notnull SCR_EditableEntityComponent editableEntity, notnull IEntity controlledEntity, int playerID)
@@ -245,7 +248,21 @@ class SCR_PlayersManagerEditorComponent : SCR_BaseEditorComponent
 			return;
 		
 		if (groupComponent.GetGroupID() == -1)
+		{
+			// player does not have a player group, yet
 			groupComponent.CreateAndJoinGroup(entityFaction);
+		}
+		else
+		{
+			// player may have player group, but the new editableEntity has different than his old player group
+			SCR_AIGroup currentPlayerGroup = groupComponent.GetPlayersGroup();
+			if (!currentPlayerGroup)
+				return;
+			
+			Faction playerOldFaction = currentPlayerGroup.GetFaction();
+			if (playerOldFaction != entityFaction)
+				groupComponent.CreateAndJoinGroup(entityFaction);
+		}
 	}
 	
 	protected void UpdatePlayerFaction(SCR_EditableEntityComponent editableEntity, IEntity controlledEntity)
@@ -283,7 +300,7 @@ class SCR_PlayersManagerEditorComponent : SCR_BaseEditorComponent
 		SCR_EditableEntityComponent entity = SCR_EditableEntityComponent.GetEditableEntity(controlledEntity);
 		if (!entity) return;
 
-		Rpc(OnPossessedOwner, playerID, isPossessing, Replication.FindId(entity));
+		Rpc(OnPossessedOwner, playerID, isPossessing, Replication.FindItemId(entity));
 	}
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void OnPossessedOwner(int playerID, bool isPossessing, int entityID)
@@ -306,7 +323,7 @@ class SCR_PlayersManagerEditorComponent : SCR_BaseEditorComponent
 		
 		SCR_EditableEntityComponent killerEditableEntity = SCR_EditableEntityComponent.GetEditableEntity(instigatorContextData.GetKillerEntity());
 		
-		Rpc(OnDeathOwner, instigatorContextData.GetVictimPlayerID(), Replication.FindId(entity), Replication.FindId(killerEditableEntity));
+		Rpc(OnDeathOwner, instigatorContextData.GetVictimPlayerID(), Replication.FindItemId(entity), Replication.FindItemId(killerEditableEntity));
 	}
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void OnDeathOwner(int playerID, int entityID, int killerID)

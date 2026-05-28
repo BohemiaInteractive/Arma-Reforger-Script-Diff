@@ -364,7 +364,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		if (!Workbench.ScriptDialog(
 				"Warning",
 				"You are about to format " + editableScriptsCount + " \"" + addonName + "\" addon script files.\n\n" + "Continue?",
-				new SCR_OKCancelWorkbenchDialog())
+				new WorkbenchDialog_OKCancel())
 		)
 			return;
 
@@ -1553,29 +1553,36 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			return false; // can't create a false positive on e.g protected string\n m_sValue;
 
 		string varName;
-		int indexEnd = SCR_StringHelper.IndexOf(rest, VARIABLE_NAME_ENDING);
-		if (indexEnd < 0)
+		int index = SCR_StringHelper.IndexOf(rest, VARIABLE_NAME_ENDING);
+		if (index < 0)
 		{
 			varName = rest.Trim(); // out of options
 		}
 		else
 		{
-			varName = rest.Substring(0, indexEnd).Trim();
-			rest = rest.Substring(indexEnd, rest.Length() - indexEnd).Trim();
+			varName = rest.Substring(0, index).Trim();
+			rest = rest.Substring(index, rest.Length() - index).Trim();
 			if (!rest.Contains("=") && !rest.Contains(SCR_StringHelper.SEMICOLON)) // should cut most of it
 				return false;
 		}
 
-		if (varName.Length() < 3)
-			return true;
+		index = varName.IndexOf("[");
+		if (index > 0 && varName.IndexOfFrom(index, "]") > 1)	// e.g m_aMyVar[5] or DEFAULT_MATRIX[4]
+		{
+			type = "array<x>"; // inner type is not important
+			varName = varName.Substring(0, index); // remove []
+		}
 
 		if (!SCR_StringHelper.CheckCharacters(varName, true, true, true, true))
 			return false;
 
-		if (isConst)
-			return varName != SCR_StringHelper.Filter(varName, SCR_StringHelper.UPPERCASE + SCR_StringHelper.DIGITS + "_"); // varName is not in format [A-Z0-9_]+
+		if (isConst) // check for UPPER_SNAKE_CASE format
+			return varName != SCR_StringHelper.Filter(varName, SCR_StringHelper.UPPERCASE + SCR_StringHelper.DIGITS + "_");
 
 		// m_ or s_ variables from now on
+
+		if (varName.Length() < 3) // consts can be DIR or X0 etc, "normal" variables must start with the "m_" or "s_" prefix
+			return true;
 
 		string expectedPrefix;
 		if (isStatic)
@@ -1588,9 +1595,6 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 		if (!SCR_StringHelper.ContainsUppercase(varName))		// m_ivalue
 			return true;
-
-		if (varName.Contains("[") && varName.Contains("]"))		// m_aMyVar[5]
-			type = "array<x>"; // inner type is not important
 
 		if (m_mVariableTypePrefixes.Contains(type))
 		{

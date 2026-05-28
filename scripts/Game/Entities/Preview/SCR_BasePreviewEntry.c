@@ -27,7 +27,7 @@ class SCR_BasePreviewEntry
 	
 	float m_fQuat[4]; //--- Optional quaternion, used only in run-time, i.e., not on prefab
 	vector m_vAnglesTerrain;
-	float m_vHeightTerrain;
+	float m_fHeightTerrain;
 	IEntity m_Entity;
 	IEntitySource m_EntitySource;
 	
@@ -79,7 +79,7 @@ class SCR_BasePreviewEntry
 		string mesh = m_Mesh;
 		mesh = string.Format("%1: %2", typename.EnumToString(EPreviewEntityShape, m_Shape), mesh);
 		string flagNames = SCR_Enum.FlagsToString(EPreviewEntityFlag, m_Flags);
-		string text = string.Format("prt: %1 | pvt: '%2' | scl: %3 | pos: %4 | ang: %5 | angT: %6 | hT: %7 | flg: %8 | shape: '%9'", m_iParentID, m_iPivotID, m_vScale, m_vPosition, m_vAngles, m_vAnglesTerrain, m_vHeightTerrain, flagNames, mesh);
+		string text = string.Format("prt: %1 | pvt: '%2' | scl: %3 | pos: %4 | ang: %5 | angT: %6 | hT: %7 | flg: %8 | shape: '%9'", m_iParentID, m_iPivotID, m_vScale, m_vPosition, m_vAngles, m_vAnglesTerrain, m_fHeightTerrain, flagNames, mesh);
 		PrintFormat("%1: %2", index, text);
 	}
 	void CopyFrom(SCR_BasePreviewEntry from)
@@ -94,7 +94,7 @@ class SCR_BasePreviewEntry
 		m_fQuat = from.m_fQuat;
 		m_vAngles = from.m_vAngles;
 		m_vAnglesTerrain = from.m_vAnglesTerrain;
-		m_vHeightTerrain = from.m_vHeightTerrain;
+		m_fHeightTerrain = from.m_fHeightTerrain;
 		m_Entity = from.m_Entity;
 		m_EntitySource = from.m_EntitySource;
 	}

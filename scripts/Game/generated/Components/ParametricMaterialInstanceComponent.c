@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-class ParametricMaterialInstanceComponent: GameComponent
+class ParametricMaterialInstanceComponent: BaseMaterialParamsComponent
 {
 	/*!
 	Use it to set albedo color.

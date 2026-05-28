@@ -1,9 +1,8 @@
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_IsUsingVariableSightsCondition : SCR_AvailableActionCondition
 {
 	//------------------------------------------------------------------------------------------------
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
 		BaseWeaponComponent weapon = data.GetCurrentWeapon();
 		if (!weapon)
@@ -14,10 +13,6 @@ class SCR_IsUsingVariableSightsCondition : SCR_AvailableActionCondition
 			return false;
 
 		SCR_BaseVariableSightsFOVInfo info = SCR_BaseVariableSightsFOVInfo.Cast(sights.GetFOVInfo());
-		if (!info)
-			return false;
-
-		int count = info.GetCount();
-		return GetReturnResult(count > 1);
+		return GetReturnResult(info && info.GetCount() > 1);
 	}
-};
+}

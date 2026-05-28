@@ -3,11 +3,17 @@ class PeerPlugin : WorldEditorPlugin
 {
 	[Attribute("game.exe", UIWidgets.FileNamePicker, desc: "Peer exe path", params: "exe FileNameFormat=absolute")]
 	string Executable;
+	
+	[Attribute("Launch Delay", UIWidgets.EditBox,  desc: "Delay in seconds before launching the windows", params: "0 1000 1")]
+	int launchDelay = 0;
 
 	[Attribute("Peers configuration")]
 	ref array<ref PeerConfig> PeersWindows;
 
 	ProcessHandle Handle = null;
+	
+	static int launchIDs = 0;
+	int launchID = 0;
 	
 	private string GetAddonsDirCLI()
 	{
@@ -54,7 +60,7 @@ class PeerPlugin : WorldEditorPlugin
 		return addonIDs;
 	}
 
-	void Start()
+	void StartAllWindows()
 	{
 		int profileIndex = 0;
 		
@@ -107,9 +113,29 @@ class PeerPlugin : WorldEditorPlugin
 				Print("Peer #" + profileIndex + " couldn't run. Check if your Executable or other settings are correct", LogLevel.ERROR);
 		}
 	}
+	void DelayedStart(int thisID)
+	{
+		Sleep(launchDelay * 1000);
+		if (launchID == thisID)
+			StartAllWindows();
+	}
+	
+	void Start()
+	{
+		launchID = launchIDs;
+		launchIDs += 1;
+		if (launchDelay != 0)
+		{
+			thread DelayedStart(launchID);
+			return;
+		}
+		
+		StartAllWindows();
+	}
 
 	void End()
 	{
+		launchID = -1;
 		foreach(PeerConfig conf : PeersWindows)
 		{
 			if (!conf.Handle) // what if the game mode wasn't the PeerTool?

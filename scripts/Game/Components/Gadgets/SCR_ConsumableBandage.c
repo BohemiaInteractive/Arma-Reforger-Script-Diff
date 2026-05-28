@@ -66,7 +66,7 @@ class SCR_ConsumableBandage : SCR_ConsumableEffectHealthItems
 		{
 			group = damageMgr.GetCharMostDOTHitzoneGroup(EDamageType.BLEEDING, ignoreIfBeingTreated: true);
 			array<HitZone> hitzones = {};
-			damageMgr.GetHitZonesOfGroup(group, hitzones);
+			damageMgr.GetHitZonesOfGroupFromOwner(group, hitzones);
 			if (!hitzones || hitzones.IsEmpty())
 				return null;
 				

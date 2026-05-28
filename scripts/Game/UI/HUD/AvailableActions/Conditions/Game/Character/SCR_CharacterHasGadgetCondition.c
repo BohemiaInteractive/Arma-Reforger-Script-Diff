@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 //! Returns true if character has provided gadget in their inventory
 //! if m_bEquipped true is only returned if the gadget is currently held
 [BaseContainerProps()]
@@ -25,13 +24,9 @@ class SCR_CharacterHasGadgetCondition : SCR_AvailableActionCondition
 	//------------------------------------------------------------------------------------------------
 	//! Returns true when current controlled entity has specified gadget
 	//! Returns opposite if m_bNegateCondition is enabled
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-
 		bool equipped;
-
 		SCR_GadgetComponent gadgetComponent = data.GetHeldGadgetComponent();
 		if (gadgetComponent)
 		{

@@ -26,7 +26,11 @@ class SCR_PlacingEditorUIComponent : SCR_PreviewEntityEditorUIComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnEditorTransformRotationModifierUp(float value, EActionTrigger reason)
 	{
-		if (m_StatesManager && m_StatesManager.GetState() == EEditorState.PLACING)
+		if (!m_StatesManager)
+			return;
+
+		EEditorState currentState = m_StatesManager.GetState();
+		if (currentState == EEditorState.PLACING || currentState == EEditorState.SELECTING)
 			super.OnEditorTransformRotationModifierUp(value, reason);
 	}
 
@@ -61,8 +65,11 @@ class SCR_PlacingEditorUIComponent : SCR_PreviewEntityEditorUIComponent
 	//------------------------------------------------------------------------------------------------
 	protected void Place(bool cancelAfterwards, bool canBePlayer = false)
 	{		
+		if (m_StatesManager && m_StatesManager.IsWaiting())
+			return;
+		
 		//--- Placing not enabled
-		if (!CanClick() || !m_bCanPlace || (m_StatesManager && m_StatesManager.GetState() != EEditorState.PLACING))
+		if (!m_bCanPlace || (m_StatesManager && m_StatesManager.GetState() != EEditorState.PLACING) || !CanClick())
 			return;
 		
 		if (!m_PreviewEntityManager.CanMoveInRoot() && !m_PreviewEntityManager.GetTarget())

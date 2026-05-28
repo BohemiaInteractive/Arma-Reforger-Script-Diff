@@ -63,6 +63,10 @@ class SCR_LoadSuppliesWaypointState : SCR_SuppliesTransferWaypointState
 
 		if (m_fCurrentTransferValue != 0)
 		{
+			SCR_ResourceComponent baseResourceComponent = m_Base.GetResourceComponent();
+			if (baseResourceComponent && s_OnAITransferedSupplies)
+				s_OnAITransferedSupplies.Invoke(EResourcePlayerInteractionType.VEHICLE_LOAD, m_ResourceComponent, baseResourceComponent, RESOURCE_TYPE, m_fCurrentTransferValue, m_Utility);
+				
 			m_ResourceConsumer.RequestConsumtion(m_fCurrentTransferValue);
 			m_ResourceGenerator.RequestGeneration(m_fCurrentTransferValue);
 		}
@@ -72,6 +76,7 @@ class SCR_LoadSuppliesWaypointState : SCR_SuppliesTransferWaypointState
 		{
 			if (m_Utility && m_Utility.m_Owner)
 				m_Utility.m_Owner.CompleteWaypoint(m_Waypoint);
+			
 		}
 		else
 		{

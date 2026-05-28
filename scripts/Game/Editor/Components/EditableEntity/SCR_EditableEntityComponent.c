@@ -33,7 +33,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 	[Attribute("1", UIWidgets.Flags, category: "Editable Entity", desc: "For editor users to edit or even see the entity, at least one of their editor keys must match entity's keys.\nFOr example, if the entity has KEY_1 and KEY_2, while the editor has KEY_2 and KEY_8, the entity will be available, since both have KEY_2.", enums: ParamEnumArray.FromEnum(EEditableEntityAccessKey))]
 	protected EEditableEntityAccessKey m_AccessKey;
 
-	[Attribute("", UIWidgets.Flags, category: "Editable Entity", desc: "Set unique flags.", enums: ParamEnumArray.FromEnum(EEditableEntityFlag))]
+	[Attribute("", UIWidgets.Flags, category: "Editable Entity", desc: "Set unique flags.", enumType: EEditableEntityFlag)]
 	protected EEditableEntityFlag m_Flags;
 
 	protected SCR_EditableEntityComponent m_ParentEntity;
@@ -194,7 +194,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 		if (HasEntityFlag(EEditableEntityFlag.LOCAL))
 			return false;
 
-		replicationID = Replication.FindId(this);
+		replicationID = Replication.FindItemId(this);
 		if (replicationID == -1)
 		{
 			//Print(string.Format("Replication ID not found for '%1'!", GetDisplayName()), LogLevel.ERROR);
@@ -421,12 +421,11 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns Unix Time of last modification
-	//! \return
+	//! \return Author's platform or PlatformKind.NONE when author is not set
 	PlatformKind GetAuthorPlatform()
 	{
 		if (!m_Author)
-			return null;
+			return PlatformKind.NONE;
 		
 		return m_Author.m_ePlatform;
 	}
@@ -646,11 +645,22 @@ class SCR_EditableEntityComponent : ScriptComponent
 	//! Update entity's transformation and broadcast the changes to all clients.
 	//! \param[in] transform Target transformation
 	//! \param[in] changedByUser True when the change was initiated by user
-	void SetTransform(vector transform[4], bool changedByUser = false)
+	bool SetTransform(vector transform[4], bool changedByUser = false)
 	{
 		if (!IsServer() || !m_Owner)
-			return;
-  
+			return false;
+
+		vector position = transform[3];
+		if (changedByUser && !SCR_Global.IsPositionWithinTerrainBounds(position))
+		{
+			Physics phys = m_Owner.GetPhysics();
+			float terrainY = m_Owner.GetWorld().GetSurfaceY(position[0], position[2]);
+			if (phys && (phys.IsDynamic() || phys.IsKinematic()) && position[1] > terrainY || float.AlmostEqual(position[1], terrainY, 0.01))
+				return false; // we dont allow for placing of dynamic objects outside of world bounds
+
+			transform[3][1] = terrainY; // if it was only Y that was wrong, then we can snap it to the surface
+		}
+
 		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.FindResourceComponent(m_Owner);
 		if (resourceComponent)
 		{	
@@ -714,6 +724,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 		}
 
 		rpl.ForceNodeMovement(prevTransform[3]);
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -801,12 +812,22 @@ class SCR_EditableEntityComponent : ScriptComponent
 	bool Destroy(int editorPlayerID = 0)
 	{
 		if (IsServer())
-		{			
+		{
 			if (!IsDestroyed() && CanDestroy())
 			{
 				DamageManagerComponent damageManager = DamageManagerComponent.Cast(m_Owner.FindComponent(DamageManagerComponent));
-				damageManager.SetAndReplicateInstigator(Instigator.CreateInstigatorGM(editorPlayerID));
-				damageManager.SetHealthScaled(0);
+				Instigator instigator = Instigator.CreateInstigatorGM(editorPlayerID);
+				damageManager.SetAndReplicateInstigator(instigator);
+				
+				SCR_DamageManagerComponent scrDamageManager = SCR_DamageManagerComponent.Cast(damageManager);
+				if (scrDamageManager)
+				{
+					scrDamageManager.Kill(instigator);
+				}
+				else
+				{
+					return false;
+				}
 				return true;
 			}
 		}
@@ -943,6 +964,43 @@ class SCR_EditableEntityComponent : ScriptComponent
 
 		return !outBudgets.IsEmpty();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns true if the entity consumes this type of budget
+	bool EntityHasBudgetOfType(EEditableEntityBudget budgetToFind)
+	{				
+		SCR_EditableEntityUIInfo editableEntityUIInfo = SCR_EditableEntityUIInfo.Cast(GetInfo(GetOwner()));
+			
+		if(!editableEntityUIInfo)
+			return false;
+
+		//for some goddamn reason turrets have prop budget, but consume vehicle budgets
+		if(budgetToFind == EEditableEntityBudget.VEHICLES)
+		{
+			if(SCR_EditableVehicleUIInfo.Cast(editableEntityUIInfo))
+				return true;
+		}
+		
+		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+		
+		if(core.GetBudgetForEntityType(editableEntityUIInfo.GetEntityType()) == budgetToFind)
+			return true;
+				
+		array<ref SCR_EntityBudgetValue> entityBudgetCosts = {};
+		
+		GetEntityAndChildrenBudgetCost(entityBudgetCosts, GetOwner());
+
+		//if the entity has the budget we want to find, return true
+		foreach	(SCR_EntityBudgetValue budgetCost : entityBudgetCosts)
+		{
+			if(budgetCost.GetBudgetType() != budgetToFind)
+				continue;
+				
+			return true;
+		}
+		
+		return false;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Can entity be duplicated by editor and which recipients should be passed to the duplicated entity
@@ -1050,7 +1108,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 		SCR_EditableEntityComponent parentPrev = m_ParentEntity;
 		SetParentEntityBroadcast(parentEntity, parentPrev, changedByUser);
 		if (CanRpc())
-			Rpc(SetParentEntityBroadcastReceive, Replication.FindId(parentEntity), Replication.FindId(parentPrev), changedByUser);
+			Rpc(SetParentEntityBroadcastReceive, Replication.FindItemId(parentEntity), Replication.FindItemId(parentPrev), changedByUser);
 
 		return parentEntity;
 	}
@@ -1067,7 +1125,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 		SetParentEntityBroadcast(m_ParentEntity, m_ParentEntity);
 		if (CanRpc())
 		{
-			int parentEntityID = Replication.FindId(m_ParentEntity);
+			int parentEntityID = Replication.FindItemId(m_ParentEntity);
 			Rpc(SetParentEntityBroadcastReceive, parentEntityID, parentEntityID, false);
 		}
 	}
@@ -1329,7 +1387,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 		)
 		{
 			SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
-			core.AddOrphan(parentEntityID, Replication.FindId(this));
+			core.AddOrphan(parentEntityID, Replication.FindItemId(this));
 		}
 		else
 		{
@@ -1386,7 +1444,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 
 		//--- Restore orphaned entites belonging to this parent
 		array<SCR_EditableEntityComponent> orphans = {};
-		for (int i = 0, count = core.RemoveOrphans(Replication.FindId(this), orphans); i < count; i++)
+		for (int i = 0, count = core.RemoveOrphans(Replication.FindItemId(this), orphans); i < count; i++)
 		{
 			orphans[i].SetParentEntityBroadcast(this, orphans[i].GetParentEntity());
 			Print(string.Format("Editor parent %1 restored for orphan %2", this, orphans[i]), LogLevel.VERBOSE);
@@ -2097,7 +2155,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 		writer.WriteInt(authorID);
 		writer.WriteInt(m_iAuthorLastUpdated);
 
-		RplId parentID = Replication.FindId(m_ParentEntity);
+		RplId parentID = Replication.FindItemId(m_ParentEntity);
 		writer.WriteRplId(parentID);
 
 		return true;

@@ -21,9 +21,6 @@ class SCR_VehicleDebug : GenericEntity
 	
 	void DelayedInit()
 	{
-		if (!m_SurfaceMaterialOverride.IsEmpty())		
-			VehicleBaseSimulation.SetSurfaceOverride(m_SurfaceMaterialOverride);
-		
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (!gameMode)
 			return;
@@ -34,6 +31,15 @@ class SCR_VehicleDebug : GenericEntity
 	void OnPlayerSpawned(int playerId, IEntity playerEntity)
 	{
 		IEntity vehicleEntity = GetGame().GetWorld().FindEntityByName(m_VehicleName);
+		if (!vehicleEntity)
+			return;
+		
+		if (!m_SurfaceMaterialOverride.IsEmpty())
+		{
+			VehicleBaseSimulation sim = VehicleBaseSimulation.Cast(vehicleEntity.FindComponent(VehicleBaseSimulation));
+			sim.SetSurfaceOverride(m_SurfaceMaterialOverride);
+		}
+		
 		GetInVehicle(playerEntity, vehicleEntity);
 	}
 	

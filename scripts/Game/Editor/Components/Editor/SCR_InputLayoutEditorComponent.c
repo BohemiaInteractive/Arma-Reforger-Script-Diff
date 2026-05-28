@@ -27,4 +27,9 @@ class SCR_InputLayoutEditorComponent : SCR_BaseEditorComponent
 	{
 		if (m_Widget) m_Widget.RemoveFromHierarchy();
 	}
+	
+	void ~SCR_InputLayoutEditorComponent()
+	{
+		EOnEditorDelete();
+	}
 };

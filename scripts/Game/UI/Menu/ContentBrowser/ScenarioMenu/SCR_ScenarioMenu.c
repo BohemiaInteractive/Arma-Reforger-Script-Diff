@@ -33,7 +33,7 @@ class SCR_ScenarioMenu : SCR_SuperMenuBase
 	{
 		super.OnMenuShow();
 		
-		SCR_AnalyticsApplication.GetInstance().OpenScenarios();	
+		//SCR_AnalyticsApplication.GetInstance().OpenScenarios();	
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------------
@@ -41,6 +41,6 @@ class SCR_ScenarioMenu : SCR_SuperMenuBase
 	{
 		super.OnMenuHide();	
 		
-		SCR_AnalyticsApplication.GetInstance().CloseScenarios();
+		//SCR_AnalyticsApplication.GetInstance().CloseScenarios();
 	}
 };

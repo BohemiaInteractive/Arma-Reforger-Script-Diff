@@ -173,7 +173,7 @@ class SCR_EditorTask : SCR_ExtendedTask
 		if (!editableTask)
 			return;
 	
-		int taskID = Replication.FindId(editableTask);
+		int taskID = Replication.FindItemId(editableTask);
 		
 		FactionManager factionManager = GetGame().GetFactionManager();
 		if (!factionManager)

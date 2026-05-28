@@ -65,13 +65,13 @@ class Screenshot_Autotest: GenericEntity
 	private Screenshot_Waypoint m_waypoint;
 	private float  m_timeFromScreenshot;
 	private string m_directory;
+	private bool m_initialized;
 
 	private TextWidget m_FPSWidget;
 
 	void Screenshot_Autotest(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
-		SetFlags(EntityFlags.ACTIVE, true);
 
 		System.GetCLIParam("autotest-output-dir", m_directory);
 
@@ -126,7 +126,8 @@ class Screenshot_Autotest: GenericEntity
 			Print("No waypoints for screenshots!", LogLevel.WARNING);
 		}
 
-		TransformCameraToWaypoint();
+		//Can't preload during EOnInit we need to wait until start preloading first waypoint
+		//TransformCameraToWaypoint();
 
 		m_FPSWidget = TextWidget.Cast(g_Game.GetWorkspace().CreateWidgetInWorkspace(WidgetType.TextWidgetTypeID, 16, 16, 512, 128, WidgetFlags.VISIBLE, new Color(0.0, 0.0, 0.0, 1.0), 1024));
 		m_FPSWidget.SetExactFontSize(64);
@@ -153,6 +154,12 @@ class Screenshot_Autotest: GenericEntity
 				MakeCSVSummaryFile(summaryFilename);
 			}
 			g_Game.RequestClose();
+		}
+		
+		if (!m_initialized)
+		{
+			TransformCameraToWaypoint();
+			m_initialized = true;
 		}
 
 		if (!g_Game.IsPreloadFinished())
@@ -344,7 +351,9 @@ class Screenshot_Autotest: GenericEntity
 			m_camera.SetTransform(mat);
 			m_waypoint.EOnEnter();
 			
-			g_Game.BeginPreload(GetWorld(), mat[3], 500);
+			float cameraFarPlane = GetWorld().GetCameraFarPlane(GetWorld().GetCurrentCameraId());
+			
+			g_Game.BeginPreload(GetWorld(), mat[3], cameraFarPlane);
 		}
 	}
 	

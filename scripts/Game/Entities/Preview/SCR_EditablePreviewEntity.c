@@ -185,7 +185,7 @@ class SCR_EditablePreviewEntity: SCR_GenericPreviewEntity
 		{
 			//--- Don't calculate terrain under entity, but use default values. Without it, entities with modified pitch or bank would have them reset.
 			entry.m_vAnglesTerrain = Vector(0, entry.m_vAngles[1], entry.m_vAngles[2]);
-			entry.m_vHeightTerrain = entry.m_vPosition[1];
+			entry.m_fHeightTerrain = entry.m_vPosition[1];
 		}
 		
 		if (entry.m_Shape != EPreviewEntityShape.PREFAB)
@@ -263,6 +263,21 @@ class SCR_EditablePreviewEntity: SCR_GenericPreviewEntity
 		foreach (SCR_BasePreviewEntry entry: entries)
 		{
 			m_aExcludeArray.Insert(entry.m_Entity);
+		}
+
+		if (m_EditableEntity)
+			return;
+
+		SCR_EditablePreviewEntity editablePreview;
+		foreach (SCR_BasePreviewEntity childPreview : m_aChildren)
+		{
+			editablePreview = SCR_EditablePreviewEntity.Cast(childPreview);
+			if (!editablePreview)
+				continue;
+
+			m_EditableEntity = editablePreview.GetEditableEntity();
+			if (m_EditableEntity)
+				break;
 		}
 	}
 };

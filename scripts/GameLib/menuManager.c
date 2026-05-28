@@ -27,7 +27,7 @@ enum GameLibMenusEnum : ScriptMenuPresetEnum
 	
 }
 
-class MenuBindAttribute
+class MenuBindAttribute: UniqueAttribute
 {
 	string m_MenuItemName;
 	

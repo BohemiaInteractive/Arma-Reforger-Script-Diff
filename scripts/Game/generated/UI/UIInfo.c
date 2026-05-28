@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-//! UIInfo - declare object, allows to define UI elements
+//! UIInfo - allows to define UI elements
 class UIInfo: ScriptAndConfig
 {
 	/*!

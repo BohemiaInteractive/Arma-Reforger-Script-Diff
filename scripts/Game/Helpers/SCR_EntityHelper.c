@@ -299,7 +299,7 @@ class SCR_EntityHelper
 		Math3D.DirectionAndUpMatrix(perpend, newUp, mat);
 
 		vector basis[4];
-		Math3D.AnglesToMatrix(Vector(-perpend.VectorToAngles()[0], 0, 0), basis);
+		Math3D.AnglesToMatrix({ -perpend.VectorToAngles()[0], 0, 0 }, basis);
 		Math3D.MatrixMultiply3(mat, basis, mat);
 		mat[3] = origin;
 	}
@@ -501,6 +501,30 @@ class SCR_EntityHelper
 
 		arr.SwapItems(i + 1, high);
 		return (i + 1);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static RplId EntityToRplId(IEntity ent)
+	{
+		if (ent)
+		{
+			RplComponent rplComp = GetEntityRplComponent(ent);
+			if (rplComp)
+			{
+				return rplComp.Id();
+			}
+		}
+		return RplId.Invalid();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static IEntity RplIdToEntity(RplId id)
+	{
+		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(id));
+		if (!rplComp)
+			return null;
+		
+		return rplComp.GetEntity();
 	}
 }
 

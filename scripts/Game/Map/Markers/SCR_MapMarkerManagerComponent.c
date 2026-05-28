@@ -161,7 +161,6 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 		InsertStaticMarker(marker, isLocal, isServerMarker);
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	//! Insert customized static marker
 	//! \param[in] marker is the subject
@@ -521,7 +520,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 		m_aStaticMarkers.Insert(marker);
 		FactionManager factionManager = GetGame().GetFactionManager();
 		
-		if (System.IsConsoleApp())
+		if (System.IsConsoleApp())			// on dedicated server markers are disabled
 		{
 			marker.SetServerDisabled(true);
 		}
@@ -535,13 +534,11 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 				Faction localFaction = SCR_FactionManager.SGetLocalPlayerFaction();
 				bool isMyFaction = marker.IsFaction(factionManager.GetFactionIndex(localFaction));
 				
-				if (!localFaction || !isMyFaction)
+				// faction is set but it is different from marker's faction - client or host 
+				// if localFaction is null, we show marker 
+				if (localFaction && !isMyFaction)
 				{
-					if (Replication.IsServer())				// hosted server 
-						marker.SetServerDisabled(true);
-					else 
-						m_aStaticMarkers.RemoveItem(marker);
-	
+					m_aStaticMarkers.RemoveItem(marker);
 					return;
 				}
 			}
@@ -620,6 +617,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnMapPanEnd(float x, float y)
 	{
+		m_MapEntity.UpdateViewPort();
 		m_MapEntity.GetMapVisibleFrame(m_vVisibleFrameMin, m_vVisibleFrameMax);
 		
 		for (int i = m_aDisabledMarkers.Count() - 1; i >= 0; i--)
@@ -652,6 +650,10 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnMapOpen(MapConfiguration mapConfig)
 	{
+		m_MapEntity.UpdateViewPort();
+		
+		m_MapEntity.GetMapVisibleFrame(m_vVisibleFrameMin, m_vVisibleFrameMax);
+		
 		for (int i = m_aDisabledMarkers.Count() - 1; i >= 0; i--)
 		{
 			SetStaticMarkerDisabled(m_aDisabledMarkers[i], !m_aDisabledMarkers[i].TestVisibleFrame(m_vVisibleFrameMin, m_vVisibleFrameMax));
@@ -715,7 +717,6 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 			if (!texts.IsIndexValid(i))
 				break;
 			
-
 			if (isPlatformXbox)
 			{
 				string resultText;
@@ -726,6 +727,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 			{
 				marker.SetCustomText(texts[i]);
 			}
+			
 			i++;
 		}
 	}
@@ -823,8 +825,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 		array<string> textsToFilter = {};
 		
 		for (int i; i < count; i++)
-		{	
-				
+		{		
 			reader.ReadInt(posX);
 			reader.ReadInt(posY);
 			reader.ReadInt(markerID);
@@ -874,6 +875,47 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! run on proxy only, adds listener to faction affiliation change of player controller when ready
+	//! \param[in] playerController
+	void RegisterLocalController(notnull PlayerController playerController)
+	{
+		SCR_PlayerFactionAffiliationComponent playerFactionAffiliation = SCR_PlayerFactionAffiliationComponent.Cast(playerController.FindComponent(SCR_PlayerFactionAffiliationComponent));
+		if (playerFactionAffiliation)
+			playerFactionAffiliation.GetOnFactionChanged().Insert(OnPlayerFactionChanged);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// run on proxy only, removes markers from array that are of different faction than player's 
+	protected void RemoveMarkersOfOtherFactions(int factionIndexOfPlayer, notnull inout array<ref SCR_MapMarkerBase> markers)
+	{
+		SCR_MapMarkerBase marker = new SCR_MapMarkerBase();
+		for(int index = markers.Count() - 1; index >= 0; index --)
+		{
+			marker = markers[index];
+			if (!marker || marker.GetMarkerFactionFlags() == 0)
+				continue;
+			
+			if (!marker.IsFaction(factionIndexOfPlayer)) // marker faction is not same as player faction
+				markers.Remove(index);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// run on proxy only
+	protected void OnPlayerFactionChanged(notnull FactionAffiliationComponent owner, Faction previousFaction, Faction newFaction)
+	{
+		// Note: we delete markers of different factions and thus if we change faction in runtime again, we might obtain incomplete list! TODO if it matters
+		FactionManager factionManager = GetGame().GetFactionManager();
+		if (!factionManager)
+			return;
+		
+		int newFactionIndex = factionManager.GetFactionIndex(newFaction);
+		
+		RemoveMarkersOfOtherFactions(newFactionIndex, m_aStaticMarkers);
+		RemoveMarkersOfOtherFactions(newFactionIndex, m_aDisabledMarkers);		
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override protected void EOnInit(IEntity owner)
 	{	
 		bool isMaster = m_pGameMode.IsMaster();
@@ -905,7 +947,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 		s_Instance = this;
 		m_MapEntity = SCR_MapEntity.GetMapInstance();
 		m_MapEntity.GetOnMapPanEnd().Insert(OnMapPanEnd);
-		m_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
+		m_MapEntity.GetOnMapOpenComplete().Insert(OnMapOpen);
 		
 		Resource container = BaseContainerTools.LoadContainer(m_sMarkerCfgPath);
 		if (container)

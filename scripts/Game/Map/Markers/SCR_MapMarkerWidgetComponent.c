@@ -12,6 +12,8 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 	protected bool m_bIsEventListening;	// whether this marker reacts to events
 	protected bool m_bIsSymbolMode;		// app-6 symbol visualization mode
 	protected bool m_bIsOwnerMode;		// player is the markers owner
+	protected bool m_bShowAuthor;
+	protected bool m_bShowText;
 	protected int m_iLayerID;			// map layer ID
 	
 	protected WorldTimestamp m_Timestamp;
@@ -166,7 +168,9 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 	//! \param[in] state
 	void SetTextVisible(bool state)
 	{
-		m_wMarkerText.SetVisible(state);
+		m_bShowText = state;
+		
+		m_wMarkerText.SetVisible(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -210,8 +214,10 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 	//! \param[in] state
 	void SetAuthorVisible(bool state)
 	{
-		m_wMarkerAuthor.SetVisible(state);
-		m_wAuthorPlatformIcon.SetVisible(state);
+		state = true;
+		m_bShowAuthor = state;
+		
+		ShowAuthor(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -249,6 +255,29 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 	ImageWidget GetAuthorPlatformIcon()
 	{
 		return m_wAuthorPlatformIcon;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ShowAuthor(bool state)
+	{
+		m_wMarkerAuthor.SetVisible(state);
+		
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+		if (playerController)
+		{
+			bool showIconNametag = true;
+			
+			// Always show on PSN
+			PlatformKind ownPlatformKind = GetGame().GetPlayerManager().GetPlatformKind(playerController.GetLocalPlayerId());
+			if (ownPlatformKind == PlatformKind.STEAM)
+			{
+				BaseContainer settings = GetGame().GetGameUserSettings().GetModule("SCR_GameplaySettings");
+				if (settings)
+					settings.Get("m_bPlatformIconNametag", showIconNametag);
+			}
+			
+			m_wAuthorPlatformIcon.SetVisible(state && showIconNametag);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -301,6 +330,12 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 		
 		SetTypeIconsVisible(true);
 		
+		if (m_bShowAuthor)
+			ShowAuthor(true);
+		
+		if (m_bShowText)
+			m_wMarkerText.SetVisible(true);
+		
 		if (!SCR_MapMarkersUI.IsOwnedMarker(m_MarkerObject))
 			return false;
 		
@@ -321,6 +356,12 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 		m_MarkerObject.LayerChangeLogic(m_iLayerID);
 
 		SetTypeIconsVisible(false);
+		
+		if (m_bShowAuthor)
+			ShowAuthor(false);
+		
+		if (m_bShowText)
+			m_wMarkerText.SetVisible(false);
 		
 		if (!SCR_MapMarkersUI.IsOwnedMarker(m_MarkerObject))
 			return false;

@@ -277,12 +277,12 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	//! \param[in] includeChildren Includes children objects in default restoration process.
 	//! \param[in] reinitAfterRestoration Restores object state after restoration, resetting internal variables.
 	//! \param[in] affectRandomization Affects randomization during object restoration.
-	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true, bool deleteSpawnedEntities = true)
 	{
 		m_sRandomlySpawnedObject = string.Empty;
 		m_vPosition = vector.Zero;
 
-		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization, deleteSpawnedEntities);
 	}
 
 	//------------------------------------------------------------------------------------------------

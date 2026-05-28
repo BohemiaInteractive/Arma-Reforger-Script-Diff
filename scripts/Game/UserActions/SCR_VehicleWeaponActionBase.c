@@ -27,7 +27,7 @@ class SCR_VehicleWeaponActionBase : SCR_VehicleActionBase
 	//------------------------------------------------------------------------------------------------
 	protected void PlayActionSound()
 	{
-		if (!m_sActionSoundEvent.IsEmpty())
+		if (m_sActionSoundEvent.IsEmpty())
 			return;
 		
 		SoundComponent soundComp = SoundComponent.Cast(GetOwner().GetRootParent().FindComponent(SoundComponent));

@@ -86,7 +86,7 @@ class SCR_ContinuousLoiterCommand : SCR_BaseRadialCommand
 			return false;
 		
 		vector emptyVector[4];
-		characterController.StartLoitering(m_eLoiterType, false, true, false, emptyVector);
+		characterController.StartLoitering(null, m_eLoiterType, false, true, false, emptyVector);
 		
 		Resource holder = BaseContainerTools.LoadContainer(m_sHint);
 		if (!holder.IsValid())

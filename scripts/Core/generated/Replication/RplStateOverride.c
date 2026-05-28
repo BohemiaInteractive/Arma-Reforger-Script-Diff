@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-//! Used to override the current replication game state during node hierarchy insertion.
+//! Used to override the current RplGameState during node hierarchy insertion.
 enum RplStateOverride
 {
 	None,

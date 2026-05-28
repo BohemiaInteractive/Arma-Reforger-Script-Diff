@@ -99,7 +99,7 @@ class CreateGroupSettingsDialogUI : DialogUI
 	//------------------------------------------------------------------------------------------------
 	override protected void OnConfirm()
 	{
-		array<SCR_EGroupRole> availableGroupRoles = m_GroupsManager.GetAvailableGroupRoles(m_LocalFaction);
+		array<SCR_EGroupRole> availableGroupRoles = m_GroupsManager.GetAvailableGroupRoles(m_LocalFaction, SCR_PlayerController.GetLocalPlayerId());
 		if (availableGroupRoles.IsEmpty())
 			return;
 
@@ -155,7 +155,7 @@ class CreateGroupSettingsDialogUI : DialogUI
 		m_GroupRole.m_OnOpened.Insert(OnGroupRoleComboOpened);
 
 		// set available role to combobox
-		array<SCR_EGroupRole> availableGroupRoles = m_GroupsManager.GetAvailableGroupRoles(m_LocalFaction);
+		array<SCR_EGroupRole> availableGroupRoles = m_GroupsManager.GetAvailableGroupRoles(m_LocalFaction, SCR_PlayerController.GetLocalPlayerId());
 		bool selectAvailableGroupRole = !availableGroupRoles.IsEmpty();
 
 		array<SCR_GroupRolePresetConfig> groupRolePresetConfigs = {};
@@ -189,7 +189,7 @@ class CreateGroupSettingsDialogUI : DialogUI
 	protected void OnGroupRoleComboOpened()
 	{
 		array<SCR_EGroupRole> configuredGroupRoles = m_GroupsManager.GetConfiguredGroupRoles(m_LocalFaction, true);
-		array<SCR_EGroupRole> availableGroupRoles = m_GroupsManager.GetAvailableGroupRoles(m_LocalFaction);
+		array<SCR_EGroupRole> availableGroupRoles = m_GroupsManager.GetAvailableGroupRoles(m_LocalFaction, SCR_PlayerController.GetLocalPlayerId());
 
 		array<Widget> comboBoxWidgets = {};
 		int itemsCount = m_GroupRole.GetElementWidgets(comboBoxWidgets);
@@ -218,7 +218,7 @@ class CreateGroupSettingsDialogUI : DialogUI
 			if (isRequiredRankVisible)
 			{
 				SCR_ECharacterRank requiredRank = m_GroupsManager.GetRequiredRank(configuredGroupRole, m_LocalFaction);
-				squadRoleComboBoxElement.SetRankImage(m_LocalFaction.GetRankInsignia(requiredRank));
+				squadRoleComboBoxElement.SetRankImage(m_LocalFaction.GetRanks().GetRankInsignia(requiredRank));
 			}
 
 			bool isNotEnoughFullGroupVisible = !isPlayerCommander && !m_GroupsManager.AreAllGroupsMajorityFull(configuredGroupRole, m_LocalFaction);
@@ -229,7 +229,7 @@ class CreateGroupSettingsDialogUI : DialogUI
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateConfirmButton()
 	{
-		array<SCR_EGroupRole> availableGroupRoles = m_GroupsManager.GetAvailableGroupRoles(m_LocalFaction);
+		array<SCR_EGroupRole> availableGroupRoles = m_GroupsManager.GetAvailableGroupRoles(m_LocalFaction, SCR_PlayerController.GetLocalPlayerId());
 		bool isAnyAvailable = availableGroupRoles.Count() > 0;
 		m_Confirm.SetVisible(isAnyAvailable);
 	}

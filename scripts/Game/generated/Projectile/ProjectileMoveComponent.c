@@ -14,10 +14,19 @@ class ProjectileMoveComponent: BaseProjectileComponent
 	proto external void EnableSimulation(IEntity owner);
 	proto external void Launch(vector direction, vector parentVelocity, float initSpeedCoef, IEntity projectileEntity, IEntity gunner, IEntity parentEntity, IEntity lockedTarget, IEntity weaponComponent);
 	/*!
-	* Predicts the projectile simulation result (there's no interaction with the world)
-	*
+	* Predicts the projectile simulation result (there's no interaction with the world). Only works when projectile debugging is enabled.
+	* \param initPosition launch position.
+	* \param initSpeed launch speed.
+	* \param initElevationAngle elevation angle in degrees.
+	* \param initAzimuth azimuth angle in degrees.
+	* \param windSpeed wind velocity.
+	* \param targetHeight target height that the projectile must reach before simulation ends.
+	* \param mustFallDown if true, the projectile must fall down below this height for simulation to end. if false, projectile should simply reach this height.
+	* \param maxSimulationTime maximum simulation time in seconds. if maxSimulationTime <= 0, 60s is used.
+	* \param maxHorizontalDistance maximum distance along the launch azimuth direction. if value < 0, 10km is used
+	* \return The final position of the projectile (either reached target or time expired)
 	*/
-	proto external vector GetProjectileSimulationResult(vector initPosition, float initSpeed, float initElevationAngle, float initAzimuth = 0, vector windSpeed = Vector(0,0,0), float targetHeight = 0, float maxSimulationTime = 0);
+	proto external vector GetProjectileSimulationResult(vector initPosition, float initSpeed, float initElevationAngle, float initAzimuth = 0, vector windSpeed = vector.Zero, float targetHeight = 0, bool mustFallDown = true, float maxSimulationTime = -1, float maxHorizontalDistance = -1);
 	proto external vector GetVelocity();
 	/*!
 	* Queries the rewind duration (equal to the RTT of the remote shooter's connection at the time of the shot) from the projectile for lag compensation.

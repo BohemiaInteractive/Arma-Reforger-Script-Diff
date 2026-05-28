@@ -42,11 +42,11 @@ class SCR_ScenarioFrameworkLayerTaskDeliver : SCR_ScenarioFrameworkLayerTask
 	//! \param[in] includeChildren Restores default settings, optionally including children objects.
 	//! \param[in] reinitAfterRestoration Restores object state after default settings, optionally reinitializes after restoration.
 	//! \param[in] affectRandomization Affects randomization during default restoration.
-	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true, bool deleteSpawnedEntities = true)
 	{
 		m_DeliverPoint = null;
 		
-		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization, deleteSpawnedEntities);
 	}
 	
 	//------------------------------------------------------------------------------------------------

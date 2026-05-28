@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class WeaponGamepadEffectsManagerComponentClass: GamepadEffectsManagerComponentClass
-{
-}
-
 class WeaponGamepadEffectsManagerComponent: GamepadEffectsManagerComponent
 {
 	proto external void SetDefaultFireTriggerEffectEnabled(bool val);

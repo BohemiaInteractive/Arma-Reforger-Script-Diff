@@ -99,8 +99,6 @@ class AutotestGrid: GenericEntity
 	private float m_CurrentRotationT;
 	private float m_CurrentDuration;
 	
-	private ref AutotestBase m_AutotestBase;
-	
 	void AutotestGrid(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
@@ -131,7 +129,7 @@ class AutotestGrid: GenericEntity
 			m_directory = "$logs:" + GetName();
 		}
 		
-		m_AutotestBase = new AutotestBase();
+		AutotestBase.Reset();
 		AutotestBase.SetLastProcessingTime_Treshold(100/1000);
 	}
 

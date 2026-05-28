@@ -13,6 +13,7 @@ class HelicopterAutopilotHelperComponentClass: BaseAutopilotHelperComponentClass
 {
 }
 
+[Obsolete("Do not use. Will be removed entirely.")]
 class HelicopterAutopilotHelperComponent: BaseAutopilotHelperComponent
 {
 }

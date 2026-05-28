@@ -43,7 +43,7 @@ class SCR_BaseResourceTooltipDetail : SCR_EntityTooltipDetail
 		if (m_ResourceSubscriptionHandleConsumer)
 			m_ResourceSubscriptionHandleConsumer.Poke();
 		else
-			m_ResourceSubscriptionHandleConsumer = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandleGraceful(m_ResourceConsumer, Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent))));
+			m_ResourceSubscriptionHandleConsumer = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandleGraceful(m_ResourceConsumer, Replication.FindItemId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent))));
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -140,6 +140,9 @@ class SCR_ControllerSettings : ModuleGameSettings
 
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0 2 0.01", desc: "Gyro vertical horizontal ratio")]
 	float m_fGyroVerticalHorizontalRatio;
+	
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0 2 0.01", desc: "Rumble multiplier")]
+	float m_fRumbleIntensity;
 
 	[Attribute(defvalue: SCR_Enum.GetDefault(SCR_EGyroAxisDirection.ENABLED), uiwidget: UIWidgets.ComboBox, desc: "Gyro yaw direction", enumType: SCR_EGyroAxisDirection)]
 	SCR_EGyroAxisDirection m_eGyroDirectionYaw;
@@ -216,6 +219,12 @@ class SCR_ControllerSettings : ModuleGameSettings
 				}
 
 				CharacterControllerComponent.SetGyroSensitivity(sensitivityYaw, sensitivityPitch, sensitivityRoll);
+			}
+			
+			float rumbleIntensity;
+			if (controllerSettings.Get("m_fRumbleIntensity", rumbleIntensity))
+			{
+				GamepadRumbleEffect.SetRumbleIntensity(rumbleIntensity);
 			}
 		}
 	}

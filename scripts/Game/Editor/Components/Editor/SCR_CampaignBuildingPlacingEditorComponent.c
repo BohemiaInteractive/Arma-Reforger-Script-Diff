@@ -32,6 +32,24 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	
 	//different because this cant be a global map, but one map per base, probably gotta put this somewhere else lol
 	ref map<EEditableEntityBudget, int> m_accumulatedCampaignBudgetChanges = new map<EEditableEntityBudget, int>;
+
+	//------------------------------------------------------------------------------------------------
+	Faction GetProviderAffiliatedFaction()
+	{
+		if (!m_CampaignBuildingComponent)
+			return null;
+
+		SCR_FactionAffiliationComponent factionAffiliationComp = m_CampaignBuildingComponent.GetProviderFactionComponent();
+		if (!factionAffiliationComp)
+			return null;
+
+		Faction faction = factionAffiliationComp.GetAffiliatedFaction();
+		if (!faction)
+			return factionAffiliationComp.GetDefaultAffiliatedFaction();
+
+		return faction;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Return the base which belongs to a provider (if any)
 	protected bool GetProviderBase(out SCR_MilitaryBaseComponent base)
@@ -111,7 +129,7 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnEntityCreatedServer(array<SCR_EditableEntityComponent> entities)
+	override protected void OnEntityCreatedServer(array<SCR_EditableEntityComponent> entities)
 	{
 		if (!m_CampaignBuildingComponent)
 			return;
@@ -183,7 +201,7 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get value of given budget for given entity.
-	int GetEntityBudgetValue(notnull SCR_EditableEntityComponent entity, EEditableEntityBudget budget)
+	protected int GetEntityBudgetValue(notnull SCR_EditableEntityComponent entity, EEditableEntityBudget budget)
 	{
 		array<ref SCR_EntityBudgetValue> outBudgets = {};
 		entity.GetEntityChildrenBudgetCost(outBudgets);
@@ -232,7 +250,7 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Init spawned AI group (set events and flags)
-	void InitGroup(SCR_AIGroup aiGroup)
+	protected void InitGroup(SCR_AIGroup aiGroup)
 	{
 		if (!aiGroup)
 			return;
@@ -262,7 +280,7 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	}
 		
 	//------------------------------------------------------------------------------------------------
-	void SetAiFlag(SCR_EditableEntityComponent component)
+	protected void SetAiFlag(SCR_EditableEntityComponent component)
 	{
 		component.SetEntityFlag(EEditableEntityFlag.FREE_ROAM_BUILDING_AI, true);
 	}
@@ -302,7 +320,7 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Search for the outline that is assigned to this composition to be spawned.
-	ResourceName GetOutlineToSpawn(notnull SCR_EditableEntityComponent entity)
+	protected ResourceName GetOutlineToSpawn(notnull SCR_EditableEntityComponent entity)
 	{
 		BaseGameMode gameMode = GetGame().GetGameMode();
 		if (!gameMode)
@@ -320,7 +338,7 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool CanCreateEntity(out ENotification outNotification = -1, inout SCR_EPreviewState previewStateToShow = SCR_EPreviewState.PLACEABLE)
+	override bool CanCreateEntity(out ENotification outNotification = -1, inout SCR_EPreviewState previewStateToShow = SCR_EPreviewState.PLACEABLE, SCR_EditorPreviewParams params = null, int prefabID = -1)
 	{
 		SCR_CampaignBuildingPlacingObstructionEditorComponent obstructionComponent = SCR_CampaignBuildingPlacingObstructionEditorComponent.Cast(FindEditorComponent(SCR_CampaignBuildingPlacingObstructionEditorComponent, true, true));
 		if (!obstructionComponent)
@@ -342,7 +360,112 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 			return false;
 		}
 
-		return obstructionComponent.CanCreate(outNotification, previewStateToShow);
+		return super.CanCreateEntity(outNotification, previewStateToShow, params, prefabID) && obstructionComponent.CanCreate(outNotification, previewStateToShow);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected bool CanPlaceEntityServer(IEntityComponentSource editableEntitySource, out EEditableEntityBudget blockingBudget, bool updatePreview, bool showNotification, int prefabID = -1, int playerID = -1, SCR_EditorPreviewParams params = null)
+	{
+		if (!super.CanPlaceEntityServer(editableEntitySource, blockingBudget, updatePreview, showNotification, prefabID, playerID, params))
+			return false;
+
+		if (!m_Provider)
+			return true;
+
+		if (playerID > -1)
+		{
+			SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(m_Provider.FindComponent(SCR_CampaignBuildingProviderComponent));
+			if (providerComponent && providerComponent.IsBudgetToEvaluate(EEditableEntityBudget.COOLDOWN) && providerComponent.GetCooldownValue(playerID) > 0)
+				return false;
+		}
+
+		if (prefabID < 0 || params && params.m_PlacingFlags & EEditorPlacingFlags.PLACING_ACTION)
+			return true;
+
+		blockingBudget = -1; // we are not blocked by the budget
+		SCR_PlacingEditorComponentClass prefabData = SCR_PlacingEditorComponentClass.Cast(GetEditorComponentData());
+		SCR_EditableEntityUIInfo prefabUIInfo = SCR_EditableEntityUIInfo.ExtractEditableUIInfoFromPrefab(prefabData.GetPrefab(prefabID));
+		if (!prefabUIInfo)
+			return false;
+		
+		array<EEditableEntityLabel> entityLabels = {};
+		prefabUIInfo.GetEntityLabels(entityLabels);
+		return AreLabelsMatching(entityLabels);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method used by the server to validate if labels from entity that was requested to spawn are matching with labels that are available with current building mode provider
+	//! \param[in] entityLabels list of labels which should be validated
+	//! \return true if validation was successful, otherwise false
+	protected bool AreLabelsMatching(notnull array<EEditableEntityLabel> entityLabels)
+	{
+		if (!m_Provider)
+			return false;
+
+		FactionAffiliationComponent fac = FactionAffiliationComponent.Cast(m_Provider.FindComponent(FactionAffiliationComponent));
+		if (!fac)
+		{
+			// in case of construction trucks, the provider is the back of the truck,
+			// while faction affiliation component is only on the truck itself,
+			// which is a parent, thus we need to check that as well
+			IEntity parent = m_Provider.GetParent();
+			while (parent && fac == null)
+			{
+				fac = FactionAffiliationComponent.Cast(parent.FindComponent(FactionAffiliationComponent));
+				parent = parent.GetParent();
+			}
+
+			if (!fac)
+				return false;
+		}
+
+		SCR_Faction providerFaction = SCR_Faction.Cast(fac.GetAffiliatedFaction());
+		if (!providerFaction)
+		{
+			// in case of vehicles, they might be empty, and thus they are no affiliated with any faction,
+			// but they provide structures from their default faction
+			providerFaction = SCR_Faction.Cast(fac.GetDefaultAffiliatedFaction());
+			if (!providerFaction)
+				return false;
+		}
+
+		if (!entityLabels.Contains(providerFaction.GetFactionLabel())) // faction label must match
+			return false;
+
+		SCR_CampaignBuildingProviderComponent providerComp = SCR_CampaignBuildingProviderComponent.Cast(m_Provider.FindComponent(SCR_CampaignBuildingProviderComponent));
+		if (!providerComp)
+			return false;
+
+		array<EEditableEntityLabel> providerLabels = providerComp.GetAvailableTraits();
+		if (providerLabels.Contains(EEditableEntityLabel.SERVICE_HQ) && !SCR_CampaignBuildingProviderComponent.CanBeUsedToEstablishBase(m_Provider, m_Manager.GetPlayerID()))
+			providerLabels.RemoveItem(EEditableEntityLabel.SERVICE_HQ);
+
+		bool matchingLabel;
+		foreach (EEditableEntityLabel providerLabel : providerLabels)
+		{
+			if (!entityLabels.Contains(providerLabel)) // at least one of these needs to match
+				continue;
+
+			matchingLabel = true;
+			break;
+		}
+
+		if (!matchingLabel)
+			return false;
+
+		SCR_ContentBrowserEditorComponent browserComp = SCR_ContentBrowserEditorComponent.Cast(m_Owner.FindComponent(SCR_ContentBrowserEditorComponent));
+		if (!browserComp)
+			return false;
+
+		array<EEditableEntityLabel> validBlackListLabels = {};
+		browserComp.GetValidBlackListedLabels(validBlackListLabels);
+		foreach (EEditableEntityLabel blacklistedLabel : validBlackListLabels)
+		{
+			if (entityLabels.Contains(blacklistedLabel)) // none of these can match
+				return false;
+		}
+
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -411,7 +534,7 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Check if the cooldown is set with this provider.
-	bool UseCooldown()
+	protected bool UseCooldown()
 	{
 		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(m_Provider.FindComponent(SCR_CampaignBuildingProviderComponent));
 		if (!providerComponent)
@@ -421,7 +544,7 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetCooldownTimer(int cooldownTime)
+	protected void SetCooldownTimer(int cooldownTime)
 	{
 		SCR_EditorManagerEntity managerEnt = GetManager();
 		if (!managerEnt)
@@ -437,7 +560,7 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetAIBudget(int value)
+	protected void SetAIBudget(int value)
 	{		
 		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(m_Provider.FindComponent(SCR_CampaignBuildingProviderComponent));
 		if (!providerComponent)

@@ -193,3 +193,35 @@ class SCR_HostScenarioWhileDownloadingDialog : SCR_ConfigurableDialogUi
 		m_DSConfig = config;
 	}
 }
+
+//------------------------------------------------------------------------------------------------
+//! Dialog which is shown when user wants to start a scenario while there are mods active.
+//! When confirmed the scenario is started.
+class SCR_StartScenarioWhileAddonsEnabledDialog : SCR_ConfigurableDialogUi
+{
+	protected ref MissionWorkshopItem m_Scenario;
+	
+	//---------------------------------------------------------------------------------------------
+	static void CreateDialog(MissionWorkshopItem scenario)
+	{
+		SCR_StartScenarioWhileAddonsEnabledDialog dialog = new SCR_StartScenarioWhileAddonsEnabledDialog();
+		dialog.SetScenario(scenario);
+		
+		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, "start_scenario_while_addons_enabled", dialog);
+	}
+	
+	//---------------------------------------------------------------------------------------------
+	override void OnConfirm()
+	{
+		if (m_Scenario)
+			m_Scenario.Play();
+		
+		super.OnConfirm();
+	}
+	
+	//---------------------------------------------------------------------------------------------
+	void SetScenario(notnull MissionWorkshopItem scenario)
+	{
+		m_Scenario = scenario;
+	}
+}

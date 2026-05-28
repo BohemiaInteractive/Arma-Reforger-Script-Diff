@@ -66,6 +66,7 @@ class ExtBaseCompartmentSlot: ScriptAndConfig
 	proto external vector GetPosition();
 	proto external PointInfo GetOverridenEntryPointInfo();
 	proto external PointInfo GetOverridenExitPointInfo();
+	proto external PointInfo GetOverridenExitTeleportPointInfo();
 	proto external bool ShouldSkipCharacterDoorAnimationsFromSeat();
 	proto external string GetCompartmentUniqueName();
 	proto external void AttachTurret(TurretControllerComponent turretController, ETurretContextID contextIDs);

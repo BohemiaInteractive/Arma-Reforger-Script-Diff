@@ -128,8 +128,6 @@ class SCR_DestructionBaseHandler
 				continue;
 
 			hitZone = damageMgr.GetDefaultHitZone();
-			if (!hitZone)
-				continue;
 
 			if (damageMgr.GetState() == EDamageState.DESTROYED)
 			{

@@ -145,6 +145,6 @@ class SCR_FactionCommanderBaseRequestMenuHandler : SCR_FactionCommanderBaseTaskM
 
 		SCR_Task task = SCR_Task.Cast(hoveredEntity);
 		if (group)
-			factionCommanderPlayerComponent.AssignGroupToTask(group.GetGroupID(), task.GetTaskID(), playerId);
+			factionCommanderPlayerComponent.AssignGroupToTask(group.GetGroupID(), task.GetTaskID());
 	}
 }

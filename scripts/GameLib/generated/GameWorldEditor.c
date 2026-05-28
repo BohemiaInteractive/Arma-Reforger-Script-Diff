@@ -18,6 +18,6 @@ class GameWorldEditor: Managed
 	proto external bool SaveWorldAs(string savePath, bool overridePath = false);
 	proto external void Undo();
 	proto external void Redo();
-	proto external bool SwitchToGameMode(ResourceName worldSystemsConfig);
+	proto external bool SwitchToGameMode(ResourceName worldSystemsConfig, bool playFromCameraPos);
 	proto external void SwitchToEditMode();
 }

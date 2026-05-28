@@ -131,7 +131,7 @@ class SCR_ScenarioFrameworkActionVoiceOverPlaySequence : SCR_ScenarioFrameworkAc
 		{
 			foreach (IEntity actor : actorEntities)
 			{
-				if (!Replication.FindId(actor))
+				if (!Replication.FindItemId(actor))
 					PrintFormat("ScenarioFramework Action %1 detected %2 without RplComponent thus VO won't work!", object, actor);
 			}
 		

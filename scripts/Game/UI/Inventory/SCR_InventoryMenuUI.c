@@ -80,10 +80,20 @@ class SCR_InvCallBack : ScriptedInventoryOperationCallback
 	bool m_bUpdateSlotOnly;
 	bool m_bShouldUpdateQuickSlots;
 
+	//------------------------------------------------------------------------------------------------
+	//! Wrapper for manual call of callback completion
 	void InternalComplete()
 	{
 		OnComplete();
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Wrapper for manual call of callback failure
+	void InternalFailed()
+	{
+		OnFailed();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected override void OnFailed()
 	{
@@ -2662,7 +2672,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (!resourceComponentTo)
 			return false;
 		
-		resourceInventoryComp.RpcAsk_MergeContainerWithContainerPartial(Replication.FindId(resourceComponentFrom), Replication.FindId(resourceComponentTo), EResourceType.SUPPLIES, dialog.GetSliderValue());
+		resourceInventoryComp.RpcAsk_MergeContainerWithContainerPartial(Replication.FindItemId(resourceComponentFrom), Replication.FindItemId(resourceComponentTo), EResourceType.SUPPLIES, dialog.GetSliderValue());
 		
 		return true;
 	}
@@ -2685,7 +2695,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		
 		if (!entityTo)
 		{
-			resourceInventoryComp.RpcAsk_CreatePhysicalContainerWithContainer(Replication.FindId(resourceComponentFrom), Replication.FindId(null), Replication.FindId(null), EResourceType.SUPPLIES, dialog.GetSliderValue());
+			resourceInventoryComp.RpcAsk_CreatePhysicalContainerWithContainer(Replication.FindItemId(resourceComponentFrom), Replication.FindItemId(null), Replication.FindItemId(null), EResourceType.SUPPLIES, dialog.GetSliderValue());
 			
 			return true;
 		}
@@ -2710,7 +2720,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (!storageTo)
 			return false;
 		
-		resourceInventoryComp.RpcAsk_CreatePhysicalContainerWithContainer(Replication.FindId(resourceComponentFrom), Replication.FindId(invManagerTo), Replication.FindId(storageTo), EResourceType.SUPPLIES, dialog.GetSliderValue());
+		resourceInventoryComp.RpcAsk_CreatePhysicalContainerWithContainer(Replication.FindItemId(resourceComponentFrom), Replication.FindItemId(invManagerTo), Replication.FindItemId(storageTo), EResourceType.SUPPLIES, dialog.GetSliderValue());
 		
 		return true;
 	}
@@ -2772,7 +2782,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			return;
 		}
 		
-		SCR_AnalyticsApplication.GetInstance().UseExaminationFromInventory();
+		//SCR_AnalyticsApplication.GetInstance().UseExaminationFromInventory();
 		
 		IEntity item = itemComp.GetOwner();
 		
@@ -3068,7 +3078,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	//!
 	protected void SimpleFSM(EMenuAction EAction = EMenuAction.ACTION_SELECT)
 	{
-		SCR_AnalyticsApplication.GetInstance().InteractWithItem(m_pFocusedSlotUI, m_pSelectedSlotUI, EAction, m_bIsUsingGamepad);
+		//SCR_AnalyticsApplication.GetInstance().InteractWithItem(m_pFocusedSlotUI, m_pSelectedSlotUI, EAction, m_bIsUsingGamepad);
 		
 		switch (EAction)
 		{
@@ -4011,7 +4021,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (!resourceInventoryComponent)
 			return false;
 		
-		resourceInventoryComponent.RpcAsk_ArsenalRefundItem(Replication.FindId(resourceComponent), Replication.FindId(inventoryItemComponent), EResourceType.SUPPLIES);
+		resourceInventoryComponent.RpcAsk_ArsenalRefundItem(Replication.FindItemId(resourceComponent), Replication.FindItemId(inventoryItemComponent), EResourceType.SUPPLIES);
 		
 		return true;
 	}
@@ -4061,7 +4071,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			SCR_ResourceComponent resourceComponent			= SCR_ResourceComponent.FindResourceComponent(arsenalEntity);
 			SCR_ResourcePlayerControllerInventoryComponent resourceInventoryComponent = SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent));
 			
-			resourceInventoryComponent.RpcAsk_ArsenalRefundItem(Replication.FindId(resourceComponent), Replication.FindId(inventoryItemComponent), EResourceType.SUPPLIES);
+			resourceInventoryComponent.RpcAsk_ArsenalRefundItem(Replication.FindItemId(resourceComponent), Replication.FindItemId(inventoryItemComponent), EResourceType.SUPPLIES);
 
 			return true;
 		}
@@ -4072,7 +4082,6 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (arsenalInventorySlotUI && storageComponent.GetOwner().FindComponent(SCR_ArsenalInventoryStorageManagerComponent))
 			return true;
 		
-		SCR_InventoryStorageManagerComponent invManagerTo	= m_pActiveHoveredStorageUI.GetInventoryManager();
 		BaseInventoryStorageComponent storageTo				= m_pActiveHoveredStorageUI.GetCurrentNavigationStorage();
 		IEntity arsenalEntity								= SCR_InventoryStorageBaseUI.ARSENAL_SLOT_STORAGES.Get(arsenalInventorySlotUI);
 		SCR_ResourceComponent resourceComponent				= SCR_ResourceComponent.FindResourceComponent(arsenalEntity);
@@ -4081,7 +4090,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 
 		if (storageTo.IsInherited(ClothNodeStorageComponent))
 		{
-			storageTo = invManagerTo.FindActualStorageForItemResource(resourceName, storageTo);
+			storageTo = m_InventoryManager.FindActualStorageForItemResource(resourceName, storageTo);
 			if (!storageTo)
 			{
 				operationFailed = true;
@@ -4089,8 +4098,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			}
 		}
 
-		if (invManagerTo.CanInsertItemInStorage(arsenalInventorySlotUI.GetInventoryItemComponent().GetOwner(), storageTo))
-			resourceInventoryComponent.RpcAsk_ArsenalRequestItem(Replication.FindId(resourceComponent), Replication.FindId(invManagerTo),  Replication.FindId(storageTo), resourceName, EResourceType.SUPPLIES);
+		if (m_InventoryManager.CanInsertItemInStorage(arsenalInventorySlotUI.GetInventoryItemComponent().GetOwner(), storageTo))
+			resourceInventoryComponent.RpcAsk_ArsenalRequestItem(Replication.FindItemId(resourceComponent), Replication.FindItemId(storageTo), resourceName, EResourceType.SUPPLIES);
 		else
 			operationFailed = true;
 
@@ -4112,7 +4121,6 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (!weaponSlot)
 			return false;
 		
-		SCR_InventoryStorageManagerComponent invManagerTo	= weaponSlot.GetStorageUI().GetInventoryManager();
 		BaseInventoryStorageComponent storageTo				= weaponSlot.GetStorageUI().GetStorage();
 		IEntity arsenalEntity								= SCR_InventoryStorageBaseUI.ARSENAL_SLOT_STORAGES.Get(arsenalInventorySlotUI);
 		if (!arsenalEntity)
@@ -4126,8 +4134,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			storageTo = weaponSlot.GetStorageComponent();
 		}
 
-		if (invManagerTo.CanInsertItemInStorage(arsenalInventorySlotUI.GetInventoryItemComponent().GetOwner(), storageTo))
-			resourceInventoryComponent.RpcAsk_ArsenalRequestItem(Replication.FindId(resourceComponent), Replication.FindId(invManagerTo),  Replication.FindId(storageTo), resourceName, EResourceType.SUPPLIES);
+		if (m_InventoryManager.CanInsertItemInStorage(arsenalInventorySlotUI.GetInventoryItemComponent().GetOwner(), storageTo))
+			resourceInventoryComponent.RpcAsk_ArsenalRequestItem(Replication.FindItemId(resourceComponent), Replication.FindItemId(storageTo), resourceName, EResourceType.SUPPLIES);
 		
 		return true;
 	}
@@ -4182,7 +4190,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			SCR_ResourceComponent resourceComponent			= SCR_ResourceComponent.FindResourceComponent(arsenalEntity);
 			SCR_ResourcePlayerControllerInventoryComponent resourceInventoryComponent = SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent));
 		
-			resourceInventoryComponent.RpcAsk_ArsenalRefundItem(Replication.FindId(resourceComponent), Replication.FindId(inventoryItemComponent), EResourceType.SUPPLIES);
+			resourceInventoryComponent.RpcAsk_ArsenalRefundItem(Replication.FindItemId(resourceComponent), Replication.FindItemId(inventoryItemComponent), EResourceType.SUPPLIES);
 			
 			return true;
 		}
@@ -4197,7 +4205,6 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			return true;
 		}
 		
-		SCR_InventoryStorageManagerComponent invManagerTo	= m_pFocusedSlotUI.GetStorageUI().GetInventoryManager();
 		BaseInventoryStorageComponent storageTo				= m_pFocusedSlotUI.GetAsStorage();
 		if (!storageTo)
 			storageTo = m_pFocusedSlotUI.GetStorageUI().GetStorage();
@@ -4209,7 +4216,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		
 		if (storageTo.IsInherited(ClothNodeStorageComponent))
 		{
-			storageTo = invManagerTo.FindActualStorageForItemResource(resourceName, storageTo);
+			storageTo = m_InventoryManager.FindActualStorageForItemResource(resourceName, storageTo);
 			if (!storageTo)
 			{
 				operationFailed = true;
@@ -4217,8 +4224,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			}
 		}
 
-		if (invManagerTo.CanInsertItemInStorage(arsenalInventorySlotUI.GetInventoryItemComponent().GetOwner(), storageTo))
-			resourceInventoryComponent.RpcAsk_ArsenalRequestItem(Replication.FindId(resourceComponent), Replication.FindId(invManagerTo),  Replication.FindId(storageTo), resourceName, EResourceType.SUPPLIES);
+		if (m_InventoryManager.CanInsertItemInStorage(arsenalInventorySlotUI.GetInventoryItemComponent().GetOwner(), storageTo))
+			resourceInventoryComponent.RpcAsk_ArsenalRequestItem(Replication.FindItemId(resourceComponent), Replication.FindItemId(storageTo), resourceName, EResourceType.SUPPLIES);
 		else
 			operationFailed = true;
 		
@@ -4239,7 +4246,6 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (!arsenalInventorySlotUI.IsAvailable())
 			return true;
 
-		SCR_InventoryStorageManagerComponent invManagerTo	= m_InventoryManager;
 		IEntity slotEntity									= arsenalInventorySlotUI.GetInventoryItemComponent().GetOwner();
 		BaseInventoryStorageComponent storageTo				= m_InventoryManager.FindStorageForItem(slotEntity, EStoragePurpose.PURPOSE_ANY);
 		IEntity arsenalEntity								= SCR_InventoryStorageBaseUI.ARSENAL_SLOT_STORAGES.Get(arsenalInventorySlotUI);
@@ -4247,8 +4253,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		ResourceName resourceName							= arsenalInventorySlotUI.GetItemResource();
 		auto resourceInventoryComponent						= SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent));
 		
-		if (invManagerTo.CanInsertItemInStorage(slotEntity, storageTo))
-			resourceInventoryComponent.RpcAsk_ArsenalRequestItem(Replication.FindId(resourceComponent), Replication.FindId(invManagerTo),  Replication.FindId(storageTo), resourceName, EResourceType.SUPPLIES);
+		if (m_InventoryManager.CanInsertItemInStorage(slotEntity, storageTo))
+			resourceInventoryComponent.RpcAsk_ArsenalRequestItem(Replication.FindItemId(resourceComponent),  Replication.FindItemId(storageTo), resourceName, EResourceType.SUPPLIES);
 		
 		return true;
 	}
@@ -4267,16 +4273,15 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (!arsenalInventorySlotUI.IsAvailable())
 			return true;
 		
-		SCR_InventoryStorageManagerComponent invManagerTo	= m_InventoryManager;
 		IEntity slotEntity									= arsenalInventorySlotUI.GetInventoryItemComponent().GetOwner();
 		BaseInventoryStorageComponent storageTo				= m_InventoryManager.FindStorageForItem(slotEntity, EStoragePurpose.PURPOSE_ANY);
 		IEntity arsenalEntity								= SCR_InventoryStorageBaseUI.ARSENAL_SLOT_STORAGES.Get(arsenalInventorySlotUI);
 		SCR_ResourceComponent resourceComponent				= SCR_ResourceComponent.FindResourceComponent(arsenalEntity);
 		ResourceName resourceName							= arsenalInventorySlotUI.GetItemResource();
-		auto resourceInventoryComponent						= SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent));
+		SCR_ResourcePlayerControllerInventoryComponent resourceInventoryComponent = SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent));
 		
-		if (invManagerTo.CanInsertItemInStorage(slotEntity, storageTo))
-			resourceInventoryComponent.RpcAsk_ArsenalRequestItem(Replication.FindId(resourceComponent), Replication.FindId(invManagerTo),  Replication.FindId(storageTo), resourceName, EResourceType.SUPPLIES);
+		if (m_InventoryManager.CanInsertItemInStorage(slotEntity, storageTo))
+			resourceInventoryComponent.RpcAsk_ArsenalRequestItem(Replication.FindItemId(resourceComponent),  Replication.FindItemId(storageTo), resourceName, EResourceType.SUPPLIES);
 		
 		return true;
 	}

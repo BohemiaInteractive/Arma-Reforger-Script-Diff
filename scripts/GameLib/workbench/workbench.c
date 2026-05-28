@@ -37,7 +37,7 @@ class DateTimeUtcAsInt
 	}
 }
 
-class ButtonAttribute
+class ButtonAttribute: UniqueAttribute
 {
 	string m_Label;
 	bool m_Focused;
@@ -58,7 +58,7 @@ Attribute for Workbench plugin definition:
 - `wbModules` - list of strings representing Workbench modules where this tool should be avalaible (e.g. {"ResourceManager", "ScriptEditor"}). Leave null or empty array for any module.
 - `resourceTypes` - list of resource types to offer this plugin in context menu (e.g. {"conf", "dds", "layout"})
 */
-class WorkbenchPluginAttribute
+class WorkbenchPluginAttribute: UniqueAttribute
 {
 	string m_Name;
 	string m_Icon;

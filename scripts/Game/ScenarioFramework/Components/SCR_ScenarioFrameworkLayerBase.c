@@ -972,7 +972,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	//! \param[in] includeChildren Restores default settings for this entity and its children if includeChildren is true.
 	//! \param[in] reinitAfterRestoration Restores entity to default state, optionally reinitializes after restoration.
 	//! \param[in] affectRandomization determines whether to clear all randomly spawned children entities after restoring default settings.
-	void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
+	void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true, bool deleteSpawnedEntities = true)
 	{
 		m_Entity = null;
 		m_iRepeatedSpawnNumber = m_iRepeatedSpawnNumberDefault;
@@ -997,10 +997,13 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		m_aChildren.Clear();
 		if (affectRandomization)
 			m_aRandomlySpawnedChildren.Clear();
-
-		foreach (IEntity entity : m_aSpawnedEntities)
+		
+		if (deleteSpawnedEntities)
 		{
-			SCR_EntityHelper.DeleteEntityAndChildren(entity);
+			foreach (IEntity entity : m_aSpawnedEntities)
+			{
+				SCR_EntityHelper.DeleteEntityAndChildren(entity);
+			}
 		}
 
 		m_aSpawnedEntities.Clear();

@@ -37,11 +37,6 @@ class RespawnComponent: GameComponent
 	*/
 	event protected void OnInit(IEntity owner);
 	/*!
-	Called during EOnInit.
-	\param owner Entity this component is attached to.
-	*/
-	event protected void OnDelete(IEntity owner);
-	/*!
 	Called after all components are initialized.
 	\param owner Entity this component is attached to.
 	*/

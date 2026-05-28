@@ -1110,7 +1110,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	//! \param[in] state is desired toggle state, true: active
 	void AskToggleGadget(SCR_GadgetComponent gadgetComp, bool state)
 	{
-		RplId id = Replication.FindId(gadgetComp);
+		RplId id = Replication.FindItemId(gadgetComp);
 
 		if (id && id.IsValid())
 			Rpc(RPC_AskToggleGadget, id, state);

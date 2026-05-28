@@ -12,7 +12,7 @@ class SCR_Tutorial_Navigation_VEHICLE : SCR_BaseTutorialStage
 		SCR_HintManagerComponent.HideHint();
 		SCR_HintManagerComponent.ClearLatestHint();
 		
-		m_TutorialComponent.SetSavedTime(GetGame().GetWorld().GetWorldTime());
+		m_TutorialComponent.SetSavedTime();
 
 		IEntity vehicle = GetGame().GetWorld().FindEntityByName("SmallJeep2");
 		if (!vehicle)

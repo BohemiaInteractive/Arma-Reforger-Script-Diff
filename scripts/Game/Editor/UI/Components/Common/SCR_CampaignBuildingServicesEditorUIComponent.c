@@ -29,7 +29,11 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 			return;
 
 		// if provider isn't a base, disable the UI.
-		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(buildingEditorComponent.GetProviderEntity().FindComponent(SCR_CampaignBuildingProviderComponent));
+		IEntity provider = buildingEditorComponent.GetProviderEntity();
+		if (!provider)
+			return;
+
+		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(provider.FindComponent(SCR_CampaignBuildingProviderComponent));
 		if (!providerComponent)
 			return;
 		

@@ -110,7 +110,7 @@ class FileSerializer: Serializer
 	proto native void Close();
 }
 
-class NonSerialized
+class NonSerialized: UniqueAttribute
 {
 }
 

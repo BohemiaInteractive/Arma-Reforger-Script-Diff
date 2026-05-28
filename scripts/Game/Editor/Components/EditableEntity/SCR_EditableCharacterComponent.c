@@ -201,7 +201,22 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 			if (slot)
 				slot.SetCompartmentAccessible(true);
 		}
-
+		
+		// is GM deleting his player character
+		if (changedByUser && IsServer())
+		{
+			int deletedCharacterPlayerId = SCR_PossessingManagerComponent.GetPlayerIdFromMainEntity(GetOwner());
+			
+			if (GetGame().GetPlayerManager().HasPlayerRole(deletedCharacterPlayerId, EPlayerRole.GAME_MASTER))
+			{
+ 				SCR_PlayerControllerGroupComponent groupController = SCR_PlayerControllerGroupComponent.GetPlayerControllerComponent(deletedCharacterPlayerId);
+				if (groupController)
+				{
+					groupController.RequestRemovePlayer(deletedCharacterPlayerId);
+				}
+			}
+		}
+		
 		return super.Delete(changedByUser, updateNavmesh);
 	}
 
@@ -453,7 +468,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void SetTransform(vector transform[4], bool changedByUser = false)
+	override bool SetTransform(vector transform[4], bool changedByUser = false)
 	{
 		//--- Make sure characters don't fall through ground
 		transform[3][1] = Math.Max(transform[3][1], GetOwner().GetWorld().GetSurfaceY(transform[3][0], transform[3][2]));
@@ -477,10 +492,10 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 			
 			Rpc(GetOutVehicleOwner, slotEntityID, transform);
 
-			return;
+			return true;
 		}
 
-		super.SetTransform(transform, changedByUser);
+		return super.SetTransform(transform, changedByUser);
 	}
 	
 	//------------------------------------------------------------------------------------------------

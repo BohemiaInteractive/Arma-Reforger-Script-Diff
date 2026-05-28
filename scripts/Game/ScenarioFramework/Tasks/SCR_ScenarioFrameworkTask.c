@@ -14,7 +14,7 @@ class SCR_ScenarioFrameworkTask : SCR_ExtendedTask
 		if (m_LayerTask)
 			return m_LayerTask.m_eTaskNotificationSettings;
 		
-		return null;
+		return 0;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -106,8 +106,12 @@ class SCR_ScenarioFrameworkTask : SCR_ExtendedTask
 		
 		SCR_ScenarioFrameworkTaskData frameworkData = SCR_ScenarioFrameworkTaskData.Cast(m_TaskData);
 		if (!frameworkData)
+		{
+			writer.WriteBool(false);
 			return true;
+		}
 		
+		writer.WriteBool(true);
 		writer.WriteString(frameworkData.m_sTaskExecutionBriefing);
 		
 		return true;
@@ -122,11 +126,19 @@ class SCR_ScenarioFrameworkTask : SCR_ExtendedTask
 		if (!super.RplLoad(reader))
 			return false;
 		
+		bool hasBriefing;
+		reader.ReadBool(hasBriefing);
+		if (!hasBriefing)
+			return true;
+		
+		string taskExecutionBriefing;
+		reader.ReadString(taskExecutionBriefing);
+		
 		SCR_ScenarioFrameworkTaskData frameworkData = SCR_ScenarioFrameworkTaskData.Cast(m_TaskData);
 		if (!frameworkData)
 			return true;
 		
-		reader.ReadString(frameworkData.m_sTaskExecutionBriefing);
+		frameworkData.m_sTaskExecutionBriefing = taskExecutionBriefing;
 		
 		return true;
 	}

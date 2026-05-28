@@ -86,8 +86,8 @@ class SCR_FactionCommanderDismantleCommandMenuHandler : SCR_FactionCommanderConf
 			task = GetTaskOnHoveredBase(commanderFaction, SCR_DismantleCampaignMilitaryBaseTaskEntity);
 
 		if (!task)
-			factionCommanderPlayerComponent.CreateCampaignMilitaryBaseTask(GetTaskPrefab(), group, playerId, this, m_vPositionOffset);
+			factionCommanderPlayerComponent.CreateCampaignMilitaryBaseTask(GetTaskPrefab(), group, playerId, m_vPositionOffset);
 		else if (group)
-			factionCommanderPlayerComponent.AssignGroupToTask(group.GetGroupID(), task.GetTaskID(), playerId);
+			factionCommanderPlayerComponent.AssignGroupToTask(group.GetGroupID(), task.GetTaskID());
 	}
 }

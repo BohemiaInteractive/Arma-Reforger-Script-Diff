@@ -158,22 +158,20 @@ class SCR_DestructionDamageManagerComponent : SCR_DamageManagerComponent
 	void RPC_DoSpawnAllDestroyEffects()
 	{
 		SCR_DestructionDamageManagerComponentClass componentData = SCR_DestructionDamageManagerComponentClass.Cast(GetComponentData(GetOwner()));
-		if (componentData)
-			SCR_DestructionUtility.SpawnDestroyObjects(GetOwner(), componentData.m_DestroySpawnObjects, new SCR_DestructionHitInfo());
+		SCR_DestructionUtility.SpawnDestroyObjects(GetOwner(), componentData.m_DestroySpawnObjects, new SCR_DestructionHitInfo());
 
 		IEntity child = GetOwner().GetChildren();
 		while (child)
 		{
-			SCR_DestructionDamageManagerComponentClass componentDataChild = SCR_DestructionDamageManagerComponentClass.Cast(GetComponentData(child));
-			if (!componentDataChild)
+			SCR_DestructionDamageManagerComponent destructible = SCR_DestructionDamageManagerComponent.Cast(child.FindComponent(SCR_DestructionDamageManagerComponent));
+			if (!destructible)
 			{
 				child = child.GetSibling();
 				continue;
 			}
 
-			SCR_DestructionDamageManagerComponent destructible = SCR_DestructionDamageManagerComponent.Cast(child.FindComponent(SCR_DestructionDamageManagerComponent));
-			if (destructible)
-				SCR_DestructionUtility.SpawnDestroyObjects(child, componentDataChild.m_DestroySpawnObjects, new SCR_DestructionHitInfo());
+			SCR_DestructionDamageManagerComponentClass componentDataChild = SCR_DestructionDamageManagerComponentClass.Cast(destructible.GetComponentData(child));
+			SCR_DestructionUtility.SpawnDestroyObjects(child, componentDataChild.m_DestroySpawnObjects, new SCR_DestructionHitInfo());
 
 			child = child.GetSibling();
 		}
@@ -295,9 +293,6 @@ class SCR_DestructionDamageManagerComponent : SCR_DamageManagerComponent
 	void SetHitZoneHealth(float baseHealth, bool clearDamage = true)
 	{
 		HitZone hitZone = GetDefaultHitZone();
-		if (!hitZone)
-			return;
-		
 		hitZone.SetMaxHealth(baseHealth);
 		hitZone.SetHealth(baseHealth);
 	}
@@ -307,9 +302,6 @@ class SCR_DestructionDamageManagerComponent : SCR_DamageManagerComponent
 	void SetHitZoneDamage(float damage)
 	{
 		HitZone hitZone = GetDefaultHitZone();
-		if (!hitZone)
-			return;
-
 		hitZone.SetHealth(hitZone.GetMaxHealth() - damage);
 	}
 
@@ -498,12 +490,14 @@ class SCR_DestructionDamageManagerComponent : SCR_DamageManagerComponent
 	{
 		Physics ownerPhysics = owner.GetPhysics();
 		Physics otherPhysics = other.GetPhysics();
+		int ownerReponseIndex = ownerPhysics.GetResponseIndex();
+		int otherResponseIndex = otherPhysics.GetResponseIndex();
 		float damage = GetMaxHealth();
 		EDamageType damageType = EDamageType.TRUE;
 
 		// If vehicle response index is smaller -> deal damage
 		// Otherwise -> destroy
-		if (otherPhysics.GetResponseIndex() - MIN_MOMENTUM_RESPONSE_INDEX < ownerPhysics.GetResponseIndex() - MIN_DESTRUCTION_RESPONSE_INDEX)
+		if (ownerReponseIndex < MIN_DESTRUCTION_RESPONSE_INDEX || otherResponseIndex - MIN_MOMENTUM_RESPONSE_INDEX < ownerReponseIndex - MIN_DESTRUCTION_RESPONSE_INDEX)
 		{
 			SCR_DestructionDamageManagerComponentClass componentData = SCR_DestructionDamageManagerComponentClass.Cast(GetComponentData(GetOwner()));
 			float momentum = SCR_DestructionUtility.CalculateMomentum(contact, ownerPhysics.GetMass(), otherPhysics.GetMass());
@@ -604,19 +598,17 @@ class SCR_DestructionDamageManagerComponent : SCR_DamageManagerComponent
 	override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
-		SetEventMask(owner, EntityEvent.CONTACT);
-
+		
+		// The default hitzone will always exist in play mode, but while in edit mode in WB it is not guaranteed to exist.
+		// Therefore, we make sure to check if it exists during init.
 		if (!GetDefaultHitZone())
 			return;
+		
+		SetEventMask(owner, EntityEvent.CONTACT);
 
 		SCR_DestructionDamageManagerComponentClass componentData = SCR_DestructionDamageManagerComponentClass.Cast(GetComponentData(owner));
-		if (!componentData)
-		{
-			Print("Component data is null!", LogLevel.ERROR);
-			return;
-		}
-
 		SetHitZoneHealth(componentData.m_fBaseHealth);
+
 		InitDestruction();
 	}
 

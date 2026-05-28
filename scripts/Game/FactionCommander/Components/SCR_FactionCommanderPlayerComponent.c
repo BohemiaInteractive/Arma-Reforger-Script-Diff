@@ -526,6 +526,31 @@ class SCR_FactionCommanderPlayerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected bool ShouldCategoryBeHidden(SCR_FactionCommanderMenuEntry configEntry, array<ref SCR_FactionCommanderMenuEntry> childEntries)
+	{
+		//Checking if tasks are disabled for the player's faction
+		PlayerController pc = GetGame().GetPlayerController();
+		if (!pc)
+			return false;
+
+		SCR_Faction faction = SCR_Faction.Cast(SCR_FactionManager.SGetPlayerFaction(pc.GetPlayerId()));
+		if (!faction || faction.IsTasksEnabled())
+			return false;
+
+		//Checking whether the category or the entries within this category are task related. If they all are while tasks for this faction are disabled: Hide the category.
+		if (configEntry.IsGroupOrder() || configEntry.IsSupportRequest())
+			return true;
+
+		foreach (int index, SCR_FactionCommanderMenuEntry entry : childEntries)
+		{
+			if (!entry.IsGroupOrder() && !entry.IsSupportRequest())
+				return false;
+		}
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Creates a radial menu entry from config data SCR_FactionCommanderMenuEntry
 	protected void CreateConfigEntry(notnull SCR_FactionCommanderMenuEntry configEntry, SCR_SelectionMenuCategoryEntry parentCategory, SCR_FactionCommanderMenuEntry rootConfigEntry)
 	{
@@ -557,6 +582,9 @@ class SCR_FactionCommanderPlayerComponent : ScriptComponent
 			// This entry's values indicate it should be in fact a category
 			if (!childEntries.IsEmpty() || !configEntry.IsSupportRequest() || SCR_FactionCommanderPlayerComponent.IsLocalPlayerCommander())
 			{
+				if (ShouldCategoryBeHidden(configEntry, childEntries))
+					return;
+
 				CreateConfigCategory(configEntry, parentCategory, childEntries, rootConfigEntry);
 				return;
 			}
@@ -807,29 +835,19 @@ class SCR_FactionCommanderPlayerComponent : ScriptComponent
 	//! \param[in] group
 	//! \param[in] playerId
 	//! \param[in] handler
-	void CreateTask(ResourceName taskPrefab, vector position, SCR_AIGroup group, int playerId, SCR_FactionCommanderBaseMenuHandler handler = null)
+	void CreateTask(ResourceName taskPrefab, vector position, SCR_AIGroup group, int playerId)
 	{
 		int groupId = -1;
 
 		if (group)
 			groupId = group.GetGroupID();
 
-		int data;
-
-		if (handler)
-		{
-			SCR_SelectionMenuEntry entry = m_mEntryHandlers.GetKeyByValue(handler);
-
-			if (entry)
-				data = entry.GetId().ToInt();
-		}
-
-		Rpc(RpcAsk_CreateTask, taskPrefab, groupId, playerId, position, GetGame().GetFactionManager().GetFactionIndex(SCR_FactionManager.SGetLocalPlayerFaction()), data);
+		Rpc(RpcAsk_CreateTask, taskPrefab, groupId, playerId, position, GetGame().GetFactionManager().GetFactionIndex(SCR_FactionManager.SGetLocalPlayerFaction()));
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_CreateTask(string taskPrefab, int assigneeId, int playerId, vector destination, int factionIndex, int data)
+	protected void RpcAsk_CreateTask(string taskPrefab, int assigneeId, int playerId, vector destination, int factionIndex)
 	{
 		Faction faction = GetGame().GetFactionManager().GetFactionByIndex(factionIndex);
 		if (!faction)
@@ -868,31 +886,49 @@ class SCR_FactionCommanderPlayerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void AssignGroupToTask(int groupId, string taskId, int requesterID)
+	void AssignGroupToTask(int groupId, string taskId)
 	{
-		Rpc(RpcAsk_AssignGroupToTask, groupId, taskId, requesterID);
+		Rpc(RpcAsk_AssignGroupToTask, groupId, taskId);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_AssignGroupToTask(int groupId, string taskId, int requesterID)
+	protected void RpcAsk_AssignGroupToTask(int groupId, string taskId)
 	{
 		SCR_Task task = SCR_TaskSystem.GetInstance().GetTaskFromTaskID(taskId);
 		if (!task)
 			return;
 
-		SCR_TaskSystem.GetInstance().AssignTask(task, SCR_TaskExecutorGroup.FromGroup(groupId), true, requesterID); // force assign
+		PlayerController sender = PlayerController.Cast(GetOwner());
+		if (!sender)
+			return;
+
+		SCR_Faction faction = SCR_Faction.Cast(SCR_Faction.GetEntityFaction(sender));
+		if (!faction)
+			return;
+
+		array<string> taskOwnerFactionKeys = task.GetOwnerFactionKeys();
+		if (!taskOwnerFactionKeys || !taskOwnerFactionKeys.Contains(faction.GetFactionKey()))
+			return;
+
+		int senderPlayerId = sender.GetPlayerId();
+		if (!faction.IsPlayerCommander(senderPlayerId))
+			return;
+
+		SCR_TaskSystem.GetInstance().AssignTask(task, SCR_TaskExecutorGroup.FromGroup(groupId), true, senderPlayerId); // force assign
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void CancelTask(int playerId, string taskId)
+	//! Cancel task
+	//! \param[in] taskId
+	void CancelTask(string taskId)
 	{
-		Rpc(RpcAsk_CancelTask, playerId, taskId);
+		Rpc(RpcAsk_CancelTask, taskId);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_CancelTask(int playerId, string taskId)
+	protected void RpcAsk_CancelTask(string taskId)
 	{
 		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
 		if (!taskSystem)
@@ -901,6 +937,30 @@ class SCR_FactionCommanderPlayerComponent : ScriptComponent
 		SCR_Task task = taskSystem.GetTaskFromTaskID(taskId);
 		if (!task)
 			return;
+
+		PlayerController sender = PlayerController.Cast(GetOwner());
+		if (!sender)
+			return;
+
+		SCR_Faction faction = SCR_Faction.Cast(SCR_Faction.GetEntityFaction(sender));
+		if (!faction)
+			return;
+
+		array<string> taskOwnerFactionKeys = task.GetOwnerFactionKeys();
+		if (!taskOwnerFactionKeys || !taskOwnerFactionKeys.Contains(faction.GetFactionKey()))
+			return;
+
+		int senderPlayerId = sender.GetPlayerId();
+		if (!faction.IsPlayerCommander(senderPlayerId))
+		{
+			SCR_BaseRequestedTaskEntity requestedTask = SCR_BaseRequestedTaskEntity.Cast(task);
+			if (!requestedTask || !requestedTask.IsPlayerFromRequesterGroup(senderPlayerId))
+				return;
+
+			SCR_PlayerControllerGroupComponent playerControllerGroupComponent = SCR_PlayerControllerGroupComponent.GetPlayerControllerComponent(senderPlayerId);
+			if (!playerControllerGroupComponent || !playerControllerGroupComponent.IsPlayerLeaderOwnGroup())
+				return;
+		}
 
 		taskSystem.SetTaskState(task, SCR_ETaskState.CANCELLED);
 		taskSystem.DeleteTask(task);
@@ -908,16 +968,15 @@ class SCR_FactionCommanderPlayerComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Finish task
-	//! \param[in] playerId
 	//! \param[in] taskId
-	void FinishTask(int playerId, string taskId)
+	void FinishTask(string taskId)
 	{
-		Rpc(RpcAsk_FinishTask, playerId, taskId);
+		Rpc(RpcAsk_FinishTask, taskId);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_FinishTask(int playerId, string taskId)
+	protected void RpcAsk_FinishTask(string taskId)
 	{
 		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
 		if (!taskSystem)
@@ -925,6 +984,21 @@ class SCR_FactionCommanderPlayerComponent : ScriptComponent
 
 		SCR_Task task = taskSystem.GetTaskFromTaskID(taskId);
 		if (!task)
+			return;
+
+		PlayerController sender = PlayerController.Cast(GetOwner());
+		if (!sender)
+			return;
+
+		SCR_Faction faction = SCR_Faction.Cast(SCR_Faction.GetEntityFaction(sender));
+		if (!faction)
+			return;
+
+		array<string> taskOwnerFactionKeys = task.GetOwnerFactionKeys();
+		if (!taskOwnerFactionKeys || !taskOwnerFactionKeys.Contains(faction.GetFactionKey()))
+			return;
+
+		if (!faction.IsPlayerCommander(sender.GetPlayerId()))
 			return;
 
 		taskSystem.SetTaskState(task, SCR_ETaskState.COMPLETED);

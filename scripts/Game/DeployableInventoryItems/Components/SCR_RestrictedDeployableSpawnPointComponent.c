@@ -18,6 +18,9 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 	[Attribute("{5A258632A5C32E48}Prefabs/MP/Spawning/ItemSpecifics/RestrictedDeployableSpawnPoint_Radio_Supplies.et", uiwidget: UIWidgets.ResourcePickerThumbnail, params: "et", category: "Setup")]
 	protected ResourceName m_sSpawnPointPrefabSupplies;
 	
+	[Attribute(defvalue: "1", desc: "Should it follow gamemode restrictions", category: "General")]
+	protected bool m_bRestrictDeploy;
+	
 	// General	
 	[Attribute(defvalue: "1", desc: "Play audio cue once spawn point can/cannot be deployed", category: "General")]
 	protected bool m_bPlaySoundOnZoneEntered;
@@ -102,6 +105,9 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 	
 	[Attribute(defvalue: "#AR-DeployableSpawnPoints_UserAction_NoGroupJoined", category: "User Actions")]
 	protected string m_sNoGroupJoinedMessage;
+	
+	[Attribute(defvalue: "1", desc: "Should notify if friendly dismantles the spawnpoint", category: "Notifications")]
+	protected bool m_bNotifyDismantle;
 
 	[RplProp()]
 	protected int m_iGroupID = -1;
@@ -226,7 +232,7 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 	//------------------------------------------------------------------------------------------------
 	protected bool CanActionBeShown(notnull IEntity userEntity, bool checkFaction, bool checkGroupID)
 	{
-		if (!m_bDeployableSpawnPointsEnabled)
+		if (m_bRestrictDeploy && !m_bDeployableSpawnPointsEnabled)
 			return false;
 
 		FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(userEntity.FindComponent(FactionAffiliationComponent));
@@ -415,6 +421,10 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 	//! Check if deploy is possible, then call super.Deploy()
 	override void Deploy(IEntity userEntity, bool reload = false)
 	{
+		//~ Not allowed to deploy
+		if (m_bRestrictDeploy && !m_bDeployableSpawnPointsEnabled)
+			return;
+			
 		if (!m_RplComponent || m_RplComponent.IsProxy())
 			return;
 		
@@ -498,16 +508,19 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 			{
 				playerGroup.DecreaseDeployedRadioCount();
 
-				SCR_ChimeraCharacter dismantlingCharacter = SCR_ChimeraCharacter.Cast(userEntity);
-				if (dismantlingCharacter)
+				if (m_bNotifyDismantle)
 				{
-					int dismantlingPlayerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(dismantlingCharacter);
-
-					Faction dismantlingFaction = dismantlingCharacter.GetFaction();
-					Faction groupFaction = playerGroup.GetFaction();
-
-					if (dismantlingFaction && dismantlingFaction == groupFaction)
-						SCR_NotificationsComponent.SendToGroup(m_iGroupID, ENotification.GROUP_RADIO_DISMANTLED_BY_FRIENDLY, dismantlingPlayerID);
+					SCR_ChimeraCharacter dismantlingCharacter = SCR_ChimeraCharacter.Cast(userEntity);
+					if (dismantlingCharacter)
+					{
+						int dismantlingPlayerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(dismantlingCharacter);
+	
+						Faction dismantlingFaction = dismantlingCharacter.GetFaction();
+						Faction groupFaction = playerGroup.GetFaction();
+	
+						if (dismantlingFaction && dismantlingFaction == groupFaction)
+							SCR_NotificationsComponent.SendToGroup(m_iGroupID, ENotification.GROUP_RADIO_DISMANTLED_BY_FRIENDLY, dismantlingPlayerID);
+					}
 				}
 			}
 		}
@@ -845,7 +858,7 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 			s_aDebugShapes.Clear();
 #endif
 		
-		if (!m_bDeployableSpawnPointsEnabled)
+		if (m_bRestrictDeploy && !m_bDeployableSpawnPointsEnabled)
 			return;
 		
 		if (!m_RplComponent || m_RplComponent.IsProxy())
@@ -938,6 +951,8 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 		SCR_PlayerSpawnPointManagerComponent playerSpawnPointManager = SCR_PlayerSpawnPointManagerComponent.Cast(gameMode.FindComponent(SCR_PlayerSpawnPointManagerComponent));
 		if (playerSpawnPointManager)
 		{
+			SetBudgetType(playerSpawnPointManager.GetDeployableSpawnPointBudgetType());
+			SetMaxRespawns(playerSpawnPointManager.GetDeployableSpawnPointTicketAmount());
 			playerSpawnPointManager.GetOnSpawnPointBudgetTypeChanged().Insert(OnSpawnPointBudgetTypeChanged);
 			playerSpawnPointManager.GetOnSpawnPointTicketAmountChanged().Insert(OnSpawnPointTicketAmountChanged);
 		}

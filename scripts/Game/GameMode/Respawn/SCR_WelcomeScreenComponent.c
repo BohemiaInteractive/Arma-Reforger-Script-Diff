@@ -1085,7 +1085,9 @@ class SCR_WelcomeScreenFactionContent : SCR_WelcomeScreenBaseContent
 	//! \param[in] color
 	protected void FillFactionWidget(notnull SCR_Faction faction, notnull Widget content, Color color)
 	{
-		if (!faction.IsPlayable() && !faction.IsShownInWelcomeScreenIfNonPlayable())
+		EOverrideWelcomeScreenFactionDisplay displayOverride = faction.ShowInWelcomeScreenOverride();
+
+		if (displayOverride == EOverrideWelcomeScreenFactionDisplay.NEVERSHOW || (!faction.IsPlayable() && displayOverride == EOverrideWelcomeScreenFactionDisplay.NONE))
 			return;
 		
 		Widget factionWidget = GetGame().GetWorkspace().CreateWidgets(m_sFactionLayout, content);
@@ -1161,6 +1163,10 @@ class SCR_WelcomeScreenFactionContent : SCR_WelcomeScreenBaseContent
 	{
 		SCR_Faction factionScripted = SCR_Faction.Cast(faction);
 		if (!factionScripted)
+			return;
+
+		// both sortedfactions and faction widgets needs to contain it
+		if (!m_SortedFactions.Contains(factionScripted) || m_aFactionWidgets.Count() - 1 < m_SortedFactions.Find(factionScripted))
 			return;
 		
 		Widget factionWidget = m_aFactionWidgets[m_SortedFactions.Find(factionScripted)];

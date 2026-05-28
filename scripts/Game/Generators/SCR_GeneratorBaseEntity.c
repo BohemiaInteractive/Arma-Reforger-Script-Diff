@@ -45,6 +45,7 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 	protected bool m_bIsChangingWorkbenchKey;
 
 	protected static const int BASE_GENERATOR_COLOUR = Color.WHITE;
+
 	//------------------------------------------------------------------------------------------------
 	override void _WB_OnParentChange(IEntitySource src, IEntitySource prevParentSrc)
 	{
@@ -252,6 +253,7 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Get RELATIVE anchor points
 	//! \param[in] shapeEntitySrc
 	//! \param[in] offset offset from the current shape; negative = to the left, positive = to the right
 	//! \param[in] isShapeClosed
@@ -277,6 +279,7 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Get ABSOLUTE anchor points
 	//! \param[in] shapeEntitySrc
 	//! \return 3D anchor points in absolute (world) coordinates or null if WorldEditorAPI is not available / source is not a shape
 	protected static array<vector> GetWorldAnchorPoints(notnull IEntitySource shapeEntitySrc)
@@ -307,7 +310,7 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 	//! \return 3D points relative to the provided shape source or null if WorldEditorAPI is not available / source is not a shape
 	protected static array<vector> GetTesselatedShapePoints(notnull IEntitySource shapeEntitySrc, float offset = 0, bool isShapeClosed = false)
 	{
-		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		WorldEditorAPI worldEditorAPI = GetWorldEditorAPI();
 		if (!worldEditorAPI)
 			return null;
 
@@ -328,7 +331,7 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 	//! \return 3D points in absolute (world) coordinates or null if WorldEditorAPI is not available / source is not a shape
 	protected static array<vector> GetWorldTesselatedShapePoints(notnull IEntitySource shapeEntitySrc)
 	{
-		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		WorldEditorAPI worldEditorAPI = GetWorldEditorAPI();
 		if (!worldEditorAPI)
 			return null;
 
@@ -579,7 +582,7 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
 		if (worldEditor && !ShapeEntity.Cast(parent) && !worldEditor.IsPrefabEditMode())
 		{
-			Print("A Generator is not a direct child of a shape at " + GetOrigin(), LogLevel.WARNING);
+			Print("A Generator is not a direct child of a shape - " + Debug.GetEntityLinkString(this), LogLevel.WARNING);
 			return;
 		}
 

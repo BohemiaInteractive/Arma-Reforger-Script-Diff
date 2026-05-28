@@ -29,7 +29,7 @@ class SCR_HighlightedEditorComponent : SCR_BaseEditorComponent
 	{
 		if (!entity) 
 			return;
-		RplId entityID = Replication.FindId(entity);
+		RplId entityID = Replication.FindItemId(entity);
 		
 		EEditableEntityHighlight allHighlights;
 		
@@ -113,7 +113,7 @@ class SCR_HighlightedEditorComponent : SCR_BaseEditorComponent
 	{
 		if (!entity) 
 			return;
-		RplId entityID = Replication.FindId(entity);
+		RplId entityID = Replication.FindItemId(entity);
 		
 		EEditableEntityHighlight allHighlights;
 		

@@ -239,22 +239,12 @@ class SCR_CampaignFactionCommanderPlayerComponent : SCR_FactionCommanderPlayerCo
 	//! \param[in] playerId
 	//! \param[in] handler
 	//! \param[in] positionOffset
-	void CreateCampaignMilitaryBaseTask(ResourceName taskPrefab, SCR_AIGroup group, int playerId, SCR_FactionCommanderBaseMenuHandler handler = null, vector positionOffset = vector.Zero)
+	void CreateCampaignMilitaryBaseTask(ResourceName taskPrefab, SCR_AIGroup group, int playerId, vector positionOffset = vector.Zero)
 	{
 		int groupId = -1;
 
 		if (group)
 			groupId = group.GetGroupID();
-
-		int data;
-
-		if (handler)
-		{
-			SCR_SelectionMenuEntry entry = m_mEntryHandlers.GetKeyByValue(handler);
-
-			if (entry && entry.GetId())
-				data = entry.GetId().ToInt();
-		}
 
 		int baseCallsign = SCR_MilitaryBaseComponent.INVALID_BASE_CALLSIGN;
 
@@ -264,12 +254,12 @@ class SCR_CampaignFactionCommanderPlayerComponent : SCR_FactionCommanderPlayerCo
 		if (baseCallsign == SCR_MilitaryBaseComponent.INVALID_BASE_CALLSIGN)
 			return;
 
-		Rpc(RpcAsk_CreateCampaignMilitaryBaseTask, taskPrefab, groupId, GetGame().GetFactionManager().GetFactionIndex(SCR_FactionManager.SGetLocalPlayerFaction()), playerId, data, baseCallsign, positionOffset);
+		Rpc(RpcAsk_CreateCampaignMilitaryBaseTask, taskPrefab, groupId, GetGame().GetFactionManager().GetFactionIndex(SCR_FactionManager.SGetLocalPlayerFaction()), playerId, baseCallsign, positionOffset);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_CreateCampaignMilitaryBaseTask(ResourceName taskPrefab, int assigneeId, int factionIndex, int playerId, int data, int baseCallsign, vector positionOffset)
+	protected void RpcAsk_CreateCampaignMilitaryBaseTask(ResourceName taskPrefab, int assigneeId, int factionIndex, int playerId, int baseCallsign, vector positionOffset)
 	{
 		PlayerController sender = PlayerController.Cast(GetOwner());
 		if (!sender)
@@ -300,7 +290,8 @@ class SCR_CampaignFactionCommanderPlayerComponent : SCR_FactionCommanderPlayerCo
 			taskID,
 			"",
 			"",
-			base.GetOwner().GetOrigin() + positionOffset
+			base.GetOwner().GetOrigin() + positionOffset,
+			playerId
 		));
 
 		if (!task)

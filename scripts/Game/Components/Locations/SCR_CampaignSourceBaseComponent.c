@@ -10,8 +10,21 @@ class SCR_CampaignSourceBaseComponent : SCR_CampaignMilitaryBaseComponent
 		if (!m_SpawnPoint)
 			return;
 
-		// You can't spawn at the Source base.
-		m_SpawnPoint.SetFactionKey(FactionKey.Empty);
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		if (!campaign)
+			return;
+		
+		super.HandleSpawnPointFaction();
+		SCR_CampaignFaction spawnFaction = SCR_CampaignFaction.Cast(m_FactionComponent.GetAffiliatedFaction());
+		if (spawnFaction && spawnFaction.CanSpawnOnSourceBases() && spawnFaction.IsPlayable())
+		{
+			m_SpawnPoint.SetSpawnPointEnabled_S(true);
+		}
+		else
+		{
+			m_SpawnPoint.SetSpawnPointEnabled_S(false);
+			m_SpawnPoint.SetFactionKey(FactionKey.Empty);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

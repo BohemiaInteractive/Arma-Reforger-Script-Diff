@@ -121,7 +121,7 @@ class SCR_CampaignFastTravelComponent : SCR_FastTravelComponent
 		if (!player)
 			return m_iCooldown;
 
-		return fManager.GetRankFastTravelCooldown(SCR_CharacterRankComponent.GetCharacterRank(player));
+		return fManager.GetRankFastTravelCooldown(SCR_CharacterRankComponent.GetCharacterRank(player), m_PlayerController.GetPlayerId());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -316,7 +316,7 @@ class SCR_CampaignFastTravelComponent : SCR_FastTravelComponent
 		}
 
 		// Disable fast travel entry if player is renegade
-		if (fManager && fManager.IsRankRenegade(SCR_CharacterRankComponent.GetCharacterRank(player)))
+		if (fManager && fManager.GetFactionRanks(m_PlayerController.GetPlayerId()).IsRankRenegade(SCR_CharacterRankComponent.GetCharacterRank(player)))
 		{
 			m_MainEntry.Enable(false);
 			m_MainEntry.SetName("#AR-Rank_Renegade");

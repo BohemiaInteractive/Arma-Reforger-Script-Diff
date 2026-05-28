@@ -446,8 +446,8 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 		// Sort missions by name
 		SCR_Sorting<MissionWorkshopItem, SCR_CompareMissionName>.HeapSort(scenarios, false);
 
-		if (CreateLines(scenarios, m_Widgets.m_wScenariosList))
-			UpdateScenarioLines();
+		CreateLines(scenarios, m_Widgets.m_wScenariosList);
+		UpdateScenarioLines();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -903,7 +903,7 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 			if (nDependent == 1)
 				m_Widgets.m_DependentComponent2.SetTitle(SCR_WorkshopUiCommon.LABEL_DEPENDENT_NUMBER_ONE);
 			else
-				m_Widgets.m_DependentComponent2.SetTitle(WidgetManager.Translate(SCR_WorkshopUiCommon.LABEL_DEPENDENT_NUMBER, nDependent));
+				m_Widgets.m_DependentComponent2.m_wTitle.SetTextFormat(SCR_WorkshopUiCommon.LABEL_DEPENDENT_NUMBER, nDependent);
 		}
 		
 		if (nDependencies > 0)
@@ -911,7 +911,7 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 			if (nDependencies == 1)
 				m_Widgets.m_DependenciesComponent2.SetTitle(SCR_WorkshopUiCommon.LABEL_DEPENDENCIES_NUMBER_ONE);
 			else
-				m_Widgets.m_DependenciesComponent2.SetTitle(WidgetManager.Translate(SCR_WorkshopUiCommon.LABEL_DEPENDENCIES_NUMBER, nDependencies));
+				m_Widgets.m_DependenciesComponent2.m_wTitle.SetTextFormat(SCR_WorkshopUiCommon.LABEL_DEPENDENCIES_NUMBER, nDependencies);
 		}
 		
 		UpdateDependenciesTooltip();

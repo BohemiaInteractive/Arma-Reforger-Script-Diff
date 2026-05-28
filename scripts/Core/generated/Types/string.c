@@ -11,10 +11,16 @@ Do not modify, this script is generated
 
 sealed class string
 {
-	private void string();
-	private void ~string();
+	/** \name Constants
+	 * Populated by the engine.
+	 */
+	///@{
 
 	static const string Empty;
+	///@}
+
+	private void string();
+	private void ~string();
 
 	/*!
 	Gets the ASCII code of a character in the string.

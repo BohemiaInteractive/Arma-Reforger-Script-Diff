@@ -11,14 +11,20 @@ Do not modify, this script is generated
 
 sealed class vector
 {
+	/** \name Constants
+	 * Populated by the engine.
+	 */
+	///@{
+
+	static const vector Up;
+	static const vector Right;
+	static const vector Forward;
+	static const vector Zero;
+	static const vector One;
+	///@}
+
 	private void vector();
 	private void ~vector();
-
-	static const vector Up = "0 1 0";
-	static const vector Right = "1 0 0";
-	static const vector Forward = "0 0 1";
-	static const vector Zero = "0 0 0";
-	static const vector One = "1 1 1";
 
 	/*!
 	\brief Normalizes vector.

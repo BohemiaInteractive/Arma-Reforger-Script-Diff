@@ -14,7 +14,7 @@ class SCR_ItemPlacementActionsDisplay : SCR_AvailableActionContext
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool IsAvailable(SCR_AvailableActionsConditionData data, float timeSlice)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data, float timeSlice)
 	{
 		m_sItemName = data.GetCurrentlyPlacedItemName();
 		if (m_sItemName.IsEmpty())

@@ -51,7 +51,7 @@ class SCR_SettingsSuperMenu : SCR_SuperMenuBase
 	{
 		super.OnMenuShow();
 				
-		SCR_AnalyticsApplication.GetInstance().OpenSettings();
+		//SCR_AnalyticsApplication.GetInstance().OpenSettings();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ class SCR_SettingsSuperMenu : SCR_SuperMenuBase
 	{
 		super.OnMenuHide();
 	
-		SCR_AnalyticsApplication.GetInstance().CloseSettings();
+		//SCR_AnalyticsApplication.GetInstance().CloseSettings();
 	}
 	
 	//------------------------------------------------------------------------------------------------

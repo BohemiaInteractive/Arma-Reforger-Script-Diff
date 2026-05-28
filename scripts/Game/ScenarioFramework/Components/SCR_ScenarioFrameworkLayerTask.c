@@ -208,7 +208,7 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 	//! \param[in] includeChildren Restores default settings for this entity and its children if includeChildren is true.
 	//! \param[in] reinitAfterRestoration Restores entity to default state, optionally reinitializes after restoration.
 	//! \param[in] affectRandomization determines whether to clear all randomly spawned children entities after restoring default settings.
-	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true, bool deleteSpawnedEntities = true)
 	{
 		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aTriggerActionsOnFinish)
 		{
@@ -249,7 +249,7 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 		SetLayerTaskState(SCR_ETaskState.CREATED);
 		m_bTaskResolvedBeforeLoad = false;
 		
-		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization, deleteSpawnedEntities);
 	}
 
 	//------------------------------------------------------------------------------------------------

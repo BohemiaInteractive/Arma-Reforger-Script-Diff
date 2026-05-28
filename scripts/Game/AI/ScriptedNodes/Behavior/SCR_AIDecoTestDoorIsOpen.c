@@ -44,7 +44,7 @@ class SCR_AIDecoTestDoorIsConditionWithSiblings : DecoratorTestScripted
 				if (!dc)
 					return false;
 				
-				bool isTotallyOpen = Math.AbsFloat(dc.GetAngleRange() - dc.GetDoorState()) < SCR_AIOpenDoor.ANGLE_EPSILON;
+				bool isTotallyOpen = Math.AbsFloat(dc.GetNormalizedDoorState()) > 1.0 - SCR_AIOpenDoor.STATE_EPSILON;
 				bool isOpen = isTotallyOpen || dc.IsOpening();
 
 				if (!isOpen)
@@ -87,7 +87,7 @@ class SCR_AIDecoTestDoorIsOpeningWithSiblings : SCR_AIDecoTestDoorIsConditionWit
 {
 	protected override bool Predicate(DoorComponent dc, AIAgent agent, IEntity controlled)
 	{
-		bool isTotallyOpen = Math.AbsFloat(dc.GetAngleRange() - dc.GetDoorState()) < SCR_AIOpenDoor.ANGLE_EPSILON;		
+		bool isTotallyOpen = Math.AbsFloat(dc.GetNormalizedDoorState()) > 1.0 - SCR_AIOpenDoor.STATE_EPSILON;
 		return isTotallyOpen || dc.IsOpening();	
 	}
 }

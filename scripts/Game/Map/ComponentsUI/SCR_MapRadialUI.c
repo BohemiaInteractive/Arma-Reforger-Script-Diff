@@ -103,10 +103,9 @@ class SCR_MapRadialUI : SCR_MapUIBaseComponent
 	//------------------------------------------------------------------------------------------------
 	//! SCR_RadialMenuController event
 	//! \param[in] controller
-	//! \param[in] hasControl
-	protected void InputOpenMenu(SCR_RadialMenuController controller, bool hasControl)
+	protected void InputOpenMenu(SCR_RadialMenuController controller)
 	{		
-		if (!hasControl)
+		if (!controller.HasControl())
 		{
 			m_RadialController.Control(m_MapEntity, m_RadialMenu);
 			

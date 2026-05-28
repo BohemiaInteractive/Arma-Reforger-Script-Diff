@@ -13,7 +13,7 @@ Do not modify, this script is generated
 sealed class OnlineBanListData: Managed
 {
 	// Identity ID of player
-	string identityId
+	string identityId;
 	// Name of player when he was banned
 	string bannedName;
 	// Current name of player

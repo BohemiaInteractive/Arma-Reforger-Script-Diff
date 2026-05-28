@@ -1,5 +1,5 @@
 [BaseContainerProps()]
-class SCR_ResourceEncapsulatorStoragePolicyGeneric : SCR_ResourceStoragePolicyBase<SCR_ResourceEncapsulator>
+class SCR_ResourceEncapsulatorStoragePolicyGeneric : SCR_ResourceStoragePolicyBase
 {
 	//------------------------------------------------------------------------------------------------
 	override bool IsStorageTypeValid(EResourceContainerStorageType storageType)

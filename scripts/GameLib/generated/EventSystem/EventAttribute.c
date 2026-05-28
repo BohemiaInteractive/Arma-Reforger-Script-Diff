@@ -20,8 +20,10 @@ for binding to receiver callbacks.
 
 \see \ref Page_EventSystem
 */
-class EventAttribute
+class EventAttribute: UniqueAttribute
 {
+	void EventAttribute(bool bFilterConnectionsOnly = false);
+
 }
 
 /*!

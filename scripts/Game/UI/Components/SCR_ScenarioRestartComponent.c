@@ -34,8 +34,6 @@ class SCR_ScenarioRestartComponent : SCR_ScriptedWidgetComponent
 			return;
 		
 		modularButtonComponent.m_OnClicked.Remove(RestartScenario);
-
-		auto manager = GetGame().GetSaveGameManager();
-		manager.StartPlaythrough(manager.GetCurrentMissionResource());
+		GameStateTransitions.RequestScenarioRestart();
 	}
 }

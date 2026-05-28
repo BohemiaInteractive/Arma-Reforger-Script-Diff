@@ -11,6 +11,7 @@ Do not modify, this script is generated
 
 class ProjectileMoveComponentClass: BaseProjectileComponentClass
 {
+	proto external ResourceName GetProjectileWindTable();
 }
 
 /*!

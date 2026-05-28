@@ -65,7 +65,7 @@ class SCR_ScenarioFrameworkSlotTaskAI : SCR_ScenarioFrameworkSlotTask
 	//! \param[in] includeChildren Includes restoring default settings for child objects as well.
 	//! \param[in] reinitAfterRestoration Resets object state after restoration, allowing for fresh initialization.
 	//! \param[in] affectRandomization Affects whether randomization is reset during default restoration.
-	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true, bool deleteSpawnedEntities = true)
 	{
 		m_aWaypoints.Clear();
 		m_AIGroup = null;
@@ -74,7 +74,7 @@ class SCR_ScenarioFrameworkSlotTaskAI : SCR_ScenarioFrameworkSlotTask
 		m_iCurrentlySpawnedWaypoints = 0;
 		m_bWaypointsInitialized = false;
 		
-		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization, deleteSpawnedEntities);
 	}
 
 	//------------------------------------------------------------------------------------------------

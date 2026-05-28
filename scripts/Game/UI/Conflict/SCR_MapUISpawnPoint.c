@@ -45,7 +45,7 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 		if (!m_ResourceConsumer)
 			return;
 
-		m_ResourceInventoryPlayerComponentRplId = Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
+		m_ResourceInventoryPlayerComponentRplId = Replication.FindItemId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
 		m_ResourceSubscriptionHandleConsumer = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandle(m_ResourceConsumer, m_ResourceInventoryPlayerComponentRplId);
 		
 		m_ResourceComponent.TEMP_GetOnInteractorReplicated().Insert(UpdateResources);

@@ -208,7 +208,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 				return CharacterCameraSet.CHARACTERCAMERA_1ST_FLOAT;
 		}
 
-		if (SCR_BinocularsComponent.IsZoomedView())
+		if (SCR_PlayerController.s_pLocalPlayerController && SCR_PlayerController.s_pLocalPlayerController.GetIsBinocularsZoomed())
 			return CharacterCameraSet.CHARACTERCAMERA_BINOCULARS;
 		
 		//! game camera selection
@@ -822,7 +822,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			if (pOutResult.m_fPositionModelSpace <= 2.0 && pOutResult.m_fDistance > MIN_TRACE_DISTANCE)
 			{
 				TraceParam rayParam = new TraceParam();
-				if (m_CharMovementState.m_iStanceIdx != ECharacterStance.PRONE || !m_ControllerComponent.IsFreeLookEnabled())
+				if (m_CharMovementState.m_iStanceIdx != ECharacterStance.PRONE || m_OwnerCharacter.IsInVehicle() || !m_ControllerComponent.IsFreeLookEnabled())
 					rayParam.ExcludeArray = excludeArray;
 				rayParam.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
 				rayParam.LayerMask = TRACE_LAYER_CAMERA;

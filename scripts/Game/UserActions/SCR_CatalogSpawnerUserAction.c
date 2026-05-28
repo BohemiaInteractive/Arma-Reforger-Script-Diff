@@ -173,7 +173,7 @@ class SCR_CatalogSpawnerUserAction : ScriptedUserAction
 			m_ResourceComponent = m_EntitySpawner.GetSpawnerResourceComponent();
 		
 		if (!m_ResourceInventoryPlayerComponentRplId  || !m_ResourceInventoryPlayerComponentRplId.IsValid())
-			m_ResourceInventoryPlayerComponentRplId = Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
+			m_ResourceInventoryPlayerComponentRplId = Replication.FindItemId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
 		
 		if (!m_ResourceComponent 
 		||	!m_ResourceInventoryPlayerComponentRplId.IsValid()
@@ -231,7 +231,7 @@ class SCR_CatalogSpawnerUserAction : ScriptedUserAction
 				
 				SCR_Faction faction = SCR_Faction.Cast(factionAffiliationComp.GetAffiliatedFaction());
 				if (faction)
-					rankName = faction.GetRankName(m_EntitySpawnerData.GetMinimumRequiredRank());
+					rankName = faction.GetRanks().GetRankName(m_EntitySpawnerData.GetMinimumRequiredRank());
 					
 				SetCannotPerformReason(rankName);
 				break;

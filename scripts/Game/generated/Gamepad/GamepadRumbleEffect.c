@@ -12,6 +12,10 @@ Do not modify, this script is generated
 //! Effect used to rumble the gamepad.
 class GamepadRumbleEffect: GamepadEffect
 {
+	//!------------------------------------------------------------------------
+	//! How much the controller should rumble
+	static proto void SetRumbleIntensity(float intensity);
+	static proto void GetRumbleIntensity(out float intensity);
 	//! Get fade-in time
 	proto external int GetFadeInTimeMS();
 	//! Get fade-out time

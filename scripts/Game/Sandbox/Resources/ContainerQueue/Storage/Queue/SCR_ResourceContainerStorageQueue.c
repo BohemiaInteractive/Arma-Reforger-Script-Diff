@@ -1,5 +1,5 @@
 [BaseContainerProps()]
-class SCR_ResourceContainerStorageQueue<Class ResourceActorType> : Managed
+class SCR_ResourceContainerStorageQueue
 {
 	protected int m_iOffsetPosition;
 	protected int m_iContainerCount;
@@ -54,7 +54,7 @@ class SCR_ResourceContainerStorageQueue<Class ResourceActorType> : Managed
 	//! Registers a container into the queue.
 	//! \param container The container to be registered into the queue.
 	//! \return Returns the position of the container in the queue.
-	int RegisterContainer(notnull SCR_ResourceContainer container, notnull ResourceActorType actor)
+	int RegisterContainer(notnull SCR_ResourceContainer container, notnull SCR_ResourceInteractor actor)
 	{
 		return InsertContainerAt(container, ComputePosition(container, actor));
 	}
@@ -82,7 +82,7 @@ class SCR_ResourceContainerStorageQueue<Class ResourceActorType> : Managed
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	int ComputePosition(SCR_ResourceContainer container, ResourceActorType actor)
+	int ComputePosition(SCR_ResourceContainer container, SCR_ResourceInteractor actor)
 	{
 		return 0;
 	}

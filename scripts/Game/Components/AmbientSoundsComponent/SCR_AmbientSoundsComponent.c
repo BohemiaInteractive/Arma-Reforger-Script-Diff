@@ -1,14 +1,3 @@
-enum EQueryType // TODO: SCR_EQueryType
-{
-	TreeBush,
-	TreeLeafy,
-	TreeLeafyDomestic,
-	TreeConifer,
-	TreeStump,
-	TreeWithered,
-	Building,
-}
-
 [EntityEditorProps(category: "GameScripted/Sound", description: "THIS IS THE SCRIPT DESCRIPTION.", color: "0 0 255 255")]
 class SCR_AmbientSoundsComponentClass : AmbientSoundsComponentClass
 {
@@ -26,16 +15,17 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 	private const int QUERY_RADIUS = 25;
 	private const int QUERY_PROCESSING_INTERVAL = 2000;
 	private const int QUERY_MINIMUM_MOVE_DISTANCE_SQ = 2;
-	private const int QUERY_TYPES = 7;
-    private const int INVALID = -1;
-    const int WINDSPEED_MIN = 2;
-    const int WINDSPEED_MAX = 12;
+	private const int INVALID = -1;
 	private const int UPDATE_PROCESSING_INTERVAL = 300;
 	private const int LOOPED_SOUND_MINIMUM_MOVE_DISTANCE_SQ = 2;
+	const int WINDSPEED_MIN = 2;
+	const int WINDSPEED_MAX = 12;
 	
 	// Timers
 	private float m_fQueryTimer;
 	private float m_fUpdateTimer;
+	private bool m_bQueryRefreshNeeded;
+	private bool m_bUpdateRefreshNeeded;
 	
 	// Misc
 	private ChimeraWorld m_World;
@@ -51,6 +41,18 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 	private ref array<int> m_aQueryTypeCount = {};
 
 	//------------------------------------------------------------------------------------------------
+	private override void OnRefreshNeeded()
+	{
+		m_bQueryRefreshNeeded = true;
+	}
+
+	private override void OnQueryFinished()
+	{
+		GetAmbientSoundsCountPerType(m_aQueryTypeCount);
+		m_bUpdateRefreshNeeded = true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Does QueryBySphere and stores all needed data into prepared structures
 	private void HandleQueryEntities()
 	{
@@ -58,28 +60,28 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 		if (m_fWorldTime < m_fQueryTimer)
 			return;
 		
-		if (vector.DistanceSqXZ(m_vCameraPosQuery, m_vCameraPosFrame) < QUERY_MINIMUM_MOVE_DISTANCE_SQ)
+		if (!m_bQueryRefreshNeeded && vector.DistanceSqXZ(m_vCameraPosQuery, m_vCameraPosFrame) < QUERY_MINIMUM_MOVE_DISTANCE_SQ)
 			return;
 		
+		m_bQueryRefreshNeeded = false;
 		m_fQueryTimer = m_fWorldTime + QUERY_PROCESSING_INTERVAL;							
 		m_vCameraPosQuery = m_vCameraPosFrame;
 
 		// Get new query values		
 		QueryAmbientSoundsBySphere(QUERY_RADIUS);
-		GetAmbientSoundsCountPerType(m_aQueryTypeCount);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \return
-	EQueryType GetDominantTree()
+	EAmbientSoundType GetDominantTree()
 	{
-		if (m_aQueryTypeCount[EQueryType.TreeLeafy] + m_aQueryTypeCount[EQueryType.TreeConifer] == 0)
+		if (m_aQueryTypeCount[EAmbientSoundType.TreeLeafy] + m_aQueryTypeCount[EAmbientSoundType.TreeConifer] == 0)
 			return INVALID;
 
-		if (m_aQueryTypeCount[EQueryType.TreeLeafy] > m_aQueryTypeCount[EQueryType.TreeConifer])
-			return EQueryType.TreeLeafy;
+		if (m_aQueryTypeCount[EAmbientSoundType.TreeLeafy] > m_aQueryTypeCount[EAmbientSoundType.TreeConifer])
+			return EAmbientSoundType.TreeLeafy;
 
-		return EQueryType.TreeConifer;
+		return EAmbientSoundType.TreeConifer;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -158,10 +160,10 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 		m_fWorldTime = m_World.GetWorldTime();
 		
 		// Update effects
-		if (m_fWorldTime > m_fUpdateTimer)
-		{
+		if (m_bUpdateRefreshNeeded || m_fWorldTime > m_fUpdateTimer)
+		{	
 			// Handle looped sounds
-			if (vector.DistanceSqXZ(m_vCameraPosLoopedSound, m_vCameraPosFrame) > LOOPED_SOUND_MINIMUM_MOVE_DISTANCE_SQ)
+			if (m_bUpdateRefreshNeeded || vector.DistanceSqXZ(m_vCameraPosLoopedSound, m_vCameraPosFrame) > LOOPED_SOUND_MINIMUM_MOVE_DISTANCE_SQ)
 			{
 				m_vCameraPosLoopedSound = m_vCameraPosFrame;
 				UpdateLoopedSounds()
@@ -169,10 +171,13 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 
 			foreach (SCR_AmbientSoundsEffect ambientSoundsEffect : m_aAmbientSoundsEffect)
 			{
-				ambientSoundsEffect.Update(m_fWorldTime, m_vCameraPosFrame);
+				ambientSoundsEffect.Update(m_fWorldTime, m_vCameraPosFrame, m_bUpdateRefreshNeeded);
 			}
 			
 			m_fUpdateTimer = m_fWorldTime + UPDATE_PROCESSING_INTERVAL;
+			
+			if (m_bUpdateRefreshNeeded)
+				m_bUpdateRefreshNeeded = false;
 		}
 		
 		HandleQueryEntities();
@@ -242,9 +247,10 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 	void SCR_AmbientSoundsComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		SetScriptedMethodsCall(true);
-	
-		m_aQueryTypeCount.Resize(QUERY_TYPES);
 		
+		// Dummy call. Initializes m_aQueryTypeCount to the proper size.
+		GetAmbientSoundsCountPerType(m_aQueryTypeCount);
+
 #ifdef ENABLE_DIAG
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SOUNDS_RELOAD_AMBIENT_SOUNDS_CONFIGS, "", "Reload AmbientSounds Conf", "Sounds");
 #endif	

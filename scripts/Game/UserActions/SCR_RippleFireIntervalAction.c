@@ -47,20 +47,17 @@ class SCR_RippleFireIntervalAction : SCR_AdjustSignalAction
 	override protected bool OnLoadActionData(ScriptBitReader reader)
 	{
 		bool loaded = super.OnLoadActionData(reader);
-		if (m_bIsAdjustedByPlayer)
-			return loaded;
-
 		bool noChanges;
 		reader.ReadBool(noChanges);
 		if (noChanges)
+			return loaded; 
+		
+		float value;
+		reader.ReadFloat(value);
+		if (m_bIsAdjustedByPlayer || float.AlmostEqual(value, fireModeManager.GetRippleInterval()))
 			return loaded;
-
-		int outVal;
-		reader.ReadFloat(outVal);
-		m_fTargetValue = outVal;
-		if (float.AlmostEqual(m_fTargetValue, fireModeManager.GetRippleInterval()))
-			return loaded;
-
+		
+		m_fTargetValue = value;
 		if (fireModeManager)
 			fireModeManager.SetRippleInterval(m_fTargetValue);
 		

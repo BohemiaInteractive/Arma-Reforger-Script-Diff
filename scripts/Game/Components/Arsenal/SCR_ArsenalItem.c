@@ -4,7 +4,7 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 	[Attribute("2", desc: "Type of the arsenal item. An arsenal will only spawn items of types that it allows to be spawned. The item will not show up if it is not allowed. Eg: FieldDressing = HEAL", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(SCR_EArsenalItemType))]
 	protected SCR_EArsenalItemType m_eItemType;
 	
-	[Attribute("2", desc: "Item mode of arsenal, set this to what the behaviour is for the item. EG: FieldDressing = CONSUMABLE as it is used up or M16 with attachments = WEAPON_VARIENTS as it is not a default M16. Check other items in the faction config to see how it works.", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(SCR_EArsenalItemMode))]
+	[Attribute("2", desc: "Item mode of arsenal, set this to what the behaviour is for the item. EG: FieldDressing = CONSUMABLE as it is used up or M16 with attachments = WEAPON_VARIANTS as it is not a default M16. Check other items in the faction config to see how it works.", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(SCR_EArsenalItemMode))]
 	protected SCR_EArsenalItemMode m_eItemMode;
 	
 	[Attribute(SCR_Enum.GetFlagValues(SCR_EArsenalGameModeType).ToString(), desc: "This value dictates in what (game)modes the arsenal item is available. All items with an Arsenal Data are always available if the Game Mode set in the ArsenalManager is Unrestricted", uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(SCR_EArsenalGameModeType))]

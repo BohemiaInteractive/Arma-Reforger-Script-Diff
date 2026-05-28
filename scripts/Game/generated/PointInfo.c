@@ -4,7 +4,7 @@ Do not modify, this script is generated
 ===========================================
 */
 
-//! PointInfo - declare object, allows to define position (before named ComponentPositionInfo)
+//! PointInfo - allows to define position
 class PointInfo: ScriptAndConfig
 {
 	void PointInfo();

@@ -139,7 +139,7 @@ class SCR_LayersEditorComponent : SCR_BaseEditorComponent
 				entityIDs.Insert(entityID);
 		}
 		
-		Rpc(CreateNewLayerWithSelectedRpl, entityIDs, transform, Replication.FindId(m_CurrentLayer));
+		Rpc(CreateNewLayerWithSelectedRpl, entityIDs, transform, Replication.FindItemId(m_CurrentLayer));
 	}
 	
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
@@ -160,7 +160,7 @@ class SCR_LayersEditorComponent : SCR_BaseEditorComponent
 		if (currentLayer)
 			editableLayer.SetParentEntity(currentLayer);
 		
-		MoveToLayerServer(entityIDs, Replication.FindId(editableLayer));
+		MoveToLayerServer(entityIDs, Replication.FindItemId(editableLayer));
 	}
 	
 	
@@ -260,7 +260,7 @@ class SCR_LayersEditorComponent : SCR_BaseEditorComponent
 				entityIDs.Insert(entityID);
 		}
 		
-		Rpc(MoveToLayerServer, entityIDs, Replication.FindId(layer))
+		Rpc(MoveToLayerServer, entityIDs, Replication.FindItemId(layer))
 	}
 	
 	/*!

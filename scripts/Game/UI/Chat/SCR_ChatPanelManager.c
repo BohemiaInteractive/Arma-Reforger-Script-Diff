@@ -369,16 +369,19 @@ class SCR_ChatPanelManager : SCR_GameCoreBase
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnMessageFiltered(SCR_ProfanityFilterRequestCallback callback, array<string> filteredTexts, SCR_ChatMessage originalMessage)
-	{		
+	{
+		// We may get back multiple lines if the input used \n, so join them together.
+		const string multiLineString = SCR_StringHelper.Join("\n", filteredTexts, true);
+
 		if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.XBOX)
 		{
-			SCR_ProfaneFilter.ReplaceProfanities(filteredTexts.Get(0), originalMessage.m_sMessage);
+			SCR_ProfaneFilter.ReplaceProfanities(multiLineString, originalMessage.m_sMessage);
 		}
 		else
 		{
-			originalMessage.m_sMessage = filteredTexts.Get(0);
+			originalMessage.m_sMessage = multiLineString;
 		}
-		
+
 		m_aMessages.Insert(originalMessage);
 		
 		if (m_aMessages.Count() > CHAT_HISTORY_SIZE)

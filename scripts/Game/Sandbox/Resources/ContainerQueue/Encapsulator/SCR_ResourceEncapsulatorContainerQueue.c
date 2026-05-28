@@ -1,5 +1,5 @@
 [BaseContainerProps()]
-class SCR_ResourceEncapsulatorContainerQueue : SCR_ResourceContainerQueue<SCR_ResourceEncapsulator>
+class SCR_ResourceEncapsulatorContainerQueue : SCR_ResourceContainerQueue
 {	
 	//------------------------------------------------------------------------------------------------
 	//! Registers a container into the queue.
@@ -9,11 +9,11 @@ class SCR_ResourceEncapsulatorContainerQueue : SCR_ResourceContainerQueue<SCR_Re
 	{
 		int position = SCR_ResourceContainerQueueBase.INVALID_CONTAINER_INDEX;
 		bool shouldIncrementOffset;
-		SCR_ResourceContainerStorageQueue<SCR_ResourceEncapsulator> storageQueue;
+		SCR_ResourceContainerStorageQueue storageQueue;
 		
 		EResourceContainerStorageType storageType = container.GetStorageType();
 		
-		foreach (SCR_ResourceStoragePolicyBase<SCR_ResourceEncapsulator> policy: m_StoragePolicies)
+		foreach (SCR_ResourceStoragePolicyBase policy: m_StoragePolicies)
 		{
 			storageQueue = policy.GetStorageQueue();
 		
@@ -26,14 +26,15 @@ class SCR_ResourceEncapsulatorContainerQueue : SCR_ResourceContainerQueue<SCR_Re
 			if (!policy.IsStorageTypeValid(storageType))
 				continue;
 			
-			array<ref SCR_ResourceEncapsulatorActionBase> actions = m_Interactor.GetActions();
-			SCR_ResourceContainer containerRepresentative = m_Interactor.GetContainerRepresentative();
+			SCR_ResourceEncapsulator encapsulator = SCR_ResourceEncapsulator.Cast(m_Interactor);
+			array<ref SCR_ResourceEncapsulatorActionBase> actions = encapsulator.GetActions();
+			SCR_ResourceContainer containerRepresentative = encapsulator.GetContainerRepresentative();
 
 			m_fAggregatedResourceValue		+= container.GetResourceValue();
 			m_fAggregatedMaxResourceValue	+= container.GetMaxResourceValue();
 			
 			shouldIncrementOffset = true;
-			position = storageQueue.RegisterContainer(container, m_Interactor);
+			position = storageQueue.RegisterContainer(container, encapsulator);
 		}
 		
 		return position;

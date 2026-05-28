@@ -65,7 +65,7 @@ class SCR_IdentityInventoryItemComponent : InventoryItemComponent
 		if (!rplComp)
 			return;
 		
-		m_RplIdLinkedIdentity = Replication.FindId(rplComp);
+		m_RplIdLinkedIdentity = Replication.FindItemId(rplComp);
 		
 		//~ This identity holds valuable intel. So make sure that is shown
 		m_iValuableIntelFaction = rootExtendedIdentity.OnIdentityItemAdded_S(this, SCR_IdentityManagerComponent.Static_IsGenerateValuableIntelEnabled());

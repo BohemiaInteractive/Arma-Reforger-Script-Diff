@@ -53,11 +53,16 @@ class SCR_UnloadSuppliesWaypointState : SCR_SuppliesTransferWaypointState
 		m_ResourceConsumer.RequestConsumtion(m_fCurrentTransferValue);
 		m_ResourceGenerator.RequestGeneration(m_fCurrentTransferValue);
 
+		SCR_ResourceComponent baseResourceComponent = m_Base.GetResourceComponent();
+		if (baseResourceComponent && s_OnAITransferedSupplies)
+			s_OnAITransferedSupplies.Invoke(EResourcePlayerInteractionType.VEHICLE_UNLOAD, baseResourceComponent, m_ResourceComponent, RESOURCE_TYPE, m_fCurrentTransferValue, m_Utility);
+
 		bool isStorageFull = (m_ResourceGenerator.GetAggregatedMaxResourceValue() - m_ResourceGenerator.GetAggregatedResourceValue()) <= 0;
 		if (isStorageFull || container.GetResourceValue() == 0)
 		{
 			if (m_Utility && m_Utility.m_Owner)
 				m_Utility.m_Owner.CompleteWaypoint(m_Waypoint);
+			
 		}
 		else
 		{

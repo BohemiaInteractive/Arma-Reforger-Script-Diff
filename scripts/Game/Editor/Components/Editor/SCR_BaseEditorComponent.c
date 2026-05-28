@@ -608,6 +608,10 @@ class SCR_BaseEditorComponent : ScriptComponent
 		if (!m_Owner)
 			return;
 		
+		m_Manager = SCR_EditorManagerEntity.Cast(m_Owner);
+		if (!m_Manager)
+			m_Manager = m_Owner.GetManager();
+
 		if (m_Owner.GetOnOpenedServer())
 			m_Owner.GetOnOpenedServer().Insert(EOnEditorOpenServer);
 

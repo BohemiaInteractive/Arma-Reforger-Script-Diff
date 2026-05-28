@@ -82,7 +82,7 @@ class SCR_BaseFactionEditableAttribute : SCR_BasePresetsEditorAttribute
 		{
 			scrFaction = SCR_Faction.Cast(factionDelegates.Get(i).GetFaction());
 
-			if (!scrFaction)
+			if (!scrFaction || scrFaction.GetParent() != null)
 				continue;
 
 			SCR_EditorAttributeFloatStringValueHolder value = new SCR_EditorAttributeFloatStringValueHolder();

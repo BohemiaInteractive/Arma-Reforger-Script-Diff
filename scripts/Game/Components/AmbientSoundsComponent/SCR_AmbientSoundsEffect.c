@@ -15,8 +15,9 @@ class SCR_AmbientSoundsEffect
 	//!
 	//! \param[in] worldTime
 	//! \param[in] cameraPos
+	//! \param[in] forceUpdate
 	// Called by SCR_AmbientSoundComponent in UpdateSoundJob()
-	void Update(float worldTime, vector cameraPos)
+	void Update(float worldTime, vector cameraPos, bool forceUpdate)
 	{
 	}
 	

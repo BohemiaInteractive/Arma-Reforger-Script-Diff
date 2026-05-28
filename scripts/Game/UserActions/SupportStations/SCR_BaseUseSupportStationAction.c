@@ -56,7 +56,10 @@ class SCR_BaseUseSupportStationAction : SCR_ScriptedUserAction
 
 	protected SCR_SupportStationGadgetComponent m_SupportStationGadget;
 	protected bool m_bOnActionAnimationInDone;
-
+	
+	protected const float MAXIMUM_VEHICLE_SPEED_FOR_INTERACTION_SQ = 0.04;
+	
+	protected const LocalizedString INVALID_TARGET_VEHICLE_SPEED = "#AR-SupportStation_ActionInvalid_IsTargetMoving"; 
 	protected const LocalizedString ACTION_WITH_SUPPLYCOST_FORMATTING = "#AR-ActionFormat_SupplyCost";
 	protected const LocalizedString ACTION_WITH_SUPPLYGAIN_FORMATTING = "#AR-ActionFormat_SupplyGain";
 	protected const LocalizedString ACTION_WITH_PARAM_FORMATTING = "#AR-SupportStation_ActionFormat_WithParam";
@@ -180,9 +183,7 @@ class SCR_BaseUseSupportStationAction : SCR_ScriptedUserAction
 		if (hitZoneContainer)
 		{
 			HitZone defaultHitZone = hitZoneContainer.GetDefaultHitZone();
-
-			if (defaultHitZone)
-				return defaultHitZone.GetDamageState() != EDamageState.DESTROYED;
+			return defaultHitZone.GetDamageState() != EDamageState.DESTROYED;
 		}
 
 		return true;
@@ -251,6 +252,7 @@ class SCR_BaseUseSupportStationAction : SCR_ScriptedUserAction
 		{
 			m_eCannotPerformReason = reasonInvalid;
 			m_sCannotPerformReason = GetInvalidPerformReasonString(reasonInvalid);
+			
 		}
 	}
 

@@ -474,41 +474,6 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Method for proxy in order to ask the authority to sync the change that he requested for currently used turret weapon system
-	//! \param[in] change that was made in the FireModeManagerComponent
-	//! \param[in] newValue
-	//! \param[in] turretRplId in replication system
-	void ReplicateTurretFireModeChange(SCR_EFireModeChange change, int newValue, RplId turretRplId)
-	{
-		if (!turretRplId.IsValid())
-			return;
-
-		Rpc(RPC_AskTurretFireModeChange, change, newValue, turretRplId);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RPC_AskTurretFireModeChange(SCR_EFireModeChange change, int newValue, RplId turretRplId)
-	{
-		if (!turretRplId.IsValid())
-			return;
-
-		RplComponent turretRplComp = RplComponent.Cast(Replication.FindItem(turretRplId));
-		if (!turretRplComp)
-			return;
-
-		Turret turret = Turret.Cast(turretRplComp.GetEntity());
-		if (!turret)
-			return;
-
-		SCR_FireModeManagerComponent fireModeMgr = SCR_FireModeManagerComponent.Cast(turret.FindComponent(SCR_FireModeManagerComponent));
-		if (!fireModeMgr)
-			return;
-
-		fireModeMgr.ChangeFireModeValues(change, newValue);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Method for proxy in order to ask the authority to sync the state of the helicopter collimator sight with other clients
 	//! \param[in] newState
 	//! \param[in] sightId in replication system
@@ -612,7 +577,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	//------------------------------------------------------------------------------------------------
 	override bool IsUsingBinoculars()
 	{
-		return SCR_BinocularsComponent.IsZoomedView();
+		return SCR_PlayerController.s_pLocalPlayerController.GetIsBinocularsZoomed();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -709,7 +674,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		if (GetScrInputContext().m_iLoiteringType > 0)
 		{
 			bool isAligningBeforeLoiter = IsAligningBeforeLoiter();
-			bool isHolsteringBeforeLoiter = GetScrInputContext().m_iLoiteringShouldHolsterWeapon && IsChangingItem();
+			bool isHolsteringBeforeLoiter = GetScrInputContext().m_bLoiteringShouldHolsterWeapon && IsChangingItem();
 			
 			if (isAligningBeforeLoiter || isHolsteringBeforeLoiter)
 				return true;
@@ -1174,6 +1139,8 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			if (compartment)
 			{
 				TurretControllerComponent turretController = TurretControllerComponent.Cast(compartment.GetController());
+				if (!turretController)
+					turretController = compartment.GetAttachedTurret();
 				if (turretController)
 				{
 					TurretComponent turretComponent = turretController.GetTurretComponent();
@@ -1487,8 +1454,14 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		return m_pScrInputContext;
 	}
 	
+	void SetScrInputContext(SCR_ScriptedCharacterInputContext ctx)
+	{
+		m_pScrInputContext = ctx;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//!
+	//! \param[in] loiterEntity (can be null if not using an entity) - Used to release ownership of loiter action
 	//! \param[in] loiteringType
 	//! \param[in] holsterWeapon
 	//! \param[in] allowRootMotion
@@ -1496,7 +1469,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	//! \param[in] targetPosition
 	//! \param[in] disableInput - If true, player cannot interrupt the loiter by pressing space. It is the responsibility of the caller to ensure that the action will be finished. If false, action can be cancelled by player input.
 	//! \param[in] customAnimData - data for playing custom animation in graph attachment
-	void StartLoitering(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4] = { "1 0 0", "0 1 0", "0 0 1", "0 0 0" }, bool disableInput = false,
+	void StartLoitering(IEntity loiterEntity, int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4] = { "1 0 0", "0 1 0", "0 0 1", "0 0 0" }, bool disableInput = false,
 		SCR_LoiterCustomAnimData customAnimData = SCR_LoiterCustomAnimData.Default)
 	{
 		if (loiteringType == ELoiteringType.NONE)
@@ -1517,8 +1490,9 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		if (!scrCmdHandler.GetCommandMove())
 			return;
 		
+		m_pScrInputContext.SetLoiteringEntity(loiterEntity);
 		m_pScrInputContext.m_iLoiteringType = loiteringType;
-		m_pScrInputContext.m_iLoiteringShouldHolsterWeapon = holsterWeapon;
+		m_pScrInputContext.m_bLoiteringShouldHolsterWeapon = holsterWeapon;
 		m_pScrInputContext.m_bLoiteringShouldAlignCharacter = alignToPosition;
 		m_pScrInputContext.m_bLoiteringDisablePlayerInput = disableInput;
 		m_pScrInputContext.m_mLoiteringPosition = targetPosition;
@@ -1554,10 +1528,11 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void Rpc_StartLoitering_S(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4], SCR_LoiterCustomAnimData customAnimData)
+	protected void Rpc_StartLoitering_S(RplId entityRplId, int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4], SCR_LoiterCustomAnimData customAnimData)
 	{
+		m_pScrInputContext.SetLoiteringEntityId(entityRplId);
 		m_pScrInputContext.m_iLoiteringType = loiteringType;
-		m_pScrInputContext.m_iLoiteringShouldHolsterWeapon = holsterWeapon;
+		m_pScrInputContext.m_bLoiteringShouldHolsterWeapon = holsterWeapon;
 		m_pScrInputContext.m_bLoiteringShouldAlignCharacter = alignToPosition;
 		m_pScrInputContext.m_mLoiteringPosition = targetPosition;
 		m_pScrInputContext.m_bLoiteringRootMotion = allowRootMotion;
@@ -1567,8 +1542,9 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		scrCmdHandler.StartCommandLoitering(customAnimData);
 
 		Rpc(Rpc_StartLoitering_BCNO,
+				entityRplId,
 				m_pScrInputContext.m_iLoiteringType,
-				m_pScrInputContext.m_iLoiteringShouldHolsterWeapon,
+				m_pScrInputContext.m_bLoiteringShouldHolsterWeapon,
 				m_pScrInputContext.m_bLoiteringRootMotion,
 				m_pScrInputContext.m_bLoiteringShouldAlignCharacter,
 				m_pScrInputContext.m_mLoiteringPosition,
@@ -1577,10 +1553,11 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast, RplCondition.NoOwner)]
-	protected void Rpc_StartLoitering_BCNO(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4],	SCR_LoiterCustomAnimData customAnimData)
+	protected void Rpc_StartLoitering_BCNO(RplId entityRplId, int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4],	SCR_LoiterCustomAnimData customAnimData)
 	{
+		m_pScrInputContext.SetLoiteringEntityId(entityRplId);
 		m_pScrInputContext.m_iLoiteringType = loiteringType;
-		m_pScrInputContext.m_iLoiteringShouldHolsterWeapon = holsterWeapon;
+		m_pScrInputContext.m_bLoiteringShouldHolsterWeapon = holsterWeapon;
 		m_pScrInputContext.m_bLoiteringShouldAlignCharacter = alignToPosition;
 		m_pScrInputContext.m_mLoiteringPosition = targetPosition;
 		m_pScrInputContext.m_bLoiteringRootMotion = allowRootMotion;
@@ -1596,7 +1573,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		if (IsChangingItem())
 			return false;
 		
-		if (GetScrInputContext().m_iLoiteringShouldHolsterWeapon && GetCurrentItemInHands() != null)
+		if (GetScrInputContext().m_bLoiteringShouldHolsterWeapon && GetCurrentItemInHands() != null)
 		{
 			TryEquipRightHandItem(null, EEquipItemType.EEquipTypeUnarmedContextual);
 			return false;
@@ -1617,18 +1594,21 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		scrCmdHandler.StartCommandLoitering(m_pScrInputContext.m_CustomAnimData);
 		
 		RplComponent rplComponent = character.GetRplComponent();
+		
 		if (rplComponent && rplComponent.IsProxy())
 			Rpc(Rpc_StartLoitering_S,
+				m_pScrInputContext.m_loiterEntityRplId,
 				m_pScrInputContext.m_iLoiteringType,
-				m_pScrInputContext.m_iLoiteringShouldHolsterWeapon,
+				m_pScrInputContext.m_bLoiteringShouldHolsterWeapon,
 				m_pScrInputContext.m_bLoiteringRootMotion,
 				m_pScrInputContext.m_bLoiteringShouldAlignCharacter,
 				m_pScrInputContext.m_mLoiteringPosition,
 				m_pScrInputContext.m_CustomAnimData);
 		else
 			Rpc(Rpc_StartLoitering_BCNO,
+				m_pScrInputContext.m_loiterEntityRplId,
 				m_pScrInputContext.m_iLoiteringType,
-				m_pScrInputContext.m_iLoiteringShouldHolsterWeapon,
+				m_pScrInputContext.m_bLoiteringShouldHolsterWeapon,
 				m_pScrInputContext.m_bLoiteringRootMotion,
 				m_pScrInputContext.m_bLoiteringShouldAlignCharacter,
 				m_pScrInputContext.m_mLoiteringPosition,
@@ -1673,6 +1653,12 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			return false;
 		else
 			return handler.IsLoitering();		
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsLoiteringOnEntity(IEntity entity)
+	{
+		return m_pScrInputContext && IsLoitering() && m_pScrInputContext.GetLoiterEntity() == entity;
 	}
 }
 

@@ -173,7 +173,7 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 		if (!playerFaction)
 			return;
 		
-		string rankInsignia = playerFaction.GetRankInsignia(m_eRequiredRank);
+		string rankInsignia = playerFaction.GetRanks().GetRankInsignia(m_eRequiredRank);
 		if (rankInsignia.IsEmpty())
 			return;
 		
@@ -225,6 +225,13 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 
 		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(storageEnt.FindComponent(SCR_ArsenalComponent));
 		if (!arsenalComponent)
+			return 0;
+
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+		if (!character)
+			return 0;
+
+		if (arsenalComponent.GetAssignedFaction() != character.GetFaction())
 			return 0;
 
 		return arsenalManagerComponent.GetItemMilitarySupplyAllocationCost(resourceName, arsenalComponent, true);

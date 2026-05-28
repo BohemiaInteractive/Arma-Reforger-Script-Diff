@@ -179,15 +179,9 @@ class SCR_TaskListEntryUIComponent : SCR_ScriptedWidgetComponent
 		}
 
 		//## Don't show task if not visible for player
-		int playerID = SCR_PlayerController.GetLocalPlayerId();
-		SCR_TaskExecutor executor = SCR_TaskExecutor.FromPlayerID(playerID);
-		if (executor)
-			m_wRoot.SetVisible(taskSystem.IsTaskVisibleFor(task, executor));
+		CheckTaskVisibility();
 
 		SetIconFactionColor();
-
-		if (!executor)
-			return;
 
 		HandleTaskState(m_Task.GetTaskState(), false);
 	}
@@ -449,6 +443,16 @@ class SCR_TaskListEntryUIComponent : SCR_ScriptedWidgetComponent
 	//!
 	protected void CheckTaskVisibility()
 	{
+		if (m_TaskManager)
+		{
+			SCR_TaskListUIComponent taskListUIComponent = m_TaskManager.GetTaskListComponent();
+			if (taskListUIComponent && !taskListUIComponent.IsTaskVisibleInListByTab(m_Task))
+			{
+				SetVisibility(false);
+				return;
+			}
+		}
+
 		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
 		if (!taskSystem)
 			return;

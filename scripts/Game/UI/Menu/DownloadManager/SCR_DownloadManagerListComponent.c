@@ -195,7 +195,7 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 	void ShowPauseResumeAllButton(bool show)
 	{
 		if (m_NavPauseResumeAll)
-			SetNavigationButtonVisibile(m_NavPauseResumeAll, show);
+			SetNavigationButtonVisible(m_NavPauseResumeAll, show);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -238,9 +238,9 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 	protected void UpdateNavButtons(SCR_DownloadManagerEntry entry)
 	{
 		// Setup button visibility
-		SetNavigationButtonVisibile(m_NavPauseResume, entry != null);
-		SetNavigationButtonVisibile(m_NavCancel, entry != null);
-		SetNavigationButtonVisibile(m_NavRetry, entry != null);
+		SetNavigationButtonVisible(m_NavPauseResume, entry != null);
+		SetNavigationButtonVisible(m_NavCancel, entry != null);
+		SetNavigationButtonVisible(m_NavRetry, entry != null);
 		
 		// Check current entry
 		if (!entry)
@@ -250,7 +250,7 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 		entry.CanDoActions(pause, resume, cancel, retry);
 		
 		// Pause and resume 
-		SetNavigationButtonVisibile(m_NavPauseResume, pause || resume);
+		SetNavigationButtonVisible(m_NavPauseResume, pause || resume);
 		m_NavPauseResume.SetEnabled(entry.GetPauseEnabled());
 		
 		if (resume)
@@ -259,10 +259,10 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 			m_NavPauseResume.SetLabel("#AR-DownloadManager_ButtonPause");
 		
 		// Cancel
-		SetNavigationButtonVisibile(m_NavCancel, cancel);
+		SetNavigationButtonVisible(m_NavCancel, cancel);
 		
 		// Retry
-		SetNavigationButtonVisibile(m_NavRetry, retry);
+		SetNavigationButtonVisible(m_NavRetry, retry);
 	}
 	
 	//------------------------------------------------------------------------------------------------

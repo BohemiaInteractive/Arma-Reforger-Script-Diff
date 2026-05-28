@@ -533,13 +533,13 @@ class SCR_CharacterFactionAffiliationComponent : FactionAffiliationComponent
 				m_eDisguiseType = SCR_ECharacterDisguiseType.DEFAULT_FACTION;
 			else 
 			{
-				SCR_Faction scrPerceivedFaction = SCR_Faction.Cast(m_PerceivedFaction);
+				SCR_Faction scrAffiliatedFaction = SCR_Faction.Cast(affiliatedFaction);
 				
 				//~ Is SCR_Faction
-				if (scrPerceivedFaction)
+				if (scrAffiliatedFaction)
 				{
 					//~ Check if friendly
-					if (scrPerceivedFaction.DoCheckIfFactionFriendly(affiliatedFaction))
+					if (scrAffiliatedFaction.DoCheckIfFactionFriendly(m_PerceivedFaction))
 						m_eDisguiseType = SCR_ECharacterDisguiseType.FRIENDLY_FACTION;
 					else 
 						m_eDisguiseType = SCR_ECharacterDisguiseType.HOSTILE_FACTION;

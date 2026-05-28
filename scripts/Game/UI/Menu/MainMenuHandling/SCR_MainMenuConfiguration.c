@@ -14,12 +14,12 @@ class SCR_MainMenuConfiguration : Managed
 	int m_iMaxDisplayedScenarios;
 }
 
-[BaseContainerProps(configRoot: false)]
+[BaseContainerProps(configRoot: false), SCR_BaseContainerCustomTitleResourceName("m_sScenarioName")]
 class SCR_MainMenuConfigEntry : Managed
 {
 	[Attribute("", UIWidgets.ResourceNamePicker, "Scenario header", "conf")]
 	ResourceName m_sScenarioName;
 	
-	[Attribute("", UIWidgets.CheckBox, "Available during loading", "conf")]
+	[Attribute("", UIWidgets.CheckBox, "Available during loading")]
 	bool m_bScenarioAvailableWhenDownloadingContent;
 }

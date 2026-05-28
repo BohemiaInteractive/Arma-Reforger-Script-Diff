@@ -22,7 +22,6 @@ class SCR_InventoryStorageLootUI : SCR_InventoryStorageBaseUI
 			return null; // following slots dont add themselves as handlers if the item is not visible, thus skip creation of those as without a strong ref they will self destruct, and simply waste time
 
 		BaseInventoryStorageComponent inventoryStorageComponent = GetCurrentNavigationStorage();
-		
 		if (inventoryStorageComponent)
 		{
 			IEntity storageOwner = inventoryStorageComponent.GetOwner();
@@ -39,22 +38,20 @@ class SCR_InventoryStorageLootUI : SCR_InventoryStorageBaseUI
 			}
 			return slotUI;
 		}
-		else if (WeaponAttachmentsStorageComponent.Cast(pComponent))
-		{
+
+		if (WeaponAttachmentsStorageComponent.Cast(pComponent))
 			return new SCR_InventorySlotWeaponUI(pComponent, this, true, pAttributes: attributes);
-		}
-		else if (SCR_ResourceComponent.FindResourceComponent(pComponent.GetOwner()))
-		{
+
+		if (SCR_ResourceComponent.FindResourceComponent(pComponent.GetOwner()))
 			return new SCR_SupplyInventorySlotUI(pComponent, this, true, pAttributes: attributes);
-		}
-		else if (BaseInventoryStorageComponent.Cast( pComponent))
-		{
+
+		if (BaseInventoryStorageComponent.Cast(pComponent))
 			return new SCR_InventorySlotStorageEmbeddedUI(pComponent, this, true, pAttributes: attributes);
-		}
-		else
-		{
-			return new SCR_InventorySlotUI(pComponent, this, true, pAttributes: attributes);
-		}
+
+		if (SCR_SalineBagStorageSlot.Cast(pComponent.GetParentSlot()))
+			return null; // dont create slots for saline bags which are applied to the character
+
+		return new SCR_InventorySlotUI(pComponent, this, true, pAttributes: attributes);
 	}
 
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------
@@ -97,7 +94,77 @@ class SCR_InventoryStorageLootUI : SCR_InventoryStorageBaseUI
 		if (item)
 			item.SetVisible(false);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	override void Traverse(BaseInventoryStorageComponent storage)
+	{
+		super.Traverse(storage);
+
+		BaseInventoryStorageComponent currentStorage = GetCurrentNavigationStorage();
+		if (currentStorage && currentStorage.GetOwner())
+			m_ResourceComponent = SCR_ResourceComponent.FindResourceComponent(currentStorage.GetOwner(), true);
+
+		if (!m_ResourceComponent)
+			return;
+
+		m_ResourceConsumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.VEHICLE_UNLOAD, EResourceType.SUPPLIES);
+
+		if (!m_ResourceConsumer)
+			m_ResourceConsumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT_STORAGE, EResourceType.SUPPLIES);
+
+		if (!m_ResourceConsumer)
+			m_ResourceConsumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+
+		if (!m_ResourceConsumer)
+			return;
+
+		SCR_ResourcePlayerControllerInventoryComponent resourceInventoryPlayerComponent = SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent));
+
+		if (!resourceInventoryPlayerComponent)
+			return;
+
+		m_ResourceComponent.TEMP_GetOnInteractorReplicated().Insert(RefreshResources);
+
+		RplId resourceInventoryPlayerComponentRplId = Replication.FindItemId(resourceInventoryPlayerComponent);
+
+		if (!resourceInventoryPlayerComponentRplId.IsValid())
+			return;
+
+		m_ResourceSubscriptionHandleConsumer = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandle(m_ResourceConsumer, resourceInventoryPlayerComponentRplId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void Back(int traverseStorageIndex)
+	{
+		super.Back(traverseStorageIndex);
+
+		if (m_ResourceComponent)
+			m_ResourceComponent.TEMP_GetOnInteractorReplicated().Remove(RefreshResources);
+
+		m_ResourceSubscriptionHandleConsumer = null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void RefreshResources()
+	{
+		if (m_ResourceComponent)
+		{
+			FindConsumer();
+			m_wResourceStoredDisplay = m_widget.FindAnyWidget("ResourceDisplayStored");
+			if (m_wResourceStoredDisplay)
+				m_wResourceStoredText = TextWidget.Cast(m_wResourceStoredDisplay.FindAnyWidget("ResourceText"));
+
+			m_wResourceAvailableDisplay = m_widget.FindAnyWidget("ResourceDisplayAvailable");
+			if (m_wResourceAvailableDisplay)
+				m_wResourceAvailableText = TextWidget.Cast(m_wResourceAvailableDisplay.FindAnyWidget("ResourceText"));
+
+			if (!m_wResourceStoredText || !m_wResourceAvailableText)
+				return;
+		}
+
+		super.RefreshResources();
+	}
+
 	//------------------------------------------------------------------------ COMMON METHODS ----------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------

@@ -15,11 +15,11 @@ class SCR_TEST_Example1SubjectSuite : SCR_AutotestSuiteBase
 {
 	override ResourceName GetWorldFile()
 	{
-		return SCR_AutotestHelper.WORLD_MPTEST;
+		return SCR_AutotestHelper.GetDefaultWorld();
 	}
 }
 
-[Test(suite: "SCR_TEST_Example1SubjectSuite")]
+[Test(suite: SCR_TEST_Example1SubjectSuite)]
 class SCR_TEST_Example1Subject_Counter_CountsToFive : SCR_AutotestCaseBase
 {
 	int m_iCounter;
@@ -57,7 +57,7 @@ class SCR_TEST_Example1Subject_Counter_CountsToFive : SCR_AutotestCaseBase
 	}
 }
 
-[Test(suite: "SCR_TEST_Example1SubjectSuite")]
+[Test(suite: SCR_TEST_Example1SubjectSuite)]
 class SCR_TEST_Example1Subject_GetFive_ReturnsFive : SCR_AutotestCaseBase
 {
 	[Step(EStage.Main)]
@@ -85,7 +85,7 @@ class SCR_TEST_Example1Subject_GetFive_ReturnsFive : SCR_AutotestCaseBase
 	}
 }
 
-[Test(suite: "SCR_TEST_Example1SubjectSuite", timeoutMs: 10)]
+[Test(suite: SCR_TEST_Example1SubjectSuite, timeoutMs: 10)]
 class SCR_TEST_Example1Subject_TimeoutExample : SCR_AutotestCaseBase
 {
 	[Step(EStage.Main)]
@@ -96,32 +96,13 @@ class SCR_TEST_Example1Subject_TimeoutExample : SCR_AutotestCaseBase
 	}
 }
 
-[Test(suite: "SCR_TEST_Example1SubjectSuite")]
+[Test(suite: SCR_TEST_Example1SubjectSuite)]
 class SCR_TEST_Example1Subject_NoResultExample : SCR_AutotestCaseBase
 {
 	[Step(EStage.Main)]
 	bool Execute()
 	{
 		return true;
-	}
-}
-
-// This is a functional test, these are NOT supported in the framework, the "Run test" plugin does not work with them.
-// Also they will need manual usage of the SCR_AutotestPrinter for logging.
-// DO NOT USE FUNCTIONAL TESTS
-[Test(suite: "SCR_TEST_Example1SubjectSuite")]
-TestResultBase SCR_TEST_Example1Subject_GetFive_ValidReturn()
-{
-	SCR_Example1Subject subject = new SCR_Example1Subject();
-	int result = subject.GetFive();
-
-	if (result == 5)
-	{
-		return SCR_AutotestResult.AsSuccess();
-	}
-	else
-	{
-		return SCR_AutotestResult.AsFailure("Expected 5, got %1", result.ToString());
 	}
 }
 

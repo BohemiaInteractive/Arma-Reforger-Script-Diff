@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_IsContextEnabledCondition : SCR_AvailableActionCondition
 {
@@ -6,9 +5,9 @@ class SCR_IsContextEnabledCondition : SCR_AvailableActionCondition
 	protected string m_sContext;
 
 	//------------------------------------------------------------------------------------------------
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
 		bool result = GetGame().GetInputManager().IsContextActive(m_sContext);
 		return GetReturnResult(result);
 	}
-};
+}

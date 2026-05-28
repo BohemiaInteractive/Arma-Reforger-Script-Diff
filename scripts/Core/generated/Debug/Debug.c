@@ -11,10 +11,16 @@ Do not modify, this script is generated
 
 sealed class Debug
 {
+	/** \name Constants
+	 * Populated by the engine.
+	 */
+	///@{
+
+	static const int MB_PRESSED_MASK;
+	///@}
+
 	private void Debug();
 	private void ~Debug();
-
-	const int MB_PRESSED_MASK = 0x80000000;
 
 	/*!
 	Prints current call stack (stack trace). Call stack is printed to log or to 'output' variable if argument is used.

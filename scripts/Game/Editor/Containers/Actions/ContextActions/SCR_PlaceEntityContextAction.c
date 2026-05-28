@@ -11,7 +11,10 @@ class SCR_PlaceEntityContextAction: SCR_DoubleClickAction
 	{
 		if (hoveredEntity || cursorWorldPosition == vector.Zero)
 			return false;
-		
+
+		if (!SCR_Global.IsPositionWithinTerrainBounds(cursorWorldPosition))
+			return false;
+
 		//--- Player unit is dead or does not exist
 		if (m_PlacingFlag == EEditorPlacingFlags.CHARACTER_PLAYER)
 		{

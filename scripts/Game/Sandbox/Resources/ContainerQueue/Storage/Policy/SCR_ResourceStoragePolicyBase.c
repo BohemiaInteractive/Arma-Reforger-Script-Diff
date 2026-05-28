@@ -20,13 +20,13 @@ class SCR_ResourceStorageTypeTitle: BaseContainerCustomTitle
 };
 
 [BaseContainerProps()]
-class SCR_ResourceStoragePolicyBase<Class ResourceActorType> : Managed
+class SCR_ResourceStoragePolicyBase
 {
 	[Attribute(uiwidget: UIWidgets.Object)]
-	protected ref SCR_ResourceContainerStorageQueue<ResourceActorType> m_StorageQueue;
+	protected ref SCR_ResourceContainerStorageQueue m_StorageQueue;
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_ResourceContainerStorageQueue<ResourceActorType> GetStorageQueue()
+	SCR_ResourceContainerStorageQueue GetStorageQueue()
 	{
 		return m_StorageQueue;
 	}
@@ -38,7 +38,7 @@ class SCR_ResourceStoragePolicyBase<Class ResourceActorType> : Managed
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetStorageQueue(notnull SCR_ResourceContainerStorageQueue<ResourceActorType> queue)
+	void SetStorageQueue(notnull SCR_ResourceContainerStorageQueue queue)
 	{
 		m_StorageQueue = queue;
 	}

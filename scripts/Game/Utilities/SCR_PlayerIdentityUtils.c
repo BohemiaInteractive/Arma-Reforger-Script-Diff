@@ -6,7 +6,7 @@ class SCR_PlayerIdentityUtils
 	//! \return the uid as UUID wrapper
 	static UUID GetPlayerIdentityId(int playerId)
 	{
-		if (playerId == 0)
+		if (playerId <= 0)
 			return UUID.NULL_UUID;
 
 		if (!Replication.IsServer())
@@ -18,14 +18,13 @@ class SCR_PlayerIdentityUtils
 		}
 
 		string uid = GetGame().GetBackendApi().GetPlayerIdentityId(playerId);
-		if (!uid)
+		if (uid.IsEmpty())
 		{
 			if (RplSession.Mode() != RplMode.Dedicated)
 			{
 				// Peer tool support
 				const string playerName = GetGame().GetPlayerManager().GetPlayerName(playerId);
-
-				int splitLength = Math.Max(1, playerName.Length() / 3);
+				const int splitLength = Math.Max(1, playerName.Length() / 3);
 				const string split1 = Math.AbsInt(playerName.Substring(0, splitLength).Hash()).ToString(8, true);
 				const string split2 = Math.AbsInt(playerName.Substring(splitLength, splitLength).Hash()).ToString(8, true);
 				const int doubleSplit = splitLength * 2;
@@ -33,6 +32,7 @@ class SCR_PlayerIdentityUtils
 
 				// 00bbbddd-SPL1-SPL1-SPL2-SPL2 SPL3 SPL3
 				uid = string.Format("00bbbddd-%1-%2-%3-%4%5", split1.Substring(0, 4), split1.Substring(4, 4), split2.Substring(0, 4), split2.Substring(4, 4), split3);
+				uid.ToLower();
 			}
 			#ifdef ENABLE_DIAG
 			else
@@ -52,5 +52,16 @@ class SCR_PlayerIdentityUtils
 	static string GetPlayerIdentityId(IEntity player)
 	{
 		return GetPlayerIdentityId(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(player));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Fetches name and UUID of a player and packs it into a string
+	//! \param[in] playerID
+	//! \return preformatted string with name, playerID, and his UUID
+	static string GetPlayerLogInfo(int playerID)
+	{
+		string playerName = GetGame().GetPlayerManager().GetPlayerName(playerID);
+		UUID playerUUID = GetPlayerIdentityId(playerID);
+		return string.Format("%1 (playerID = %2 | UUID = %3)", playerName, playerID, playerUUID);
 	}
 }

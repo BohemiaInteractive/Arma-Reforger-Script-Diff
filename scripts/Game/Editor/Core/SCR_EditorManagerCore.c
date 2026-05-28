@@ -470,16 +470,6 @@ class SCR_EditorManagerCore : SCR_GameCoreBase
 	}
 #endif
 	
-	//------------------------------------------------------------------------------------------------
-	protected void OnReconnectOnPreviousCharacter(notnull SCR_ReconnectData reconnectData)
-	{
-		int playerID = reconnectData.m_iPlayerId;
-		
-		IEntity controlledEntity = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID);
-		if (controlledEntity)
-			OnPlayerSpawn(playerID, controlledEntity);
-	}
-	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Default Functions
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -535,10 +525,6 @@ class SCR_EditorManagerCore : SCR_GameCoreBase
 				return;
 			}
 		}
-		
-		// Listen to reconnect 
-		if (SCR_ReconnectComponent.GetInstance())
-			SCR_ReconnectComponent.GetInstance().GetOnReconnect().Insert(OnReconnectOnPreviousCharacter);
 	}
 
 	//------------------------------------------------------------------------------------------------

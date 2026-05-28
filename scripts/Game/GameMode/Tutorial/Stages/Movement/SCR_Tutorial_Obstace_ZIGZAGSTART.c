@@ -11,7 +11,7 @@ class SCR_Tutorial_Obstacle_ZIGZAGSTART : SCR_BaseTutorialStage
 	{
 		RegisterWaypoint("WP_ZIGZAG_1");
 		
-		m_TutorialComponent.SetSavedTime(GetGame().GetWorld().GetWorldTime());
+		m_TutorialComponent.SetSavedTime();
 
 		ChimeraWorld world = GetGame().GetWorld();
 			

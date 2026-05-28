@@ -38,12 +38,30 @@ class SCR_DeployablePlaceableItemComponent : SCR_PlaceableItemComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override bool OverrideIsSurfaceValid(notnull SCR_ItemPlacementComponent caller, out ENotification cantPlaceReason, IEntity surfaceEnt, vector worldPosition, vector surfaceNorm, int nodeIndex, int colliderIndex, SurfaceProperties surfaceProps, string surfaceMaterial, string colliderName)
+	{
+		if (!m_PlacingGadget)
+			return false;
+
+		return m_PlacingGadget.ValidateSurface(caller, cantPlaceReason, surfaceEnt, worldPosition, surfaceNorm, nodeIndex, colliderIndex, surfaceProps, surfaceMaterial, colliderName);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool OverrideSpaceValidation(notnull SCR_ItemPlacementComponent caller, inout vector transform[4], out ENotification cantPlaceReason)
 	{
 		if (!m_PlacingGadget)
 			return false;
 
 		return m_PlacingGadget.ValidateSpace(caller, transform, cantPlaceReason);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OverridePreviewTransform(notnull SCR_ItemPlacementComponent caller, inout vector transform[4])
+	{
+		if (!m_PlacingGadget)
+			return;
+
+		return m_PlacingGadget.OverridePreviewTransform(caller, transform);
 	}
 
 	//------------------------------------------------------------------------------------------------

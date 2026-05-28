@@ -185,6 +185,13 @@ class SCR_PlayerSupplyAllocationUI : ScriptedWidgetComponent
 		if (!arsenalComp)
 			return 0;
 
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+		if (!character)
+			return 0;
+
+		if (arsenalComp.GetAssignedFaction() != character.GetFaction())
+			return 0;
+
 		InventoryItemComponent item = slot.GetInventoryItemComponent();
 		if (!item)
 			return 0;

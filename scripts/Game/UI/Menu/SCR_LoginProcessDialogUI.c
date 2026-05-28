@@ -317,7 +317,6 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_AccountLockedDialogUi : SCR_ConfigurableDialogUi
 {
 	protected const string MAIN_MESSAGE = "#AR-Account_Locked_Message";
@@ -340,7 +339,7 @@ class SCR_AccountLockedDialogUi : SCR_ConfigurableDialogUi
 			return;
 		
 		string message = string.Format("<color rgba=%1>%2</color>", UIColors.FormatColor(UIColors.CONTRAST_COLOR), GetGame().GetBackendApi().GetLinkItem(SUPPORT));
-		widget.SetText(WidgetManager.Translate(CONTENT_MESSAGE, message));
+		widget.SetTextFormat(CONTENT_MESSAGE, message);
 		
 		UpdateMessage();
 		GetGame().GetCallqueue().CallLater(UpdateMessage, 1000, true);

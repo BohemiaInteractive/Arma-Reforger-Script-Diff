@@ -485,7 +485,7 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 			return;
 
 		int company, platoon, squad;
-		m_CallsignManager.AssignCallGroupCallsign(m_Faction, m_MasterGroupCallsignComponent, company, platoon, squad);
+		m_CallsignManager.AssignCallGroupCallsign(m_Group, m_Faction, m_MasterGroupCallsignComponent, company, platoon, squad);
 		DoAssignCallsign(company, platoon, squad);
 	}
 
@@ -608,6 +608,12 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 //				AssignCharacterCallsign(agent, characterCallsignComponent);
 //			}
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_AIGroup GetGroup()
+	{
+		return m_Group;
 	}
 
 	//------------------------------------------------------------------------------------------------

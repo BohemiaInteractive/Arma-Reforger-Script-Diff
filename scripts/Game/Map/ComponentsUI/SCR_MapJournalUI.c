@@ -131,6 +131,9 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerFactionResponse(SCR_PlayerFactionAffiliationComponent component, int factionIndex, bool response)
 	{
+		if (!m_wJournalFrame || !m_ToolMenu)
+			return;
+
 		if (response)
 		{
 			m_Widgets.m_wEntryLayout.SetVisible(false);

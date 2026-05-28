@@ -10,7 +10,7 @@ class ForestGeneratorLevel
 	[Attribute(defvalue: "1", desc: "How many trees per hectare should be generated", params: "0 inf", uiwidget: UIWidgets.SpinBox)]
 	float m_fDensity;
 
-	[Attribute(defvalue: "", category: "Forest", desc: "Curve defining level's outline scaling; from inside (left, forest core) to outside (right, forest outline)", uiwidget: UIWidgets.GraphDialog, params: "100 " + (SCALE_CURVE_MAX_VALUE - SCALE_CURVE_MIN_VALUE) + " 0 " + SCALE_CURVE_MIN_VALUE)]
+	[Attribute(defvalue: "", category: "Forest", desc: "Curve defining level's outline scaling; from inside (left, forest core) to outside (right, forest outline)", uiwidget: UIWidgets.CurveDialog, params: "100 " + (SCALE_CURVE_MAX_VALUE - SCALE_CURVE_MIN_VALUE) + " 0 " + SCALE_CURVE_MIN_VALUE)]
 	ref Curve m_aOutlineScaleCurve;
 
 	[Attribute(defvalue: "0", category: "Forest", desc: "Distance from shape over which the scaling occurs [m]", uiwidget: UIWidgets.Slider, params: "0 100 0.1")]

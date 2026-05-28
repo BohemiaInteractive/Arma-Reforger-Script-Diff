@@ -173,6 +173,11 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void OnGamePauseChanged(bool paused)
+	{
+		UpdateExhaustEmitter(0.001, paused);
+	}
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateExhaustParticles(float timeSlice)
 	{
 		// We are about to call relatively performance heavy update of particle in OnUpdateEffect(...). This will be done per frame but only if the effect is very close to camera. Otherwise the update will be separated by time intervals to save performance.
@@ -205,10 +210,13 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Ignition engine exhaust
-	protected void UpdateExhaustEmitter(float timeSlice)
+	protected void UpdateExhaustEmitter(float timeSlice, bool paused = false)
 	{
-		bool shouldBePlaying = !m_bIsUnderwater && !(m_bIsDefective && m_DamagedEmitter);
-		bool isPlaying = m_ExhaustEmitter && m_ExhaustEmitter.GetState() == EParticleEffectState.PLAYING;
+		if (!m_ExhaustEmitter)
+			return;
+		
+		bool shouldBePlaying = !paused && !m_bIsUnderwater && !(m_bIsDefective && m_DamagedEmitter);
+		bool isPlaying = m_ExhaustEmitter.GetState() == EParticleEffectState.PLAYING;
 
 		// Enable only if no damage particles are being played
 		if (shouldBePlaying)

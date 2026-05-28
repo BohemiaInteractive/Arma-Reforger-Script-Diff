@@ -9,6 +9,9 @@ class SCR_RepairSupportStationComponentClass : SCR_BaseDamageHealSupportStationC
 	
 	[Attribute("SOUND_VEHICLE_EXTINGUISH_DONE", desc: "Sound effect played when Extinguish is done. Broadcast to players. Leave empty if no sfx", category: "Heal/Repair Support Station")]
 	protected string m_sOnExtinguishDoneSoundEffectEventName;
+
+	[Attribute(defvalue: "0", desc: "Amount of unflipping force that this support station provides when a player tries to unflip a vehicle near it", params: "0 inf 0.01")]
+	protected float m_fUnflippingPower;
 	
 	protected ref SCR_AudioSourceConfiguration m_OnExtinguishUpdateAudioSourceConfiguration;
 	protected ref SCR_AudioSourceConfiguration m_OnExtinguishDoneAudioSourceConfiguration;
@@ -41,6 +44,12 @@ class SCR_RepairSupportStationComponentClass : SCR_BaseDamageHealSupportStationC
 
 		return m_OnExtinguishDoneAudioSourceConfiguration;
 	}	
+
+	//------------------------------------------------------------------------------------------------
+	float GetUnflippingPower()
+	{
+		return m_fUnflippingPower;
+	}
 }
 
 class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationComponent
@@ -57,6 +66,16 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 	override ESupportStationType GetSupportStationType()
 	{
 		return ESupportStationType.REPAIR;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetUnflippingPower()
+	{
+		SCR_RepairSupportStationComponentClass data = SCR_RepairSupportStationComponentClass.Cast(GetComponentData(GetOwner()));
+		if (data)
+			return data.GetUnflippingPower();
+		
+		return 0;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -299,7 +318,7 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 		if (inVehicleNotification == ENotification.UNKNOWN)
 			return;
 			
-		RplId userRplId = Replication.FindId(userEditableEntity);
+		RplId userRplId = Replication.FindItemId(userEditableEntity);
 		
 		//~ Get players in vehicle
 		array<int> playersInVehicle = {};

@@ -314,16 +314,16 @@ class SCR_InstigatorContextData
 			
 		//~ Get the Faction of the killer character
 		Faction killerFaction = GetFaction(m_KillerEntity, m_iKillerPlayerID);
-		if (!killerFaction)
+		SCR_Faction scrVictimFaction = SCR_Faction.Cast(victimFaction);
+
+		if (!scrVictimFaction || !killerFaction)
 		{
 			m_eVictimKillerRelation = SCR_ECharacterDeathStatusRelations.KILLED_BY_NEUTRAL_OR_FACTIONLESS;
 			return;
 		}
 		
-		SCR_Faction scrVictimFaction = SCR_Faction.Cast(victimFaction);
-		
 		//~ Killed by Enemy
-		if ((scrVictimFaction && !scrVictimFaction.DoCheckIfFactionFriendly(killerFaction)) || (!scrVictimFaction && victimFaction.IsFactionEnemy(killerFaction)))
+		if (!scrVictimFaction.DoCheckIfFactionFriendly(killerFaction))
 		{
 			if (m_eKillerControlType == SCR_ECharacterControlType.PLAYER || m_eKillerControlType == SCR_ECharacterControlType.POSSESSED_AI || m_eKillerControlType == SCR_ECharacterControlType.UNLIMITED_EDITOR)
 				m_eVictimKillerRelation = SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER;

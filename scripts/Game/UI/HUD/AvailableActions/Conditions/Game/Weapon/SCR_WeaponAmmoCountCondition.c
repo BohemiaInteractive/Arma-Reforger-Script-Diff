@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 //! Returns true if ammo of current weapon matches the condition
 [BaseContainerProps()]
 class SCR_WeaponAmmoCountCondition : SCR_AvailableActionCondition
@@ -15,11 +14,8 @@ class SCR_WeaponAmmoCountCondition : SCR_AvailableActionCondition
 	//------------------------------------------------------------------------------------------------
 	//! Returns true when current controlled entity's current weapon has met the specified ammo condition
 	//! Returns opposite if m_bNegateCondition is enabled
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-
 		BaseMagazineComponent magazine = data.GetCurrentMagazine();
 		if (!magazine)
 			return false;
@@ -41,4 +37,4 @@ class SCR_WeaponAmmoCountCondition : SCR_AvailableActionCondition
 		result = SCR_Comparer<int>.Compare(m_eOperator, current, (int)m_fValue);
 		return GetReturnResult(result);
 	}
-};
+}

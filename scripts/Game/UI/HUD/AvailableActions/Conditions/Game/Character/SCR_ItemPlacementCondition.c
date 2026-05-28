@@ -11,11 +11,8 @@ class SCR_ItemPlacementCondition : SCR_AvailableActionCondition
 	protected bool m_bCheckIsPlacementModeEnabled;
 
 	//------------------------------------------------------------------------------------------------
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-
 		SCR_CampaignBuildingGadgetToolComponent gadgetComponent = SCR_CampaignBuildingGadgetToolComponent.Cast(data.GetHeldGadgetComponent());
 		if (!gadgetComponent)
 			return GetReturnResult(false);

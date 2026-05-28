@@ -154,6 +154,69 @@ class SCR_FactionCallsignData
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Gets a callsign based on the group role of group.
+	//! Will use overflow companies for finding of callsign when no available callsigns for specific group role available.
+	//! \param[in] group
+	//! \param[out] company company index
+	//! \param[out] platoon platoon index
+	//! \param[out] squad squad index
+	//! \return true if successfully found an available callsign based on group role 
+	bool GetGroupRoleSpecificCompanyCallsign(notnull SCR_AIGroup group, out int company, out int platoon, out int squad)
+	{
+		SCR_Faction groupFaction = SCR_Faction.Cast(group.GetFaction());
+		if (!groupFaction)
+			return false;
+
+		SCR_FactionCallsignInfo factionCallsignInfo = groupFaction.GetCallsignInfo();
+		if (!factionCallsignInfo)
+			return false;
+
+		array<int> companyIndexes = {};
+		SCR_EGroupRole groupRole = group.GetGroupRole();
+		if (!factionCallsignInfo.GetGroupRoleSpecificCompanies(groupRole, companyIndexes))
+			return false;
+
+		company = int.MAX;
+		SCR_CallsignCompanyData companyData;
+		foreach (int companyIndex : companyIndexes)
+		{
+			if (!m_mCompanyCallsigns.Find(companyIndex, companyData))
+				continue;
+
+			if (!companyData || !companyData.GetFirstAvailableSquadCallsign(platoon, squad))
+				continue;
+
+			company = companyIndex;
+			break;
+		}
+
+		if (company != int.MAX)
+			return true;
+
+		// No available companies for group, use one of the overflow companies instead
+		if (!m_mCompanyOverflowCallsigns.IsEmpty())
+			return false;
+
+		int overflowCompaniesCount = m_mCompanyOverflowCallsigns.Count();
+		int companyIndex;
+		for (int i = 0; i < overflowCompaniesCount; i++)
+		{
+			companyIndex = m_mCompanyOverflowCallsigns.GetKey(i);
+			if (!m_mCompanyCallsigns.Find(companyIndex, companyData))
+				continue;
+
+			if (!companyData || !companyData.GetFirstAvailableSquadCallsign(platoon, squad))
+				continue;
+
+			company = companyIndex;
+			break;
+		}
+
+		// Return false if no available company found in group role specific companies nor overflow companies
+		return company != int.MAX;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Adds callsign back to available callsign pool
 	//! \param[in] companyIndex company index
 	//! \param[in] platoonIndex platoon index

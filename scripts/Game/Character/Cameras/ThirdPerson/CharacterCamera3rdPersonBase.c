@@ -40,11 +40,14 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 		//! yaw pitch roll vector
 		vector lookAngles = m_CharacterHeadAimingComponent.GetLookAngles();
 		
-		if (m_CharacterAnimationComponent.PhysicsIsLinked())
+		if (m_CharacterAnimationComponent.PhysicsIsLinked() && !m_CmdHandler.GetCommandLadder())
 		{
 			pOutResult.m_fUseHeading = 0.0; // Do not use heading after so that we can calculate it ourselves here
 			
-			lookAngles[0] = m_OwnerCharacter.GetAimRotationModel()[0] * Math.RAD2DEG;
+			if (!m_ControllerComponent.IsFreeLookEnabled())
+			{
+				lookAngles[0] = m_OwnerCharacter.GetAimRotationModel()[0] * Math.RAD2DEG;
+			}
 		}
 
 		if (!m_bIgnoreCharacterPitch)

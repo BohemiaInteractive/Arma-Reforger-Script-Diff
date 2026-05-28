@@ -1,11 +1,9 @@
 [BaseContainerProps()]
 class SCR_HasMultipleWeaponsCondition : SCR_AvailableActionCondition
 {
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	//------------------------------------------------------------------------------------------------
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return GetReturnResult(false);
-
 		BaseWeaponManagerComponent weaponMgr;
 		if (data.GetIsCharacterInVehicle())
 		{

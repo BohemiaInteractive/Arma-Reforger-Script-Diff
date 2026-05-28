@@ -5,22 +5,20 @@ enum EVehicleGearboxGear
 	FORWARD,
 	FIRST,
 	LAST
-};
-//------------------------------------------------------------------------------------------------
+}
+
 //! Returns true if character is in a vehicle
 [BaseContainerProps()]
 class SCR_VehicleGearCondition : SCR_AvailableActionCondition
 {
 	[Attribute(defvalue: SCR_Enum.GetDefault(EVehicleGearboxGear.FORWARD), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EVehicleGearboxGear))]
 	protected EVehicleGearboxGear m_eVehicleGearboxGear;
+
 	//------------------------------------------------------------------------------------------------
 	//! Returns true when current gear matches the condition
 	//! Returns opposite if m_bNegateCondition is enabled
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-		
 		CarControllerComponent controller = CarControllerComponent.Cast(data.GetCurrentVehicleController());
 		if (!controller)
 			return false;
@@ -47,4 +45,4 @@ class SCR_VehicleGearCondition : SCR_AvailableActionCondition
 
 		return GetReturnResult(result);
 	}
-};
+}

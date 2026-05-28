@@ -17,18 +17,9 @@ class SCR_CampaignPackMobileAssemblyUserAction : SCR_CampaignDeployMobileAssembl
 	
 	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity) 
-	{	
-		PlayerController playerController = GetGame().GetPlayerController();
-		
-		if (!playerController)
-			return;
-		
-		SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(playerController.FindComponent(SCR_CampaignNetworkComponent));
-		
-		if (!campaignNetworkComponent)
-			return;
-		
-		campaignNetworkComponent.DeployMobileAsembly(m_AssemblyComponent, false);
+	{
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(pUserEntity);
+		m_AssemblyComponent.Deploy(SCR_EMobileAssemblyStatus.DISMANTLED, playerId);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -42,7 +33,7 @@ class SCR_CampaignPackMobileAssemblyUserAction : SCR_CampaignDeployMobileAssembl
 		if (!campaign)
 			return false;
 
-		if (SCR_FactionManager.SGetLocalPlayerFaction() != m_AssemblyComponent.GetParentFaction())
+		if (SCR_FactionManager.SGetLocalPlayerFaction() != m_AssemblyComponent.GetAffiliatedFaction())
 			return false;
 		
 		SCR_SpawnPoint spawnpoint = m_AssemblyComponent.GetSpawnPoint();

@@ -634,10 +634,13 @@ class SCR_MortarShellGadgetComponent : SCR_GadgetComponent
 			writer.WriteFloat(m_fFuzeTime);
 
 		writer.WriteBool(m_bCustomChargeRingSet);
-
+		
+		bool hiddenInVicinity = false;
 		SCR_VisibleInventoryItemComponent inventoryItemComp = SCR_VisibleInventoryItemComponent.Cast(GetOwner().FindComponent(SCR_VisibleInventoryItemComponent));
 		if (inventoryItemComp)
-			writer.WriteBool(inventoryItemComp.ShouldHideInVicinity());
+			hiddenInVicinity = inventoryItemComp.ShouldHideInVicinity();
+		
+		writer.WriteBool(hiddenInVicinity);
 
 		return super.RplSave(writer);
 	}
@@ -652,17 +655,15 @@ class SCR_MortarShellGadgetComponent : SCR_GadgetComponent
 			SetFuzeTime(m_fFuzeTime);
 		}
 
+		bool hiddenInVicinity;
 		reader.ReadBool(m_bCustomChargeRingSet);
-
+		reader.ReadBool(hiddenInVicinity);
+		
 		SCR_VisibleInventoryItemComponent inventoryItemComp = SCR_VisibleInventoryItemComponent.Cast(GetOwner().FindComponent(SCR_VisibleInventoryItemComponent));
-		if (inventoryItemComp)
-		{
-			bool hiddenInVicinity;
-			reader.ReadBool(hiddenInVicinity);
-			if (hiddenInVicinity)//we only hide it when it was fired and in such case charge rings shouldnt be visible
-				VisualiseChargeRings(0);
-		}
-
+		// we only hide it when it was fired and in such case charge rings shouldnt be visible
+		if (inventoryItemComp && hiddenInVicinity)
+			VisualiseChargeRings(0);	
+		
 		return super.RplLoad(reader);
 	}
 }

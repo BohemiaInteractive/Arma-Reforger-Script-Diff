@@ -6,11 +6,8 @@ class SCR_VehicleTurboCondition : SCR_AvailableActionCondition
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns true if driver is using full throttle feature.
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-
 		CarControllerComponent carController = CarControllerComponent.Cast(data.GetCurrentVehicleController());
 		bool result = carController && carController.IsThrottleTurbo();
 		result = result && (!m_bCheckPersistentState && data.GetCurrentVehicleTurboTime() != 0 || m_bCheckPersistentState && data.GetCurrentVehicleTurboTime() == 0);

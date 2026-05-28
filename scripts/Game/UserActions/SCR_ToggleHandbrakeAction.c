@@ -49,7 +49,9 @@ class SCR_ToggleHandbrakeAction : SCR_ScriptedUserAction
 
 		Faction characterFaction = character.GetFaction();
 		Faction vehicleFaction = vehicleEntity.GetFaction();
-		if (characterFaction && vehicleFaction && characterFaction.IsFactionEnemy(vehicleFaction))
+		// Faction can be enemy to itself (in FFA or in mods) so we need to make sure the factions are different before checking the friendlyness
+		// otherwise we might have a driver being unable to pull his own handbrake
+		if (characterFaction && vehicleFaction && (vehicleFaction != characterFaction && characterFaction.IsFactionEnemy(vehicleFaction)))
 		{
 			SetCannotPerformReason(OCCUPIED_BY_ENEMY);
 			return false;
@@ -84,7 +86,7 @@ class SCR_ToggleHandbrakeAction : SCR_ScriptedUserAction
 		if (!controller)
 			return;
 
-		VehicleWheeledSimulation simulation = controller.GetWheeledSimulation();
+		VehicleWheeledSimulation simulation = controller.GetSimulation();
 		if (!simulation)
 			return;
 

@@ -12,14 +12,18 @@ Do not modify, this script is generated
 class BaseDamageAreaShape: ScriptAndConfig
 {
 	proto external vector GetWorldPosition();
-	//! Returns the local transform of this shape
-	proto external void GetTransform(out vector mat[]);
+	//! Stores the local transform of this shape on mat
+	//! For scale use GetLocalScale
+	proto external void GetLocalTransform(out vector mat[]);
+	//! Returns local scale of the shape
+	proto external float GetLocalScale();
+	proto external void SetLocalScale(float scale);
 	//! Sets the local transform for this area damage.
-	proto external void SetTransform(vector mat[]);
+	proto external void SetLocalTransform(vector mat[], float scale);
 	//! Returns the damage area that is using this shape
 	proto external DamageArea GetDamageArea();
 	//! Returns the world transform of this shape.
-	proto external void GetWorldTransform(out vector mat[]);
+	proto external void GetWorldTransform(out vector mat[], out float scale);
 
 	// callbacks
 

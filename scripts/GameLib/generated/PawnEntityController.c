@@ -23,13 +23,15 @@ class PawnEntityController: ScriptAndConfig
 	proto external vector GetAimRotation();
 	proto external void SetLookRotation(vector ypr);
 	proto external vector GetLookRotation();
+	static proto vector GetCompressedAngles(vector rotation);
 
 	// callbacks
 
-	event protected void OnInit();
-	event protected void OnUpdate(float timeSlice);
-	event protected int OnPackControls();
-	event protected void OnUnpackControls(int packedControls);
-	event protected bool OnPackUserActions(ScriptBitWriter bitWriter);
-	event protected bool OnUnpackUserActions(ScriptBitReader bitReader);
+	event protected void OnInit(PawnEntity owner);
+	event protected void OnPrepare(PawnEntity owner, float timeSlice);
+	event protected void OnUpdate(PawnEntity owner, float timeSlice);
+	event protected int OnPackControls(PawnEntity owner);
+	event protected void OnUnpackControls(PawnEntity owner, int packedControls);
+	event protected bool OnPackUserActions(PawnEntity owner, ScriptBitWriter bitWriter);
+	event protected bool OnUnpackUserActions(PawnEntity owner, ScriptBitReader bitReader);
 }

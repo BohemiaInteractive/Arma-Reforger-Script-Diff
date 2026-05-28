@@ -2,6 +2,11 @@ class SCR_SuppliesTransferWaypointClass : SCR_AIWaypointClass
 {
 }
 
+//~ Supplies transfer invoker
+void ScriptInvokerAITransferSuppliesMethod(EResourcePlayerInteractionType interactionType, SCR_ResourceComponent resourceComponentFrom, SCR_ResourceComponent resourceComponentTo, EResourceType resourceType, float resourceValue, SCR_AIGroupUtilityComponent utility);
+typedef func ScriptInvokerAITransferSuppliesMethod;
+typedef ScriptInvokerBase<ScriptInvokerAITransferSuppliesMethod> ScriptInvokerAITransferSupplies;
+
 // Base class for supply transfer waypoints (shared logic)
 class SCR_SuppliesTransferWaypoint : SCR_AIWaypoint
 {
@@ -57,6 +62,8 @@ class SCR_SuppliesTransferWaypointState : SCR_AIWaypointState
 	protected float m_fTransferAmount;
 
 	protected SCR_CampaignMilitaryBaseComponent m_Base;
+	
+	protected static ref ScriptInvokerAITransferSupplies s_OnAITransferedSupplies;
 
 	//------------------------------------------------------------------------------------------------
 	protected void InitSupplyTransfer(notnull SCR_AIGroupUtilityComponent utility, SCR_SuppliesTransferWaypoint wp, EResourceGeneratorID generatorId, EResourceGeneratorID consumerId, bool isLoad)
@@ -94,11 +101,12 @@ class SCR_SuppliesTransferWaypointState : SCR_AIWaypointState
 		m_ResourceComponent = SCR_ResourceComponent.FindResourceComponent(vehicleEntity);
 		if (!m_ResourceComponent)
 			return;
-
+		
 		if (isLoad)
 			m_ResourceGenerator = m_ResourceComponent.GetGenerator(EResourceGeneratorID.VEHICLE_LOAD, RESOURCE_TYPE);
 		else
 			m_ResourceConsumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.VEHICLE_UNLOAD, RESOURCE_TYPE);
+			
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -164,5 +172,14 @@ class SCR_SuppliesTransferWaypointState : SCR_AIWaypointState
 			transferAmount = maxResource;
 		else
 			transferAmount = m_fTransferAmount;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvokerAITransferSupplies GetOnAITransferedSupplies()
+	{
+		if (!s_OnAITransferedSupplies)
+			s_OnAITransferedSupplies = new ScriptInvokerAITransferSupplies();
+ 
+		return s_OnAITransferedSupplies;
 	}
 }

@@ -16,6 +16,52 @@ class GeneratorBaseEntityClass: GenericEntityClass
 class GeneratorBaseEntity: GenericEntity
 {
 	/*!
+	Called when parent shape is first initialized - called only once
+	Handles calling either script or c++ implementation of OnShapeInitInternal
+	*/
+	proto external void OnShapeInit(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity);
+	/*!
+	Called when parent shape's transform (coords, angles, scale) changes
+	Handles calling either script or c++ implementation of BeforeShapeTransformInternal
+	*/
+	proto external void BeforeShapeTransform(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, inout vector oldTransform[4]);
+	/*!
+	Called when parent shape's transform (coords, angles, scale) changes
+	Handles calling either script or c++ implementation of OnShapeTransformInternal
+	*/
+	proto external void OnShapeTransform(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, array<vector> mins, array<vector> maxes);
+	/*!
+	Called when parent shape is changed in any way (except for cases handled by `OnShapeTransform` and `OnShapeInit`)
+	Handles calling either script or c++ implementation of OnShapeWBInitInternal
+	*/
+	proto external void OnShapeChanged(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, array<vector> mins, array<vector> maxes);
+	/*!
+	Called when PointData on one of the points has been changed. OnShapeChanged is also called in that case.
+	*/
+	proto external void OnPointDataChanged(IEntitySource src, ShapeEntity shapeEntity, PointChangedSituation situation, string propertyID, array<int> pointIndices);
+	/*!
+	Called when a point was changed. OnShapeChanged is also called in that case.
+	*/
+	proto external void OnPointChanged(IEntitySource src, ShapeEntity shapeEntity, PointChangedSituation situation, int pointIndex, vector position);
+	/*!
+	Called when anchor snapping happend, either a parent's anchor snapped to something or something to a parent's anchor
+	Handles calling either script or c++ implementation of OnAnchorSnappedInternal
+	*/
+	proto external void OnAnchorSnapped(IEntitySource shapeEntitySrc, int parentAnchor, IEntitySource other, int otherAnchor, bool isReciever);
+	/*!
+	Called when anchor snapping is attempted
+	Handles calling either script or c++ implementation of CanAnchorSnapInternal
+	*/
+	proto external bool CanAnchorSnap(IEntitySource shapeEntitySrc, int parentAnchor, IEntitySource other, int otherAnchor, bool isReciever);
+	/*!
+	Called when a shape intersecting our bbox changed or moved out
+	Handles calling either script or c++ implementation of OnIntersectingShapeChangedXZInternal
+	*/
+	proto external void OnIntersectingShapeChangedXZ(IEntitySource shapeEntitySrc, IEntitySource other, array<vector> mins, array<vector> maxes);
+
+	// callbacks
+
+	/*!
 	Specific implementation for given generator which handles what should happen when shape is initialized for the first time
 	Do NOT call Workbench API functions from here.
 	Called from `OnShapeInit`. Should not be called directly.
@@ -98,50 +144,6 @@ class GeneratorBaseEntity: GenericEntity
 	\param maxes Maximum values of bounding boxes
 	*/
 	event protected void OnIntersectingShapeChangedXZInternal(IEntitySource shapeEntitySrc, IEntitySource other, array<vector> mins, array<vector> maxes);
-
-	/*!
-	Called when parent shape is first initialized - called only once
-	Handles calling either script or c++ implementation of OnShapeInitInternal
-	*/
-	proto external void OnShapeInit(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity);
-	/*!
-	Called when parent shape's transform (coords, angles, scale) changes
-	Handles calling either script or c++ implementation of BeforeShapeTransformInternal
-	*/
-	proto external void BeforeShapeTransform(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, inout vector oldTransform[4]);
-	/*!
-	Called when parent shape's transform (coords, angles, scale) changes
-	Handles calling either script or c++ implementation of OnShapeTransformInternal
-	*/
-	proto external void OnShapeTransform(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, array<vector> mins, array<vector> maxes);
-	/*!
-	Called when parent shape is changed in any way (except for cases handled by `OnShapeTransform` and `OnShapeInit`)
-	Handles calling either script or c++ implementation of OnShapeWBInitInternal
-	*/
-	proto external void OnShapeChanged(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, array<vector> mins, array<vector> maxes);
-	/*!
-	Called when PointData on one of the points has been changed. OnShapeChanged is also called in that case.
-	*/
-	proto external void OnPointDataChanged(IEntitySource src, ShapeEntity shapeEntity, PointChangedSituation situation, string propertyID, array<int> pointIndices);
-	/*!
-	Called when a point was changed. OnShapeChanged is also called in that case.
-	*/
-	proto external void OnPointChanged(IEntitySource src, ShapeEntity shapeEntity, PointChangedSituation situation, int pointIndex, vector position);
-	/*!
-	Called when anchor snapping happend, either a parent's anchor snapped to something or something to a parent's anchor
-	Handles calling either script or c++ implementation of OnAnchorSnappedInternal
-	*/
-	proto external void OnAnchorSnapped(IEntitySource shapeEntitySrc, int parentAnchor, IEntitySource other, int otherAnchor, bool isReciever);
-	/*!
-	Called when anchor snapping is attempted
-	Handles calling either script or c++ implementation of CanAnchorSnapInternal
-	*/
-	proto external bool CanAnchorSnap(IEntitySource shapeEntitySrc, int parentAnchor, IEntitySource other, int otherAnchor, bool isReciever);
-	/*!
-	Called when a shape intersecting our bbox changed or moved out
-	Handles calling either script or c++ implementation of OnIntersectingShapeChangedXZInternal
-	*/
-	proto external void OnIntersectingShapeChangedXZ(IEntitySource shapeEntitySrc, IEntitySource other, array<vector> mins, array<vector> maxes);
 }
 
 /*!

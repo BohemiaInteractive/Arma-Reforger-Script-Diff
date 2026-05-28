@@ -1,4 +1,4 @@
-class SCR_CharacterDamageManagerEvaluator : DamageEffectEvaluator
+class SCR_CharacterDamageManagerEvaluator : DamageEffectEvaluatorWrapper
 {
 	
 	//------------------------------------------------------------------------------------------------

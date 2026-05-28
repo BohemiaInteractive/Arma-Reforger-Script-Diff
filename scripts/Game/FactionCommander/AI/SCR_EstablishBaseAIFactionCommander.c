@@ -67,11 +67,11 @@ class SCR_EstablishBaseAIFactionCommander : SCR_BaseAIFactionCommander
 
 		SCR_EstablishBaseRequestedTaskEntity requestTask = SCR_EstablishBaseRequestedTaskEntity.Cast(task);
 		if (requestTask)
-			GetGame().GetCallqueue().CallLater(CreateTask, m_fResponseTime * 1000, false, requestTask);
+			GetGame().GetCallqueue().CallLater(CreateTask, m_fResponseTime * 1000, false, requestTask, byPlayerID);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void CreateTask(SCR_EstablishBaseRequestedTaskEntity requestTask)
+	protected void CreateTask(SCR_EstablishBaseRequestedTaskEntity requestTask, int playerId = -1)
 	{
 		// check if AI is still commander after delay
 		if (!m_bIsAICommanderActivated)
@@ -86,7 +86,7 @@ class SCR_EstablishBaseAIFactionCommander : SCR_BaseAIFactionCommander
 		vector taskPosition = requestTask.GetTaskPosition();
 		string taskID = string.Format(SCR_FactionCommanderPlayerComponent.TASK_ID, m_sFactionKey, SCR_FactionCommanderPlayerComponent.GenerateTaskID());
 
-		SCR_Task task = m_TaskSystem.CreateTask(m_sEstablishBaseTaskPrefab, taskID, "", "", taskPosition);
+		SCR_Task task = m_TaskSystem.CreateTask(m_sEstablishBaseTaskPrefab, taskID, "", "", taskPosition, playerId);
 		if (!task)
 		{
 			Print("Task was not created", LogLevel.ERROR);

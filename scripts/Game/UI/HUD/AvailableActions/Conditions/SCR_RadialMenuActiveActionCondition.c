@@ -5,11 +5,9 @@ class SCR_RadialMenuActiveActionCondition: SCR_AvailableActionCondition
 	protected SCR_RadialMenu m_RadialMenu;
 	
 	//~Todo: Check if command menu is active
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	//------------------------------------------------------------------------------------------------
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-		
 		if (!m_RadialMenu)
 		{
 			m_RadialMenu = SCR_RadialMenu.GlobalRadialMenu();
@@ -20,4 +18,4 @@ class SCR_RadialMenuActiveActionCondition: SCR_AvailableActionCondition
 		
 		return GetReturnResult(m_RadialMenu.IsOpened());
 	}
-};
+}

@@ -18,32 +18,32 @@ class SCR_FiringRangeNetworkEntity : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void CalculateTargetDistance(notnull IEntity pOwnerEntity, bool increase)
 	{	
-		Rpc(RpcAsk_CalculateTargetDistance, Replication.FindId(pOwnerEntity), increase);
+		Rpc(RpcAsk_CalculateTargetDistance, Replication.FindItemId(pOwnerEntity), increase);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void ClearPlayerScore(int playerID, SCR_FiringRangeManager firingRangeManager)
 	{
-		Rpc(RpcAsk_ClearPlayerScore, playerID, Replication.FindId(firingRangeManager));
+		Rpc(RpcAsk_ClearPlayerScore, playerID, Replication.FindItemId(firingRangeManager));
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void SetPlayerScoreMax(int playerID, int maxScore, SCR_FiringRangeManager firingRangeManager)
 	
 	{
-		Rpc(RpcAsk_SetMaxLineScore, playerID, maxScore, Replication.FindId(firingRangeManager));
+		Rpc(RpcAsk_SetMaxLineScore, playerID, maxScore, Replication.FindItemId(firingRangeManager));
 	}
 			
 	//------------------------------------------------------------------------------------------------
 	void ErectRandomTargets(notnull IEntity pOwnerEntity, int playerID)
 	{
-		Rpc(RpcAsk_ErectRandomTargets, Replication.FindId(pOwnerEntity), playerID);
+		Rpc(RpcAsk_ErectRandomTargets, Replication.FindItemId(pOwnerEntity), playerID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void BackToDefaultTarget(notnull IEntity pOwnerEntity)
 	{
-		Rpc(RpcAsk_BackToDefaultTarget, Replication.FindId(pOwnerEntity));
+		Rpc(RpcAsk_BackToDefaultTarget, Replication.FindItemId(pOwnerEntity));
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -52,7 +52,7 @@ class SCR_FiringRangeNetworkEntity : GenericEntity
 		if (!pOwnerEntity)
 			return;
 
-		Rpc(RpcAsk_RemoveIndicatorsServer, Replication.FindId(pOwnerEntity), Replication.FindId(firingRangeManager));		
+		Rpc(RpcAsk_RemoveIndicatorsServer, Replication.FindItemId(pOwnerEntity), Replication.FindItemId(firingRangeManager));		
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -64,7 +64,7 @@ class SCR_FiringRangeNetworkEntity : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void AddTarget(notnull IEntity pOwnerEntity, bool increase)
 	{	
-		Rpc(RpcAsk_AddTarget, Replication.FindId(pOwnerEntity), increase);
+		Rpc(RpcAsk_AddTarget, Replication.FindItemId(pOwnerEntity), increase);
 	}
 	
 	//------------------------------------------------------------------------------------------------

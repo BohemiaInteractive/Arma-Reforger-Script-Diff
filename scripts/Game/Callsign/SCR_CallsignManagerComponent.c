@@ -95,11 +95,12 @@ class SCR_CallsignManagerComponent : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Uses the faction to get available company, platoon and squad index and makes these unavailable so they are not picked until available again
+	//! \param[in] group to assign callsign
 	//! \param[in] faction faction to assign callsigns
 	//! \param[out] companyIndex to assign
 	//! \param[out] platoonIndex to assign
 	//! \param[out] squadIndex to assign
-	void AssignCallGroupCallsign(Faction faction, SCR_CallsignGroupComponent masterCallsignComponent, out int companyIndex, out int platoonIndex, out int squadIndex)
+	void AssignCallGroupCallsign(notnull SCR_AIGroup group, Faction faction, SCR_CallsignGroupComponent masterCallsignComponent, out int companyIndex, out int platoonIndex, out int squadIndex)
 	{		
 		companyIndex = -1;
 		platoonIndex = -1;
@@ -127,12 +128,14 @@ class SCR_CallsignManagerComponent : SCR_BaseGameModeComponent
 		
 		//~Todo: Add logic for assigning same company callsigns by getting closest (same faction) company
 		
-		//Assign the first available callsign
-		if (!callsignInfo.GetIsAssignedRandomly())
-			AssignFirstAvailableGroupCallsign(faction, companyIndex, platoonIndex, squadIndex);
-		//Assign a random available callsign
-		else 
+		
+		if (callsignInfo.GetIsAssignedRandomly())
 			AssignRandomGroupCallsigns(faction, companyIndex, platoonIndex, squadIndex);
+		else if (callsignInfo.GetAssignCallsignBasedOnGroupRole())
+			AssignGroupRoleSpecificGroupCallsign(faction, group, companyIndex, platoonIndex, squadIndex);
+		else
+			AssignFirstAvailableGroupCallsign(faction, companyIndex, platoonIndex, squadIndex);
+		
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -172,6 +175,30 @@ class SCR_CallsignManagerComponent : SCR_BaseGameModeComponent
 		Print(string.Format("All available callsigns are taken for faction '%1', so a random duplicate is assigned instead. If this happenes a lot then more callsigns should be added for this faction!", faction.GetFactionName()), LogLevel.WARNING);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void AssignGroupRoleSpecificGroupCallsign(Faction faction, notnull SCR_AIGroup group, out int companyIndex, out int platoonIndex, out int squadIndex)
+	{
+		SCR_FactionCallsignData factionCallsign; 
+		if (m_mAvailableCallsigns.Find(faction, factionCallsign))
+		{
+			if (factionCallsign.GetGroupRoleSpecificCompanyCallsign(group, companyIndex, platoonIndex, squadIndex))
+			{
+				RemoveAvailableGroupCallsign(faction, companyIndex, platoonIndex, squadIndex);
+				return;
+			}
+
+			if (factionCallsign.GetRandomCallsign(companyIndex, platoonIndex, squadIndex))
+			{
+				RemoveAvailableGroupCallsign(faction, companyIndex, platoonIndex, squadIndex);
+				return;
+			}
+		}
+
+		//Callsign was not assigned as all callsigns are taken
+		AssignRandomDuplicateCallsign(faction, companyIndex, platoonIndex, squadIndex);
+		PrintFormat("All available callsigns are taken for faction '%1', so a random duplicate is assigned instead. If this happenes a lot then more callsigns should be added for this faction!", faction.GetFactionName(), level: LogLevel.WARNING);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] faction

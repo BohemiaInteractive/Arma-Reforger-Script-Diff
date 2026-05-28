@@ -27,12 +27,21 @@ class SCR_DebugCameraCore : SCR_GameCoreBase
 	{
 		if (m_Camera)
 			return;
+		
+#ifdef ENABLE_DIAG
+	#ifndef WORKBENCH
+		//~ Send notification to all players if player teleported and Diag is enabled
+		SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_ENTERED_DEBUG_CAMERA, SCR_PlayerController.GetLocalPlayerId());
+	#endif
+#endif
 
 		EntitySpawnParams spawnParams = new EntitySpawnParams;
 		spawnParams.Transform = transform;
 		m_Camera = GetGame().SpawnEntityPrefab(Resource.Load(m_CameraPrefab), GetGame().GetWorld(), spawnParams);
 
 		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_MANUAL_CAMERA_FREE, 1);
+		
+		
 	}
 
 	//------------------------------------------------------------------------------------------------

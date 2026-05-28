@@ -494,16 +494,6 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 	{
 		super.OnInit(owner);
 		
-		m_OwnerEntity = ChimeraCharacter.Cast(owner);
-		m_CharacterAnimComp = CharacterAnimationComponent.Cast(m_OwnerEntity.FindComponent(CharacterAnimationComponent));
-		m_CharacterControllerComp = CharacterControllerComponent.Cast(m_OwnerEntity.FindComponent(CharacterControllerComponent));
-		
-		m_MeleeComponent = SCR_MeleeComponent.Cast(m_OwnerEntity.FindComponent(SCR_MeleeComponent));
-		//m_WeaponManager = BaseWeaponManagerComponent.Cast(m_OwnerEntity.FindComponent(BaseWeaponManagerComponent));
-		
-		//m_CommandWeapons = GetCommandModifier_Weapon();
-		//m_ThrowingState = EThrowingState.THROWING_NONE;
-
 		m_SwimST = new SCR_CharacterCommandSwimST(m_CharacterAnimComp);
 		m_SwimCommand = new SCR_CharacterCommandSwim(m_CharacterAnimComp, m_SwimST, m_OwnerEntity, GetControllerComponent());
 		m_FlyCommand = new SCR_CharacterCommandFly(m_CharacterAnimComp, m_SwimST, m_OwnerEntity, GetControllerComponent());

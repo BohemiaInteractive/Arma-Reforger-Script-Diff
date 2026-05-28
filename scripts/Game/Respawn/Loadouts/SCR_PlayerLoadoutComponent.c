@@ -510,6 +510,73 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 		GetOnCanPlayerLoadoutResponseInvoker_O().Invoke(this, loadoutIndex, response);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	void DoSetPlayerHasLoadout(bool loadoutValid, bool loadoutChanged, bool notification)
+	{
+		Rpc(DoSetPlayerHasLoadout_O, loadoutValid, loadoutChanged, notification);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void DoSetPlayerHasLoadout_O(bool loadoutValid, bool loadoutChanged, bool notification)
+	{
+		SCR_ArsenalManagerComponent arsenalManager;
+		if (!SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager))
+			return;
+
+		if (notification)
+		{
+			if (arsenalManager.GetLocalPlayerLoadoutAvailable() != loadoutValid || loadoutChanged)
+			{
+				const SCR_PlayerLoadoutData localData = arsenalManager.GetLocalPlayerLoadoutData();
+				if (localData && arsenalManager.GetCalculatedLoadoutSpawnSupplyCostMultiplier() > 0)
+					SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_LOADOUT_SAVED_SUPPLY_COST, localData.LoadoutCost);
+				else
+					SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_LOADOUT_SAVED);
+			}
+			else
+				SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_LOADOUT_NOT_SAVED_UNCHANGED);
+		}
+
+		arsenalManager.SetLocalPlayerLoadoutAvailable(loadoutValid);
+		arsenalManager.GetOnLoadoutUpdated().Invoke(GetGame().GetPlayerController().GetPlayerId(), loadoutValid);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void DoSendPlayerLoadout(SCR_PlayerLoadoutData loadoutData)
+	{
+		Rpc(DoSendPlayerLoadout_O, loadoutData);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void DoSendPlayerLoadout_O(SCR_PlayerLoadoutData loadoutData)
+	{
+		SCR_ArsenalManagerComponent arsenalManager;
+		if (!SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager))
+			return;
+		
+		arsenalManager.m_LocalPlayerLoadoutData = loadoutData;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void DoPlayerClearHasLoadout()
+	{
+		Rpc(DoPlayerClearHasLoadout_O);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void DoPlayerClearHasLoadout_O()
+	{
+		SCR_ArsenalManagerComponent arsenalManager;
+		if (!SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager))
+			return;
+
+		arsenalManager.SetLocalPlayerLoadoutAvailable(false);
+		arsenalManager.GetOnLoadoutUpdated().Invoke(GetGame().GetPlayerController().GetPlayerId(), false);
+	}
+
 	#ifdef ENABLE_DIAG
 	//------------------------------------------------------------------------------------------------
 	//! Draw diagnostics for this component.

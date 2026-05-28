@@ -1,7 +1,7 @@
 class SCR_BallisticData : ScriptAndConfig
 {
-
 	static ref array<ref SCR_BallisticData> s_aBallistics;
+	static bool s_bWaitingForEndOfTheGame;
 
 	//! expected structure
 	//! [0] range,
@@ -9,6 +9,10 @@ class SCR_BallisticData : ScriptAndConfig
 	//! [2] time of flight
 	//! [3] drop per 100m of elevation change,
 	//! [4] time of flight change per 100m of elevation change,
+	//! [5] peak altitude
+	//! [6] angle of impact
+	//! [7] crosswind correction in mils
+	//! [8] longitudinal wind correction in meters
 	protected ref array<ref array<float>> m_aBallisticValues;
 	protected ResourceName m_sProjectilePrefabName;
 	protected bool m_bDirectFireMode;
@@ -158,9 +162,35 @@ class SCR_BallisticData : ScriptAndConfig
 		{
 			m_mDistances.Insert(ballistics[0], i);
 		}
+
 		m_sProjectilePrefabName = projectilePrefab;
 		m_bDirectFireMode = directFireMode;
 		m_iRangeStep = rangeStep;
 		m_fProjectileInitSpeedCoef = speedCoef;
+		SubscribeToGameEndEvent();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static void SubscribeToGameEndEvent()
+	{
+		if (s_bWaitingForEndOfTheGame)
+			return;
+
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (!gameMode)
+			return;
+
+		s_bWaitingForEndOfTheGame = true;
+		gameMode.GetOnGameEnd().Insert(ReleaseData);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Clears static data to ensure that it doesnt persist over multiple sessions, and thus doesnt grow unexpectedly
+	protected static void ReleaseData()
+	{
+		s_aBallistics = null;
+		s_bWaitingForEndOfTheGame = false;
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		gameMode.GetOnGameEnd().Remove(ReleaseData);
 	}
 }

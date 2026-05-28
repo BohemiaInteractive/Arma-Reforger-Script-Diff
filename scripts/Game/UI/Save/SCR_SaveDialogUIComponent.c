@@ -321,18 +321,7 @@ class SCR_SaveDialogUIComponent : SCR_ScriptedWidgetComponent
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
-	{
-		if (!GetGame().InPlayMode())
-		{
-			//! DEBUG
-			Widget parent = w.FindWidget("SizeBase.DialogBase.VerticalLayout.Content.ContentSizeConstraints.ContentVerticalLayout.ContentLayoutContainer.SavesContent.SaveEntryList.m_SaveScroller.m_SaveList");
-			for (int i = 0; i < 10; i++)
-			{
-				GetGame().GetWorkspace().CreateWidgets(m_sEntryLayout, parent);
-			}
-			return;
-		}
-		
+	{		
 		m_wRoot = w;
 		m_Widgets.Init(w);
 		m_fSliderPosY = -1;
@@ -346,18 +335,14 @@ class SCR_SaveDialogUIComponent : SCR_ScriptedWidgetComponent
 
 		UpdateButtons();
 
-		SaveGameManager manager = GetGame().GetSaveGameManager();
-		manager.RetrieveSaveGameInfo({manager.GetCurrentMissionResource()}, new SaveGameOperationCb(OnSavesLoaded));
+		const SaveGameManager manager = GetGame().GetSaveGameManager();
+		manager.GetSaves(manager.GetCurrentMissionResource(), new SaveGameObtainCallback(OnSavesLoaded));
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnSavesLoaded(bool success)
+	protected void OnSavesLoaded(bool success, array<SaveGame> saves)
 	{
 		//--- Create new entries
-		array<SaveGame> saves();
-		SaveGameManager manager = GetGame().GetSaveGameManager();
-		manager.GetSaves(saves, manager.GetCurrentMissionResource());
-
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
 		Widget entryWidget;
 		SCR_ModularButtonComponent entryButton;
@@ -378,6 +363,7 @@ class SCR_SaveDialogUIComponent : SCR_ScriptedWidgetComponent
 			
 			entryCompoment = SCR_SaveLoadEntryComponent.Cast(entryWidget.FindHandler(SCR_SaveLoadEntryComponent));
 			entryCompoment.SetSaveData(save);
+			entryWidget.SetZOrder(save.GetSavePointCreatedUnix());
 
 			m_mComponentEntries.Insert(entryWidget, entryCompoment);
 			m_aEntriesHidden.Insert(entryWidget);
@@ -386,7 +372,7 @@ class SCR_SaveDialogUIComponent : SCR_ScriptedWidgetComponent
 			entryWidget.SetOpacity(0);
 
 			if (m_bIsLoad && idx == 0)
-				SelectEntry(entryWidget, entryCompoment);
+				GetGame().GetCallqueue().CallLater(SelectEntry, 10, false, entryWidget, entryCompoment);
 		}
 
 		//--- Initiate periodic check which will load and show metadata only for entries that are actually shown. Doing it all at once here would be too expensive.

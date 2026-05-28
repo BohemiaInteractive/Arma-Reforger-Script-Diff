@@ -211,12 +211,25 @@ class SCR_PlaceableItemComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Method used to execute custom validation of the surface entity
+	//! \param[in] caller
+	//! \param[out] cantPlaceReason
+	//! \return true if custom space validation was performed, otherwise false
+	bool OverrideIsSurfaceValid(notnull SCR_ItemPlacementComponent caller, out ENotification cantPlaceReason, IEntity surfaceEnt, vector worldPosition, vector surfaceNorm, int nodeIndex, int colliderIndex, SurfaceProperties surfaceProps, string surfaceMaterial, string colliderName);
+
+	//------------------------------------------------------------------------------------------------
 	//! Method used to execute custom space validation
 	//! \param[in] caller
 	//! \param[in,out] transform pointer containing rotation and position at which item will be placed. This position has already applied offset of 1% of its up vector (1cm)
 	//! \param[out] cantPlaceReason
 	//! \return true if custom space validation was performed, otherwise false
 	bool OverrideSpaceValidation(notnull SCR_ItemPlacementComponent caller, inout vector transform[4], out ENotification cantPlaceReason);
+
+	//------------------------------------------------------------------------------------------------
+	//! Method used to override the position and rotation of the preview
+	//! \param[in] caller
+	//! \param[in,out] transform pointer containing rotation and position at which item preivew will be shown, and from which the space validation will be done
+	void OverridePreviewTransform(notnull SCR_ItemPlacementComponent caller, inout vector transform[4]);
 
 	//------------------------------------------------------------------------------------------------
 	//! Method executed when player confirms item placement by pressing SCR_ItemPlacementComponent.ACTION_NAME_PLACEMENT

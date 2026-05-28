@@ -12,5 +12,6 @@ enum EVotingType
 	AUTO_KICK,			//!< Kick voting raised by the WarCrimesModule if enabled in the world
 	COMMANDER,			//!< Give a player faction commander rights, value is playerID
 	COMMANDER_WITHDRAW,	//!< As a faction commander, withdraw your rights, value is player ID
+	COMMANDER_RELIEVE,	//!< Relieve a commander of duty, value is player ID
 	GROUP_LEADER,		//!< Become a group leader, value is playerID
 }

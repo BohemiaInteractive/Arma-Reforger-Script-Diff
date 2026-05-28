@@ -167,13 +167,17 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		compartmentManager.GetOccupants(occupants);
 		CompartmentAccessComponent compartmentAccess;
 
+		ChimeraCharacter character;
 		foreach (IEntity occupant : occupants)
 		{
-			if (ignorePlayers && playerManager.GetPlayerIdFromControlledEntity(occupant) > 0)
+			character = ChimeraCharacter.Cast(occupant);
+			if (!character)
 				continue;
 
-			compartmentAccess = CompartmentAccessComponent.Cast(occupant.FindComponent(CompartmentAccessComponent));
+			if (ignorePlayers && playerManager.GetPlayerIdFromControlledEntity(character) > 0)
+				continue;
 
+			compartmentAccess = character.GetCompartmentAccessComponent();
 			if (compartmentAccess && compartmentAccess.IsInCompartment())
 				crewCompartmentAccess.Insert(compartmentAccess);
 		}
@@ -202,12 +206,14 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void SetTransform(vector transform[4], bool changedByUser = false)
+	override bool SetTransform(vector transform[4], bool changedByUser = false)
 	{
-		super.SetTransform(transform, changedByUser);
+		if (!super.SetTransform(transform, changedByUser))
+			return false;
 
 		//~ Add feedback to players that they are teleported when inside of the vehicle
 		PlayerTeleportedFeedback();
+		return true;
 	}
 
 	//--------------------------------------------------- Spawn occupants ---------------------------------------------------\\

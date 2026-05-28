@@ -3,7 +3,7 @@ class SCR_PlacedCommandInfoDisplay : SCR_InfoDisplayExtended
 	[Attribute("1000", desc: "Max distance to command position in meters.")]
 	protected float m_fCommandVisualRange;
 
-	[Attribute("0 1 0.5 0", UIWidgets.GraphDialog, params: "1 0.6 0 0.2")]
+	[Attribute("0 1 0.5 0", UIWidgets.CurveDialog, params: "1 0.6 0 0.2")]
 	protected ref Curve m_aScaleCurve;
 
 	[Attribute("Frame")]

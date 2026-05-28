@@ -147,5 +147,7 @@ enum SCR_EScriptTemplateType
 	ScriptEditorPlugin,
 	WorldEditorPlugin,
 	WorldEditorTool,
+	TEST_SUITE,
+	TEST_CASE,
 }
 #endif // WORKBENCH

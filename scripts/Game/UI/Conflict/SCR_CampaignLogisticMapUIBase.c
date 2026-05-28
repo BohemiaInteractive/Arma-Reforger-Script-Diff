@@ -33,15 +33,6 @@ class SCR_CampaignLogisticMapUIBase : SCR_CampaignMapUIBase
 	[Attribute("PriorityWrapper")]
 	protected string m_sPriorityWrapperName;
 
-	[Attribute("NextShipmentWrapper")]
-	protected string m_sNextShipmentWrapperName;
-
-	[Attribute("NextShipmentText")]
-	protected string m_sNextShipmentTextName;
-
-	[Attribute("60", params: "0 inf 1", desc: "How many seconds between updates of next shipment text")]
-	protected float m_fNextShipmentTextUpdatePeriod;
-
 	const string LOGISTIC_CLOSE_ACTION_NAME = "LogisticClose";
 
 	protected SCR_SliderComponent m_SupplyLimitSlider;
@@ -60,12 +51,9 @@ class SCR_CampaignLogisticMapUIBase : SCR_CampaignMapUIBase
 	protected TextWidget m_wPriorityTextWidget;
 	protected Widget m_wPriorityButtonWidget1, m_wPriorityButtonWidget2, m_wPriorityButtonWidget3;
 	protected Widget m_wPriorityWrapper;
-	protected Widget m_wNextShipmentWrapper;
-	protected TextWidget m_wNextShipmentText;
 	protected Widget m_wSupplyLimitSliderWidget;
 
 	protected static ref ScriptInvokerBool s_OnBaseSelected;
-	protected static const LocalizedString NEXT_SHIPMENT_ETA = "#AR-FactionCommander_LogisticUIBaseNextShipmentETA";
 
 	//------------------------------------------------------------------------------------------------
 	static ScriptInvokerBool GetOnBaseSelected()
@@ -161,20 +149,13 @@ class SCR_CampaignLogisticMapUIBase : SCR_CampaignMapUIBase
 		if (!m_Base || faction != m_Base.GetFaction())
 		{
 			m_wPriorityWrapper.SetVisible(false);
-			m_wNextShipmentWrapper.SetVisible(false);
 			return super.OnMouseEnter(w, x, y);
 		}
 
 		if (m_Base.GetType() == SCR_ECampaignBaseType.SOURCE_BASE)
-		{
 			m_wPriorityWrapper.SetVisible(false);
-			m_wNextShipmentWrapper.SetVisible(true);
-			SetNextShipmentText();
-			GetGame().GetCallqueue().CallLater(SetNextShipmentText, m_fNextShipmentTextUpdatePeriod * 1000, true);
-		}
 		else
 		{
-			m_wNextShipmentWrapper.SetVisible(false);
 			UpdatePriorityWidgetsValues(m_Base.GetSupplyRequestExecutionPriority());
 			m_Base.GetOnSupplyRequestExecutionPriorityChanged().Insert(UpdatePriorityWidgetsValues);
 		}
@@ -241,9 +222,6 @@ class SCR_CampaignLogisticMapUIBase : SCR_CampaignMapUIBase
 		if (m_bIsSelected)
 			return false;
 
-		if (m_Base.GetType() == SCR_ECampaignBaseType.SOURCE_BASE)
-			GetGame().GetCallqueue().Remove(SetNextShipmentText);
-
 		return super.OnMouseLeave(w, enterW, x, y);
 	}
 
@@ -252,9 +230,6 @@ class SCR_CampaignLogisticMapUIBase : SCR_CampaignMapUIBase
 	{
 		// Add delay so Select is executed after OnClick and widget is properly closed
 		GetGame().GetCallqueue().CallLater(Select, 0, false, false);
-
-		if (m_Base.GetType() == SCR_ECampaignBaseType.SOURCE_BASE)
-			GetGame().GetCallqueue().Remove(SetNextShipmentText);
 	}
 
 	// ------------------------------------------------------------------------------
@@ -375,16 +350,6 @@ class SCR_CampaignLogisticMapUIBase : SCR_CampaignMapUIBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void SetNextShipmentText()
-	{
-		BaseWorld world = GetGame().GetWorld();
-		if (!world)
-			return;
-
-		m_wNextShipmentText.SetText(WidgetManager.Translate(NEXT_SHIPMENT_ETA, Math.Ceil((m_Base.GetSuppliesArrivalTime() - world.GetWorldTime()) * 0.001 / 60)));
-	}
-
-	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		super.HandlerAttached(w);
@@ -443,10 +408,6 @@ class SCR_CampaignLogisticMapUIBase : SCR_CampaignMapUIBase
 			if (button)
 				button.m_OnToggled.Insert(OnPriorityButtonToggled);
 		}
-
-		m_wNextShipmentWrapper = w.FindAnyWidget(m_sNextShipmentWrapperName);
-
-		m_wNextShipmentText = TextWidget.Cast(w.FindAnyWidget(m_sNextShipmentTextName));
 
 		SetPriorityButtonWidgetsVisibility(false);
 

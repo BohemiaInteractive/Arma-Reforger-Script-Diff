@@ -21,6 +21,12 @@ enum GlobalMCRMode
 	Multiply = 1
 }
 
+enum CamoBlendMode
+{
+	Blend = 0,
+	Multiply = 1
+}
+
 // Copied over from TextureImportTool
 bool IsImage(string className)
 {
@@ -53,6 +59,8 @@ class ContainerJSONSerializer
 			{
 				return typename.EnumToString(GlobalMCRMode, enumValue);
 			}
+			case CamoBlendMode:
+				return typename.EnumToString(CamoBlendMode, enumValue);
 		}
 		return "";
 		
@@ -439,15 +447,17 @@ class ResourceInfo : JsonApiStruct
 	private string status;
 	private string message;
 	private string resourceName;
+	private string absolutePath; 
 	private ref JsonApiStruct data;
 
 	//----------------------------------------------------------------------------------------------
-	void ResourceInfo(InfoStatus _status, ResourceName _resourceName, string _message, JsonApiStruct _data)
+	void ResourceInfo(InfoStatus _status, ResourceName _resourceName, string _absolute_path, string _message, JsonApiStruct _data)
 	{
 		status = typename.EnumToString(InfoStatus, _status);
 		resourceName = _resourceName;
 		message = _message;
 		data = _data;
+		absolutePath = _absolute_path;
 	
 		RegAll();
 		if (data == null)
@@ -475,6 +485,7 @@ class ResourceInfo : JsonApiStruct
 			return ResourceInfo(
 			InfoStatus.ERROR, 
 			string.Empty,
+			string.Empty,
 			string.Format("Resource not found: %1", _resourceName), 
 			null);
 		}
@@ -486,6 +497,7 @@ class ResourceInfo : JsonApiStruct
 			return ResourceInfo(
 				InfoStatus.ERROR,
 				_resourceName,
+				string.Empty,
 				string.Format("Invalid configuration container for resource: %1", _resourceName), 
 				null);
 		}
@@ -500,11 +512,12 @@ class ResourceInfo : JsonApiStruct
 	 			return ResourceInfo(
 					InfoStatus.ERROR,
 					_resourceName,
+					string.Empty,
 					CreateSourceFileNotFoundmessage(_resourceName),
 					null);
 	 		}
 			
-	 		return ResourceInfo(InfoStatus.OK, _resourceName, string.Empty, new XOBResourceInfo(configurationContainer, fbxSourcePath, expand));
+	 		return ResourceInfo(InfoStatus.OK, _resourceName, fbxSourcePath, string.Empty, new XOBResourceInfo(configurationContainer, fbxSourcePath, expand));
 		}
 		
 		if (className == "EMATResourceClass")
@@ -516,11 +529,22 @@ class ResourceInfo : JsonApiStruct
 	 			return ResourceInfo(
 					InfoStatus.ERROR, 
 					_resourceName,
+					string.Empty,
 					string.Format("Resource could not be loaded: %1", _resourceName),
 					null);
 			}
 			
-	 		return ResourceInfo(InfoStatus.OK, _resourceName, string.Empty, new MaterialResourceInfo(_resourceName, expand));
+			string file_path = resource.GetResource().GetResourceName().GetPath();
+			string absolute_path;
+			
+			bool result = Workbench.GetAbsolutePath(file_path, absolute_path, true);
+			
+			if (!result){ 
+				absolute_path = string.Empty;
+			}
+			
+			
+	 		return ResourceInfo(InfoStatus.OK, _resourceName, absolute_path, string.Empty, new MaterialResourceInfo(_resourceName, expand));
 		}
 		
 		
@@ -533,6 +557,7 @@ class ResourceInfo : JsonApiStruct
 	 			return ResourceInfo(
 					InfoStatus.ERROR, 
 					_resourceName,
+					string.Empty,
 					string.Format("Resource could not be loaded: %1", _resourceName),
 					null);
 			}
@@ -540,7 +565,16 @@ class ResourceInfo : JsonApiStruct
 			if (className == "GameMaterialResourceClass") //Hack to prevent recursion
 				expand = false;
 			
-	 		return ResourceInfo(InfoStatus.OK, _resourceName, "", new GenericResourceInfo(_resourceName, expand));
+			string file_path = resource.GetResource().GetResourceName().GetPath();
+			string absolute_path;
+			
+			bool result = Workbench.GetAbsolutePath(file_path, absolute_path, true);
+			
+			if (!result){ 
+				absolute_path = string.Empty;
+			}
+			
+	 		return ResourceInfo(InfoStatus.OK, _resourceName, absolute_path, "", new GenericResourceInfo(_resourceName, expand));
 		}
 		
 		
@@ -552,6 +586,7 @@ class ResourceInfo : JsonApiStruct
 	 			return ResourceInfo(
 					InfoStatus.ERROR, 
 					_resourceName,
+					string.Empty,
 					CreateSourceFileNotFoundmessage(_resourceName),
 					null);
 	 		}
@@ -571,12 +606,13 @@ class ResourceInfo : JsonApiStruct
 			
 	 		TextureResourceInfo textureProperty = new TextureResourceInfo(textureSourcePath, postFix, colorSpace, conversion, containsMips);
 			
-	 		return ResourceInfo(InfoStatus.OK, _resourceName, string.Empty, textureProperty);
+	 		return ResourceInfo(InfoStatus.OK, _resourceName, textureSourcePath, string.Empty, textureProperty);
 		}
 		
 		return ResourceInfo(
 			InfoStatus.ERROR, 
 			_resourceName,
+			string.Empty,
 			string.Format("Unsuported resource type: %1 for resource: %2", className, _resourceName),
 			null); 
 	}
@@ -589,6 +625,7 @@ class ResourceInfo : JsonApiStruct
 			return ResourceInfo(
 			InfoStatus.ERROR, 
 			string.Empty,
+			string.Empty,
 			string.Format("Resource with absolute path: %1 not found. ", absPath), 
 			null);
 		}
@@ -600,6 +637,7 @@ class ResourceInfo : JsonApiStruct
 		{
 			return ResourceInfo(
 			InfoStatus.ERROR, 
+			string.Empty,
 			string.Empty,
 			string.Format("Resource with absolute path: %1 is not registered with current runing project. ", absPath), 
 			null);
@@ -682,6 +720,7 @@ class GetPrefabChildInfo: NetApiHandler
 			return ResourceInfo(
 			InfoStatus.ERROR, 
 			req.resourceName,
+			string.Empty,
 			string.Format("Resource not found: %1", req.resourceName), 
 			null);
 		}
@@ -702,13 +741,14 @@ class GetPrefabChildInfo: NetApiHandler
 			return ResourceInfo(
 			InfoStatus.ERROR, 
 			req.resourceName,
+			string.Empty,
 			string.Format("Prefab doesn't have child with index: %1", req.childIdx), 
 			null);
 		}
 		
 		GenericJSONContainer data = new GenericJSONContainer(childContainer, false, req.expandResource);
 		
-		return ResourceInfo(InfoStatus.OK, "", string.Empty, data);
+		return ResourceInfo(InfoStatus.OK, "", string.Empty, string.Empty, data);
 	}
 }
 
@@ -901,6 +941,7 @@ class ExportMaterialResource : NetApiHandler
 				return ResourceInfo(
 				InfoStatus.ERROR, 
 				string.Empty,
+				string.Empty,
 				string.Format("Error creating BaseContainer with type: %1", req.type), 
 				null);
 			}
@@ -917,6 +958,7 @@ class ExportMaterialResource : NetApiHandler
 			{
 				return ResourceInfo(
 				InfoStatus.ERROR, 
+				string.Empty,
 				string.Empty,
 				string.Format("Resource not found: %1", req.resourceName), 
 				null);
@@ -1005,6 +1047,7 @@ class ExportFBXResource : NetApiHandler
 			{
 				return ResourceInfo(
 				InfoStatus.ERROR, 
+				string.Empty,
 				string.Empty,
 				string.Format("Resource could not be registered: %1", req.resourcePath), 
 				null);
@@ -1098,6 +1141,7 @@ class ExportTextureResource : NetApiHandler
 			return ResourceInfo(
 			InfoStatus.ERROR, 
 			string.Empty,
+			string.Empty,
 			string.Format("Resource could not be registered (Missing source path!): %1", resourcePath), 
 			null);
 		}
@@ -1106,6 +1150,7 @@ class ExportTextureResource : NetApiHandler
 		{
 			return ResourceInfo(
 			InfoStatus.ERROR, 
+			string.Empty,
 			string.Empty,
 			string.Format("Resource could not be registered (Missing destination path!): %1", resourcePath), 
 			null);
@@ -1135,6 +1180,7 @@ class ExportTextureResource : NetApiHandler
 			{
 				return ResourceInfo(
 				InfoStatus.ERROR, 
+				string.Empty,
 				string.Empty,
 				string.Format("Resource could not be registered: %1", resourcePath), 
 				null);

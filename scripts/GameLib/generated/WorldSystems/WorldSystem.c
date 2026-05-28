@@ -40,11 +40,11 @@ class WorldSystem: EventProvider
 			ent.SetWorldTransform(myNewTransform);
 			AddEntity(ent);
 		}
-		Update(); //< This is the call where entities are updated in batch
-		EndUpdate();
+		EndUpdate(); //< This is the call where entities are updated in batch
 	}
 	*/
 	proto external protected void BeginUpdate();
+	[Obsolete("EndUpdate is only needed now")]
 	proto external protected void Update();
 	proto external protected void EndUpdate();
 	proto external protected void AddEntity(notnull IEntity entity);
@@ -59,7 +59,7 @@ class WorldSystem: EventProvider
 
 	/*!
 	Should return true for systems this system depends on. False otherwise
-	\deprecated Use WorldSystemInfo.ExecuteAfter instead.
+	\deprecated Use WorldSystemInfo.AddExecuteAfter() instead.
 	*/
 	[Obsolete("Use WorldSystemInfo.AddExecuteAfter() instead.")]
 	event protected bool DependsOn(WorldSystemPoint point, WorldSystem system) { return false; };

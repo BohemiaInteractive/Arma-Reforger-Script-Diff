@@ -40,6 +40,9 @@ class SCR_VotingBase
 	[Attribute("0", desc: "When true, the subject of voting has voting timer always enabled during the voting progress.")]
 	protected bool m_bAlwaysDisplayVoteSubjectVotingTimer;
 	
+	[Attribute("0", desc: "Makes the voting timer visible for the vote initiator throughout the voting process.")]
+	protected bool m_bAlwaysDisplayVoteInitiatorVotingTimer;
+	
 	protected float m_fVoteCooldownTimeStamp = -1;
 	protected bool m_bHasInitiatedVotingLocallyOnce;
 	
@@ -352,6 +355,13 @@ class SCR_VotingBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
+	bool GetAlwaysDisplayVoteInitiatorVotingTimer()
+	{
+		return m_bAlwaysDisplayVoteInitiatorVotingTimer;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Periodically update the voting.
 	//! \param[in] timeSlice Time since the last update
 	void Update(float timeSlice)
@@ -376,6 +386,7 @@ class SCR_VotingBase
 		m_bCancelWhenSubjectLeavesTheServer = template.m_bCancelWhenSubjectLeavesTheServer;
 		m_iVoteCooldownTime = template.m_iVoteCooldownTime;
 		m_bAlwaysDisplayVoteSubjectVotingTimer = template.m_bAlwaysDisplayVoteSubjectVotingTimer;
+		m_bAlwaysDisplayVoteInitiatorVotingTimer = template.m_bAlwaysDisplayVoteInitiatorVotingTimer;
 		
 		if (remainingDuration == -1)
 			m_fDuration = template.m_fDuration;

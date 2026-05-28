@@ -4,6 +4,7 @@ Entity Health Attribute for getting and setting varriables in Editor Attribute w
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_BloodEditorAttribute : SCR_BaseValueListEditorAttribute
 {
+	//------------------------------------------------------------------------------------------------
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{
 		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(item);
@@ -36,6 +37,8 @@ class SCR_BloodEditorAttribute : SCR_BaseValueListEditorAttribute
 		//~ Sends over current blood level, % needed to fall Unconscious and if Unconsciousness is premitted
 		return SCR_BaseEditorAttributeVar.CreateVector(Vector(Math.Round(bloodLevel * 100), bloodLevelContiousness, characterDamageManager.GetPermitUnconsciousness()));
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{
 		if (!var) 
@@ -64,6 +67,13 @@ class SCR_BloodEditorAttribute : SCR_BaseValueListEditorAttribute
 		float bloodLevelLoseDeath = bloodHitzone.GetDamageStateThreshold(ECharacterBloodState.DESTROYED);
 		float bloodLevel = Math.Lerp(bloodLevelLoseDeath, 1, var.GetFloat() * 0.01);
 		bloodLevel = Math.Clamp(bloodLevel, 0, 1);
+		if (bloodLevel == 0)
+		{
+			Instigator killer = Instigator.CreateInstigatorGM(playerID);
+			characterDamageManager.Kill(killer);
+			return;
+		}
+
 		bloodHitzone.SetHealthScaled(bloodLevel);
 	}
-};
+}

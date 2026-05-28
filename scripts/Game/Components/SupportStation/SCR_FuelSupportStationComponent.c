@@ -319,7 +319,7 @@ class SCR_FuelSupportStationComponent : SCR_BaseSupportStationComponent
 		if (!userEditableEntity)
 			return;
 		
-		RplId userRplId = Replication.FindId(userEditableEntity);
+		RplId userRplId = Replication.FindItemId(userEditableEntity);
 		
 		//~ Check if player is in vehicle that is being refueled
 		array<int> playersInVehicle = {};

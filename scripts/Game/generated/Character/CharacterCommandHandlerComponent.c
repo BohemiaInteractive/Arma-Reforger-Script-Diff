@@ -104,6 +104,9 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 
 	// callbacks
 
+	//----------------------------------------------------------------------------
+	event protected bool OnRplSave(ScriptBitWriter writer) { return true; };
+	event protected bool OnRplLoad(ScriptBitReader reader) { return true; };
 	/*
 	----------------------------------------------------------------------------
 	 full body handlers

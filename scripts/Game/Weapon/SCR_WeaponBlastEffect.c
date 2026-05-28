@@ -9,10 +9,10 @@ class SCR_WeaponBlastEffect : ScriptAndConfig
 	[Attribute(desc: "How much damage should be dealt at point blank")]
 	protected float m_fDamageValue;
 
-	[Attribute("0 1 1 0", uiwidget: UIWidgets.GraphDialog, desc: "How damage will scale with distance", params: "1 1 0 0")]
+	[Attribute("0 1 1 0", uiwidget: UIWidgets.CurveDialog, desc: "How damage will scale with distance", params: "1 1 0 0")]
 	protected ref Curve m_aDistanceDamageFalloff;
 
-	[Attribute("0 1 1 0", uiwidget: UIWidgets.GraphDialog, desc: "How damage will scale with angular distance from the center stream of the blast.\nThis can be used to form the shape in which damage is applied.\nHorizontal axis is responsible for how close to the zero deviation we are 0 == as far as possible, 1 as close as possible", params: "1 1 0 0")]
+	[Attribute("0 1 1 0", uiwidget: UIWidgets.CurveDialog, desc: "How damage will scale with angular distance from the center stream of the blast.\nThis can be used to form the shape in which damage is applied.\nHorizontal axis is responsible for how close to the zero deviation we are 0 == as far as possible, 1 as close as possible", params: "1 1 0 0")]
 	protected ref Curve m_aAngleDamageFalloff;
 
 	//------------------------------------------------------------------------------------------------

@@ -8,6 +8,10 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	protected int m_iGroupID = -1;
 	// Map with playerID and list of groups the player was invited to
 	protected ref map<int, ref array<int>> m_mPlayerInvitesToGroups;
+
+	// Keeps track of Group Invites <GroupID, PlayerID from player that sent Group Invite>
+	protected ref map<int, int> m_mGroupIdInvites = new map<int, int>();
+
 	protected ref ScriptInvoker<int, int> m_OnInviteReceived;
 	protected ref ScriptInvoker<int> m_OnInviteAccepted;
 	protected ref ScriptInvoker<int> m_OnInviteCancelled;
@@ -15,8 +19,6 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	protected ref ScriptInvokerInt m_OnSetSelectedGroupID;
 
 	protected int m_iUISelectedGroupID = -1;
-	protected int m_iGroupInviteID = -1;
-	protected int m_iGroupInviteFromPlayerID = -1;
 	protected int m_iPreviousGroupID = -1;
 	protected string m_sGroupInviteFromPlayerName; //Player name is saved to get the name of the one who invited even if that player left the server	
 	
@@ -431,23 +433,52 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	//!
 	void AcceptInvite()
 	{
-		if (m_iGroupInviteID >= 0)
-		{
-			SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
-			if (!groupManager)
-				return;
-			
-			SCR_AIGroup group = groupManager.FindGroup(m_iGroupInviteID);
-			if (!group)
-				return;
-			
-			group.RemoveRequester(GetPlayerID());
-			
-			RequestJoinGroup(m_iGroupInviteID);
-			m_iGroupInviteID = -1;
-			if (m_OnInviteAccepted)
-				m_OnInviteAccepted.Invoke();
-		}
+		if (m_iUISelectedGroupID < 0 || !HasInviteFromGroup(m_iUISelectedGroupID))
+			return;
+
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager)
+			return;
+
+		SCR_AIGroup group = groupManager.FindGroup(m_iUISelectedGroupID);
+		if (!group)
+			return;
+		
+		group.RemoveRequester(GetPlayerID());
+
+		RequestJoinGroup(m_iUISelectedGroupID);
+
+		m_mGroupIdInvites.Remove(m_iUISelectedGroupID);
+
+		if (m_OnInviteAccepted)
+			m_OnInviteAccepted.Invoke(m_iUISelectedGroupID);
+		
+		m_iUISelectedGroupID = -1;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	void DeclineInvite()
+	{
+		if (m_iUISelectedGroupID < 0 || !HasInviteFromGroup(m_iUISelectedGroupID))
+			return;
+
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager)
+			return;
+
+		SCR_AIGroup group = groupManager.FindGroup(m_iUISelectedGroupID);
+		if (!group)
+			return;
+
+		group.RemoveRequester(GetPlayerID());
+
+		m_mGroupIdInvites.Remove(m_iUISelectedGroupID);
+
+		if (m_OnInviteCancelled)
+			m_OnInviteCancelled.Invoke(m_iUISelectedGroupID);
+		
+		m_iUISelectedGroupID = -1;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -471,10 +502,12 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (group.GetGroupID() == GetSelectedGroupID())
 			SetSelectedGroupID(-1);
 		
-		if (group.GetGroupID() == m_iGroupInviteID)
+		int groupId = group.GetGroupID();
+
+		if (m_mGroupIdInvites.Contains(groupId))
 		{
 			//delete the invite if the target group has been deleted
-			m_iGroupInviteID = -1;
+			m_mGroupIdInvites.Remove(groupId);
 			if (m_OnInviteCancelled)
 				m_OnInviteCancelled.Invoke();
 		}
@@ -551,9 +584,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	void RPC_DoInvitePlayer(int groupID, int fromPlayerID)
 	{
-		m_iGroupInviteID = groupID;
-		m_iGroupInviteFromPlayerID = fromPlayerID;
-		
+		if (!m_mGroupIdInvites.Contains(groupID))
+			m_mGroupIdInvites.Insert(groupID, fromPlayerID);
+
 		//Save player name so it can be obtained even if the player left
 		PlayerManager playerManager = GetGame().GetPlayerManager();
 		if (playerManager)
@@ -664,6 +697,13 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!scrFaction)
 			return;
 
+		array<SCR_EGroupRole> availableGroupRoles = groupsManager.GetAvailableGroupRoles(faction, playerId);
+		if (!availableGroupRoles || !availableGroupRoles.Contains(groupRole))
+		{
+			Print("Group role is not available", level: LogLevel.WARNING);
+			return;
+		}
+
 		// No empty group found, we allow creation of new group
 		SCR_AIGroup newGroup = groupsManager.CreateNewPlayableGroup(faction, groupRole);
 
@@ -721,6 +761,18 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!group.IsPlayerLeader(GetPlayerID()))
 			return;
 		
+		// if we have a reserves group, we prioritize putting the kicked player in there.
+		array<SCR_AIGroup> playableGroups = groupsManager.GetPlayableGroupsByFaction(group.GetFaction());
+		foreach (SCR_AIGroup groupInstance : playableGroups)
+		{
+			if (groupInstance.GetGroupRole() == SCR_EGroupRole.RESERVES)
+			{
+				playerGroupController.RequestJoinGroup(groupInstance.GetGroupID());
+				return;
+			}
+		}
+		
+		// No reserve group found, so we will create a new group.
 		SCR_AIGroup newGroup = groupsManager.GetFirstNotFullForFaction(group.GetFaction(), group, true);
 		if (!newGroup)
 			newGroup = groupsManager.CreateNewPlayableGroup(group.GetFaction());
@@ -779,12 +831,14 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	void RPC_DoChangeGroupID(int groupID)
 	{
 		m_iGroupID = groupID;
-		if (groupID == m_iGroupInviteID)
+		if (HasInviteFromGroup(groupID))
 		{
 			//reset the invite if player manually joined the group he is invited into
-			m_iGroupInviteID = -1;
+			m_mGroupIdInvites.Remove(groupID);
+			m_iUISelectedGroupID = -1;
+
 			if (m_OnInviteCancelled)
-				m_OnInviteCancelled.Invoke();
+				m_OnInviteCancelled.Invoke(groupID);
 		}
 		if (m_OnGroupChanged)
 			GetGame().GetCallqueue().CallLater(OnGroupChangedDelayed, 0, false, groupID);
@@ -822,6 +876,37 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 			m_iGroupID = groupIDAfter;
 			Rpc(RPC_DoChangeGroupID, groupIDAfter);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Remove player from group
+	//! \param[in] playerID
+	void RequestRemovePlayer(int playerID)
+	{
+		Rpc(RpcAsk_RemovePlayer, playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Ask the server to remove a player from player group
+	//! \param[in] playerID
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void RpcAsk_RemovePlayer(int playerID)
+	{
+		if (m_iGroupID < 0)
+			return;
+		
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager)
+			return;
+		
+		SCR_AIGroup group = groupsManager.FindGroup(m_iGroupID);
+		if (!group)
+			return;
+		
+		m_iGroupID = -1;
+		group.RemovePlayer(playerID);
+		if (group.GetPlayerCount() == 0) // is the group still nonempty?
+			groupsManager.DeleteGroupDelayed(group);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -924,24 +1009,43 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \return
-	int GetGroupInviteID()
+	//! \return groupId at the given index
+	//! \param[in] index
+	int GetGroupInviteIdFromIndex(int index)
 	{
-		return m_iGroupInviteID;
-	}	
-	
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] value
-	void SetGroupInviteID(int value)
-	{
-		m_iGroupInviteID = value;
+		return m_mGroupIdInvites.Get(index);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \return
-	int GetGroupInviteFromPlayerID()
+	//! \param[in] groupId
+	void RemoveGroupInviteId(int groupId)
 	{
-		return m_iGroupInviteFromPlayerID;
+		m_mGroupIdInvites.Remove(groupId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return true if the player has any group invites
+	bool HasGroupInvites()
+	{
+		return !m_mGroupIdInvites.IsEmpty();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return true if the player has a group invite from this group already
+	//! \param[in] groupId
+	bool HasInviteFromGroup(int groupId)
+	{
+		return m_mGroupIdInvites.Contains(groupId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return ID of the player that sent the invite
+	int GetPlayerIdFromGroupInvite(int groupId)
+	{
+		int playerId;
+		m_mGroupIdInvites.Find(groupId, playerId);
+
+		return playerId;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1018,7 +1122,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!group)
 			return;
 		
-		if (group.GetMaxMembers() == maxMembers || maxMembers < 0)
+		if (group.GetMaxMembers() == maxMembers)
 			return;
 		
 		Rpc(RPC_AskSetGroupMaxMembers, groupID, maxMembers);
@@ -1039,7 +1143,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!group)
 			return;
 		
-		if (group.GetMaxMembers() == maxMembers || maxMembers < 0)
+		if (group.GetMaxMembers() == maxMembers)
 			return;
 		
 		group.SetMaxMembers(maxMembers);
@@ -1576,8 +1680,8 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 			return;
 
 #ifdef ENABLE_DIAG
-		DiagMenu.RegisterMenu(SCR_DebugMenuID.DEBUGUI_GROUPS, "Groups", "GameCode");
-		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_GROUPS_ENABLE_DIAG, "", "Enable groups diag", "Groups");
+		DiagMenu.RegisterMenu(SCR_DebugMenuID.DEBUGUI_GROUPS, "Game Groups", "GameCode");
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_GROUPS_ENABLE_DIAG, "", "Enable groups diag", "Game Groups");
 		ConnectToDiagSystem(owner);
 #endif
 		groupsManager.GetOnPlayableGroupRemoved().Insert(OnGroupDeleted);

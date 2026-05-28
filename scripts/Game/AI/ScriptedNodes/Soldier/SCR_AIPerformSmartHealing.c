@@ -178,17 +178,17 @@ class SCR_AIPerformSmartHealing : AITaskScripted
 	{
 		ChimeraCharacter char = ChimeraCharacter.Cast(targetEntity);
 		if (!char)
-			return null;
+			return 0;
 		
 		SCR_CharacterDamageManagerComponent damageMan = SCR_CharacterDamageManagerComponent.Cast(char.GetDamageManager());
 		if (!damageMan)
-			return null;
+			return 0;
 		
 		array<ECharacterHitZoneGroup> limbs = {};
 		damageMan.GetAllLimbs(limbs);
 		SCR_CharacterHitZone charHitZone = SCR_CharacterHitZone.Cast(damageMan.GetMostDOTHitZone(EDamageType.BLEEDING, false, limbs));
 		if (!charHitZone)
-			return null;
+			return 0;
 		
 		return charHitZone.GetHitZoneGroup();
 	}

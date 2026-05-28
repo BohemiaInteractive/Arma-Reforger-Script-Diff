@@ -22,6 +22,9 @@ class SCR_MainMenuTile_MenuComponent: SCR_TileBaseComponent
 	
 	protected bool m_bFocused;
 	protected bool m_bDisabled;
+	
+	protected bool m_bIsTutorialNeeded;
+	protected MissionWorkshopItem m_TutorialMission;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -97,6 +100,9 @@ class SCR_MainMenuTile_MenuComponent: SCR_TileBaseComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
+		if (button == MouseState.RIGHT)
+			return true;
+		
 		OnPlay();
 
 		return super.OnClick(w, x, y, button);
@@ -141,6 +147,52 @@ class SCR_MainMenuTile_MenuComponent: SCR_TileBaseComponent
 		if (m_bDisabled)
 			return;
 		
+		if (m_bIsTutorialNeeded)
+		{
+			BaseContainer settings = GetGame().GetGameUserSettings().GetModule("SCR_RecentGames");
+
+			if (settings)
+			{
+				int playTutorialShowCount;
+				
+				settings.Get("m_iPlayTutorialShowCount", playTutorialShowCount);
+				playTutorialShowCount++;
+				
+				settings.Set("m_iPlayTutorialShowCount", playTutorialShowCount);
+				GetGame().UserSettingsChanged();
+			}
+
+			// Tutorial confirmation dialog
+			SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateTutorialDialog();
+			if (dialog)
+			{
+				dialog.m_OnConfirm.Insert(OnPlayTutorial);
+				dialog.m_OnCancel.Insert(OnPlayMenu);
+				
+				return;
+			}
+		}
+		
+		OnPlayMenu();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayMenu()
+	{
 		GetGame().GetMenuManager().OpenMenu(m_pMenuPreset);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayTutorial()
+	{
+		SCR_ScenarioUICommon.TryPlayScenario(m_TutorialMission);
+		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.MainMenu);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetTutorial(notnull MissionWorkshopItem tutorialMission)
+	{
+		m_TutorialMission = tutorialMission;
+		m_bIsTutorialNeeded = true;
 	}
 }

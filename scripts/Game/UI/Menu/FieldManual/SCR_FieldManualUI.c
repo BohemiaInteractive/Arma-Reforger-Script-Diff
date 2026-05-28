@@ -158,7 +158,7 @@ class SCR_FieldManualUI : MenuRootBase
 		CloseReadingPanel();
 		OpenFirstSubCategory();
 
-		SCR_AnalyticsApplication.GetInstance().OpenFieldManual();
+		//SCR_AnalyticsApplication.GetInstance().OpenFieldManual();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -166,7 +166,7 @@ class SCR_FieldManualUI : MenuRootBase
 	{	
 		super.OnMenuHide();
 			
-		SCR_AnalyticsApplication.GetInstance().CloseFieldManual();
+		//SCR_AnalyticsApplication.GetInstance().CloseFieldManual();
 	}
 
 #ifdef WORKBENCH

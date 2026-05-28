@@ -1,13 +1,24 @@
 class SCR_PersistentFactionDialog : SCR_ConfigurableDialogUi
 {
 	protected int m_iRequestedFactionIndex;
+	protected const string dialogPresetConfig = "{FC62FADA1444750B}Configs/DeployMenu/DeployMenuDialogPreset.conf";
 	//protected SCR_ButtonCheckerComponent m_Checker;
 
 	//------------------------------------------------------------------------------------------------
 	static SCR_PersistentFactionDialog CreatePersistentFactionDialog(int factionIndex)
 	{
 		SCR_PersistentFactionDialog dialogUI = new SCR_PersistentFactionDialog();
-		SCR_ConfigurableDialogUi.CreateFromPreset("{FC62FADA1444750B}Configs/DeployMenu/DeployMenuDialogPreset.conf", "PERSISTENT_FACTION", dialogUI);
+		SCR_ConfigurableDialogUi.CreateFromPreset(dialogPresetConfig, "PERSISTENT_FACTION", dialogUI);
+		dialogUI.m_iRequestedFactionIndex = factionIndex;
+		
+		return dialogUI;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static SCR_PersistentFactionDialog CreatePersistentFactionCampaignFIADialog(int factionIndex)
+	{
+		SCR_PersistentFactionDialog dialogUI = new SCR_PersistentFactionDialog();
+		SCR_ConfigurableDialogUi.CreateFromPreset(dialogPresetConfig, "PERSISTENT_FACTION_CAMPAIGN_FIA", dialogUI);
 		dialogUI.m_iRequestedFactionIndex = factionIndex;
 		
 		return dialogUI;

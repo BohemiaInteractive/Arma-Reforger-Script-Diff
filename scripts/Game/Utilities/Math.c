@@ -9,7 +9,7 @@ Represents a single 2D curve, where in each vector only the `x` and `y` coordina
 
 It is intended to be used as a property in following way:
 \code
-	[Attribute("", UIWidgets.GraphDialog)]
+	[Attribute("", UIWidgets.CurveDialog)]
 	Curve m_Curve;
 \endcode
 

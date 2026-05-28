@@ -109,6 +109,18 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		return -1;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! Client method for checking if given prefab is currently available to him
+	//! \param[in] prefabID
+	//! \return true if it is available, otherwise false
+	bool IsPrefabIDAvailable(int prefabID)
+	{
+		if (!m_aFilteredPrefabIDs)
+			return false;
+
+		return m_aFilteredPrefabIDs.Contains(prefabID);
+	}
+
 	/*!
 	Get prefab ID of item at given index
 	\param index Index of entry in filtered list/grid
@@ -831,7 +843,8 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		return budgetCost != null;
 	}
 
-	bool CanPlace(int prefabID, out notnull array<ref SCR_EntityBudgetValue> budgetCosts, out SCR_UIInfo blockingBudgetInfo, bool showNotification = false)
+	//------------------------------------------------------------------------------------------------
+	bool CanPlace(int prefabID, out notnull array<ref SCR_EntityBudgetValue> budgetCosts, out SCR_UIInfo blockingBudgetInfo, bool showNotification = false, out EEditableEntityBudget blockingBudget = -1)
 	{
 		if (!m_BudgetManager)
 			return true;
@@ -840,7 +853,6 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		if (!prefabInfo)
 			return false;
 
-		EEditableEntityBudget blockingBudget;
 		if (m_BudgetManager.CanPlaceEntityInfo(prefabInfo, budgetCosts, blockingBudget, showNotification))
 		{
 			return true;
@@ -1031,7 +1043,7 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 				transform[3] = extendedEntity.GetOwner().GetOrigin() + BaseCompartmentSlot.SPAWN_IN_VEHICLE_OFFSET; //~ Spawn close so the entities are spawned in but still above the entity out of sight
 				params.m_TargetInteraction = EEditableEntityInteraction.PASSENGER;
 				params.m_Parent = extendedEntity;
-				params.m_ParentID = Replication.FindId(extendedEntity);
+				params.m_ParentID = Replication.FindItemId(extendedEntity);
 			}
 
 			params.m_vTransform = transform;
@@ -1128,6 +1140,10 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		{
 			SetBrowserStateIndex(browserStateIndex);
 			LoadBrowserState(browserStateIndex, clearConfigData);
+
+			// Reset prefab placement selection when tab changes, as when it will be placed, then it would fail local evaluation, since its not in the m_aFilteredPrefabIDs, because it was from a different tab
+			if (m_PlacingManager)
+				m_PlacingManager.SetSelectedPrefab(ResourceName.Empty);
 		}
 	}
 
@@ -1416,8 +1432,11 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		m_PrefabsCache = SCR_PrefabsCacheEditorComponent.Cast(FindEditorComponent(SCR_PrefabsCacheEditorComponent, true, false));
 		m_PlacingManager = SCR_PlacingEditorComponent.Cast(FindEditorComponent(SCR_PlacingEditorComponent, true, true));
 
-		if (m_PlacingManager)
-			m_PlacingManager.GetOnPlaceEntityServer().Insert(OnPlaceEntityServer);
+		if (!m_PlacingManager)
+			return;
+
+		m_PlacingManager.GetOnPlaceEntityServer().Insert(OnPlaceEntityServer);
+		m_PlacingManagerData = SCR_PlacingEditorComponentClass.Cast(m_PlacingManager.GetEditorComponentData());
 	}
 
 	override void EOnEditorDeactivateServer()
@@ -1455,11 +1474,6 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		if (!m_aAsyncPrefabs)
 			return true;
 
-		ResourceName entityPrefab;
-		Resource entityResource;
-		IEntityComponentSource editableEntitySource;
-		SCR_EditableEntityUIInfo info;
-
 		int tickEnd = System.GetTickCount() + ASYNC_TICK_LENGTH;
 		int count = m_aAsyncPrefabs.Count();
 		while (System.GetTickCount() < tickEnd)
@@ -1472,35 +1486,8 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 				return true;
 			}
 
-			info = null;
-			entityPrefab = m_aAsyncPrefabs[m_iAsyncIndex];
-			if (entityPrefab)
-			{
-				entityResource = BaseContainerTools.LoadContainer(m_aAsyncPrefabs[m_iAsyncIndex]);
-				if (entityResource && entityResource.IsValid())
-				{
-					editableEntitySource = SCR_EditableEntityComponentClass.GetEditableEntitySource(entityResource);
-					if (editableEntitySource)
-					{
-						info = SCR_EditableEntityComponentClass.GetInfo(editableEntitySource);
-						if (!info)
-						{
-							Print(string.Format("Prefab '%1' is missing UI info in SCR_EditableEntityComponent!", m_aAsyncPrefabs[m_iAsyncIndex]), LogLevel.ERROR);
-						}
-					}
-					else
-					{
-						Print(string.Format("Prefab '%1' is missing SCR_EditableEntityComponent!", m_aAsyncPrefabs[m_iAsyncIndex]), LogLevel.ERROR);
-					}
-				}
-				else
-				{
-					Print(string.Format("Prefab '%1' is missing at index '%2'!", m_aAsyncPrefabs[m_iAsyncIndex], m_iAsyncIndex), LogLevel.ERROR);
-				}
-			}
-
 			//--- Register even when faulty, to keep indexes
-			m_aInfos.Insert(info);
+			m_aInfos.Insert(SCR_EditableEntityUIInfo.ExtractEditableUIInfoFromPrefab(m_aAsyncPrefabs[m_iAsyncIndex]));
 
 			m_iAsyncIndex++;
 		}

@@ -1,5 +1,10 @@
 #ifdef WORKBENCH
-[WorkbenchPluginAttribute("VCS Configuration", "Configure Blame/Diff/Log/Commit commands", "", "", { "ResourceManager", "ScriptEditor" }, "VCS", 0xF1DE)]
+[WorkbenchPluginAttribute(
+	name: "VCS Configuration",
+	description: "Configure Blame/Diff/Log/Commit commands",
+	wbModules: { "ResourceManager", "ScriptEditor" },
+	category: SCR_PluginCategory.SCRIPTEDITOR_VCS,
+	awesomeFontCode: 0xF1DE)]
 class SCR_VCSSettingsPlugin : WorkbenchPlugin
 {
 	/*
@@ -298,7 +303,7 @@ class SCR_VCSResourceManagerRootPlugin : SCR_VCSRootPlugin
 	}
 }
 
-[WorkbenchPluginAttribute("VCS Log", "Show current file's changelog", "Alt+Shift+L", "", { "ScriptEditor" }, "VCS", 0xF1DE)]
+[WorkbenchPluginAttribute("VCS Log", "Show current file's changelog", "Alt+Shift+L", "", { "ScriptEditor" }, SCR_PluginCategory.SCRIPTEDITOR_VCS, 0xF1DE)]
 class SCR_VCSLogScriptEditorPlugin : SCR_VCSScriptEditorRootPlugin
 {
 	//------------------------------------------------------------------------------------------------
@@ -308,7 +313,7 @@ class SCR_VCSLogScriptEditorPlugin : SCR_VCSScriptEditorRootPlugin
 	}
 }
 
-[WorkbenchPluginAttribute("File(s) VCS Changelog", "Show Resource Browser-selected file(s) changelog or (whenever possible) the currently opened file if no files are selected", "Alt+Shift+L", "", { "ResourceManager" }, "VCS", 0xF1DE)]
+[WorkbenchPluginAttribute("File(s) VCS Changelog", "Show Resource Browser-selected file(s) changelog or (whenever possible) the currently opened file if no files are selected", "Alt+Shift+L", "", { "ResourceManager" }, SCR_PluginCategory.SCRIPTEDITOR_VCS, 0xF1DE)]
 class SCR_VCSLogResourceManagerPlugin : SCR_VCSResourceManagerRootPlugin
 {
 	//------------------------------------------------------------------------------------------------
@@ -318,7 +323,7 @@ class SCR_VCSLogResourceManagerPlugin : SCR_VCSResourceManagerRootPlugin
 	}
 }
 
-[WorkbenchPluginAttribute("VCS Diff", "Show current file's local changes", "Alt+Shift+I", "", { "ResourceManager" }, "VCS", 0xF002)]
+[WorkbenchPluginAttribute("VCS Diff", "Show current file's local changes", "Alt+Shift+I", "", { "ResourceManager" }, SCR_PluginCategory.SCRIPTEDITOR_VCS, 0xF002)]
 class SCR_VCSDiffResourceManagerPlugin : SCR_VCSResourceManagerRootPlugin
 {
 	//------------------------------------------------------------------------------------------------
@@ -328,7 +333,7 @@ class SCR_VCSDiffResourceManagerPlugin : SCR_VCSResourceManagerRootPlugin
 	}
 }
 
-[WorkbenchPluginAttribute("VCS Blame", "Show current file's line authors", "Alt+Shift+B", "", { "ResourceManager" }, "VCS", 0xF4FC)]
+[WorkbenchPluginAttribute("VCS Blame", "Show current file's line authors", "Alt+Shift+B", "", { "ResourceManager" }, SCR_PluginCategory.SCRIPTEDITOR_VCS, 0xF4FC)]
 class SCR_VCSBlameResourceManagerPlugin : SCR_VCSResourceManagerRootPlugin
 {
 	//------------------------------------------------------------------------------------------------
@@ -338,7 +343,7 @@ class SCR_VCSBlameResourceManagerPlugin : SCR_VCSResourceManagerRootPlugin
 	}
 }
 
-[WorkbenchPluginAttribute("VCS Commit", "Commit current file directory's files", "Alt+Shift+C", "", { "ResourceManager" }, "VCS", 0xF4FC)]
+[WorkbenchPluginAttribute("VCS Commit", "Commit current file directory's files", "Alt+Shift+C", "", { "ResourceManager" }, SCR_PluginCategory.SCRIPTEDITOR_VCS, 0xF4FC)]
 class SCR_VCSCommitResourceManagerPlugin : SCR_VCSResourceManagerRootPlugin
 {
 	//------------------------------------------------------------------------------------------------
@@ -348,7 +353,7 @@ class SCR_VCSCommitResourceManagerPlugin : SCR_VCSResourceManagerRootPlugin
 	}
 }
 
-[WorkbenchPluginAttribute("VCS Diff", "Show current file's local changes", "Alt+Shift+I", "", { "ScriptEditor" }, "VCS", 0xF002)]
+[WorkbenchPluginAttribute("VCS Diff", "Show current file's local changes", "Alt+Shift+I", "", { "ScriptEditor" }, SCR_PluginCategory.SCRIPTEDITOR_VCS, 0xF002)]
 class SCR_VCSDiffPlugin : SCR_VCSScriptEditorRootPlugin
 {
 	//------------------------------------------------------------------------------------------------
@@ -358,7 +363,7 @@ class SCR_VCSDiffPlugin : SCR_VCSScriptEditorRootPlugin
 	}
 }
 
-[WorkbenchPluginAttribute("VCS Blame", "Show current file's line authors", "Alt+Shift+B", "", { "ScriptEditor" }, "VCS", 0xF4FC)]
+[WorkbenchPluginAttribute("VCS Blame", "Show current file's line authors", "Alt+Shift+B", "", { "ScriptEditor" }, SCR_PluginCategory.SCRIPTEDITOR_VCS, 0xF4FC)]
 class SCR_VCSBlamePlugin : SCR_VCSScriptEditorRootPlugin
 {
 	//------------------------------------------------------------------------------------------------
@@ -368,7 +373,7 @@ class SCR_VCSBlamePlugin : SCR_VCSScriptEditorRootPlugin
 	}
 }
 
-[WorkbenchPluginAttribute("VCS Commit", "Commit current file directory's files", "Alt+Shift+C", "", { "ScriptEditor" }, "VCS", 0xF4FC)]
+[WorkbenchPluginAttribute("VCS Commit", "Commit current file directory's files", "Alt+Shift+C", "", { "ScriptEditor" }, SCR_PluginCategory.SCRIPTEDITOR_VCS, 0xF4FC)]
 class SCR_VCSCommitPlugin : SCR_VCSScriptEditorRootPlugin
 {
 	//------------------------------------------------------------------------------------------------

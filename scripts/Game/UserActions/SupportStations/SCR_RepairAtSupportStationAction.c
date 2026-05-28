@@ -97,6 +97,13 @@ class SCR_RepairAtSupportStationAction : SCR_BaseDamageHealSupportStationAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{
+		Physics rootPhysics = GetOwner().GetRootParent().GetPhysics(); // Getting root parent to ensure slotted entities get the intended behaviour
+		if (rootPhysics && rootPhysics.GetVelocity().LengthSq() > MAXIMUM_VEHICLE_SPEED_FOR_INTERACTION_SQ)
+		{
+			SetCannotPerformReason(INVALID_TARGET_VEHICLE_SPEED);
+			return false;
+		}
+
 		//~ If hitzones to heal are not on fire but the entity is then hide make the action invalid
 		if (m_OnFireCheckDamageManager && m_OnFireCheckDamageManager.IsDamagedOverTime(EDamageType.FIRE) && !m_OnFireCheckDamageManager.IsOnFire(m_aHitZonesToHeal))
 		{

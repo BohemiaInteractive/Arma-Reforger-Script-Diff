@@ -3,9 +3,7 @@ class SCR_VehicleWeaponGroupSelectAction : SCR_VehicleWeaponActionBase
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
-		array<ref SCR_WeaponGroup> weaponGroups = {};
-		fireModeManager.GetAllWeaponGroups(weaponGroups);
-		if (weaponGroups.Count() <= 1)
+		if (fireModeManager.GetNumberOfAvailableWeaponGroups() <= 1)
 			return false;
 		
 		return true;

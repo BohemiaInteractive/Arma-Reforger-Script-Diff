@@ -50,6 +50,9 @@ class SCR_MapSuppliesTransportSystemUI : SCR_MapUIBaseComponent
 
 			m_SuppliesTransportSystemUI.Init();
 		}
+
+		if (config.MapEntityMode == EMapEntityMode.LOGISTICS_STATION)
+			ToggleVisible();
 	}
 
 	//------------------------------------------------------------------------------------------------

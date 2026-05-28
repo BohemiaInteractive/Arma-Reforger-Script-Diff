@@ -11,11 +11,17 @@ Do not modify, this script is generated
 
 sealed class float
 {
+	/** \name Constants
+	 * Populated by the engine.
+	 */
+	///@{
+
+	static const float MAX;
+	static const float INFINITY;
+	///@}
+
 	private void float();
 	private void ~float();
-
-	const float MAX = FLT_MAX;
-	const float INFINITY = FLT_INF;
 
 	/*!
 	Float to string with fixed length, padded with zeroes.

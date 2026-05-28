@@ -23,6 +23,15 @@ class SCR_CampaignFaction : SCR_Faction
 
 	[Attribute(desc: "Whitelist of allowed radio messages")]
 	protected ref SCR_CampaignRadioMsgWhitelistConfig m_RadioMsgWhitelistConfig;
+	
+	[Attribute("1", UIWidgets.CheckBox, desc: "Faction can spawn on Main Bases")]
+	protected bool m_bCanSpawnOnMainBases;
+	
+	[Attribute("0", UIWidgets.CheckBox, desc: "Faction can spawn on Source Bases")]
+	protected bool m_bCanSpawnOnSourceBases;
+
+	[Attribute(defvalue: "1", desc: "Can Build Bases")]
+	protected bool m_bCanBuildBases;
 
 	protected SCR_CampaignMilitaryBaseComponent m_MainBase;
 	
@@ -236,5 +245,17 @@ class SCR_CampaignFaction : SCR_Faction
 	WorldTimestamp GetPauseByBlockTimestamp()
 	{
 		return m_fPauseByBlockTimestamp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool CanSpawnOnSourceBases()
+	{
+		return m_bCanSpawnOnSourceBases;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool CanBuildBases()
+	{
+		return m_bCanBuildBases;
 	}
 };

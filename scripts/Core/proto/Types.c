@@ -84,6 +84,7 @@ class Class
 	proto external string ToString();
 
 	//! Get actual count of references holding this instance. If instance is not managed, zero is returned.
+	[Obsolete("Will be removed")]
 	proto native external int GetRefCount();
 
 	/*!

@@ -40,9 +40,7 @@ class SCR_DeathScreenUIComponent : SCR_ScriptedWidgetComponent
 	protected void RestartPopupConfirm()
 	{
 		OnButtonPressed();
-		
-		auto manager = GetGame().GetSaveGameManager();
-		manager.StartPlaythrough(manager.GetCurrentMissionResource());
+		GameStateTransitions.RequestScenarioRestart();
 	}
 	
 	//------------------------------------------------------------------------------------------------

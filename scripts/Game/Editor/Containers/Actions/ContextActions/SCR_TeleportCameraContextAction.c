@@ -26,7 +26,7 @@ class SCR_TeleportCameraContextAction : SCR_GeneralContextAction
 		}
 		else
 		{
-			return cursorWorldPosition != vector.Zero;
+			return cursorWorldPosition != vector.Zero && SCR_Global.IsPositionWithinTerrainBounds(cursorWorldPosition);
 		}
 	}
 	

@@ -12,7 +12,7 @@ class SCR_LoadSessionToolbarAction : SCR_EditorToolbarAction
 	override bool CanBeShown(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags)
 	{
 		//--- Disallow if no saving is configured for current scenario
-		if (!GetGame().GetSaveGameManager().IsSavingPossible())
+		if (!GetGame().GetSaveGameManager().IsSavingEnabled())
 			return false;
 
 		//--- Loading is always available for the host and in singleplayer

@@ -5,10 +5,6 @@ class SCR_CampaignBuildingRankBudgetToEvaluateData : SCR_CampaignBuildingBudgetT
 	//! Use this budgets only when the ranks are handled by GM and player can rank up.
 	override bool CanBeUsed()
 	{
-		BaseGameMode gameMode = GetGame().GetGameMode();
-		if (!gameMode)
-			return false;
-		
-		return SCR_XPHandlerComponent.Cast(gameMode.FindComponent(SCR_XPHandlerComponent));
+		return SCR_XPHandlerComponent.IsXpSystemEnabled();
 	}
 }

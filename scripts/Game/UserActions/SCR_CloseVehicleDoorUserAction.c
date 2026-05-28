@@ -78,7 +78,7 @@ class SCR_CloseVehicleDoorUserAction : VehicleDoorUserAction
 		{
 			Faction characterFaction = character.GetFaction();
 			Faction vehicleFaction = vehicle.GetFaction();
-			if (characterFaction && vehicleFaction && characterFaction.IsFactionEnemy(vehicleFaction))
+			if (characterFaction && vehicleFaction && characterFaction.IsFactionEnemy(vehicleFaction) && vehicleFaction != characterFaction)
 			{
 				SetCannotPerformReason("#AR-UserAction_SeatHostile");
 				return false;

@@ -328,7 +328,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	//! \param[in] includeChildren Restores default settings, optionally including children objects.
 	//! \param[in] reinitAfterRestoration Restores object state, optionally reinitializes after restoration.
 	//! \param[in] affectRandomization Affects randomization settings during restoration.
-	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true, bool deleteSpawnedEntities = true)
 	{
 		m_bAreaSelected = false;
 		m_Trigger = null;
@@ -336,7 +336,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 		m_LayerTask = null;
 		m_SlotTask = null;
 
-		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization, deleteSpawnedEntities);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -633,5 +633,13 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 #ifdef WORKBENCH
 		m_iDebugShapeColor = ARGB(32, 0x99, 0xF3, 0x12);
 #endif
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_ScenarioFrameworkArea()
+	{
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (scenarioFrameworkSystem)
+			scenarioFrameworkSystem.UnregisterArea(this);
 	}
 }

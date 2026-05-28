@@ -587,6 +587,8 @@ class SCR_GroupButton : SCR_DeployButtonBase
 	
 	protected ImageWidget m_wGroupIcon;
 	
+	protected const LocalizedString SQUAD_CAPACITY = "#AR-Campaign_BaseRespawnsAmount";
+
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -630,8 +632,14 @@ class SCR_GroupButton : SCR_DeployButtonBase
 		PrintFormat("%1::UpdateGroup() name: %2, group id: %7, Is full: %3, IsEnabled(): %4, canJoin: %5, isPrivate: %6", this, m_Group.GetCustomNameWithOriginal(), m_Group.IsFull().ToString(), IsEnabled().ToString(), canJoin.ToString(), m_Group.IsPrivate().ToString(), m_Group.GetGroupID());
 #endif
 		if (m_wPlayerCount)
-			m_wPlayerCount.SetTextFormat("%1/%2", m_Group.GetPlayerCount(), m_Group.GetMaxMembers());		
+		{
+			if (m_Group.IsMaxMembersLimited())
+				m_wPlayerCount.SetTextFormat(SQUAD_CAPACITY, m_Group.GetPlayerCount(), m_Group.GetMaxMembers());
+			else
+				m_wPlayerCount.SetText(m_Group.GetPlayerCount().ToString());
+		}		
 	}
+	
 	//---- REFACTOR NOTE END ----
 	//------------------------------------------------------------------------------------------------
 	void UpdateGroupName()

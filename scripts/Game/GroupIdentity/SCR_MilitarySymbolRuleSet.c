@@ -94,7 +94,7 @@ class SCR_GroupIdentityRuleData
 		SCR_GroupIdentityRuleData data = new SCR_GroupIdentityRuleData();
 		
 		data.m_Faction = SCR_Faction.Cast(group.GetFaction());
-		data.m_iMemberCount = group.GetAgentsCount();
+		data.m_iMemberCount = group.GetServerAgentsCount();
 		
 		//--- Weapon types
 		array<AIAgent> agents = {};

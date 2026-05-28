@@ -232,7 +232,7 @@ class SCR_HealSupportStationComponent : SCR_BaseDamageHealSupportStationComponen
 		if (ownerPlayerID <= 0)
 			return;
 		
-		RplId userRplId = Replication.FindId(userEditableEntity);
+		RplId userRplId = Replication.FindItemId(userEditableEntity);
 		
 		ECharacterHitZoneGroup notificationHitZoneGroup = ECharacterHitZoneGroup.VIRTUAL;
 		SCR_HealSupportStationAction healAction = SCR_HealSupportStationAction.Cast(action);

@@ -31,7 +31,14 @@ class SCR_UIInfo : SCR_UIDescription
 			return Icon;
 		}
 	}
+
 	
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetIcon()
+	{
+		return Icon;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Get Image Set.
 	//! When using it to fill ImageWIdget, use SetIconTo() if possible.

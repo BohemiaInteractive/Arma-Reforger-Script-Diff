@@ -48,6 +48,7 @@ enum ENotification
 	//PLAYER
 	PLAYER_LOADOUT_NOT_SAVED_NOT_ENOUGH_MSA = 150, //!< Player loadout was not saved due to player not having enough Military Supply Allocation for loadout
 	PLAYER_LOADOUT_NOT_SAVED_INSUFFICIENT_RANK = 151, //!< Player loadout was not saved as player has insufficient rank for one or more weapons
+	PLAYER_ENTERED_DEBUG_CAMERA = 152,
 	
 	//RIGHTS
 	EDITOR_EDITOR_RIGHTS_ASSIGNED = 200, //!< Player got rights assigned - (param1 = GameMasterID, param2 = TargetPlayerID))
@@ -248,6 +249,8 @@ enum ENotification
 	VOTING_KICK_SUCCEED_SUBJECT_LEFT = 1036, //!< Voting notification shown when vote to kick ends when kicked player left the server
 	VOTING_COMMANDER_DONE = 1037, ///< Voting succeeded for a new faction commander (param1 = player id)
 	VOTING_COMMANDER_WITHDRAW = 1038, ///< Faction commander left their role (param1 = player id)
+	VOTING_COMMANDER_RELIEVE_SUCCESSFUL = 1039, ///< Voting to relieve faction commander successful (param1 = player id)
+	VOTING_COMMANDER_RELIEVE_FAILED = 1040, ///< Voting to relieve faction commander failed (param1 = player id)
 	
 	//GROUPS 
 	GROUPS_PLAYER_JOINED = 1101, //!< Player joined the group (param1 = player id)

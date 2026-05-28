@@ -9,6 +9,7 @@ class SCR_CampaignClientData
 	protected float m_fRespawnPenalty;
 	protected float m_fLastPenaltyDeductionTimestamp;
 	protected WorldTimestamp m_fNextTravelAvailableAt;
+	protected int m_iAvailableAllocatedSupplies;
 
 	//------------------------------------------------------------------------------------------------
 	void SetID(string ID)
@@ -92,5 +93,17 @@ class SCR_CampaignClientData
 	WorldTimestamp GetNextFastTravelTimestamp()
 	{
 		return m_fNextTravelAvailableAt;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetAvailableAllocatedSupplies(int amount)
+	{
+		m_iAvailableAllocatedSupplies = amount;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetAvailableAllocatedSupplies()
+	{
+		return m_iAvailableAllocatedSupplies;
 	}
 }

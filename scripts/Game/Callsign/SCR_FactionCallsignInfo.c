@@ -7,6 +7,9 @@ class SCR_FactionCallsignInfo
 	[Attribute(defvalue: "1", desc: "If true then callsigns will be assigned at random rather then trying to keep callsigns close")]
 	protected bool m_bIsAssignedRandomly;
 
+	[Attribute(defvalue: "0", desc: "Assign the group callsigns based on group roles")]
+	protected bool m_bAssignCallsignBasedOnGroupRole;
+
 	[Attribute()]
 	protected ref array<ref SCR_CallsignInfo> m_aCompanyNames;
 
@@ -31,6 +34,9 @@ class SCR_FactionCallsignInfo
 	[Attribute(desc: "A character can have one role at the time and a group can only have one of each role. Note that roles are assigned in order, so make sure important roles (Such as leader) are on top of the list.")]
 	protected ref array<ref SCR_BaseRoleCallsign> m_aCharacterRoleCallsigns;
 
+	[Attribute(desc: "List of group roles with specific callsigns. Note that inputted callsigns need to match the companies/platoons/squads callsigns.")]
+	protected ref array<ref SCR_FactionGroupRoleSpecificCallsignInfo> m_aGroupRoleSpecificCallsigns;
+
 	/*!
 	Get callsign format
 	\return string callsign Format
@@ -52,6 +58,12 @@ class SCR_FactionCallsignInfo
 	bool GetIsAssignedRandomly()
 	{
 		return m_bIsAssignedRandomly;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool GetAssignCallsignBasedOnGroupRole()
+	{
+		return m_bAssignCallsignBasedOnGroupRole;
 	}
 
 	/*!
@@ -201,5 +213,37 @@ class SCR_FactionCallsignInfo
 		}
 
 		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Gets indexes of all the assignable company callsigns based on the inputted group role.
+	//! \param[in] group role
+	//! \param[out] company indexes
+	//! \return true if specific group role has any assignable company callsigns
+	bool GetGroupRoleSpecificCompanies(SCR_EGroupRole groupRole, notnull out array<int> companyIndexes)
+	{
+		array<string> groupRoleCompanyNames = {};
+
+		foreach (SCR_FactionGroupRoleSpecificCallsignInfo groupRoleCallsignInfo : m_aGroupRoleSpecificCallsigns)
+		{
+			if (groupRoleCallsignInfo.GetGroupRole() != groupRole)
+				continue;
+
+			groupRoleCompanyNames = groupRoleCallsignInfo.GetCallsignNames();
+			break;
+		}
+
+		if (groupRoleCompanyNames.IsEmpty())
+			return false;
+
+		string callsignInfoName;
+		foreach (int i, SCR_CallsignInfo callsignInfo : m_aCompanyNames)
+		{
+			callsignInfoName = callsignInfo.GetCallsign();
+			if (groupRoleCompanyNames.Contains(callsignInfoName))
+				companyIndexes.Insert(i);
+		}
+
+		return !companyIndexes.IsEmpty();
 	}
 };

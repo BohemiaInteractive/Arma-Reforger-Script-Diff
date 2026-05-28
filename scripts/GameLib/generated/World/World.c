@@ -69,7 +69,7 @@ sealed class World: BaseWorld
 	//! Reload all systems, by deleting all current systems, and create them again
 	proto external void ReloadSystems();
 	//! Find a world system based on its type.
-	proto external WorldSystem FindSystem(typename type);
+	proto external WorldSystem FindSystem(typename interfaceType);
 	//! Access world systems associated with this world.
 	proto external WorldSystems GetSystems();
 }

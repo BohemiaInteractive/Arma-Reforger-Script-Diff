@@ -227,9 +227,6 @@ class SCR_RepairRequestedTaskEntity : SCR_BaseRequestedTaskEntity
 			return false;
 
 		HitZone hitZone = damageComponent.GetDefaultHitZone();
-		if (!hitZone)
-			return false;
-
 		return hitZone.GetHealthScaled() == 1;
 	}
 

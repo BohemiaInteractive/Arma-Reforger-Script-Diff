@@ -70,7 +70,8 @@ class CharacterCamera1stPersonTurret extends CharacterCamera1stPerson
 	//-----------------------------------------------------------------------------
 	override void OnDeactivate(ScriptedCameraItem pNextCamera)
 	{
-		m_CharacterHeadAimingComponent.ResetLimitAnglesOverride();
+		if (m_CharacterHeadAimingComponent)
+			m_CharacterHeadAimingComponent.ResetLimitAnglesOverride();
 	}
 	
 	//-----------------------------------------------------------------------------
@@ -158,15 +159,11 @@ class CharacterCamera1stPersonTurret extends CharacterCamera1stPerson
 		m_vPrevEyePosition = vector.Lerp(m_vPrevEyePosition, m_OwnerCharacter.EyePositionModel(), 0.25);
 		pOutResult.m_CameraTM[3] = m_vPrevEyePosition + offset;
 		
+		AddVehiclePitchRoll(m_OwnerVehicle, pDt, pOutResult.m_CameraTM);
+
 		// Apply shake
 		if (m_CharacterCameraHandler)
 			m_CharacterCameraHandler.AddShakeToToTransform(pOutResult.m_CameraTM, pOutResult.m_fFOV);
-	}
-	
-	//-----------------------------------------------------------------------------
-	override void OnAfterCameraUpdate(float pDt, bool pIsKeyframe, inout vector transformMS[4])
-	{
-		AddVehiclePitchRoll(m_OwnerVehicle, pDt, transformMS);
 	}
 	
 	//-----------------------------------------------------------------------------	

@@ -44,8 +44,11 @@ class SCR_TaskManagerUIComponent : SCR_BaseGameModeComponent
 	protected bool m_bShowCurrentTaskOnRespawn;
 
 	[Attribute("{C9D32771B2166F77}Configs/Task/TasksTabConfig_Base.conf", UIWidgets.ResourceNamePicker, params: "conf class=SCR_TasksTabConfig")]
-	protected string m_sTaskTabConfig;
+	protected ResourceName m_sTaskTabConfig;
 	
+	[Attribute(desc:"Task UI color preset list")]
+	protected ref array<ref SCR_TaskUIColorPresetList> m_aTaskUIColorPresetList;
+
 	static SCR_TaskManagerUIComponent s_Instance;
 
 	protected ref SCR_TaskSelectedInvoker m_OnTaskSelected;
@@ -89,6 +92,13 @@ class SCR_TaskManagerUIComponent : SCR_BaseGameModeComponent
 	void ~SCR_TaskManagerUIComponent()
 	{
 		s_Instance = null;
+
+		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
+		if (mapEntity)
+		{
+			mapEntity.GetOnMapOpen().Remove(OnMapOpen);
+			mapEntity.GetOnMapClose().Remove(OnMapClose);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -110,6 +120,13 @@ class SCR_TaskManagerUIComponent : SCR_BaseGameModeComponent
 			return;
 
 		gameMode.GetOnPlayerRegistered().Insert(OnClientPlayerRegistered);
+
+		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
+		if (mapEntity)
+		{
+			mapEntity.GetOnMapOpen().Insert(OnMapOpen);
+			mapEntity.GetOnMapClose().Insert(OnMapClose);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -380,6 +397,22 @@ class SCR_TaskManagerUIComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! SCR_MapEntity event
+	//! \param[in] config
+	protected void OnMapOpen(MapConfiguration config)
+	{
+		m_SelectedTask = null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! SCR_MapEntity event
+	//! \param[in] config
+	protected void OnMapClose(MapConfiguration config)
+	{
+		m_SelectedTask = null;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Sets new colors on task icons. If provided color is null, its being skipped.
 	//! \param[in] backgroundColor - color of task shield background.
 	//! \param[in] iconColor - color of task symbol.
@@ -564,6 +597,26 @@ class SCR_TaskManagerUIComponent : SCR_BaseGameModeComponent
 		return m_TaskTabConfig.GetTaskTabs();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return default task tab
+	SCR_ETaskTabType GetDefaultTaskTab()
+	{
+		if (!m_TaskTabConfig)
+			m_TaskTabConfig = SCR_TasksTabConfig.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(m_sTaskTabConfig));
+
+		if (!m_TaskTabConfig)
+			return SCR_ETaskTabType.AVAILABLE;
+
+		return m_TaskTabConfig.GetDefaultTab();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return Task UI color preset list
+	array<ref SCR_TaskUIColorPresetList> GetTaskUIColorPresetList()
+	{
+		return m_aTaskUIColorPresetList;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	ScriptInvokerBool GetOnTaskHUDVisible()
 	{

@@ -132,9 +132,9 @@ class SCR_HeatmapHelper
 						iIntensity = 255 - iIntensity;
 
 					colour = 0xFF000000
-						| iIntensity * 0x10000
-						| iIntensity * 0x100
-						| iIntensity; // * 0x1
+						| (iIntensity << 16)
+						| (iIntensity << 8)
+						| iIntensity; // << 0
 				}
 			}
 			else
@@ -190,9 +190,9 @@ class SCR_HeatmapHelper
 					}
 
 					colour = 0xFF000000
-						| ((int)(255 * r) * 0x10000)
-						| ((int)(255 * g) * 0x100)
-						| ((int)(255 * b)); //  * 0x1
+						| ((int)(255 * r) << 16)
+						| ((int)(255 * g) << 8)
+						| ((int)(255 * b)); //  << 0
 				}
 			}
 			else
@@ -219,9 +219,9 @@ class SCR_HeatmapHelper
 				else
 				{
 					if (invertColour)
-						colour = 0x00000000 | iIntensity * 0x1000000;
+						colour = 0x00000000 | (iIntensity << 24);
 					else
-						colour = 0x00FFFFFF | iIntensity * 0x1000000;
+						colour = 0x00FFFFFF | (iIntensity << 24);
 				}
 			}
 

@@ -33,6 +33,8 @@ class SCR_ToolboxMultilineComponent : SCR_ToolboxComponent
 
 			m_aSelectionElements.Insert(comp);
 			
+			comp.ShowBorder(false);
+			
 			SCR_ButtonTextComponent textComp = SCR_ButtonTextComponent.Cast(comp);
 			if (textComp)
 				textComp.SetText(name);

@@ -1,5 +1,33 @@
 class SCR_ChimeraCharacterClass : ChimeraCharacterClass
 {
+	[Attribute("{00B4F7EE9753F658}Configs\CharacterLinking\BushTypeSlow.conf", UIWidgets.ResourceNamePicker, category: "Foliage Slowdown")]
+	protected ResourceName m_sBushSlowTypeCfgPath;
+
+	[Attribute("0 0 10 5", uiwidget: UIWidgets.CurveDialog, desc: "Relation of foliage height and the slowing effect", category: "Foliage Slowdown", params: "10 1 0 0")]
+	protected ref Curve m_cFoliageHeightSlowCurve; 
+	// the curve helps us calculate the appropriate slowdown from a foliage entity using its type and the (weighted) height
+	// it goes back up near the end to make trees less of a hindrance as their branches are usually less dense than bushes
+	
+	protected static ref SCR_BushTypeSlowConfig s_BushSlowTypeCfg;
+
+	//------------------------------------------------------------------------------------------------
+	Curve GetFoliageHeightSlowdownCurve()
+	{
+		return m_cFoliageHeightSlowCurve;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_BushTypeSlowConfig GetBushSlowTypeCfg()
+	{
+		if (!s_BushSlowTypeCfg)
+		{
+			Resource container = BaseContainerTools.LoadContainer(m_sBushSlowTypeCfgPath);
+			if (container)
+				s_BushSlowTypeCfg = SCR_BushTypeSlowConfig.Cast(BaseContainerTools.CreateInstanceFromContainer(container.GetResource().ToBaseContainer()));
+		}
+
+		return s_BushSlowTypeCfg;
+	}
 }
 
 class SCR_ChimeraCharacter : ChimeraCharacter
@@ -24,6 +52,9 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 
 	protected static const string SIGNAL_NAME_SPECIAL_CONTACT = "SpecialContact";
 	protected static const string SIGNAL_NAME_SPECIAL_ENTITY_HEIGHT = "SpecialContactEntityHeight";
+
+	protected ref map<Managed, float> m_mSpeedReferences = new map<Managed, float>();
+	protected float m_fTargetSpeed, m_fCurrentSpeed = 1;
 
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
@@ -191,6 +222,10 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 	//! This is called locally by the owner of the character
 	override void OnSpecialContactsChagned(notnull array<IEntity> contacts)
 	{
+		SignalsManagerComponent signalsMgr = SignalsManagerComponent.Cast(FindComponent(SignalsManagerComponent));
+		if (!signalsMgr)
+			return;
+
 		RplComponent characterRplComp = GetRplComponent();
 		bool isAuthority = characterRplComp && !characterRplComp.IsProxy();
 
@@ -220,25 +255,70 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 			}
 		}
 
+		float highestModifiedHeight, evaluationModHeight;
+
+		Tree currentTree;
+		ETreeSoundTypes currentTreeType = ETreeSoundTypes.None;
+
 		SCR_SpecialCollisionHandlerComponent specialCollisionComponent;
 		foreach (IEntity newContact : contacts)
 		{
-			if (!m_aContacts || !m_aContacts.Contains(newContact))
-			{
-				specialCollisionComponent = SCR_SpecialCollisionHandlerComponent.Cast(newContact.FindComponent(SCR_SpecialCollisionHandlerComponent));
-				if (!specialCollisionComponent)
-					continue;//only store and replicate information about important contacts
+			if (m_aContacts && m_aContacts.Contains(newContact))
+				continue;
 
-				if (!isAuthority)
-				{
-					changedEntityRplComp = SCR_EntityHelper.GetEntityRplComponent(newContact);
-					if (changedEntityRplComp)
-						Rpc(Rpc_ContactChanged, changedEntityRplComp.Id(), true);
-				}
+			specialCollisionComponent = SCR_SpecialCollisionHandlerComponent.Cast(newContact.FindComponent(SCR_SpecialCollisionHandlerComponent));
+			if (!specialCollisionComponent)
+			{
+				currentTree = Tree.Cast(newContact);
+				if (!currentTree) // checking if the entity is a bush or a tree
+					continue; 
 				
-				AddNewContact(newContact);
+				vector mins, maxs;
+				newContact.GetBounds(mins, maxs);
+
+				currentTreeType = TreeClass.Cast(currentTree.GetPrefabData()).SoundType;
+				evaluationModHeight = GetModifiedBushHeight(maxs[1]-mins[1] , currentTreeType);
+
+				if (evaluationModHeight > highestModifiedHeight)
+					highestModifiedHeight = evaluationModHeight;
+				
+				continue;
 			}
+
+			if (!isAuthority)
+			{
+				changedEntityRplComp = SCR_EntityHelper.GetEntityRplComponent(newContact);
+				if (changedEntityRplComp)
+					Rpc(Rpc_ContactChanged, changedEntityRplComp.Id(), true);
+			}
+
+			AddNewContact(newContact);
 		}
+
+		CalculateAndSetSlowdown(highestModifiedHeight);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected float GetModifiedBushHeight(float foliageHeight, ETreeSoundTypes treeType = ETreeSoundTypes.Bush)
+	{
+		// some types of bushes are thicker than others so using the height and type of foliage we approximate the slowdown
+		SCR_ChimeraCharacterClass classData = SCR_ChimeraCharacterClass.Cast(GetPrefabData());
+		
+		return foliageHeight * classData.GetBushSlowTypeCfg().GetHeightSlowEffectModifier(treeType);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void CalculateAndSetSlowdown(float bushModdedHeight)
+	{
+		SCR_ChimeraCharacterClass classData = SCR_ChimeraCharacterClass.Cast(GetPrefabData());
+				
+		// calculate the slow effect based on the modified height on the curve
+		float bushSlow = LegacyCurve.Curve(
+		ECurveType.CurveProperty2D,
+		bushModdedHeight,
+		classData.GetFoliageHeightSlowdownCurve())[1];
+
+		SetSpeedLimit(this, bushSlow);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -279,7 +359,7 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 		if (!specialCollisionComponent)
 			return;
 
-		SCR_SpecialCollisionHandlerComponentClass data = SCR_SpecialCollisionHandlerComponentClass.Cast(specialCollisionComponent.GetComponentData(newContact));
+			SCR_SpecialCollisionHandlerComponentClass data = SCR_SpecialCollisionHandlerComponentClass.Cast(specialCollisionComponent.GetComponentData(newContact));
 		if (!data)
 			return;
 
@@ -292,8 +372,8 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 				return;
 
 			data.GetSpecialCollisionDamageEffects(specialDamageEffects);
-	
-			foreach(SCR_SpecialCollisionDamageEffect effect : specialDamageEffects)
+
+			foreach (SCR_SpecialCollisionDamageEffect effect : specialDamageEffects)
 			{
 				effect.SetResponsibleEntity(newContact);
 				damageMgr.AddSpecialContactEffect(effect);
@@ -422,5 +502,82 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 			height = specialCollisionComponent.GetContactHeight();
 
 		signalsMgr.SetSignalValue(heightSignalId, height);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Used whenever an entity slows the player down (as of writing this code only used for bushes and barbed wire)
+	//! This system mostly handles finding the strongest acting slow and restricting the character to that amount.
+	//! \param[in] source Origin of the slowing force
+	//! \param[in] limit Percentage amount of base speed the character maxes out to, if set to 1 will remove source automatically
+	void SetSpeedLimit(Managed source, float limit)
+	{
+		m_mSpeedReferences.Set(source, limit);
+
+		float speedLimit = 1; // base speed of the player
+		float tempLimit;
+
+		for (int idx = m_mSpeedReferences.Count() - 1; idx >= 0; idx--)
+		{
+			if (!m_mSpeedReferences.GetKey(idx)) // check if source still exists
+			{
+				m_mSpeedReferences.RemoveElement(idx);
+				continue;
+			}
+
+			tempLimit = m_mSpeedReferences.GetElement(idx);
+
+			if (m_mSpeedReferences.GetElement(idx) == 1)
+			{
+				m_mSpeedReferences.RemoveElement(idx);
+				continue;
+			}
+
+			if (tempLimit < speedLimit)
+				speedLimit = tempLimit;
+		}
+		
+		m_fTargetSpeed = speedLimit;
+
+		World world = GetGame().GetWorld();
+		SCR_CharacterSlowdownEasingSystem characterSlowdownSystem = SCR_CharacterSlowdownEasingSystem.Cast(world.FindSystem(SCR_CharacterSlowdownEasingSystem));
+		
+		if (m_fTargetSpeed < m_fCurrentSpeed)	// speed decrease is more gradual but speed increase is instant
+		{
+			if (characterSlowdownSystem)
+				characterSlowdownSystem.Register(this);
+		}
+		else
+		{
+			if (characterSlowdownSystem)
+				characterSlowdownSystem.Unregister(this);	// SlowdownSystem checks if it contains this class first
+															// we unregister for extra insurance nothing goes wrong
+			OverrideSpeed(speedLimit);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Called by SCR_CharacterSlowdownEasingSystem to make the transition during slowdowns better.
+	//! \param[in] transitionTime Amount of time passed since last update * transition strength
+	void UpdateSlowdown(float transitionTime)
+	{
+		float newSpeed = Math.Lerp(m_fCurrentSpeed, m_fTargetSpeed, transitionTime);
+
+		if (Math.AbsFloat(newSpeed - m_fTargetSpeed) < 0.01)
+		{
+			newSpeed = m_fTargetSpeed;
+			World world = GetGame().GetWorld();
+			SCR_CharacterSlowdownEasingSystem s_System = SCR_CharacterSlowdownEasingSystem.Cast(world.FindSystem(SCR_CharacterSlowdownEasingSystem));
+			if (s_System)
+				s_System.Unregister(this);
+		}
+
+		OverrideSpeed(newSpeed);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OverrideSpeed(float speed)
+	{
+		m_fCurrentSpeed = speed;
+		GetCharacterController().OverrideMaxSpeed(speed);
 	}
 }

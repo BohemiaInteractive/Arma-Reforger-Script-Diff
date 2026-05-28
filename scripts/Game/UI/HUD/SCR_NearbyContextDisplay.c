@@ -187,19 +187,15 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 		array<UserActionContext> contexts = {};
 		m_InteractionHandlerComponent.GetNearbyAvailableContextList(contexts);
 		
-		array<BaseUserAction> outActions = {};
 		array<UserActionContext> additionalContexts = {};
 		m_InteractionHandlerComponent.GetNearbyShowableContextList(additionalContexts);
 		foreach(UserActionContext ctx: additionalContexts)
 		{
-			if (ctx.GetActionsList(outActions) > 0)
-				if (SCR_NearbyContextWidgetComponentInteract.IsHealingAction(outActions[0]))
-					contexts.Insert(ctx);
+			if (SCR_NearbyContextWidgetComponentInteract.IsHealingAction(ctx.GetAction(0)))
+				contexts.Insert(ctx);
 		}
 		
 		#ifdef DEBUG_ACTIONICONS
-		additionalContexts = {};
-		m_InteractionHandlerComponent.GetNearbyShowableContextList(additionalContexts);
 		contexts.InsertAll(additionalContexts);
 		#endif
 
@@ -256,6 +252,12 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 		SCR_HealSupportStationAction medAction;
 		IEntity entAction;
 
+		#ifdef DEBUG_ACTIONICONS
+		array<BaseUserAction> outActions = {};
+		#else
+		BaseUserAction currAction;
+		#endif
+
 		// Iterate through every available context and assign a Widget to it
 		foreach (UserActionContext ctx : contexts)
 		{
@@ -266,7 +268,8 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 			vector position = ctx.GetOrigin();
 			float posX, posY;
 			GetWorldToScreenPosition(world, cameraIndex, position, posX, posY);
-			
+
+			#ifdef DEBUG_ACTIONICONS
 			if (ctx.GetActionsList(outActions) < 1)
 				continue;
 			
@@ -274,7 +277,6 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 			if (!entAction)
 				continue;
 			
-			#ifdef DEBUG_ACTIONICONS
 			foreach(BaseUserAction baseAction: outActions)
 			{
 				SCR_ActionUIInfo actionUIInfo = SCR_ActionUIInfo.Cast(baseAction.GetUIInfo());
@@ -282,6 +284,14 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 				if (!actionUIInfo)
 					Print("DEBUG_ACTIONICONS:: No icons found for "+ baseAction);
 			}
+			#else
+			currAction = ctx.GetAction(0);
+			if (!currAction)
+				continue;
+
+			entAction = currAction.GetOwner();
+			if (!entAction)
+				continue;
 			#endif
 
 			// Just ignore actions out of reach or out of screen, we will fade them out anyway
@@ -443,17 +453,17 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 
 	//------------------------------------------------------------------------------------------------
 	//! Check every Cached Widget array and check if the array holds more widgets then the cap allows
-	//! If there are too many cached Widgets, delete Widgets until its below the cap.
+	//! If there are too many cached Widgets, delete Widgets until it is below the cap.
 	protected void ClearCachedWidgets()
 	{
 		int count;
 		int maxCachedAmount = m_iMaxPrecachedWidgets;
 		Widget cachedWidget;
 
-		foreach (array<Widget> cachedWidgets : m_mCachedWidgets)
+		SCR_NearbyContextCachingData data;
+		foreach (string mapKey, array<Widget> cachedWidgets : m_mCachedWidgets)
 		{
-			string mapKey = m_mCachedWidgets.GetKeyByValue(cachedWidgets);
-			SCR_NearbyContextCachingData data = m_CachingConfig.GetDataFromLayout(mapKey);
+			data = m_CachingConfig.GetDataFromLayout(mapKey);
 
 			if (data)
 				data.GetMaxCacheAmount(maxCachedAmount);

@@ -19,6 +19,7 @@ class SCR_TaskListTabEntryUIComponent : SCR_ScriptedWidgetComponent
 		switch (m_eTabType)
 		{
 			case SCR_ETaskTabType.AVAILABLE:
+			case SCR_ETaskTabType.AVAILABLE_ASSIGNABLE:
 			{
 				m_Widgets.m_wText.SetText("#AR-Tasks_TaskTab_Available");
 				break;
@@ -26,6 +27,11 @@ class SCR_TaskListTabEntryUIComponent : SCR_ScriptedWidgetComponent
 			case SCR_ETaskTabType.FINISHED:
 			{
 				m_Widgets.m_wText.SetText("#AR-Tasks_TaskTab_Completed");
+				break;
+			}
+			case SCR_ETaskTabType.ALL:
+			{
+				m_Widgets.m_wText.SetText("#AR-Tasks_TaskTab_All");
 				break;
 			}
 		}

@@ -344,10 +344,7 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnPlayInteraction(MissionWorkshopItem scenario)
 	{
-		if (SCR_ScenarioUICommon.HasSave(scenario))
-			Continue(scenario);
-		else
-			Play(scenario);
+		Continue(scenario);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -356,26 +353,6 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 		if (!SCR_ScenarioUICommon.CanPlay(scenario))
 			return false;
 
-		// Save behavior
-		/*
-		WorldSaveItem save = WorldSaveItem.Cast(scenario.GetOwner());
-		if (save)
-		{
-			// Find save by id
-			string id = save.Id();
-			string fileName = ""; //GetGame().GetSaveManager().FindFileNameById(id);
-			
-			if (!fileName)
-			{
-				Print("Save to play was not found", LogLevel.WARNING);
-				return;
-			}
-			
-			GetGame().GetSaveManager().SetFileNameToLoad(fileName);
-		}
-		*/
-		
-		// Play scenario 
 		SCR_ScenarioUICommon.TryPlayScenario(scenario);
 		return true;
 	}
@@ -383,8 +360,10 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected bool Continue(MissionWorkshopItem scenario)
 	{
+		if (!SCR_ScenarioUICommon.CanPlay(scenario))
+			return false;
+
 		SCR_ScenarioUICommon.LoadSave(scenario, m_Header, ChimeraMenuPreset.ScenarioMenu);
-		SCR_ScenarioUICommon.TryPlayScenario(scenario);
 		return true;
 	}
 
@@ -396,9 +375,6 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 
 		m_SelectedScenario = scenario;
 		m_Header = SCR_MissionHeader.Cast(MissionHeader.ReadMissionHeader(scenario.Id()));
-
-		if (!SCR_ScenarioUICommon.HasSave(scenario))
-			return;
 
 		SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateDialog(SCR_ScenarioUICommon.DIALOG_RESTART);
 		dialog.m_OnConfirm.Insert(OnRestartConfirmed);
@@ -452,20 +428,12 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected bool CreateLines(array<MissionWorkshopItem> scenarios, Widget parent)
+	protected void CreateLines(array<MissionWorkshopItem> scenarios, Widget parent)
 	{
-		array<ResourceName> missionFilter();
-		
-		SCR_ScenarioMenuLoadContext context();
-		context.m_aScenarios = scenarios;
-		context.m_wListRoot = parent;
-		
 		foreach (MissionWorkshopItem scenario : scenarios)
 		{
-			missionFilter.Insert(scenario.Id())
+			CreateLine(m_sLinesLayout, parent, scenario)
 		}
-
-		return GetGame().GetSaveGameManager().RetrieveSaveGameInfo(missionFilter, new SaveGameOperationCb(OnSaveGameDataLoaded, context));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -489,26 +457,6 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 		comp.GetOnMouseEnter().Insert(OnLineMouseEnter);
 		
 		return w;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnSaveGameDataLoaded(bool success, Managed context)
-	{
-		if (!success)
-		{
-			OnScenariosLoadFailed();
-			return;
-		}
-
-		auto ctx = SCR_ScenarioMenuLoadContext.Cast(context);
-		if (!ctx.m_wListRoot)
-			return; // Menu closed already before callback could invoke
-
-		foreach (MissionWorkshopItem scenario : ctx.m_aScenarios)
-		{
-			if (scenario)
-				CreateLine(m_sLinesLayout, ctx.m_wListRoot, scenario);
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------

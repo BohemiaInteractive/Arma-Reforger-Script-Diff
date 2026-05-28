@@ -72,4 +72,10 @@ class SCR_VehiclePilotVacancyCheck : SCR_VehicleConditionCheck
 
 		return null;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	void SCR_VehiclePilotVacancyCheck()
+	{
+		m_eConditionType = SCR_EVehicleConditionCheckType.VEHICLE_PILOT_TAKEN;
+	}
 }

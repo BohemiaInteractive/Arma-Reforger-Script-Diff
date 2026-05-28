@@ -6,6 +6,7 @@ class SCR_WorkbenchHelper
 	//!
 	//! \param[in] message
 	//! \param[in] caption
+	//! \param[in] level
 	static void PrintDialog(string message, string caption = "", LogLevel level = LogLevel.WARNING)
 	{
 		Print("" + message, level);
@@ -19,11 +20,24 @@ class SCR_WorkbenchHelper
 	//! \param[in] param2
 	//! \param[in] param3
 	//! \param[in] caption
+	//! \param[in] level
 	static void PrintFormatDialog(string message, string param1, string param2 = "", string param3 = "", string caption = "", LogLevel level = LogLevel.WARNING)
 	{
 		message = string.Format(message, param1, param2, param3);
 		Print("" + message, level: level);
 		Workbench.Dialog(caption, message);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] message
+	//! \param[in] caption
+	//! \param[in] level
+	//! \return
+	static int PrintOKCancelDialog(string message, string caption = "", LogLevel level = LogLevel.WARNING)
+	{
+		Print("" + message, level);
+		return Workbench.ScriptDialog(caption, message, new WorkbenchDialog_OKCancel());
 	}
 
 	//------------------------------------------------------------------------------------------------

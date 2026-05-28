@@ -18,7 +18,15 @@ class AIGroup: AIAgent
 	proto external void AddAgent(AIAgent pAgent);
 	proto external void RemoveAgent(AIAgent pAgent);
 	proto external int GetAgents(notnull out array<AIAgent> outAgents);
+	/*!
+	* Returns the local number of agents in this group. This always matches the number of agents returned by GetAgents
+	*/
 	proto external int GetAgentsCount();
+	/*!
+	* Returns the server-reported number of agents in this group.
+	* However, the GetAgents array may return an empty array when the agents are remotely controlled
+	*/
+	proto external int GetServerAgentsCount();
 	proto external void ActivateAllMembers();
 	proto external void DeactivateAllMembers();
 	proto external AIFormationComponent GetFormationComponent();

@@ -1,5 +1,5 @@
 [BaseContainerProps()]
-class SCR_ResourceContainerQueueBase : Managed
+class SCR_ResourceContainerQueueBase
 {
 	static const int FIRST_CONTAINER_INDEX		= 0;
 	static const int INVALID_CONTAINER_INDEX	= -1;
@@ -600,13 +600,13 @@ class SCR_ResourceContainerQueueBase : Managed
 }
 
 [BaseContainerProps()]
-class SCR_ResourceContainerQueue<Class ResourceInteractorType> : SCR_ResourceContainerQueueBase
+class SCR_ResourceContainerQueue : SCR_ResourceContainerQueueBase
 {
 	//! The interactor that owns the queue.
-	protected ResourceInteractorType m_Interactor;
+	protected SCR_ResourceInteractor m_Interactor;
 	
 	[Attribute(uiwidget: UIWidgets.Object)]
-	protected ref array<ref SCR_ResourceStoragePolicyBase<ResourceInteractorType>> m_StoragePolicies;
+	protected ref array<ref SCR_ResourceStoragePolicyBase> m_StoragePolicies;
 	
 	//------------------------------------------------------------------------------------------------
 	//! \return Returns the number of storage policies that are registered.
@@ -620,7 +620,7 @@ class SCR_ResourceContainerQueue<Class ResourceInteractorType> : SCR_ResourceCon
 	//! \return Returns the number of containers of a specified storageType.
 	int GetStorageTypeCount(EResourceContainerStorageType storageType)
 	{
-		foreach (SCR_ResourceStoragePolicyBase<ResourceInteractorType> policy : m_StoragePolicies)
+		foreach (SCR_ResourceStoragePolicyBase policy : m_StoragePolicies)
 		{
 			if (policy.IsStorageTypeValid(storageType))
 				return policy.GetStorageQueue().GetContainerCount();
@@ -638,11 +638,11 @@ class SCR_ResourceContainerQueue<Class ResourceInteractorType> : SCR_ResourceCon
 		int position = SCR_ResourceContainerQueueBase.INVALID_CONTAINER_INDEX;
 		float resourceValue;
 		bool shouldIncrementOffset;
-		SCR_ResourceContainerStorageQueue<ResourceInteractorType> storageQueue;
+		SCR_ResourceContainerStorageQueue storageQueue;
 		
 		EResourceContainerStorageType storageType = container.GetStorageType();
 		
-		foreach (SCR_ResourceStoragePolicyBase<ResourceInteractorType> policy: m_StoragePolicies)
+		foreach (SCR_ResourceStoragePolicyBase policy: m_StoragePolicies)
 		{
 			storageQueue = policy.GetStorageQueue();
 		
@@ -671,10 +671,10 @@ class SCR_ResourceContainerQueue<Class ResourceInteractorType> : SCR_ResourceCon
 	override SCR_ResourceContainer PopFirstContainer()
 	{
 		bool shouldDecrementOffset;
-		SCR_ResourceContainerStorageQueue<ResourceInteractorType> storageQueue;
+		SCR_ResourceContainerStorageQueue storageQueue;
 		SCR_ResourceContainer container;
 		
-		foreach (SCR_ResourceStoragePolicyBase<ResourceInteractorType> policy: m_StoragePolicies)
+		foreach (SCR_ResourceStoragePolicyBase policy: m_StoragePolicies)
 		{
 			storageQueue = policy.GetStorageQueue();
 			
@@ -712,10 +712,10 @@ class SCR_ResourceContainerQueue<Class ResourceInteractorType> : SCR_ResourceCon
 		
 		int offsetPosition;
 		bool shouldDecrementOffset;
-		SCR_ResourceContainerStorageQueue<ResourceInteractorType> storageQueue;
+		SCR_ResourceContainerStorageQueue storageQueue;
 		SCR_ResourceContainer container;
 		
-		foreach (SCR_ResourceStoragePolicyBase<ResourceInteractorType> policy: m_StoragePolicies)
+		foreach (SCR_ResourceStoragePolicyBase policy: m_StoragePolicies)
 		{
 			storageQueue = policy.GetStorageQueue();
 			
@@ -780,7 +780,7 @@ class SCR_ResourceContainerQueue<Class ResourceInteractorType> : SCR_ResourceCon
 		m_fAggregatedResourceValue		= SCR_ResourceActor.RESOURCES_LOWER_LIMIT;
 		m_fAggregatedMaxResourceValue	= SCR_ResourceActor.RESOURCES_LOWER_LIMIT;
 		
-		foreach (SCR_ResourceStoragePolicyBase<ResourceInteractorType> policy: m_StoragePolicies)
+		foreach (SCR_ResourceStoragePolicyBase policy: m_StoragePolicies)
 		{
 			policy.ResetStorageQueue();
 		}
@@ -791,17 +791,17 @@ class SCR_ResourceContainerQueue<Class ResourceInteractorType> : SCR_ResourceCon
 	//------------------------------------------------------------------------------------------------
 	override void Initialize(notnull SCR_ResourceInteractor interactor)
 	{
-		SCR_ResourceContainerStorageQueue<ResourceInteractorType> storageQueue;
-		m_Interactor = ResourceInteractorType.Cast(interactor);
+		SCR_ResourceContainerStorageQueue storageQueue;
+		m_Interactor = interactor;
 		
-		foreach (int idx, SCR_ResourceStoragePolicyBase<ResourceInteractorType> policy: m_StoragePolicies)
+		foreach (int idx, SCR_ResourceStoragePolicyBase policy: m_StoragePolicies)
 		{
 			storageQueue = policy.GetStorageQueue();
 			
 			if (!storageQueue)
 			{
 				// TODO: Do proper default behavior or just block progress perhaps?.
-				storageQueue = new SCR_ResourceContainerStorageQueue<ResourceInteractorType>();
+				storageQueue = new SCR_ResourceContainerStorageQueue();
 				
 				policy.SetStorageQueue(storageQueue);	
 				

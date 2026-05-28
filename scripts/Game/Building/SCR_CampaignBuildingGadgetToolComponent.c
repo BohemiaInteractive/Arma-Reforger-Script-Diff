@@ -630,6 +630,35 @@ class SCR_CampaignBuildingGadgetToolComponent : SCR_GadgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Method used to execute custom validation of the surface entity
+	//! \param[in] caller
+	//! \param[out] cantPlaceReason
+	//! \param[in] surfaceEnt entity on which the item is going to be deployed
+	//! \param[in] worldPosition position in world space
+	//! \param[in] surfaceNorm normal of the face on which the item is going to be deployed
+	//! \param[in] nodeIndex bone id to which is attached the collider on which the item is going to be deployed
+	//! \param[in] colliderIndex collider id on which the item is going to be deployed
+	//! \param[in] surfaceProps properties of the surface on which the item is going to be deployed
+	//! \param[in] surfaceMaterial name of the material of the surface on which the item is going to be deployed
+	//! \param[in] colliderName name of the collider on which the item is going to be deployed
+	//! \return true if custom space validation was performed, otherwise false
+	bool ValidateSurface(notnull SCR_ItemPlacementComponent caller, out ENotification cantPlaceReason, IEntity surfaceEnt, vector worldPosition, vector surfaceNorm, int nodeIndex, int colliderIndex, SurfaceProperties surfaceProps, string surfaceMaterial, string colliderName)
+	{
+		if (!m_CurrentlyHandledComponent)
+			return false;
+
+		if (m_CurrentlyHandledComponent.IsSurfaceValid(surfaceEnt, worldPosition, surfaceNorm, nodeIndex, colliderIndex, surfaceProps, surfaceMaterial, colliderName))
+		{
+			m_CurrentlyHandledComponent.SetPreviewState(SCR_EPreviewState.PLACEABLE);
+			return true;
+		}
+
+		cantPlaceReason = ENotification.PLACEABLE_ITEM_CANT_PLACE_GENERIC;
+		m_CurrentlyHandledComponent.SetPreviewState(SCR_EPreviewState.BLOCKED);
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Method used to check if there is enough space for currently handled deployable variant
 	//! \param[in] caller
 	//! \param[in,out] transform of the position for which validation should be performed. This position has already applied offset of 1% of its up vector (1cm)
@@ -654,6 +683,19 @@ class SCR_CampaignBuildingGadgetToolComponent : SCR_GadgetComponent
 		cantPlaceReason = ENotification.PLACEABLE_ITEM_CANT_PLACE_NOT_ENOUGH_SPACE;
 		m_CurrentlyHandledComponent.SetPreviewState(SCR_EPreviewState.BLOCKED);
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method used to override the position and rotation of the preview
+	//! \param[in] caller
+	//! \param[in,out] transform pointer containing rotation and position at which item preivew will be shown, and from which the space validation will be done
+	void OverridePreviewTransform(notnull SCR_ItemPlacementComponent caller, inout vector transform[4])
+	{
+		if (!m_CurrentlyHandledComponent)
+			return;
+
+		vector forward = transform[2].VectorToAngles();
+		m_CurrentlyHandledComponent.ComputeTransform(transform, forward);
 	}
 
 	//------------------------------------------------------------------------------------------------

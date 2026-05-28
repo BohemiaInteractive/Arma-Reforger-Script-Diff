@@ -33,11 +33,20 @@ class SCR_TransportUnitComponent : ScriptComponent
 	[RplProp(onRplName: "OnDestinationCallsignSet")]
 	protected int m_iSuppliedBaseCallsign = SCR_CampaignMilitaryBaseComponent.INVALID_BASE_CALLSIGN;
 
-	[RplProp(onRplName: "OnVehicleRplIdSet")]
+	[RplProp()]
 	protected RplId m_VehicleRplId = RplId.Invalid();
 
 	[RplProp(onRplName: "OnPreferableResupplyTaskSet")]
 	protected RplId m_PreferableResupplyTaskRplId = RplId.Invalid();
+
+	[RplProp(onRplName: "OnVehicleAggregatedResourceValueSet")]
+	protected float m_fVehicleAggregatedResourceValue = -1;
+
+	[RplProp(onRplName: "OnIsVehicleUsableSet")]
+	protected bool m_bIsVehicleUsable;
+
+	[RplProp()]
+	protected SCR_EVehicleConditionCheckType m_eVehicleFailedConditionType;
 
 	protected SCR_AIGroup m_AIGroup;
 
@@ -54,6 +63,8 @@ class SCR_TransportUnitComponent : ScriptComponent
 	protected SCR_CampaignMilitaryBaseComponent m_SuppliedBase;
 
 	protected Vehicle m_Vehicle;
+
+	protected SCR_AIVehicleUsageComponent m_AiVehicleUsage;
 
 	protected SCR_FuelManagerComponent m_FuelManager;
 
@@ -72,15 +83,19 @@ class SCR_TransportUnitComponent : ScriptComponent
 	protected ref ScriptInvokerInt m_OnStateChanged;
 	protected ref OnTransportUnitVehicleChangedInvoker m_OnVehicleChanged;
 	protected ref ScriptInvokerInt m_OnResupplyTaskSolverStateChanged;
+	protected ref ScriptInvokerFloat m_OnVehicleResourcesValueChanged;
 
 	protected static int s_iLastGeneratedTaskId;
 
 	protected static const string TRANSPORT_UNIT_HELP_TASK_ID = "%1_TransportUnitHelpTask_%2";
 
 	//------------------------------------------------------------------------------------------------
-	SCR_VehicleConditionManager GetVehicleConditionManager()
+	ScriptInvokerFloat GetOnVehicleResourcesValueChanged()
 	{
-		return m_VehicleConditionManager;
+		if (!m_OnVehicleResourcesValueChanged)
+			m_OnVehicleResourcesValueChanged = new ScriptInvokerFloat();
+
+		return m_OnVehicleResourcesValueChanged;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -108,15 +123,6 @@ class SCR_TransportUnitComponent : ScriptComponent
 			m_OnStateChanged = new ScriptInvokerInt();
 
 		return m_OnStateChanged;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	EntityID GetID()
-	{
-		if (m_AIGroup)
-			return m_AIGroup.GetID();
-
-		return EntityID.INVALID;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -169,6 +175,7 @@ class SCR_TransportUnitComponent : ScriptComponent
 			m_iSourceBaseCallsign = m_SourceBase.GetCallsign();
 		else
 			m_iSourceBaseCallsign = SCR_CampaignMilitaryBaseComponent.INVALID_BASE_CALLSIGN;
+		m_TaskSolver.SetSourceBase(m_SourceBase);
 
 		Replication.BumpMe();
 	}
@@ -205,20 +212,33 @@ class SCR_TransportUnitComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	bool HasVehicle()
+	{
+		return m_VehicleRplId.IsValid();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_EVehicleConditionCheckType GetVehicleFailedConditionType()
+	{
+		return m_eVehicleFailedConditionType;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	Vehicle GetVehicle()
 	{
-		if (!m_Vehicle && m_VehicleRplId.IsValid())
-			OnVehicleRplIdSet();
-
 		return m_Vehicle;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	bool IsVehicleUsable()
 	{
-		if (!m_VehicleConditionManager)
-			return true;
+		return m_bIsVehicleUsable;
+	}
 
-		return m_VehicleConditionManager.IsVehicleUsable(m_Vehicle);
+	//------------------------------------------------------------------------------------------------
+	float GetVehicleAggregatedResourceValue()
+	{
+		return m_fVehicleAggregatedResourceValue;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -284,14 +304,10 @@ class SCR_TransportUnitComponent : ScriptComponent
 		if (m_eState != SCR_ETransportUnitState.INACTIVE || m_TaskSolver.GetResupplyTaskSolverState() != SCR_EResupplyTaskSolverState.INACTIVE)
 			return;
 
-		if (!m_SourceBase || !m_Vehicle)
+		if (!m_SourceBase || !m_Vehicle || !m_AiVehicleUsage)
 			return;
 
 		if (!m_VehicleConditionManager.IsVehicleUsable(m_Vehicle))
-			return;
-
-		SCR_AIVehicleUsageComponent aiVehicleUSage = SCR_AIVehicleUsageComponent.Cast(m_Vehicle.FindComponent(SCR_AIVehicleUsageComponent));
-		if (!aiVehicleUSage)
 			return;
 
 		if (m_SuppliesTransportSystem.IsVehicleBoarded(m_Vehicle, this))
@@ -307,7 +323,7 @@ class SCR_TransportUnitComponent : ScriptComponent
 
 		m_AIGroup.CompleteAllWaypoints();
 
-		if (aiVehicleUSage.IsOccupiedByGroup(m_AIGroup))
+		if (m_AiVehicleUsage.IsOccupiedByGroup(m_AIGroup))
 		{
 			CreateMoveWaypointToSourceBase();
 		}
@@ -329,14 +345,10 @@ class SCR_TransportUnitComponent : ScriptComponent
 
 		m_AIGroup.GetOnWaypointCompleted().Remove(OnBoardingCompleted);
 
-		if (!m_Vehicle)
+		if (!m_Vehicle || !m_AiVehicleUsage)
 			return;
 
-		SCR_AIVehicleUsageComponent aiVehicleUSage = SCR_AIVehicleUsageComponent.Cast(m_Vehicle.FindComponent(SCR_AIVehicleUsageComponent));
-		if (!aiVehicleUSage)
-			return;
-
-		if (aiVehicleUSage.IsOccupiedByGroup(m_AIGroup))
+		if (m_AiVehicleUsage.IsOccupiedByGroup(m_AIGroup))
 			CreateMoveWaypointToSourceBase();
 	}
 
@@ -391,7 +403,7 @@ class SCR_TransportUnitComponent : ScriptComponent
 
 		m_PreferableResupplyTask = preferableTask;
 
-		m_PreferableResupplyTaskRplId = Replication.FindId(m_PreferableResupplyTask);
+		m_PreferableResupplyTaskRplId = Replication.FindItemId(m_PreferableResupplyTask);
 		Replication.BumpMe();
 	}
 
@@ -405,14 +417,39 @@ class SCR_TransportUnitComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Called upon the m_VehicleRplId replication and set the vehicle from the server.
-	protected void OnVehicleRplIdSet()
+	protected void OnVehicleDeleted(SCR_AIVehicleUsageComponent vehicleUsageComponent)
 	{
-		if (!m_VehicleRplId.IsValid())
+		SetVehicle(null);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnVehicleAggregatedResourceValueSet()
+	{
+		if (m_OnVehicleResourcesValueChanged)
+			m_OnVehicleResourcesValueChanged.Invoke(m_fVehicleAggregatedResourceValue);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnVehicleResourceValueChanged(SCR_ResourceInteractor interactor, float previousValue)
+	{
+		if (!interactor)
 			return;
 
-		Vehicle vehicle = Vehicle.Cast(Replication.FindItem(m_VehicleRplId));
-		SetVehicle(vehicle);
+		m_fVehicleAggregatedResourceValue = interactor.GetAggregatedResourceValue();
+		Replication.BumpMe();
+
+		if (m_OnVehicleResourcesValueChanged)
+			m_OnVehicleResourcesValueChanged.Invoke(m_fVehicleAggregatedResourceValue);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected SCR_ResourceConsumer GetVehicleSuppliesConsumer(Vehicle vehicle)
+	{
+		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.FindResourceComponent(vehicle);
+		if (!resourceComponent)
+			return null;
+
+		return resourceComponent.GetConsumer(EResourceGeneratorID.VEHICLE_UNLOAD, EResourceType.SUPPLIES);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -422,23 +459,45 @@ class SCR_TransportUnitComponent : ScriptComponent
 			return;
 
 		if (m_Vehicle)
+		{
 			UpdateGarbageBlacklist(m_Vehicle, false);
+
+			if (m_AiVehicleUsage)
+				m_AiVehicleUsage.GetOnDeleted().Remove(OnVehicleDeleted);
+
+			SCR_ResourceConsumer consumer = GetVehicleSuppliesConsumer(m_Vehicle);
+			if (consumer)
+				consumer.GetOnResourcesChanged().Remove(OnVehicleResourceValueChanged);
+		}
 
 		Vehicle previousVehicle = m_Vehicle;
 		m_Vehicle = vehicle;
-		m_VehicleRplId = Replication.FindId(m_Vehicle);
-		Replication.BumpMe();
+		m_VehicleRplId = Replication.FindItemId(m_Vehicle);
+		m_bIsVehicleUsable = m_VehicleConditionManager.IsVehicleUsable(m_Vehicle);
 
 		if (m_Vehicle)
 		{
 			m_FuelManager = SCR_FuelManagerComponent.Cast(m_Vehicle.FindComponent(SCR_FuelManagerComponent));
-
 			UpdateGarbageBlacklist(m_Vehicle, true);
+			m_AiVehicleUsage = SCR_AIVehicleUsageComponent.Cast(m_Vehicle.FindComponent(SCR_AIVehicleUsageComponent));
+			if (m_AiVehicleUsage)
+				m_AiVehicleUsage.GetOnDeleted().Insert(OnVehicleDeleted);
+
+			SCR_ResourceConsumer consumer = GetVehicleSuppliesConsumer(vehicle);
+			if (consumer)
+			{
+				m_fVehicleAggregatedResourceValue = consumer.GetAggregatedResourceValue();
+				consumer.GetOnResourcesChanged().Insert(OnVehicleResourceValueChanged);
+			}
 		}
 		else
 		{
+			m_fVehicleAggregatedResourceValue = -1;
 			m_FuelManager = null;
+			m_AiVehicleUsage = null;
 		}
+
+		Replication.BumpMe();
 
 		if (m_OnVehicleChanged)
 			m_OnVehicleChanged.Invoke(vehicle, previousVehicle);
@@ -774,7 +833,7 @@ class SCR_TransportUnitComponent : ScriptComponent
 			return;
 
 		if (SCR_PlayerController.GetLocalPlayerId() == faction.GetCommanderId())
-			SCR_NotificationsComponent.SendLocal(ENotification.CAMPAIGN_TRANSPORT_GROUP_LOST, Replication.FindId(GetOwner()));
+			SCR_NotificationsComponent.SendLocal(ENotification.CAMPAIGN_TRANSPORT_GROUP_LOST, Replication.FindItemId(GetOwner()));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -800,11 +859,38 @@ class SCR_TransportUnitComponent : ScriptComponent
 		m_TaskSolver.GetOnResupplyTaskSolverStateChanged().Insert(OnResupplyTaskSolverStateChanged);
 
 		m_VehicleConditionManager = m_TaskSolver.GetVehicleConditionManager();
+		m_VehicleConditionManager.GetOnVehicleUsabilityChanged().Insert(OnVehicleUsabilityChanged);
 		m_AiGroupConditionManager = m_TaskSolver.GetAiGroupConditionManager();
 
 		m_TaskSystem = SCR_TaskSystem.GetInstance();
 
 		m_SuppliesTransportSystem.Register(this);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnIsVehicleUsableSet()
+	{
+		if (m_OnVehicleChanged)
+			m_OnVehicleChanged.Invoke(m_Vehicle, null);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnVehicleUsabilityChanged(bool isUsable)
+	{
+		if (m_bIsVehicleUsable == isUsable)
+			return;
+
+		m_bIsVehicleUsable = isUsable;
+		m_eVehicleFailedConditionType = SCR_EVehicleConditionCheckType.MISSING_VEHICLE;
+
+		if (!m_bIsVehicleUsable)
+		{
+			SCR_VehicleConditionCheck failedCondition = m_VehicleConditionManager.GetFirstFailedCheck(m_Vehicle);
+			if (failedCondition)
+				m_eVehicleFailedConditionType = failedCondition.GetConditionType();
+		}
+
+		Replication.BumpMe();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -834,6 +920,16 @@ class SCR_TransportUnitComponent : ScriptComponent
 		if (m_TaskSolverManager)
 			m_TaskSolverManager.RemoveSolver(m_TaskSolver);
 
+		SCR_ResourceConsumer consumer = GetVehicleSuppliesConsumer(m_Vehicle);
+		if (consumer)
+			consumer.GetOnResourcesChanged().Remove(OnVehicleResourceValueChanged);
+
+		if (m_VehicleConditionManager)
+			m_VehicleConditionManager.GetOnVehicleUsabilityChanged().Remove(OnVehicleUsabilityChanged);
+
+		if (m_AiVehicleUsage)
+			m_AiVehicleUsage.GetOnDeleted().Remove(OnVehicleDeleted);
+
 		if (m_SuppliesTransportSystem)
 			m_SuppliesTransportSystem.Unregister(this);
 
@@ -841,7 +937,7 @@ class SCR_TransportUnitComponent : ScriptComponent
 		if (gameMode && !gameMode.IsProxy())
 		{
 			if (m_TaskSystem && m_TransportUnitHelpTaskEntity)
-			m_TaskSystem.DeleteTask(m_TransportUnitHelpTaskEntity);
+				m_TaskSystem.DeleteTask(m_TransportUnitHelpTaskEntity);
 
 			if (m_Vehicle)
 				UpdateGarbageBlacklist(m_Vehicle, false);

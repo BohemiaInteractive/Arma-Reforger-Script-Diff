@@ -80,12 +80,8 @@ class SCR_DestructionDiagComponent : ScriptComponent
 		if (destructionComponent)
 		{
 			HitZone hitzone = destructionComponent.GetHitZone(params.ColliderName);
-			
 			if (!hitzone)
 				hitzone = destructionComponent.GetDefaultHitZone();
-			
-			if (!hitzone)
-				return; // No hitzone found
 			
 			for (int i = 0; i < 10; i++)
 			{
@@ -110,9 +106,6 @@ class SCR_DestructionDiagComponent : ScriptComponent
 			if (!hitZone)
 				hitZone = destructionComponent.GetDefaultHitZone();
 			
-			if (!hitZone)
-				return -1; // No hitzone found!
-			
 			return hitZone.GetDamageReduction();
 		}
 		
@@ -134,9 +127,6 @@ class SCR_DestructionDiagComponent : ScriptComponent
 			HitZone hitZone = destructionComponent.GetHitZone(params.ColliderName);
 			if (!hitZone)
 				hitZone = destructionComponent.GetDefaultHitZone();
-			
-			if (!hitZone)
-				return -1; // No hitzone found!
 			
 			return hitZone.GetDamageThreshold();
 		}

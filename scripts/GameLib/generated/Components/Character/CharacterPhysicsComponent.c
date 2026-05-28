@@ -31,6 +31,8 @@ sealed class CharacterPhysicsComponent: NativeComponent
 	*/
 	proto external bool IsRagdollRootMoving(float fVelocityTreshold);
 	proto external void EnableCollisionResponse(bool state);
+	proto external bool AddIgnoredEntity(IEntity ignoredEntity);
+	proto external bool RemoveIgnoredEntity(IEntity ignoredEntity);
 }
 
 /*!

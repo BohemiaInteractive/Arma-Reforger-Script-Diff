@@ -116,9 +116,7 @@ class SCR_MilitaryBaseLogicComponent : ScriptComponent
 		SetEventMask(owner, EntityEvent.INIT);
 	}
 
-	//------------------------------------------------------------------------------------------------
-	// destructor
-	void ~SCR_MilitaryBaseLogicComponent()
+	override void OnDelete(IEntity owner)
 	{
 		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
 		

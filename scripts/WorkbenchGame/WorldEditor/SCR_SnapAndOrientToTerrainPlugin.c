@@ -1,5 +1,10 @@
 #ifdef WORKBENCH
-[WorkbenchPluginAttribute(name: "Snap and Orient Entities to Terrain", shortcut: "Ctrl+Page Down", wbModules: { "WorldEditor" }, awesomeFontCode: 0xF2D1)]
+[WorkbenchPluginAttribute(
+	name: "Snap and Orient Entities to Terrain",
+	shortcut: "Ctrl+PageDown",
+	wbModules: { "WorldEditor" },
+	category: SCR_PluginCategory.WORLDEDITOR_MASS_PROCESSING,
+	awesomeFontCode: 0xF2D1)]
 class SCR_SnapAndOrientToTerrainPlugin : WorkbenchPlugin
 {
 	//------------------------------------------------------------------------------------------------
@@ -49,6 +54,7 @@ class SCR_SnapAndOrientToTerrainPlugin : WorkbenchPlugin
 				worldEditorAPI.SetVariableValue(entitySource, null, "coords", string.Format("%1 %2 %3", pos[0], pos[1], pos[2]));
 			}
 		}
+
 		worldEditorAPI.EndEntityAction();
 	}
 }

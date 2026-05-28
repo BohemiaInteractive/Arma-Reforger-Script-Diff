@@ -49,8 +49,8 @@ class SCR_InventoryHitZoneUI : SCR_InventoryAttachmentPointUI
 		
 		charCtrl.m_OnGadgetStateChangedInvoker.Remove(ApplyItem);
 		
-		if (comp.GetConsumableType() == SCR_EConsumableType.BANDAGE)
-			SCR_AnalyticsApplication.GetInstance().UseHealingFromInventory();		
+		//if (comp.GetConsumableType() == SCR_EConsumableType.BANDAGE)
+		//	SCR_AnalyticsApplication.GetInstance().UseHealingFromInventory();		
 	}
 
 	//------------------------------------------------------------------------------------------------

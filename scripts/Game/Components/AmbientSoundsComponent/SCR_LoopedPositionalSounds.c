@@ -32,17 +32,15 @@ class SCR_LoopedPositionalSounds : SCR_AmbientSoundsEffect
 		
 	//------------------------------------------------------------------------------------------------
 	// Called by SCR_AmbientSoundComponent in UpdateSoundJob()
-	override void Update(float worldTime, vector cameraPos)
+	override void Update(float worldTime, vector cameraPos, bool forceUpdate)
 	{
-		if (vector.DistanceSqXZ(m_vCameraPosLooped, cameraPos) < MINIMUM_MOVE_DISTANCE_SQ)
+		if (!forceUpdate && vector.DistanceSqXZ(m_vCameraPosLooped, cameraPos) < MINIMUM_MOVE_DISTANCE_SQ)
 			return;
 		
 		m_vCameraPosLooped = cameraPos;
-		
-		m_aClosestEntityID.Clear();
 					
-		//Get closest entities array
-		UpdateClosesEntitieyArray();
+		// Update closest entities array
+		UpdateClosestEntitiesArray();
 		
 		// Stop sounds that are no longer among closest entities
 		StopLoopedSounds();
@@ -146,10 +144,11 @@ class SCR_LoopedPositionalSounds : SCR_AmbientSoundsEffect
 	}
 		
 	//------------------------------------------------------------------------------------------------
-	private void UpdateClosesEntitieyArray()
+	private void UpdateClosestEntitiesArray()
 	{
-		m_AmbientSoundsComponent.GetClosestEntities(EQueryType.TreeBush, BUSH_LOOP_SOUND_COUNT_LIMIT, m_aClosestEntityID);
-		m_AmbientSoundsComponent.GetClosestEntities(EQueryType.TreeLeafy, LOOP_SOUND_COUNT, m_aClosestEntityID);	
+		m_aClosestEntityID.Clear();
+		m_AmbientSoundsComponent.GetClosestEntities(EAmbientSoundFlags.TreeBush, BUSH_LOOP_SOUND_COUNT_LIMIT, m_aClosestEntityID);
+		m_AmbientSoundsComponent.GetClosestEntities(EAmbientSoundFlags.TreeLeafy, LOOP_SOUND_COUNT - m_aClosestEntityID.Count(), m_aClosestEntityID);	
 	}
 	
 	//------------------------------------------------------------------------------------------------

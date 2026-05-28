@@ -31,6 +31,15 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	[Attribute(defvalue: "1", desc: "When true group menu will be normally accesible, when false group menu will be disabled, but NOT the group functionality")]
 	protected bool m_bAllowGroupMenu;
 
+	[Attribute("1", desc: "If true reconnected player automatically rejoins the group")]
+	protected bool m_bAllowRejoinPlayerAfterReconnecting;
+
+	[Attribute("0", desc: "When checked, the players are allowed to volunteer for group leader role.")]
+	protected bool m_bAllowGroupLeaderVolunteering;
+
+	[Attribute("2", desc: "Amount of groups below player capacity that can exist before it restricts you from making more squads of that type", params: "0 inf")]
+	protected int m_iFreeGroupAmountBeforeRestriction;
+
 	//this is changed only localy and doesnt replicate
 	protected bool m_bConfirmedByPlayer;
 
@@ -53,6 +62,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	protected ref map<int, ref FactionHolder> m_mUsedFrequenciesMap = new map<int, ref FactionHolder>();
 	protected ref array<SCR_AIGroup> m_aDeletionQueue = {};
 	protected int m_iMovingPlayerToGroupID = -1;
+	protected ref map<int, int> m_mDisconnectedPlayerIDs = new map<int, int>(); //!< <playerID, groupID>
 
 	//------------------------------------------------------------------------------------------------
 	//! \return
@@ -66,6 +76,12 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	void GetGroupFlags(notnull array<ResourceName> targetArray)
 	{
 		targetArray.Copy(m_aGroupFlags);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsGroupLeaderVolunteeringAllowed()
+	{
+		return m_bAllowGroupLeaderVolunteering;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -131,7 +147,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		if (!group)
 			return;
 
-		RplId groupRplID = Replication.FindId(group);
+		RplId groupRplID = Replication.FindItemId(group);
 
 		array<int> requesterIDs = {};
 		group.GetRequesterIDs(requesterIDs);
@@ -164,6 +180,15 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Add a disconnected player to be able to rejoin the group when he reconnects
+	//! \param[in] playerID
+	//! \param[in] groupID
+	void AddDisconnectedPlayer(int playerID, int groupID)
+	{
+		m_mDisconnectedPlayerIDs.Set(playerID, groupID);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Setup preset groups once
 	protected void CreatePredefinedGroups()
 	{
@@ -173,7 +198,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 
 		array<Faction> factions = {};
 		factionManager.GetFactionsList(factions);
-		
+
 		bool isCommanderRoleEnabled = true;
 		SCR_GameModeCampaign gameModeCampaign = SCR_GameModeCampaign.Cast(GetGame().GetGameMode());
 		if (gameModeCampaign)
@@ -197,6 +222,8 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 			SCR_AIGroup newGroup;
 			foreach (SCR_GroupPreset gr : groups)
 			{
+				const int groupId = presetGroupId++;
+
 				if (!isCommanderRoleEnabled && gr.GetGroupRole() == SCR_EGroupRole.COMMANDER)
 					continue;
 
@@ -206,24 +233,26 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 				{
 					foreach (SCR_AIGroup group : existingGroups)
 					{
-						if (group.IsPredefinedGroup() && (group.GetGroupRole() == gr.GetGroupRole()))
+						if (group.GetPresetResource() == gr.GetStoreName())
 						{
-							group.SetGroupID(presetGroupId++);
 							found = true;
 							break;
 						}
 					}
-					
+
 					if (found)
 						continue;
 				}
 
+				// Swap to pre defined ID for creation process as events are fired that would otherwise link the wrong id
+				const int latestId = m_iLatestGroupID;
+				m_iLatestGroupID = groupId;
 				newGroup = CreateNewPlayableGroup(faction, gr.GetGroupRole());
+				m_iLatestGroupID = latestId;
 				if (!newGroup)
 					continue;
 
-				newGroup.SetGroupID(presetGroupId++);
-				newGroup.SetPredefinedGroup(true);
+				newGroup.SetPresetResource(gr.GetStoreName());
 				newGroup.SetCanDeleteIfNoPlayer(false);
 
 				// setup group by groupRolePresetConfig if is configured
@@ -329,12 +358,16 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	SCR_AIGroup FindGroup(int groupID)
 	{
 		array<SCR_AIGroup> groups;
-		GetAllPlayableGroups(groups);
 
-		for (int i = groups.Count() - 1; i >= 0; i--)
+		for (int i = m_mPlayableGroups.Count() - 1; i >= 0; i--)
 		{
-			if (groups[i].GetGroupID() == groupID)
-				return groups[i];
+			groups = m_mPlayableGroups.GetElement(i);
+
+			for (int j = groups.Count() - 1; j >= 0; j--)
+			{
+				if (groups[j] && groups[j].GetGroupID() == groupID)
+					return groups[j];
+			}
 		}
 
 		return null;
@@ -399,12 +432,16 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	bool IsPlayerInAnyGroup(int playerID)
 	{
-		array<SCR_AIGroup> playableGroups;
-		GetAllPlayableGroups(playableGroups);
-		for (int i = playableGroups.Count() - 1; i >= 0; i--)
+		array<SCR_AIGroup> groups;
+
+		for (int i = m_mPlayableGroups.Count() - 1; i >= 0; i--)
 		{
-			if (playableGroups[i].IsPlayerInGroup(playerID))
-				return true;
+			groups = m_mPlayableGroups.GetElement(i);
+			for (int j = groups.Count() - 1; j >= 0; j--)
+			{
+				if (groups[j] && groups[j].IsPlayerInGroup(playerID))
+					return true;
+			}
 		}
 
 		return false;
@@ -552,8 +589,10 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] faction
+	//! \param[in] playerId
 	//! \return array of SCR_EGroupRole, available group roles
-	array<SCR_EGroupRole> GetAvailableGroupRoles(notnull Faction faction)
+	array<SCR_EGroupRole> GetAvailableGroupRoles(notnull Faction faction, int playerId)
 	{
 		array<SCR_EGroupRole> availableGroupRoles = {};
 
@@ -561,12 +600,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		if (!scrFaction)
 			return availableGroupRoles;
 
-		PlayerController pc = GetGame().GetPlayerController();
-		int playerId;
-		if (pc)
-			playerId = pc.GetPlayerId();
-
-		bool isLocalPlayerCommander = SCR_FactionCommanderPlayerComponent.IsLocalPlayerCommander();
+		bool isPlayerCommander = scrFaction.IsPlayerCommander(playerId);
 
 		array<SCR_GroupRolePresetConfig> availableGroupRolePresetConfigs = {};
 		scrFaction.GetGroupRolePresetConfigs(availableGroupRolePresetConfigs);
@@ -575,18 +609,22 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 			if (!preset.CanBeCreatedByPlayer())
 				continue;
 
-			if (isLocalPlayerCommander || (!isLocalPlayerCommander && HasPlayerRequiredRank(preset, playerId, false)))
+			if (isPlayerCommander || (!isPlayerCommander && HasPlayerRequiredRank(preset, playerId, false)))
 				availableGroupRoles.Insert(preset.GetGroupRole());
 		}
 
 		array<SCR_AIGroup> playableGroups = GetPlayableGroupsByFaction(faction);
+		if (!playableGroups)
+			return {};
 
 		// faction commander can create all group roles
-		if (isLocalPlayerCommander)
+		if (isPlayerCommander)
 			return availableGroupRoles;
 
 		for (int i = availableGroupRoles.Count() - 1; i >= 0; i--)
 		{
+			int joinableGroupAmount = 0;
+
 			foreach (SCR_AIGroup group : playableGroups)
 			{
 				if (!group)
@@ -602,8 +640,13 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 				if (group.GetPlayerCount() > (group.GetMaxMembers() * 0.5))
 					continue;
 
-				availableGroupRoles.RemoveOrdered(i);
-				break;
+				joinableGroupAmount++;
+
+				if (joinableGroupAmount >= m_iFreeGroupAmountBeforeRestriction)
+				{
+					availableGroupRoles.RemoveOrdered(i);
+					break;
+				}
 			}
 		}
 
@@ -710,7 +753,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 
 		// Yes, can we delete it?
 		array<SCR_AIGroup> playableGroups = GetPlayableGroupsByFaction(group.GetFaction());
-		if (!playableGroups)
+		if (!playableGroups || playableGroups.Count() <= 1) // faction should always have at least one group active.
 			return;
 
 		DeleteGroupDelayed(group);
@@ -725,7 +768,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 			return;
 
 		// Is group full?
-		if (group.GetPlayerCount() < group.GetMaxMembers())
+		if (!group.IsFull())
 			return; // Group not full, we don't have to make any new groups
 
 		// Group was full, we need to see if we have any other not full group
@@ -997,19 +1040,22 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] group
-	void RegisterGroup(SCR_AIGroup group)
+	void RegisterGroup(notnull SCR_AIGroup group)
 	{
-		array<SCR_AIGroup> groups;
-		if (!m_mPlayableGroups.Find(group.GetFaction(), groups))
+		array<SCR_AIGroup> outGroups;
+		Faction faction = group.GetFaction();
+		if (!m_mPlayableGroups.Find(faction, outGroups))
 		{
 			// No array found, let's make one
-			groups = {};
-			m_mPlayableGroups.Insert(group.GetFaction(), groups);
+			outGroups = {};
+			m_mPlayableGroups.Insert(faction, outGroups);
+		}
+		else if (outGroups.Contains(group))
+		{
+			return;
 		}
 
-		if (groups.Find(group) < 0)
-			groups.Insert(group);
-
+		outGroups.Insert(group);
 		group.GetOnAgentAdded().Insert(OnGroupAgentAdded);
 		group.GetOnAgentRemoved().Insert(OnGroupAgentRemoved);
 	}
@@ -1037,6 +1083,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	void AssignGroupID(SCR_AIGroup group)
 	{
+		if (group.GetGroupID() != -1)
+			return; // Already assigned
+
 		group.SetGroupID(m_iLatestGroupID);
 		m_iLatestGroupID++;
 	}
@@ -1056,16 +1105,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 
 		SCR_AIGroup newPlayerGroup = GetFirstNotFullForFaction(newFaction);
 		if (!newPlayerGroup && scrFaction.IsEnabledAutoGroupCreationWhenFull())
-		{
 			newPlayerGroup = CreateNewPlayableGroup(newFaction);
 
-			// Automatically created ones without any ai players in them later are irrlevant for saving
-			if (newPlayerGroup)
-				newPlayerGroup.SetPredefinedGroup(true);
-		}
-
-		//group creation can fail
-		if (!newPlayerGroup || !owner)
+		if (!owner)
 			return;
 
 		PlayerController controller = PlayerController.Cast(owner.GetOwner());
@@ -1077,10 +1119,50 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 			return;
 
 		SCR_AIGroup oldGroup = FindGroup(groupComp.GetGroupID());
-		if (!oldGroup)
+		if (oldGroup)
+		{
+			oldGroup.RemovePlayer(controller.GetPlayerId());
+		}
+		else
+		{
+			// call next frame, because we need the OnPlayerFactionChanged event to be called for all registered callbacks so that the faction is set everywhere
+			if (m_bAllowRejoinPlayerAfterReconnecting)
+				GetGame().GetCallqueue().Call(RejoinPlayer, controller.GetPlayerId(), scrFaction);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void RejoinPlayer(int playerID, notnull SCR_Faction faction)
+	{
+		SCR_PlayerControllerGroupComponent playerGroupCompoment = SCR_PlayerControllerGroupComponent.GetPlayerControllerComponent(playerID);
+		if (!playerGroupCompoment)
 			return;
 
-		oldGroup.RemovePlayer(controller.GetPlayerId());
+		int groupID;
+		if (!m_mDisconnectedPlayerIDs.Find(playerID, groupID))
+			return;
+
+		SCR_AIGroup group = FindGroup(groupID);
+		if (group)
+		{
+			// cannot be rejoined to the commander group, because the commander automatically resigns after disconnecting
+			if (group.GetGroupRole() != SCR_EGroupRole.COMMANDER && !group.IsFull())
+			{
+				playerGroupCompoment.RequestJoinGroup(group.GetGroupID());
+				return;
+			}
+		}
+
+		// group not found, try find empty group
+		group = GetFirstNotFullForFaction(faction, null, true);
+		if (group)
+		{
+			playerGroupCompoment.RequestJoinGroup(group.GetGroupID());
+			return;
+		}
+
+		// group not found, create new one and join
+		playerGroupCompoment.RequestCreateGroupWithData(faction.GetDefaultGroupRoleForNewGroup(), false, "", "", true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1088,6 +1170,24 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	void OnGroupCreated(SCR_AIGroup group)
 	{
 		m_OnPlayableGroupCreated.Invoke(group);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Finds the first instance of group with a specified role in a faction and returns it.
+	//! \param[in] role Specified group role to be found in the faction.
+	//! \param[in] faction
+	//! \return
+	SCR_AIGroup FindGroupInFaction(SCR_EGroupRole role, notnull Faction faction)
+	{
+		array<SCR_AIGroup> factionGroups = GetPlayableGroupsByFaction(faction);
+
+		foreach (SCR_AIGroup group : factionGroups)
+		{
+			if (group.GetGroupRole() == role)
+				return group;
+		}
+
+		return null;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1220,15 +1320,17 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		if (GetFreeFrequency(newGroupFaction) == -1)
 			return false;
 
+		int playerId = SCR_PlayerController.GetLocalPlayerId();
+
 		if (scrFaction.IsGroupRolesConfigured())
 		{
-			array<SCR_EGroupRole> availableGroupRoles = GetAvailableGroupRoles(newGroupFaction);
+			array<SCR_EGroupRole> availableGroupRoles = GetAvailableGroupRoles(newGroupFaction, playerId);
 			if (availableGroupRoles.IsEmpty())
 				return false;
 		}
 		else
 		{
-			SCR_AIGroup playerGroup = GetPlayerGroup(SCR_PlayerController.GetLocalPlayerId());
+			SCR_AIGroup playerGroup = GetPlayerGroup(playerId);
 
 			// disable creation of new group if player is the last in his group as there is no reason to create new one
 			if (playerGroup && playerGroup.GetPlayerCount() == 1)
@@ -1602,34 +1704,6 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] reconnectData
-	void OnPlayerReconnected(SCR_ReconnectData reconnectData)
-	{
-		int playerID = reconnectData.m_iPlayerId;
-		SCR_AIGroup group = GetPlayerGroup(playerID);
-		if (group)
-			return;
-
-		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-		Faction faction = factionManager.GetPlayerFaction(playerID);
-		if (!faction)
-			return;
-
-		group = GetFirstNotFullForFaction(faction);
-		if (group)
-		{
-			AddPlayerToGroup(group.GetGroupID(), playerID);
-			return;
-		}
-
-		group = CreateNewPlayableGroup(faction);
-		if (!group)
-			return;
-
-		AddPlayerToGroup(group.GetGroupID(), playerID);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT);
@@ -1646,10 +1720,6 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 
 		if (m_bTunePlayersRadioToGroupFrequency)
 			gameMode.GetOnPlayerSpawned().Insert(TunePlayersFrequency);
-
-		SCR_ReconnectComponent reconnectComp = SCR_ReconnectComponent.Cast(gameMode.FindComponent(SCR_ReconnectComponent));
-		if (reconnectComp)
-			reconnectComp.GetOnReconnect().Insert(OnPlayerReconnected);
 
 		m_bConfirmedByPlayer = false;
 

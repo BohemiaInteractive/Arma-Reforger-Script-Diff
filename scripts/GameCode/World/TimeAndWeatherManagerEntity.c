@@ -12,6 +12,14 @@ typedef func SCR_TimeAndWeatherManager_OnWindPreview;
 void SCR_TimeAndWeatherManager_OnDateTimePreview(bool previewEnabled, int year, int month, int day, float timeOfTheDay);
 typedef func SCR_TimeAndWeatherManager_OnDateTimePreview;
 
+void ScriptInvokerOnWindOverrideDataChangedMethod(notnull TimeAndWeatherManagerEntity manager, bool currentState, float currentSpeed, float currentDirection);
+typedef func ScriptInvokerOnWindOverrideDataChangedMethod;
+typedef ScriptInvokerBase<ScriptInvokerOnWindOverrideDataChangedMethod> ScriptInvokerOnWindOverrideDataChanged;
+
+void ScriptInvokerOnWeatherChangedMethod(notnull TimeAndWeatherManagerEntity manager, int currentStateId, int nextStateId, bool transitioning);
+typedef func ScriptInvokerOnWeatherChangedMethod;
+typedef ScriptInvokerBase<ScriptInvokerOnWeatherChangedMethod> ScriptInvokerOnWeatherChanged;
+
 //! Manager entity responsible for managing in-game time and weather,
 //! providing the script and gamecode with usable in-game API.
 class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
@@ -27,8 +35,7 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	
 	[Attribute(desc: "Ordered days of the weeks, Monday (Start), Tuesday, Wednesday, ect. to Sunday (Last)")]
 	protected ref array<LocalizedString> m_aOrderedDaysOfWeek;
-	
-	protected bool m_bDelayedWindOverride = false;
+
 	protected int m_iDelayedPlayerChangingWind = -1;
 	protected float m_fDelayedWindSpeedOverride = -1;
 	protected float m_fDelayedWindDirectionOverride = -1;
@@ -38,10 +45,78 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	protected ref ScriptInvokerBase<SCR_TimeAndWeatherManager_OnWeatherStatePreview> m_OnWeatherStatePreview;
 	protected ref ScriptInvokerBase<SCR_TimeAndWeatherManager_OnWindPreview> m_OnWindPreview;
 	protected ref ScriptInvokerBase<SCR_TimeAndWeatherManager_OnDateTimePreview> m_OnDateTimePreview;
+	protected ref ScriptInvokerOnWindOverrideDataChanged m_OnWindOverrideDataChanged;
+	protected ref ScriptInvokerOnWeatherChanged m_OnWeatherChanged;
 	
 	//Replicated
 	protected bool m_bWeatherIsLooping = false;
 	
+	[RplProp(onRplName: "OnWindOverrideStateChanged")]
+	protected bool m_bDelayedWindOverride;
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerOnWindOverrideDataChanged GetOnWindOverrideDataChanged()
+	{
+		if (!m_OnWindOverrideDataChanged)
+			m_OnWindOverrideDataChanged = new ScriptInvokerOnWindOverrideDataChanged();
+
+		return m_OnWindOverrideDataChanged;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Use this instead of GetTransitionManager().AddTransitionCallbacks(cb) as transition manager callbacks are only triggered for the host
+	//! This will be invoked when weather starts to change to the next one, which is indicated by transitioning = true
+	//! and when transition is finished, and next weather state becomes current state, which is indicated by transitioning = false
+	ScriptInvokerOnWeatherChanged GetOnWeatherChanged()
+	{
+		if (!m_OnWeatherChanged)
+			m_OnWeatherChanged = new ScriptInvokerOnWeatherChanged();
+
+		return m_OnWeatherChanged;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnWindOverrideStateChanged()
+	{
+		if (m_OnWindOverrideDataChanged)
+			m_OnWindOverrideDataChanged.Invoke(this, m_bDelayedWindOverride, GetWindSpeed(), GetWindDirection());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void EOnInit(IEntity owner)
+	{
+		RplComponent rplComp = SCR_EntityHelper.GetEntityRplComponent(owner);
+		if (!rplComp || rplComp.Role() != RplRole.Authority)
+			return;
+
+		SCR_WeatherTransitionCallback cb = new SCR_WeatherTransitionCallback(this);
+		GetTransitionManager().AddTransitionCallbacks(cb);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnWeatherChanged_S(bool transitioning = true)
+	{
+		int currentStateId = GetCurrentWeatherState().GetStateID();
+		int nextStateId = GetTransitionManager().GetNextState().GetStateID();
+		RpcDo_OnWeatherChanged(currentStateId, nextStateId, transitioning);
+		Rpc(RpcDo_OnWeatherChanged, currentStateId, nextStateId, transitioning);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void RpcDo_OnWeatherChanged(int currentStateId, int nextStateId, bool transitioning)
+	{
+		if (m_OnWeatherChanged)
+			m_OnWeatherChanged.Invoke(this, currentStateId, nextStateId, transitioning);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Proxies should use this instead of IsWindDirectionOverridden and IsWindSpeedOverridden as for them wind is always overridden
+	bool IsAutomatedWindDisabled()
+	{
+		return m_bDelayedWindOverride;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Set Weather state preview. Can be called locally and will send an scriptInvoker when called succesfully
 	//! \param preview True to enable preview, false to disable
@@ -653,20 +728,17 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 		m_bListiningToWindOverrideDelay = true;
 		GetGame().GetCallqueue().CallLater(DelayedApplyWindOverride, 1);
 	}
-	
-	//Applies all wind override changes in one go instead of separately setting wind speed and wind direction override.
-	//Also shows noptification if m_iDelayedPlayerChangingWind is set 
+
+	//------------------------------------------------------------------------------------------------
+	//! Applies all wind override changes in one go instead of separately setting wind speed and wind direction override.
+	//! Also shows notification if m_iDelayedPlayerChangingWind is set 
 	protected void DelayedApplyWindOverride()
-	{		
+	{
 		//Set wind to auto
 		if (!m_bDelayedWindOverride)
 		{
 			SetWindSpeedOverride(false);
 			SetWindDirectionOverride(false);
-			
-			//Notification wind default
-			if (m_iDelayedPlayerChangingWind > -1)
-				SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.EDITOR_ATTRIBUTES_WIND_DEFAULT, m_iDelayedPlayerChangingWind);
 		}
 		//Override wind
 		else 
@@ -680,21 +752,41 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 				m_fDelayedWindDirectionOverride =  GetWindDirection();
 			
 			SetWindDirectionOverride(true, m_fDelayedWindDirectionOverride);	
-			
-			//Notification wind override
-			if (m_iDelayedPlayerChangingWind > -1)
-			{
-				SCR_WindDirectionInfo windDirectionInfo;
-				int windDirectionIndex;
-				GetWindDirectionInfoFromFloat(m_fDelayedWindDirectionOverride, windDirectionIndex, windDirectionInfo);
-				SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.EDITOR_ATTRIBUTES_WIND_CHANGED, m_iDelayedPlayerChangingWind, m_fDelayedWindSpeedOverride * 1000, windDirectionIndex);
-			}
 		}
-		
+
+		int changingPlayerId = m_iDelayedPlayerChangingWind;
 		ClearDelayedWindOverrideVars();
+		RpcDo_OnWindDataUpdated(m_bDelayedWindOverride, changingPlayerId);
+		Rpc(RpcDo_OnWindDataUpdated, m_bDelayedWindOverride, changingPlayerId);
 	}
-	
-	//Reset all changed wind varriables
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void RpcDo_OnWindDataUpdated(bool currentState, int changingPlayerId)
+	{
+		float speed = GetWindSpeed();
+		float direction = GetWindDirection();
+		m_bDelayedWindOverride = currentState;
+		if (m_OnWindOverrideDataChanged)
+			m_OnWindOverrideDataChanged.Invoke(this, m_bDelayedWindOverride, speed, direction);
+
+		if (changingPlayerId < 0)
+			return;
+
+		if (m_bDelayedWindOverride)
+		{
+			int windDirectionIndex;
+			GetWindDirectionInfoFromFloat(direction, windDirectionIndex, null);
+			SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.EDITOR_ATTRIBUTES_WIND_CHANGED, changingPlayerId, speed * 1000, windDirectionIndex);
+		}
+		else
+		{
+			SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.EDITOR_ATTRIBUTES_WIND_DEFAULT, changingPlayerId);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Reset all changed wind variables
 	protected void ClearDelayedWindOverrideVars()
 	{
 		m_bListiningToWindOverrideDelay = false;

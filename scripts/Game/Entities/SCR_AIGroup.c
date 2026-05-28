@@ -131,7 +131,7 @@ class SCR_AIGroup : ChimeraAIGroup
 	[Attribute(category: "Player settings")]
 	protected int m_iGroupRadioFrequency;
 
-	[Attribute(category: "Player settings", params: "1 100 1")]
+	[Attribute("1", desc: "Max number of players in this group where 0 means infinite members", category: "Player settings", params: "0 100 1")]
 	protected int m_iMaxMembers;
 
 	[Attribute("0", desc: "Can players join this group?", category: "Player settings")]
@@ -146,7 +146,7 @@ class SCR_AIGroup : ChimeraAIGroup
 	protected SCR_EGroupRole m_eGroupRole;
 	protected bool m_bIsPrivacyChangeable = 1;
 	protected bool m_bIsCreatedByCommander;
-	protected bool m_bIsPredefinedGroup;
+	protected ResourceName m_rPreset;
 
 	//gamecode uses 0 as invalid playerID
 	protected int m_iDescriptionAuthorID = 0;
@@ -156,7 +156,6 @@ class SCR_AIGroup : ChimeraAIGroup
 	protected string m_sCustomName = "";
 	protected string m_sCustomDescription = "";
 	protected ref array<int> m_aPlayerIDs = {};
-	protected ref array<int> m_aDisconnectedPlayerIDs;
 	protected static ref ScriptInvoker s_OnPlayerAdded = new ScriptInvoker();
 	protected static ref ScriptInvoker s_OnPlayerRemoved = new ScriptInvoker();
 	protected static ref ScriptInvoker<int, int> s_OnPlayerLeaderChanged = new ScriptInvoker();
@@ -189,6 +188,8 @@ class SCR_AIGroup : ChimeraAIGroup
 	protected SCR_AIGroup m_MasterGroup;
 	protected ref array<SCR_ChimeraCharacter> m_aAIMembers = {};
 	protected SCR_AIGroupUtilityComponent m_GroupUtilityComponent;
+	protected RplId m_MasterGroupID; 
+	protected RplId m_SlaveGroupID;
 
 	// entity spawn list
 	protected ref array<ref SCR_AIGroup_DelayedSpawn> m_delayedSpawnList = {};
@@ -328,7 +329,7 @@ class SCR_AIGroup : ChimeraAIGroup
 		ClearEventMask(EntityEvent.FRAME);
 		if (m_bDeleteWhenEmpty && GetAgentsCount() == 0)
 			GetGame().GetCallqueue().CallLater(SCR_EntityHelper.DeleteEntityAndChildren, 1, false, this);
-		else if (!m_bPlayable && !m_MasterGroup)
+		else if (!m_bPlayable && !IsSlave())
 			ActivateAI();
 
 		ChimeraWorld world = GetGame().GetWorld();
@@ -350,6 +351,12 @@ class SCR_AIGroup : ChimeraAIGroup
 
 		RPC_DoRemoveRequester(playerID);
 		Rpc(RPC_DoRemoveRequester, playerID);
+		if (!m_aRequesterIDs.IsEmpty())
+			return;
+
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (gameMode)
+			gameMode.GetOnPlayerDisconnected().Remove(OnPlayerLeftGame);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -393,6 +400,13 @@ class SCR_AIGroup : ChimeraAIGroup
 	{
 		if (m_aRequesterIDs.Contains(playerID))
 			return;
+
+		if (m_aRequesterIDs.IsEmpty())
+		{
+			SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+			if (gameMode)
+				gameMode.GetOnPlayerDisconnected().Insert(OnPlayerLeftGame);
+		}
 
 		RPC_DoAddRequester(playerID);
 		Rpc(RPC_DoAddRequester, playerID);
@@ -495,7 +509,7 @@ class SCR_AIGroup : ChimeraAIGroup
 		if (m_iLeaderID > 0)
 			return m_iLeaderID;
 
-		if (!m_MasterGroup)
+		if (!GetMaster())
 			return -1;
 
 		return m_MasterGroup.GetFirstPlayerLeaderID();
@@ -599,13 +613,13 @@ class SCR_AIGroup : ChimeraAIGroup
 	//------------------------------------------------------------------------------------------------
 	bool IsFull()
 	{
-		return m_iMaxMembers <= m_aPlayerIDs.Count();
+		return (IsMaxMembersLimited() && m_iMaxMembers <= m_aPlayerIDs.Count());
 	}
 
 	//------------------------------------------------------------------------------------------------
 	bool IsSlave()
 	{
-		if (!m_MasterGroup)
+		if (!m_MasterGroup && (!m_MasterGroupID || !m_MasterGroupID.IsValid()))
 			return false;
 		return true;
 	}
@@ -936,10 +950,16 @@ class SCR_AIGroup : ChimeraAIGroup
 	}
 
 	//------------------------------------------------------------------------------------------------
+	bool IsMaxMembersLimited()
+	{
+		return m_iMaxMembers != 0; // 0 means infinite members
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! called on server only
 	void SetMaxMembers(int maxMembers)
 	{
-		if (maxMembers == GetMaxMembers() || maxMembers < 0)
+		if (maxMembers == GetMaxMembers())
 			return;
 
 		RPC_DoSetMaxMembers(maxMembers);
@@ -1021,15 +1041,15 @@ class SCR_AIGroup : ChimeraAIGroup
 		Rpc(RpcDo_SetCreatedByCommander, isCreatedByCommander);
 	}
 	//------------------------------------------------------------------------------------------------
-	bool IsPredefinedGroup()
+	ResourceName GetPresetResource()
 	{
-		return m_bIsPredefinedGroup;
+		return m_rPreset;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetPredefinedGroup(bool predefined)
+	void SetPresetResource(ResourceName preset)
 	{
-		m_bIsPredefinedGroup = predefined;
+		m_rPreset = preset;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1100,12 +1120,6 @@ class SCR_AIGroup : ChimeraAIGroup
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool BelongedToGroup(int playerID)
-	{
-		return m_aDisconnectedPlayerIDs != null && m_aDisconnectedPlayerIDs.Contains(playerID);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	void AddAgentFromControlledEntity(notnull IEntity controlledEntity)
 	{
 		AIControlComponent aiControlComponent = AIControlComponent.Cast(controlledEntity.FindComponent(AIControlComponent));
@@ -1150,7 +1164,7 @@ class SCR_AIGroup : ChimeraAIGroup
 		RplId rplId = -1;
 		SCR_EditableEntityComponent editableEntityComp = SCR_EditableEntityComponent.Cast(controlledEntity.FindComponent(SCR_EditableEntityComponent));
 		if (editableEntityComp)
-			rplId = Replication.FindId(editableEntityComp);
+			rplId = Replication.FindItemId(editableEntityComp);
 
 		if (rplId.IsValid())
 			SCR_NotificationsComponent.SendToGroup(GetMaster().GetGroupID(), notificationType, rplId);
@@ -1165,36 +1179,11 @@ class SCR_AIGroup : ChimeraAIGroup
 		if (index < 0)
 			return;
 
-		// We have to check existence of m_aDisconnectedPlayerIDs, because we might be adding the first entry
-		if (!m_aDisconnectedPlayerIDs)
-			m_aDisconnectedPlayerIDs = {};
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (groupsManager)
+			groupsManager.AddDisconnectedPlayer(playerID, m_iGroupID);
 
 		RemovePlayer(playerID);
-		m_aDisconnectedPlayerIDs.Insert(playerID);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Should be only called on the server
-	void OnPlayerConnected(int playerID)
-	{
-		// No need to null check m_aDisconnectedPlayerIDs, this method is only called after entries are added to it
-		int index = m_aDisconnectedPlayerIDs.Find(playerID);
-		if (index < 0)
-			return;
-
-		m_aDisconnectedPlayerIDs.Remove(index);
-
-		// Not full, we add the player, else bad luck, find a new group
-		if (!IsFull())
-			AddPlayer(playerID);
-
-		// No more disconnected players from this group, let's stop listening
-		if (m_aDisconnectedPlayerIDs.Count() == 0)
-		{
-			SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-			if (gameMode)
-				gameMode.GetOnPlayerConnected().Remove(OnPlayerConnected);
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1418,13 +1407,6 @@ class SCR_AIGroup : ChimeraAIGroup
 		SCR_NotificationsComponent.SendToGroup(m_iGroupID, ENotification.GROUPS_PLAYER_JOINED, playerID);
 		RPC_DoAddPlayer(playerID);
 		Rpc(RPC_DoAddPlayer, playerID);
-		// Did this player re-connect?
-		if (m_aDisconnectedPlayerIDs)
-		{
-			int index = m_aDisconnectedPlayerIDs.Find(playerID);
-			if (index >= 0)
-				m_aDisconnectedPlayerIDs.Remove(index);
-		}
 
 		// Start listening to disconnect events when we add the first player
 		if (m_aPlayerIDs.Count() == 1)
@@ -1438,7 +1420,11 @@ class SCR_AIGroup : ChimeraAIGroup
 		if (!controlledEntity)
 			QueueAddAgent(playerID);
 		else
-			AddAgentFromControlledEntity(controlledEntity);
+		{
+			SCR_PlayerController scriptedController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(playerID));
+			if (!scriptedController || !scriptedController.IsPossessing())
+				AddAgentFromControlledEntity(controlledEntity);
+		}
 
 		GetGame().GetCallqueue().CallLater(CheckForLeader, 0, false, playerID, false);
 	}
@@ -1456,6 +1442,32 @@ class SCR_AIGroup : ChimeraAIGroup
 	void RPC_DoRemoveRequester(int playerID)
 	{
 		m_aRequesterIDs.RemoveItem(playerID);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void RPC_DoRemoveLeavingPlayer(int playerID)
+	{
+		m_aRequesterIDs.RemoveItem(playerID);
+		s_OnJoinPrivateGroupRequest.Invoke();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Callback triggered when any player leaves the game
+	//! \param[in] playerId
+	protected void OnPlayerLeftGame(int playerId)
+	{
+		if (!m_aRequesterIDs.Contains(playerId))
+			return;
+
+		RPC_DoRemoveLeavingPlayer(playerId);
+		Rpc(RPC_DoRemoveLeavingPlayer, playerId);
+		if (!m_aRequesterIDs.IsEmpty())
+			return;
+
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (gameMode)
+			gameMode.GetOnPlayerDisconnected().Remove(OnPlayerLeftGame);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2144,7 +2156,7 @@ class SCR_AIGroup : ChimeraAIGroup
 	Faction GetFaction()
 	{
 		// If it's a slave group, get faction from master group
-		if (m_MasterGroup)
+		if (GetMaster() != null)
 			return m_MasterGroup.GetFaction();
 
 		// Master group:
@@ -2591,6 +2603,12 @@ class SCR_AIGroup : ChimeraAIGroup
 	*/
 	SCR_AIGroup GetSlave()
 	{
+		if (!m_SlaveGroup && (!m_SlaveGroupID || !m_SlaveGroupID.IsValid()))
+			return null;
+		
+		if (!m_SlaveGroup && m_SlaveGroupID.IsValid()) // case reference on SlaveGroup has not streamed in, yet
+			m_SlaveGroup = SCR_AIGroup.Cast(Replication.FindItem(m_SlaveGroupID));
+		
 		return m_SlaveGroup;
 	}
 
@@ -2610,6 +2628,12 @@ class SCR_AIGroup : ChimeraAIGroup
 	*/
 	SCR_AIGroup GetMaster()
 	{
+		if (!m_MasterGroup && (!m_MasterGroupID || !m_MasterGroupID.IsValid()))
+			return null;
+		
+		if (!m_MasterGroup && m_MasterGroupID.IsValid()) // case reference on MasterGroup has not streamed in, yet
+			m_MasterGroup = SCR_AIGroup.Cast(Replication.FindItem(m_MasterGroupID));
+		
 		return m_MasterGroup;
 	}
 
@@ -2637,7 +2661,7 @@ class SCR_AIGroup : ChimeraAIGroup
 		if (!character)
 			return false;
 		//if group doesnt have slave group for AIs, AI is automatically not a member
-		if (!m_SlaveGroup)
+		if (GetSlave() == null)
 			return false;
 		return m_SlaveGroup.m_aAIMembers.Find(character) != -1;
 	}
@@ -2695,11 +2719,10 @@ class SCR_AIGroup : ChimeraAIGroup
 		writer.WriteString(m_UiInfo.GetGroupFlag());
 		writer.WriteBool(m_UiInfo.GetFlagIsFromImageSet());
 
-		RplId groupID;
-		groupID = Replication.FindId(m_MasterGroup);
-		writer.WriteRplId(groupID);
-		groupID = Replication.FindId(m_SlaveGroup);
-		writer.WriteRplId(groupID);
+		m_MasterGroupID = Replication.FindItemId(m_MasterGroup);
+		writer.WriteRplId(m_MasterGroupID);
+		m_SlaveGroupID = Replication.FindItemId(m_SlaveGroup);
+		writer.WriteRplId(m_SlaveGroupID);
 
 		writer.WriteInt(m_iMaxMembers);
 
@@ -2775,11 +2798,10 @@ class SCR_AIGroup : ChimeraAIGroup
 		reader.ReadBool(isFromImageSet);
 		m_UiInfo.SetFlagIsFromImageSet(isFromImageSet);
 
-		RplId groupID;
-		reader.ReadRplId(groupID);
-		m_MasterGroup = SCR_AIGroup.Cast(Replication.FindItem(groupID));
-		reader.ReadRplId(groupID);
-		m_SlaveGroup = SCR_AIGroup.Cast(Replication.FindItem(groupID));
+		reader.ReadRplId(m_MasterGroupID);
+		m_MasterGroup = SCR_AIGroup.Cast(Replication.FindItem(m_MasterGroupID));
+		reader.ReadRplId(m_SlaveGroupID);
+		m_SlaveGroup = SCR_AIGroup.Cast(Replication.FindItem(m_SlaveGroupID));
 
 		reader.ReadInt(m_iMaxMembers);
 

@@ -359,13 +359,7 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 				addonGUIDs += GUID;
 			}
 		}
-		
-		GetGame().GetSaveGameManager().StartPlaythrough(sequenceHeader.m_sNextScenario, transition: false);
-		GameStateTransitions.RequestScenarioChangeTransition(sequenceHeader.m_sNextScenario, MissionHeader.ReadMissionHeader(sequenceHeader.m_sNextScenario).GetWorldSystemsConfig(), addonGUIDs);
+
+		GameStateTransitions.RequestScenarioChangeTransition(sequenceHeader.m_sNextScenario, ResourceName.Empty, addonGUIDs);
 	}
-};
-
-
-
-
-
+}

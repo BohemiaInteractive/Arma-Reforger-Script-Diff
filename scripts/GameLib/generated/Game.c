@@ -209,4 +209,9 @@ class Game
 	@param isConnected is false on disconnection, true on re-connection.
 	*/
 	event void OnGamepadConnectionStatus(bool isConnected);
+	/*
+	\brief Event which is called when Engine console command is executed.
+	@param cmd command text
+	*/
+	event void OnConsoleCommand(string command);
 }

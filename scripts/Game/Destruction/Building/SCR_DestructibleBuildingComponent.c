@@ -50,9 +50,9 @@ class SCR_DestructibleBuildingComponentClass : SCR_DamageManagerComponentClass
 class SCR_InteriorBoundingBox : Managed
 {
 	[Attribute()]
-	protected ref PointInfo m_vCenter;
+	ref PointInfo m_vCenter;
 
-	[Attribute(defvalue: "1 1 1")]
+	[Attribute(defvalue: "1 1 1", params: "inf inf purpose=sizes space=custom", uiwidget: UIWidgets.BoundingVolumeEditor)] 
 	protected vector m_vScale;
 
 	[Attribute(defvalue: "0 1 1 1")]
@@ -606,17 +606,15 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 			if (childDestructibleComp)
 			{
 				defaultHitZone = childDestructibleComp.GetDefaultHitZone();
-				if (defaultHitZone)
-				{
-					// Detach from parent before triggering destruction
-					owner.RemoveChild(child, true);
-					
-					damageContext.damageValue = defaultHitZone.GetMaxHealth();
-					damageContext.struckHitZone = defaultHitZone;
-					damageContext.hitEntity = child;
+				
+				// Detach from parent before triggering destruction
+				owner.RemoveChild(child, true);
+				
+				damageContext.damageValue = defaultHitZone.GetMaxHealth();
+				damageContext.struckHitZone = defaultHitZone;
+				damageContext.hitEntity = child;
 
-					childDestructibleComp.HandleDamage(damageContext);
-				}
+				childDestructibleComp.HandleDamage(damageContext);
 			}
 			
 			child = nextChild;
@@ -1075,10 +1073,17 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 	protected bool QueryFilterCallback(notnull IEntity entity)
 	{
 		IEntity owner = GetOwner();
+		IEntity ownerParent = owner.GetParent();
 		IEntity entityParent = entity.GetParent();
 
-		// Exclude the owner && children of other objects
-		if (entity == owner || (entityParent && entityParent != owner))
+		if (
+			// Exclude the owner...
+			entity == owner ||
+			// ... && avoid reparenting loops
+			entity == ownerParent ||
+			// ... && exclude children of other objects
+			(entityParent && entityParent != owner)
+		)
 			return false;
 
 		return true;
@@ -1090,17 +1095,37 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		// Exclude characters and vehicles right away.
 		// Note, we query with NO_PROXY flags so characters inside vehicles or inventory
 		// items of characters won't even make it here.
-		if (ChimeraCharacter.Cast(e))
+
+		ChimeraCharacter character = ChimeraCharacter.Cast(e);
+		if (character)
 		{
-			// Kill occupants after destruction starts determined by delay set in prefab data, so it appears as if they died from the building falling on top of them
-			GetGame().GetCallqueue().CallLater(DamageOccupantsDelayed, GetDelay() * 1000, param1: e);
-			return true;
+			SCR_DamageManagerComponent damageManager = character.GetDamageManager();
+			if (damageManager && damageManager.GetState() != EDamageState.DESTROYED)
+			{
+				// Kill occupants after destruction starts determined by delay set in prefab data, so it appears as if they died from the building falling on top of them
+				GetGame().GetCallqueue().CallLater(DamageOccupantsDelayed, GetDelay() * 1000, param1: e);
+				return true;
+			}
+			// Occupants who are already dead (ragdolls) will be pulled downwards to ensure there will be no flying bodies after the physics freeze.
 		}
 		else if (Vehicle.Cast(e))
 		{
 			//destroy the vehicle after the destruction delay
 			GetGame().GetCallqueue().CallLater(HandleVehicle, GetDelay() * 1000, param1: e);
 			return true;
+		}
+
+		// Since characters manning a turret wont be found in our query (and only the turrets themselves) we must deal with them seperately
+		SCR_BaseCompartmentManagerComponent baseCompartmentManagerComp = SCR_BaseCompartmentManagerComponent.Cast(e.FindComponent(SCR_BaseCompartmentManagerComponent));
+		if (baseCompartmentManagerComp)
+		{
+			array<IEntity> turretOccupants = {};
+			baseCompartmentManagerComp.GetOccupants(turretOccupants);
+			foreach (IEntity occupant : turretOccupants)
+			{
+				// Kill occupants after destruction starts determined by delay set in prefab data, so it appears as if they died from the building falling on top of them
+				GetGame().GetCallqueue().CallLater(DamageOccupantsDelayed, GetDelay() * 1000, param1: occupant);
+			}
 		}
 
 		SCR_BuildingDestructionData data = GetData();
@@ -1239,8 +1264,7 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 			return;
 
 		HitZone defaultHitzone = damageManager.GetDefaultHitZone();
-		if (defaultHitzone)
-			defaultHitzone.HandleDamage(defaultHitzone.GetMaxHealth(), EDamageType.TRUE, null);
+		defaultHitzone.HandleDamage(defaultHitzone.GetMaxHealth(), EDamageType.TRUE, null);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1312,7 +1336,7 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		// Ensure registration of destroyed building as they are otherwise not tracked by default
 		auto persistence = PersistenceSystem.GetInstance();
 		if (persistence)
-			persistence.StartTracking(owner);
+			persistence.StartTracking(owner, false);
 
 		vector mins, maxs;
 		owner.GetBounds(mins, maxs);
@@ -1679,7 +1703,7 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 	//------------------------------------------------------------------------------------------------
 	protected override bool HasDataToReplicate()
 	{
-		if (m_bDestroyed == true)
+		if(m_bDestroyed == true)
 			return true;
 
 		return false;
@@ -1829,6 +1853,74 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 				boundingBox.DrawDebug(ownerTransform);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override event bool _WB_GetKeySpaceMatrixWorld(IEntity owner, BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent, out vector transformSpaceWorld[4])
+	{
+		if(src.GetClassName() == "SCR_InteriorBoundingBox" && key == "m_vScale")
+		{
+			//m_vScale key from SCR_InteriorBoundingBox object is being edited via bounding box tool so
+			//we are going to provide a world transformation matrix/space for editing the bound box
+
+			BaseContainer ownerCont = null;
+			if(ownerContainers.Count() > 0)
+				ownerCont = ownerContainers[ownerContainers.Count() - 1];
+			
+			if(ownerCont && ownerCont.GetClassName() == "SCR_DestructibleBuildingComponent")
+			{
+				//The SCR_InteriorBoundingBox object is owned by SCR_DestructibleBuildingComponent. That's correct.
+				
+				//Find bound box index of the SCR_InteriorBoundingBox object (it's inside an object array)
+				BaseContainerList bboxes = ownerCont.GetObjectArray("m_aInteriorQueryBoundingBoxes");
+				int bboxIndex = -1;
+
+				if(bboxes)
+				{
+					for (int i = 0; i < bboxes.Count(); i++)
+					{
+						BaseContainer box = bboxes.Get(i);
+						
+						if(box == src)
+						{
+							bboxIndex = i;
+							break;
+						}
+					}
+				}
+				
+				if(bboxIndex >= 0)
+				{
+					//Use the bboxIndex to retreive appropriate SCR_InteriorBoundingBox object itself from prefab data
+					SCR_InteriorBoundingBox intBox = null;
+					
+					array<ref SCR_InteriorBoundingBox> boundingBoxes = GetInteriorBoundingBoxes();
+					if(boundingBoxes)
+						intBox = boundingBoxes[bboxIndex];
+					
+					if(intBox)
+					{
+						//get local bbox transform given by PointInfo object
+						vector boxLocalTransform[4];
+						intBox.m_vCenter.GetTransform(boxLocalTransform);
+
+						//get entity transform
+						vector entityWorldTransform[4];
+						owner.GetWorldTransform(entityWorldTransform);
+						
+						//calc result transform in world space
+						vector boxTransform[4];
+						Math3D.MatrixMultiply4(entityWorldTransform, boxLocalTransform, boxTransform);
+						
+						transformSpaceWorld = boxTransform;
+						return true;
+					}
+				}
+			}
+		}
+	
+		return super._WB_GetKeySpaceMatrixWorld(owner, src, key, ownerContainers, parent, transformSpaceWorld);
+	}
+	
 #endif
 
 	//------------------------------------------------------------------------------------------------
@@ -1845,4 +1937,4 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		RplComponent rplComponent = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
 		return rplComponent && rplComponent.IsMaster();
 	}
-};
+}

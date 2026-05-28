@@ -3,9 +3,11 @@
 class SCR_EditorContentBrowserSaveStateDataUIHQ : SCR_EditorContentBrowserSaveStateDataUI
 {
 	//------------------------------------------------------------------------------------------------
-	override bool CanBeShown()
+	override bool CanBeShown(IEntity provider, int playerId)
 	{
-		// The construction of command posts in allowed in every game mode
-		return true;
+		if (!provider)
+			return false;
+
+		return SCR_CampaignBuildingProviderComponent.CanBeUsedToEstablishBase(provider, playerId);
 	}
 }

@@ -193,7 +193,7 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 			
 			assetCard.GetOnHover().Insert(OnCardHover);
 			assetCard.GetOnFocus().Insert(OnCardFocus);
-			assetCard.InitCard(prefabID, entityInfo, m_ContentBrowserManager.GetResourceNamePrefabID(prefabID), blockingBudgetInfo);
+			assetCard.InitCard(prefabID, entityInfo, m_ContentBrowserManager.GetResourceNamePrefabID(prefabID), blockingBudgetInfo, m_ContentBrowserManager);
 			ButtonActionComponent.GetOnAction(assetWidget, true, 0).Insert(OnCardLMB);
 			
 			if (m_bAnimateEntries)

@@ -192,15 +192,8 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 	bool IsEnemy(IEntity entity)
 	{
 		Faction otherFaction = SCR_AIFactionHandling.GetEntityFaction(entity);
-		
-		Faction myFaction;
-		if (m_FactionAffiliationComponent)
-			myFaction = m_FactionAffiliationComponent.GetAffiliatedFaction();
-		
-		if (!otherFaction || !myFaction)
-			return false;
-				
-		return myFaction.IsFactionEnemy(otherFaction);
+
+		return IsEnemy(otherFaction);
 	}
 	
 	//------------------------------------------------------------------------------------------------

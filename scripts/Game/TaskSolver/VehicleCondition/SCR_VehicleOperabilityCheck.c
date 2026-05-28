@@ -34,4 +34,10 @@ class SCR_VehicleOperabilityCheck : SCR_VehicleConditionCheck
 			vehicleDamageManager.GetMovementDamage() < 1 &&
 			!vehicleDamageManager.IsOnFire(vehicleDamageManager.GetDefaultHitZone());
 	}
+
+	//------------------------------------------------------------------------------------------------
+	void SCR_VehicleOperabilityCheck()
+	{
+		m_eConditionType = SCR_EVehicleConditionCheckType.INOPERABLE_VEHICLE;
+	}
 }

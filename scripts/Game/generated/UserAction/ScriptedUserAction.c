@@ -39,6 +39,13 @@ class ScriptedUserAction: BaseUserAction
 	event bool CanBeShownScript(IEntity user) { return true; };
 	//! Does this action only have client side effect?
 	event bool HasLocalEffectOnlyScript() { return false; };
+	//! If SCR_CheckOnServerFirst returns true, the action is first sent to be verified on the server. Only if the function
+	//! succeeds on the server it will can be executed on other machines.
+	//! This does not mean that actions are not verified on the server otherwise. However, the path the action takes
+	//! is different. When this function returns true it means OnSaveActionData is evaluated on the server, not where the action
+	//! is called from.
+	//! This comes handly in situations when the use action wants to use data that is only available on the server.
+	event bool CheckOnServerFirstScript() { return false; };
 	//! If HasLocalEffectOnly() is false this method tells if the server is supposed to broadcast this action to clients.
 	event bool CanBroadcastScript() { return true; };
 	//! Returns the progress of this action in seconds.

@@ -16,7 +16,7 @@ class SCR_RippleFireQuantityAction : SCR_VehicleWeaponActionBase
 		super.PerformAction(pOwnerEntity, pUserEntity);
 		
 		if (fireModeManager)
-			fireModeManager.NextRippleQuantity();
+			fireModeManager.NextRippleCount();
 	}
 
 	//------------------------------------------------------------------------------------------------

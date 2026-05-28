@@ -130,14 +130,19 @@ class CareerMenuUI: ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuUpdate(float tDelta)
 	{
-		if (!m_BackendData && GetGame().GetBackendApi().IsAuthenticated())
+		if (!m_BackendData && BackendAuthenticatorApi.IsAuthenticated())
 		{
 			m_BackendData = new CareerBackendData;
 			BackendApi backendApi = GetGame().GetBackendApi();
 			if (backendApi)
 			{
 				m_Callback.SetOnSuccess(UpdateCareerData);
-				backendApi.PlayerRequest(EBackendRequest.EBREQ_GAME_CharacterGet, m_Callback, m_BackendData, 0);
+				/*
+				PlayerId was forced to 0 = invalid player. Have no idea what the original autor had
+				in mind, but I'm trying to leave it in the same state as it was before.
+				//TODO@Buracisko - check this after IdentityManager integration
+				*/
+				backendApi.PlayerCharacterGet(m_Callback, m_BackendData, 0);
 			}
 		}
 		

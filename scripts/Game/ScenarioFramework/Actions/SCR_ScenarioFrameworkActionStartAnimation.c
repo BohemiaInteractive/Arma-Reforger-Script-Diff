@@ -74,6 +74,6 @@ class SCR_ScenarioFrameworkActionStartAnimation : SCR_ScenarioFrameworkActionBas
 		customAnimData.m_CustomCommand = staticTable.m_CustomCinematicCommand; 
 		customAnimData.m_GraphName = m_sGraphName; 
 		customAnimData.m_GraphInstanceName = m_GraphInstanceName;   
-		controller.StartLoitering(ELoiteringType.CUSTOM, m_bHolsterWeapon, m_bRootMotion, allignToProp, vAnimationTransform, true, customAnimData);
+		controller.StartLoitering(propEntity, ELoiteringType.CUSTOM, m_bHolsterWeapon, m_bRootMotion, allignToProp, vAnimationTransform, true, customAnimData);
 	}
 }

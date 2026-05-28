@@ -353,7 +353,7 @@ class SCR_VoiceoverSystem : GameSystem
 		
 		foreach (IEntity actor : actors)
 		{
-			actorIds.Insert(Replication.FindId(actor));
+			actorIds.Insert(Replication.FindItemId(actor));
 		}
 		
 		Rpc(RpcDo_PlaySequence, m_sDataResourceName, sequenceName, actorIds, playImmediately);
@@ -374,7 +374,7 @@ class SCR_VoiceoverSystem : GameSystem
 		
 		foreach (IEntity actor : actors)
 		{
-			actorIds.Insert(Replication.FindId(actor));
+			actorIds.Insert(Replication.FindItemId(actor));
 		}
 		
 		Rpc(RpcDo_PlaySequenceFor, m_sDataResourceName, sequenceName, actorIds, targetPlayerIds, playImmediately);
@@ -461,10 +461,10 @@ class SCR_VoiceoverSystem : GameSystem
 	//! Same as PlayLine but plays the VO for all clients. Has to be executed on server.
 	void PlayLineGlobal(string lineName, notnull IEntity actor, bool playImmediately = true)
 	{
-		Rpc(RpcDo_PlayLine, m_sDataResourceName, lineName, Replication.FindId(actor), playImmediately);
+		Rpc(RpcDo_PlayLine, m_sDataResourceName, lineName, Replication.FindItemId(actor), playImmediately);
 		
 		if (RplSession.Mode() != RplMode.Dedicated)
-			RpcDo_PlayLine(m_sDataResourceName, lineName, Replication.FindId(actor), playImmediately);
+			RpcDo_PlayLine(m_sDataResourceName, lineName, Replication.FindItemId(actor), playImmediately);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -475,10 +475,10 @@ class SCR_VoiceoverSystem : GameSystem
 		if (targetPlayerIds.IsEmpty())
 			return;
 		
-		Rpc(RpcDo_PlayLineFor, m_sDataResourceName, lineName, Replication.FindId(actor), targetPlayerIds, playImmediately);
+		Rpc(RpcDo_PlayLineFor, m_sDataResourceName, lineName, Replication.FindItemId(actor), targetPlayerIds, playImmediately);
 		
 		if (RplSession.Mode() != RplMode.Dedicated)
-			RpcDo_PlayLineFor(m_sDataResourceName, lineName, Replication.FindId(actor), targetPlayerIds, playImmediately);
+			RpcDo_PlayLineFor(m_sDataResourceName, lineName, Replication.FindItemId(actor), targetPlayerIds, playImmediately);
 	}
 
 	//------------------------------------------------------------------------------------------------

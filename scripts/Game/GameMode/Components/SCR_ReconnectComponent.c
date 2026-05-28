@@ -1,261 +1,210 @@
 //! Data class for reconnecting players
 class SCR_ReconnectData
 {
-	int m_iPlayerId;	
-	IEntity m_ReservedEntity;	//!< entity of the returning player
-	
-	//------------------------------------------------------------------------------------------------
-	// constructor
-	//! \param[in] playerId
-	//! \param[in] entity
-	void SCR_ReconnectData(int playerId, IEntity entity)
-	{
-		m_iPlayerId = playerId;
-		m_ReservedEntity = entity;
-	}
-}
+	//! How long this reconnection data can be used
+	WorldTimestamp m_ValidUntil;
 
-//! State of a reconnecting player
-enum SCR_EReconnectState
-{
-	NOT_RECONNECT,
-	ENTITY_AVAILABLE,
-	ENTITY_DISCARDED
+	//! Entity of the returning player
+	IEntity m_ReservedEntity;
+
+	// Add modded properties here from e.g. player controller that should be reapplied on reconnect onto the new controller.
 }
 
 [EntityEditorProps(category: "GameScripted/GameMode", description: "")]
 class SCR_ReconnectComponentClass : SCR_BaseGameModeComponentClass
 {
-	//------------------------------------------------------------------------------------------------
-	static override bool DependsOn(string className)
-	{
-		if (className == "RplComponent")
-			return true;
-		
-		return false;
-	}
 }
 
 //! Takes care of managing player reconnects in case of involuntary disconnect
 //! Authority-only component attached to gamemode prefab
 class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 {
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Enable reconnect functionality for this gamemode")]
-	bool m_bEnableReconnect;
-	
+	// How many seconds a player has time to reconnect before the data expires and the character is removed.
+	protected int m_iReconnectTime = 120;
+
 	static SCR_ReconnectComponent s_Instance;
-	
-	protected bool m_bIsInit;			// whether check for connection to backend happenned 
-	protected bool m_bIsReconEnabled;	
-	protected ref array<ref SCR_ReconnectData> m_ReconnectPlayerList = {};
-	
-	protected ref ScriptInvoker m_OnAddedToReconnectList;
-	protected ref ScriptInvoker m_OnPlayerReconnect;
-	
-	//------------------------------------------------------------------------------------------------
-	static SCR_ReconnectComponent GetInstance() 
-	{ 
-		return s_Instance; 
-	}
+
+	ref map<UUID, ref SCR_ReconnectData> m_mReconnectData = new map<UUID, ref SCR_ReconnectData>();
 
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnAddedToList()
-	{ 
-		if (!m_OnAddedToReconnectList)
-			m_OnAddedToReconnectList = new ScriptInvoker();
-
-		return m_OnAddedToReconnectList; 
-	}
-
-	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnReconnect() 
-	{ 
-		if (!m_OnPlayerReconnect)
-			m_OnPlayerReconnect = new ScriptInvoker();  
-		
-		return m_OnPlayerReconnect; 
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \return true if the reconnect functionality is enabled, false otherwise
-	bool IsReconnectEnabled() 
-	{ 
-		return m_bIsReconEnabled;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Is subject playerID currently present in list of possible reconnects
-	//! \param[in] playerId the subject's ID
-	//! \return state of the reconnecting subject
-	SCR_EReconnectState GetReconnectState(int playerId)
+	static SCR_ReconnectComponent GetInstance()
 	{
-		if (!m_bIsInit && !Init())
-			return SCR_EReconnectState.NOT_RECONNECT;
+		return s_Instance;
+	}
 
-		foreach (SCR_ReconnectData data : m_ReconnectPlayerList)
+	//------------------------------------------------------------------------------------------------
+	override protected void OnPostInit(IEntity owner)
+	{
+		SetEventMask(owner, EntityEvent.INIT);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void EOnInit(IEntity owner)
+	{
+		RplComponent rplComp = RplComponent.Cast(owner.FindComponent(RplComponent));
+		if (!GetGame().InPlayMode() || !rplComp || rplComp.IsProxy())
+			return;
+
+		s_Instance = this;
+
+		SCR_DSConfig config();
+		if (GetGame().GetBackendApi().GetRunningDSConfig(config))
+			m_iReconnectTime = config.operating.slotReservationTimeout;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! For how many seconds a player can reconnect before the controlled character is removed.
+	int GetReconnectTimeout()
+	{
+		return m_iReconnectTime;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void UpdateExpieryCheck()
+	{
+		ScriptCallQueue callqueue = GetGame().GetCallqueue();
+		if (m_mReconnectData.IsEmpty())
 		{
-			if (data.m_iPlayerId != playerId)
+			callqueue.Remove(CheckExpiery);
+			return;
+		}
+
+		// Remove expired data and associated char every second (config is in seconds interval. Less frequent check leads to inaccuracy)
+		if (callqueue.GetRemainingTime(CheckExpiery) < 0)
+			callqueue.CallLater(CheckExpiery, 1000, true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Remove any data that has exceeded the max reconnect time window.
+	protected void CheckExpiery()
+	{
+		if (m_mReconnectData.IsEmpty())
+			return;
+
+		const WorldTimestamp timestamp = GetGame().GetWorld().GetTimestamp();
+
+		array<UUID> expired = {};
+		foreach (UUID identity, SCR_ReconnectData data : m_mReconnectData)
+		{
+			if (!IsDataExpired(data, timestamp))
 				continue;
 
-			const ChimeraCharacter char = ChimeraCharacter.Cast(data.m_ReservedEntity);
-			if (!char || char.GetCharacterController().IsDead())
-				return SCR_EReconnectState.ENTITY_DISCARDED;
-
-			return SCR_EReconnectState.ENTITY_AVAILABLE;
+			HandleDataExpiery(data);
+			expired.Insert(identity);
 		}
 
-		return SCR_EReconnectState.NOT_RECONNECT;
+		if (!expired.IsEmpty())
+		{
+			foreach (UUID identity : expired)
+			{
+				m_mReconnectData.Remove(identity);
+			}
+
+			UpdateExpieryCheck();
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void Forget(int playerId)
+	//! Returns true if the players entity has been taken over for reconnection
+	bool HandlePlayerDisconnect(int playerId, KickCauseCode cause)
 	{
-		foreach (int idx, SCR_ReconnectData data : m_ReconnectPlayerList)
-		{
-			if (data.m_iPlayerId == playerId)
-			{
-				m_ReconnectPlayerList.Remove(idx);
-				return;
-			}
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Return control of the entity subject controlled before disconnect and forget the data.
-	//! \param[in] playerId is the subject
-	//! \return
-	IEntity ReturnControlledEntity(int playerId)
-	{		
-		int count = m_ReconnectPlayerList.Count();
-		for (int i; i < count; i++)
-		{
-			if (m_ReconnectPlayerList[i].m_iPlayerId == playerId)
-			{
-				IEntity ent = m_ReconnectPlayerList[i].m_ReservedEntity;
-				PlayerManager playerManager = GetGame().GetPlayerManager();
-				SCR_PlayerController playerController = SCR_PlayerController.Cast(playerManager.GetPlayerController(playerId));		
-				playerController.SetInitialMainEntity(ent);
-
-				if (m_OnPlayerReconnect)
-					m_OnPlayerReconnect.Invoke(m_ReconnectPlayerList[i]);
-				
-				m_ReconnectPlayerList.Remove(i);
-				return ent;
-			}
-		}
-		
-		return null;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Propagated from SCR_BaseGameMode OnPlayerDisconnected event
-	//! \return true if this disconnect is saved as eligible for reconnect
-	bool OnPlayerDC(int playerId, KickCauseCode cause)
-	{
-		KickCauseGroup2 groupInt = KickCauseCodeAPI.GetGroup(cause);
-		int reasonInt = KickCauseCodeAPI.GetReason(cause);
-				
-		if (groupInt != RplKickCauseGroup.REPLICATION)
+		const KickCauseGroup2 group = KickCauseCodeAPI.GetGroup(cause);
+		if (group != RplKickCauseGroup.REPLICATION)
 			return false;
-		else if (reasonInt == RplError.SHUTDOWN)
+
+		const int reason = KickCauseCodeAPI.GetReason(cause);
+		if (reason == RplError.SHUTDOWN)
 			return false;
-				
-		bool addEntry = true;
-		
-		if (!m_ReconnectPlayerList.IsEmpty())
-		{
-			int count = m_ReconnectPlayerList.Count();
-			for (int i; i < count; i++)
-			{
-				if (m_ReconnectPlayerList[i].m_iPlayerId == playerId)
-				{
-					addEntry = false;
-					break;
-				}
-			}
-		}
-		
-		if (addEntry)
-		{
-			IEntity ent = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId);
-			if (!ent)
-				return false;
-			
-			SCR_ReconnectData newEntry = new SCR_ReconnectData(playerId, ent);
-			m_ReconnectPlayerList.Insert(newEntry);
-			if (m_OnAddedToReconnectList)
-				m_OnAddedToReconnectList.Invoke(newEntry);
-		}
-		
+
+		const SCR_ReconnectData data = StoreData(playerId);
+		if (!IsDataRelevant(data))
+			return false;
+
+		const UUID identity = SCR_PlayerIdentityUtils.GetPlayerIdentityId(playerId);
+		m_mReconnectData.Set(identity, data);
+
+		UpdateExpieryCheck();
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	//! \return whether there is a proper connection to backend
-	bool Init()
+	//! Return the character back to the player controller and assign any other data.
+	//! \return True if reconnection was possible, false if respawn from scratch is needed.
+	bool HandlePlayerReconnect(int playerId)
 	{
-		m_bIsInit = true;
-			
-		BackendApi backendApi = GetGame().GetBackendApi();
-		if (!backendApi || !backendApi.IsActive() || (!backendApi.IsInitializing() && !backendApi.IsRunning()))
-		{
-			m_bIsReconEnabled = false;	// not connected to backend
-			Deactivate(GetOwner());
+		const UUID identity = SCR_PlayerIdentityUtils.GetPlayerIdentityId(playerId);
+		SCR_ReconnectData data;
+		if (!m_mReconnectData.Take(identity, data))
 			return false;
-		}
-		
-		return true;
+
+		if (IsDataRelevant(data))
+			ApplyData(playerId, data);
+
+		UpdateExpieryCheck();
+		return GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId) != null;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	//! SCR_BaseGameMode event
-	override protected void OnPlayerAuditTimeouted(int playerId)
+	//! Collect information relevant to reapply after reconnection to player controller / character.
+	protected notnull SCR_ReconnectData StoreData(int playerId)
 	{
-		if (m_ReconnectPlayerList.IsEmpty())
-			return;
-		
-		int count = m_ReconnectPlayerList.Count();
-		for (int i; i < count; i++)
+		SCR_ReconnectData data();
+		data.m_ReservedEntity = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId);
+		if (m_iReconnectTime > 0)
+			data.m_ValidUntil = GetGame().GetWorld().GetTimestamp().PlusSeconds(m_iReconnectTime);
+
+		return data;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns true if the data is relevant for reconnect and we should store it in the system.
+	protected bool IsDataRelevant(notnull SCR_ReconnectData data)
+	{
+		const ChimeraCharacter character = ChimeraCharacter.Cast(data.m_ReservedEntity);
+		return character && !character.GetCharacterController().IsDead();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if the reconnect time window has been exceeded.
+	protected bool IsDataExpired(notnull SCR_ReconnectData data, WorldTimestamp timestamp)
+	{
+		return data.m_ValidUntil && data.m_ValidUntil.Less(timestamp);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Data has expired, handle graceful removal of presence in the world.
+	protected void HandleDataExpiery(notnull SCR_ReconnectData data)
+	{
+		if (!IsDataRelevant(data))
+			return; // Not relevant anymore, so we are not going to do anything with it.
+
+		auto respawn = SCR_RespawnSystemComponent.GetInstance();
+		if (respawn)
+			respawn.OnPlayerEntityCleanup_S(data.m_ReservedEntity);
+
+		RplComponent.DeleteRplEntity(data.m_ReservedEntity, false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Apply still relevant data back on successful reconnect.
+	protected void ApplyData(int playerId, notnull SCR_ReconnectData data)
+	{
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(playerId));
+		const ChimeraCharacter character = ChimeraCharacter.Cast(data.m_ReservedEntity);
+		playerController.SetInitialMainEntity(character);
+
+		const Faction faction = SCR_FactionManager.SGetFaction(character);
+		if (faction)
 		{
-			if (m_ReconnectPlayerList[i].m_iPlayerId == playerId)
-			{
-				RplComponent.DeleteRplEntity(m_ReconnectPlayerList[i].m_ReservedEntity, false);
-				m_ReconnectPlayerList.Remove(i);
-				return;
-			}
+			SCR_PlayerFactionAffiliationComponent playerFactionComp = SCR_PlayerFactionAffiliationComponent.Cast(playerController.FindComponent(SCR_PlayerFactionAffiliationComponent));
+			if (playerFactionComp)
+				playerFactionComp.SetFaction_S(faction);
 		}
-	}
-		
-	//------------------------------------------------------------------------------------------------
-	override void OnPostInit(IEntity owner)
-	{		
-		RplComponent rplComp = RplComponent.Cast(owner.FindComponent(RplComponent));
-		if (!rplComp.IsProxy() && m_bEnableReconnect)		// ends here if not authority
-			SetEventMask(owner, EntityEvent.INIT);
-		else 
-			m_bIsReconEnabled = false;
-	}
 
-	//------------------------------------------------------------------------------------------------
-	override void EOnInit(IEntity owner)
-	{
-		s_Instance = this;
-		m_bIsReconEnabled = true;
-		
-		ArmaReforgerScripted game = GetGame();
-		if (game && !game.InPlayMode())
-			return;
-		
-		SCR_BaseGameMode.Cast(game.GetGameMode()).GetOnPlayerAuditTimeouted().Insert(OnPlayerAuditTimeouted);
-	}
+		SCR_RespawnSystemComponent.GetInstance().EmitPlayerEntityChange_S(playerId, null, character);
 
-	//------------------------------------------------------------------------------------------------
-	// destructor
-	void ~SCR_ReconnectComponent()
-	{
-		if (SCR_BaseGameMode.Cast(GetGame().GetGameMode()))
-			SCR_BaseGameMode.Cast(GetGame().GetGameMode()).GetOnPlayerAuditTimeouted().Remove(OnPlayerAuditTimeouted);
-			
-		s_Instance = null;
+		SCR_ReconnectSynchronizationComponent syncComp = SCR_ReconnectSynchronizationComponent.Cast(playerController.FindComponent(SCR_ReconnectSynchronizationComponent));
+		if (syncComp)
+			syncComp.CreateReconnectDialog();
 	}
 }

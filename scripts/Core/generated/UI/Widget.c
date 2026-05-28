@@ -20,7 +20,6 @@ sealed class Widget: Managed
 	proto external Widget GetChildren();
 	//!Returns next sibling in hierarchy, or nullptr
 	proto external Widget GetSibling();
-	proto external void RemoveChild(notnull Widget child);
 	proto external void SetName(string name);
 	proto external string GetName();
 	/*!
@@ -46,6 +45,7 @@ sealed class Widget: Managed
 	proto external ScriptedWidgetEventHandler GetHandler(int index);
 	//! return first widget event handler of given type, when none of event handlers has the type null is returned
 	proto external ScriptedWidgetEventHandler FindHandler(typename type);
+	proto external void RemoveChild(notnull Widget child);
 	//! Sets visibility of this widget (VISIBLE flag)
 	proto external void SetVisible(bool show);
 	//! Sets enabled state of this widget (DISABLED flag)
@@ -127,13 +127,33 @@ sealed class Widget: Managed
 	*/
 	proto external int GetFlags();
 	/*!
-	Sets given WidgetFlags for this widget
-	\return Previous state of the flags
+	Changes flags of widget. Sets the specified flags for the widget, leaving other flags unchanged.
+	\see WidgetFlags
+
+	\param flags Flags to set.
+	\return Old flags.
+
+	\code
+	void Example(Widget w)
+	{
+		w.SetFlags(WidgetFlags.VISIBLE); // set widget visible
+	}
+	\endcode
 	*/
 	proto external int SetFlags(int flags);
 	/*!
-	Removes all flags
-	\return Previous state of the flags
+	Clears flags of widget. Clears the specified flags for the widget, leaving other flags unchanged.
+	\see WidgetFlags
+
+	\param flags Flags to be cleared
+	\return Old flags.
+
+	\code
+	void Example(Widget w)
+	{
+		w.ClearFlags(WidgetFlags.VISIBLE); // hide widget
+	}
+	\endcode
 	*/
 	proto external int ClearFlags(int flags);
 	proto external WidgetType GetTypeID();
@@ -141,14 +161,6 @@ sealed class Widget: Managed
 	proto void GetScreenPos(out float x, out float y);
 	//! Returns size of this widget in physical resolution
 	proto void GetScreenSize(out float width, out float height);
-	//! Remove callback with given callbackId (callback ID is returned from AddCallback method)
-	proto external bool RemoveCallback(int eventId, int callbackId);
-	//! Remove callback with given caller object (in case the callback method is on object instance)
-	proto external bool RemoveCallbackByOwner(int eventId, Class owner);
-	//! Trigger callbacks attached to eventID on the widget (not called over hierarchy)
-	proto external bool EmitCallback(int eventId);
-	//! Add callback for given event id and returns callback id
-	proto int AddCallback(int eventId, WidgetEventCallback fn);
 	/*!
 	Emits custom widget event (called over hierarchy like other widget events).
 	\see ScriptedWidgetEventHandler

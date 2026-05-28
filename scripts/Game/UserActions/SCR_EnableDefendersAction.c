@@ -41,7 +41,7 @@ class SCR_EnableDefendersAction : ScriptedUserAction
 			if (!faction)
 				return false;
 			
-			rankName = faction.GetRankName(m_DefenderSpawner.GetMinimumRank());
+			rankName = faction.GetRanks().GetRankName(m_DefenderSpawner.GetMinimumRank());
 			
 			SetCannotPerformReason(rankName);
 			return false;

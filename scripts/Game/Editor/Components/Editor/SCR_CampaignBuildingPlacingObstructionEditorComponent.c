@@ -327,7 +327,10 @@ class SCR_CampaignBuildingPlacingObstructionEditorComponent : SCR_BaseEditorComp
 
 		foreach (Tuple3<IEntity, float, vector> compositionEntity : m_aCompositionEntities)
 		{
-			if (compositionEntity.param1 && !CheckEntityPosition(compositionEntity.param1.GetOrigin(), compositionEntity.param2))
+			if (!compositionEntity.param1)
+				continue;
+
+			if (!CheckEntityPosition(compositionEntity.param1.GetOrigin(), compositionEntity.param2))
 			{
 				m_bCanBeCreated = false;
 				outNotification = ENotification.EDITOR_PLACING_BLOCKED;
@@ -359,7 +362,7 @@ class SCR_CampaignBuildingPlacingObstructionEditorComponent : SCR_BaseEditorComp
 
 	//------------------------------------------------------------------------------------------------
 	//! Check the tilt of the entities in compositions. If it goes over the set limits, the colour of preview material will be changed to warn player.
-	protected bool IsCompositionTilted(IEntity ent, float entityRadius, vector originalTransformAngles, out SCR_EPreviewState previewStateToShow = SCR_EPreviewState.PLACEABLE)
+	protected bool IsCompositionTilted(notnull IEntity ent, float entityRadius, vector originalTransformAngles, out SCR_EPreviewState previewStateToShow = SCR_EPreviewState.PLACEABLE)
 	{
 		vector transformMat[4];
 		ent.GetWorldTransform(transformMat);

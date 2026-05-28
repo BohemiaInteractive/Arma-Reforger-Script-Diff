@@ -11,6 +11,14 @@ enum MetaEddsConversion
 	ColorHQCompression, // CHC_BC7
 }
 
+enum MetaEddsMipMapFilter
+{
+	Box,
+	Triangle,
+	Kaiser,
+	Gauss,
+}
+
 enum MetaEddsColorSpaceConversion
 {
 	None,
@@ -120,6 +128,7 @@ class TextureTypes
 	private static const string ColorSpace = "ColorSpace";
 	private static const string GenerateMips = "GenerateMips";
 	private static const string GenerateCubemap = "GenerateCubemap";
+	private static const string MipMapFilter = "MipMapFilter";
 
 	void TextureTypes()
 	{
@@ -303,6 +312,18 @@ class TextureTypes
 		AOType.CopyFrom(AType);
 
 		//--------------------------------------------------------------------
+		//portal lut
+		ref TextureType PLUTType = new TextureType(m_Types, "_plut");
+		PLUTType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.RedHQCompression);
+		PLUTType.Insert(MipMapFilter, MetaEddsMipMapFilter, MetaEddsMipMapFilter.Gauss);
+		PLUTType.AddBaseConfig("PC", "{15216161DB8E7A0D}configs/ResourceTypes/PC/TexturePortalLUT.conf");
+		PLUTType.AddBaseConfig("XBOX_ONE", "{E19B9C1FD4491FD4}configs/ResourceTypes/XBOX_ONE/TexturePortalLUT.conf");
+		PLUTType.AddBaseConfig("XBOX_SERIES", "{9BA8570DDBA5283F}configs/ResourceTypes/XBOX_SERIES/TexturePortalLUT.conf");
+		PLUTType.AddBaseConfig("PS4", "{9D1ACBBD33CC8473}configs/ResourceTypes/PS4/TexturePortalLUT.conf");
+		PLUTType.AddBaseConfig("PS5", "{FE193D54570A6317}configs/ResourceTypes/PS5/TexturePortalLUT.conf");
+		PLUTType.AddBaseConfig("HEADLESS", "{469BCD4EB4ABAADE}configs/ResourceTypes/HEADLESS/TexturePortalLUT.conf");
+
+		//--------------------------------------------------------------------
 		ref TextureType layerType = new TextureType(m_Types, "_layer");
 		layerType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.None);
 		layerType.AddBaseConfig("PC", "{A59F335F96C4442F}configs/ResourceTypes/PC/TextureTerrainLayer.conf");
@@ -323,7 +344,8 @@ class TextureTypes
 		supertextureType.AddBaseConfig("HEADLESS", "{5506B811545F4686}configs/ResourceTypes/HEADLESS/TextureTerrainSuper.conf");
 
 		ref TextureType normaltextureType = new TextureType(m_Types, "_normal");
-		normaltextureType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.DXTCompression);
+		//with vegetation height in blue channel we need to use ColorHQCompression for better quality
+		normaltextureType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.ColorHQCompression);
 		normaltextureType.AddBaseConfig("PC", "{835E083C88C3D9C3}configs/ResourceTypes/PC/TextureTerrainNormal.conf");
 		normaltextureType.AddBaseConfig("XBOX_ONE", "{6C5EFFA712A52100}configs/ResourceTypes/XBOX_ONE/TextureTerrainNormal.conf");
 		normaltextureType.AddBaseConfig("XBOX_SERIES", "{90ADE65A903F3042}configs/ResourceTypes/XBOX_SERIES/TextureTerrainNormal.conf");

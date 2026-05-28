@@ -121,7 +121,8 @@ class SCR_CompassComponent : SCR_GadgetComponent
 		m_fNeedleAngle = SCR_Math.fmod(m_fNeedleAngle, 360);
 		if (m_fNeedleAngle > 180) m_fNeedleAngle -= 360;
 
-		m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalNeedle, m_fNeedleAngle);
+		if (m_SignalManager)
+			m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalNeedle, m_fNeedleAngle);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -158,7 +159,8 @@ class SCR_CompassComponent : SCR_GadgetComponent
 			m_fShakeAngle = -m_PrefabData.m_fShakeMaximumAngle;
 		}
 
-		m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalShake, m_fShakeAngle);
+		if (m_SignalManager)
+			m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalShake, m_fShakeAngle);
 	}	
 	
 	//------------------------------------------------------------------------------------------------
@@ -172,7 +174,9 @@ class SCR_CompassComponent : SCR_GadgetComponent
 		// Initial set
 		vector angles = GetOwner().GetYawPitchRoll();
 		m_fNeedleAngle = -angles[0] + Math.RandomInt(-10, 10);
-		m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalNeedle, m_fNeedleAngle);
+		
+		if (m_SignalManager)
+			m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalNeedle, m_fNeedleAngle);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -216,31 +220,34 @@ class SCR_CompassComponent : SCR_GadgetComponent
 				
 		if (!m_PrefabData.m_bSignalInit)
 			m_PrefabData.InitSignals(GetOwner());
+
+		if (m_SignalManager)
+		{
+			// Map
+			if (m_bIsInMapMode)
+			{
+				m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalInMap, 1);
+				m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalInHand, 0);
 				
-		// Map
-		if (m_bIsInMapMode)
-		{
-			m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalInMap, 1);
-			m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalInHand, 0);
-			
-			if (m_PrefabData.m_iCompassType == SCR_ECompassType.SY183)
-				m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalClose, 0);
-		}
-		// Hand
-		else if (m_iMode != EGadgetMode.IN_SLOT)
-		{
-			m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalInHand, 1);
-			
-			if (m_PrefabData.m_iCompassType == SCR_ECompassType.SY183)
-				m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalClose, 0);
-		}
-		// Ground
-		else 
-		{
-			m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalInHand, 0);
-			
-			if (m_PrefabData.m_iCompassType == SCR_ECompassType.SY183)
-				m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalClose, 1);
+				if (m_PrefabData.m_iCompassType == SCR_ECompassType.SY183)
+					m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalClose, 0);
+			}
+			// Hand
+			else if (m_iMode != EGadgetMode.IN_SLOT)
+			{
+				m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalInHand, 1);
+				
+				if (m_PrefabData.m_iCompassType == SCR_ECompassType.SY183)
+					m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalClose, 0);
+			}
+			// Ground
+			else 
+			{
+				m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalInHand, 0);
+				
+				if (m_PrefabData.m_iCompassType == SCR_ECompassType.SY183)
+					m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalClose, 1);
+			}
 		}
 	}
 	
@@ -375,6 +382,8 @@ class SCR_CompassComponent : SCR_GadgetComponent
 		
 		m_PrefabData = SCR_CompassComponentClass.Cast( GetComponentData(owner) );
 		m_SignalManager = SignalsManagerComponent.Cast( owner.FindComponent( SignalsManagerComponent ) );
+		if (!m_SignalManager)
+			Print(string.Format("Missing SingalsManagerComponent on compass entity: %1", owner), LogLevel.WARNING);
 			
 		CalculateConstants();
 		UpdateCompassState();

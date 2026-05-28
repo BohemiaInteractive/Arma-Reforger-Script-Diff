@@ -326,10 +326,13 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 	//! Only triggered if the sender wrote anyting to the buffer.
 	override protected bool OnLoadActionData(ScriptBitReader reader)
 	{
+		float targetValue;
+		reader.ReadFloat(targetValue);
+		
 		if (m_bIsAdjustedByPlayer)
 			return true;
 
-		reader.ReadFloat(m_fTargetValue);
+		m_fTargetValue = targetValue;
 		SetSignalValue(m_fTargetValue);
 		PlayMovementAndStopSound(Math.InverseLerp(SCR_GetMinimumValue(), SCR_GetMaximumValue(), m_fTargetValue));
 

@@ -108,10 +108,12 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 		if (disconnecting)
 			playerProfile.SetLogoutTime();
 		
+		BackendApi backendAPI = GetGame().GetBackendApi();
+		
 		#ifndef WORKBENCH
-			GetGame().GetBackendApi().PlayerRequest(EBackendRequest.EBREQ_GAME_CharacterUpdateS2S,m_Callback,playerProfile,playerID);
+			backendAPI.PlayerCharacterUpdateS2S(m_Callback, playerProfile, playerID);
 		#else
-			GetGame().GetBackendApi().PlayerRequest(EBackendRequest.EBREQ_GAME_DevCharacterUpdate,m_Callback,playerProfile,playerID);
+			backendAPI.PlayerDevCharacterUpdate(m_Callback, playerProfile, playerID);
 		#endif
 	}
 	

@@ -29,10 +29,12 @@ class BaseDialogueInterface: ScriptAndConfig
 	proto external int GetAvailableResponseIndexes(DialogueID id, notnull array<int> responseIndexes);
 	//Retrieves all DataComponents of the node at a specific response index that are of the provided type. The response node doesn't have to be an available response. Returns number of found components.
 	proto external int GetDataOfResponse(DialogueID id, int responseIndex, typename type, notnull array<DialogueData> outData);
+	//Recomputes transition rules on current node and updates available responses.
+	proto external void RecomputeTransitionRules(DialogueID id);
 	//Interaction methods
 	proto external void RequestResponse(DialogueID id, int responseId);
 	proto external void RequestSkip(DialogueID id);
-	proto external void RequestInterrupt(DialogueID id);
+	proto external void RequestInterrupt(DialogueID id, string interruptionName = string.Empty);
 	//Enables ticking of the Interface
 	proto external void EnableTicking(bool enable);
 

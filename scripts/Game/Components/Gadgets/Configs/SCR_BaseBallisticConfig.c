@@ -1,6 +1,6 @@
-class SCR_BaseBallisticConfig : ScriptAndConfig
+class SCR_BaseBallisticConfig : SCR_BaseDataPageConfig
 {
-	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, desc: "Prfab from which system will extrapolate the ballistic data", params: "et class=Projectile")]
+	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, desc: "Prefab from which system will extrapolate the ballistic data", params: "et class=Projectile")]
 	protected ResourceName m_sProjectilePrefab;
 
 	[Attribute(desc: "Static text that will be shown for this config")]
@@ -119,7 +119,11 @@ class SCR_BaseBallisticConfig : ScriptAndConfig
 	//! \return if data for this config is available in SCR_BallisticData.s_aBallistics
 	bool GenerateBallisticData()
 	{
+		if (!GetGame().InPlayMode())
+			return false;
+
 		GetUnitType();
+		SCR_BallisticData.SubscribeToGameEndEvent();
 
 		if (VerifyDataExistence(m_iBallisticDataId))
 			return true;

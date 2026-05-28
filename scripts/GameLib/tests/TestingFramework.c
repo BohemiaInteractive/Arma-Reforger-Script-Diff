@@ -1,226 +1,141 @@
 /*!
 \defgroup ScriptTestingFramework Script Testing Framework
 \addtogroup ScriptTestingFramework
-@{
+\{
+For framework description, see \ref Page_System_ScriptTestingFramework.
+\}
+*/
 
+/*!
 \page Page_System_ScriptTestingFramework Script Testing Framework
 \tableofcontents
+
 
 \section Introduction Introduction
 
 - Provides a unified and simple interface that emphasizes the smallest amount
 of boiler plate code possible.
 
-- The collection and instantiation of its primitives is performed right after
-the script compilation.
+- Each test is marked using Test attribute. A test is a type derived from
+TestBase. It can run for several ticks, maintaining state using member
+variables. Your logic has to be ran through __step methods__.
 
-- Within the framework a SINGLE test harness derived class can exist. The
-harness runs the tests and contains API to access them.
+- Each test specifies to which TestSuite it belongs. Suites provide additional
+API for controlling the execution environment (for all tests which are part of
+a suite).
 
-- The test units are compiled to Suites. These provide additional API for
-environmental control.
-
-\section SimpleTests Simple tests
-
-Can be perfomed in form of annotated <b>free functions</b>.
-
-<em>Note: Notice the Suite name in the attribute.</em>
-
-@code
-[Test("MyFirstTestSuite")]
-TestResultBase MyFooBarTest() { return TestBoolResult(5 > 3); }
-@endcode
-
-\section StatefulTests Stateful tests
-More elaborate tests that need some state and will run for several ticks have
-to be defined as TestBase derived classes. Your logic has to be ran through
-__step methods__.
+- Within the framework a SINGLE class derived from TestHarness can exist.
+TestHarness is collection of all available test suites. It runs tests in them
+and provides API to access them.
 
 \subsection StepMethods Step methods
 - You can name your step methods however you like.
-- They have to be annotated by the [Step(Stage)] attribute which pairs the step
-with a stage.
+- They have to be annotated with TestStep attribute that specifies TestStage to
+which this step belongs.
 
 \subsection Stages Stages
 - They divide the steps into groups that express the initialization and
 finalization process.
-- Stages are executed in order Setup -> Main -> TearDown.
+- Under normal circumstances (no failure or error occurs), stages are
+executed in following order:
+	1. TestStage.Setup
+	2. TestStage.Main
+	3. TestStage.TearDown
 - Methods in stages are executed in order of definition.
 
 \subsection ReturnValues Return values
-- void -> Will get executed only once.
-- bool -> Will get executed every tick until true is returned.
+- `void` -> Will get executed only once.
+- `bool` -> Will get executed every tick until true is returned.
 
 \subsection Result Result
-- Result is set via API member method of TestBase `SetResult(TestResultBase)`.
+- Result is set via TestBase.SetResult(TestResultBase).
 - Setting a result which evaluates to failure will terminate the stage.
 
 \subsection FailureUnwind Failure unwind
-- If the Setup stage fails the test only terminates and TearDown is not called.
-- Main stage failure will trigger the TearDown.
-- TearDown failure will do nothing.
+- If the TestStage.Setup fails the test only terminates and TestStage.TearDown
+is not called.
+- Failure during TestStage.Main will trigger the TestStage.TearDown.
+- Failure during TestStage.TearDown will do nothing.
 
 \subsection Timeout Timeout
-- The tests won't timeout by default. The value may be specified via Test
-attribute.
-- The timeout counter resets for every stage method.
-- If the stage method times out the TimeoutResult is set (it evaluates to
+- Tests won't timeout by default. The value may be specified via Test or TestStep
+attributes.
+- Test attribute specifies default timeout for steps of a test.
+- Non-zero timeout specified in TestStep overrides timeout from Test.
+- TestSuite steps may also have their
+- The timeout timer resets for every step method.
+- If the step method times out the TimeoutResult is set (it evaluates to
 failure and the failure unwind process starts).
 
-@code
-[Test("MyFirstTestSuite", timeoutS: 2, timeoutMs: 250)]
-class MyAsyncTest : TestBase
-{
-	// Simple blocking initialization.
-	[Step(EStage.Setup)]
-	void Initialize() { ... }
+\snippet this Stateful test
 
-	// Async test which is waiting for result for several frames.
-	[Step(EStage.Main)]
-	bool Pool() { ... }
+*/
 
-	// Finalization process waiting for result for several frames.
-	[Step(EStage.TearDown)]
-	bool FinalizeA() { ... }
-
-	// Simple blocking finalization call.
-	[Step(EStage.TearDown)]
-	void FinalizeB() { ... }
-}
-@endcode
-
+/*!
+\addtogroup ScriptTestingFramework
+\{
 */
 
 //-----------------------------------------------------------------------------
 //! Attribute used for tests annotation and assignment to Suites.
 class Test
 {
-	string Suite;
+	typename Suite;
 
 	int TimeoutS;
 	int TimeoutMs;
+	int MaxAttempts;
 
 	//! Defines a suite the test belongs to and its timeout value.
-	void Test(string suite, int timeoutS = 0, int timeoutMs = 0)
+	void Test(string suiteStr = "", typename suite = void, int timeoutS = 0, int timeoutMs = 0, int maxAttempts = 1)
 	{
-		Suite = suite;
+		if (suite != void)
+		{
+			Suite = suite;
+		}
+		else
+		{
+			PrintFormat(
+				"Test referring to TestSuite using string '%1' instead of typename. This is deprecated and should be replaced by explicitly setting passing 'suite' parameter",
+				suiteStr, level: LogLevel.WARNING
+			);
+			Suite = suiteStr.ToType();
+		}
+		TimeoutS = timeoutS;
+		TimeoutMs = timeoutMs;
+		MaxAttempts = maxAttempts;
+	}
+}
+
+//-----------------------------------------------------------------------------
+//! \deprecated Use TestStage instead.
+typedef TestStage EStage;
+
+//-----------------------------------------------------------------------------
+//! Attribute which marks a method as part of the testing process.
+class TestStep
+{
+	TestStage Stage;
+	int TimeoutS;
+	int TimeoutMs;
+
+	void TestStep(TestStage stage = TestStage.Main, int timeoutS = 0, int timeoutMs = 0)
+	{
+		Stage = stage;
 		TimeoutS = timeoutS;
 		TimeoutMs = timeoutMs;
 	}
 }
 
-//-----------------------------------------------------------------------------
-//! Stage definition used in conjunction with Step attribute.
-enum EStage
-{
-	Setup,
-	Main,
-	TearDown
-}
-
-//-----------------------------------------------------------------------------
-//! Attribute which marks a method as part of the testing process.
-class Step
-{
-	EStage Stage;
-
-	void Step(EStage stage = EStage.Main)
-	{
-		Stage = stage;
-	}
-}
-
-//-----------------------------------------------------------------------------
-//! Collection and main interface of the Testing framework.
-class TestHarness : Managed
-{
-	//! Starts the testing process. Returns true when all tests have finished. If
-	//! some of them are still in progress false is reported.
-	proto native static bool Run();
-	//! Generates a xml report.
-	proto static string Report();
-	//! Returns number of test suites.
-	proto native static int GetNSuites();
-	//! Returns a test suite.
-	proto native static TestSuite GetSuite(int handle);
-	//! Returns currently active TestSuite or null when none is active.
-	proto native static TestSuite ActiveSuite();
-	//! Returns true when all tests and suites finished.
-	proto native static bool Finished();
-	//! Starts up the testing process and initializes the structures.
-	proto native static void Begin();
-	//! Finalizes the testing process.
-	proto native static void End();
-}
-
-//-----------------------------------------------------------------------------
-//! Collection of tests.
-class TestSuite : Managed
-{
-	//! Sets the suite result. Failure can result in specialized behavior described
-	//! in TestResultBase.
-	proto native void SetResult(TestResultBase res);
-	//! Returns the number for tests within this suite.
-	proto native int GetNTests();
-	//! Returns a test.
-	proto native TestBase GetTest(int handle);
-	//! Enables/Disables the suites. Disabled suites won't run at all.
-	proto native void SetEnabled(bool val);
-	//! Enabled flag getter.
-	proto native bool IsEnabled();
-	//! Suite class name getter. Strictly for UI porposes!
-	proto string GetName();
-}
-
-//-----------------------------------------------------------------------------
-//! Test base class. 
-class TestBase : Managed
-{
-	//! Sets the test result. Failure can result in specialized behavior described
-	//! in TestResultBase.
-	proto native void SetResult(TestResultBase res);
-	//! Result getter.
-	proto native TestResultBase GetResult();
-	//! Enables/Disables the test. Disabled tests won't run at all.
-	proto native void SetEnabled(bool val);
-	//! Enabled flag getter.
-	proto native bool IsEnabled();
-	//! Test name getter. Strictly for UI porposes!
-	proto string GetName();
-}
-
-//-----------------------------------------------------------------------------
-//! Base class for test results. This way you report back to the system.
-//! More complex failure types with descriptions can be reported by
-//! implementation of FailureText in format of junit
-//! [https://llg.cubic.org/docs/junit/].
-class TestResultBase : Managed
-{
-	//! Return true of the result means failure.
-	bool Failure() { return NativeFailure(); } 
-	//! Text used for xml report output.
-	string FailureText() { return NativeFailureText(); }
-
-	// Script forwarding to cpp. Otherwise the script overloading wouldn't be able
-	// to call the native base implementation.
-	// ----------------- vvv ----------------- 
-	proto native bool NativeFailure();
-	proto native string NativeFailureText();
-	// ----------------- ^^^ ----------------- 
-}
-
-class TestResultTimeout: TestResultBase
-{
-}
+//! \deprecated Use TestStep instead.
+typedef TestStep Step;
 
 /*!
- * @}
- */
+\}
+*/
 
-//-----------------------------------------------------------------------------
-// EXAMPLES
-//-----------------------------------------------------------------------------
-/*
+#ifdef DOXYGEN
+
 //-----------------------------------------------------------------------------
 //! Basic test result.
 class TestBoolResult : TestResultBase
@@ -234,80 +149,97 @@ class TestBoolResult : TestResultBase
 	override string FailureText()
 	{
 		// junit kind of error report. (simple)
-		return "<failure type=\"BoolResult\">Failed</failure>";
+		return "<failure type=\"TestBoolResult\" message=\"Failed.\" />";
 	}
-}
-
-//-----------------------------------------------------------------------------
-class MyHarness : TestHarness
-{
 }
 
 //-----------------------------------------------------------------------------
 class MyTestSuite : TestSuite
 {
-	int cnt;
+	private int m_Count;
 
-	[Step(EStage.Setup)]
+	[TestStep(TestStage.Setup)]
 	void Prep()
 	{
-		Print("MyTestSuite::Prep");
-		cnt = 3;
+		Print("MyTestSuite.Prep");
+		m_Count = 3;
 	}
 
-	[Step(EStage.Setup)]
+	[TestStep(TestStage.Setup)]
 	bool Count()
 	{
-		--cnt;
-		Print("MyTestSuite::Count: cnt=" + cnt);
-		return cnt == 0;
+		--m_Count;
+		Print("MyTestSuite.Count: " + m_Count);
+		return m_Count == 0;
 	}
 
-	[Step(EStage.TearDown)]
+	[TestStep(TestStage.TearDown)]
 	bool CountUp()
 	{
-		++cnt;
-		Print("MyTestSuite::CountUp: cnt=" + cnt);
-		return cnt == 10;
+		++m_Count;
+		Print("MyTestSuite.CountUp: " + m_Count);
+		return m_Count == 10;
 	}
 }
 
 //-----------------------------------------------------------------------------
-[Test("MyTestSuite")]
-TestResultBase MyTest()
-{
-	Print("MyFuncTest");
-	return new TestBoolResult(true);
-}
-
-//-----------------------------------------------------------------------------
-[Test("MyTestSuite")]
+//! [Stateful test]
+[Test(suite: MyTestSuite, timeoutS: 2, timeoutMs: 250)]
 class MyAsyncTest : TestBase
 {
-	int counter;
+	private int m_Count;
 
-	[Step(EStage.Main)]
-	void Set()
+	// Simple blocking initialization.
+	[TestStep(TestStage.Setup)]
+	void Init()
 	{
-		counter = 10;
+		Print("MyAsyncTest.Init");
+		m_Count = 10;
 	}
 
-	[Step(EStage.Main)]
-	bool Pool() 
+	// Async test which is waiting for result for several frames.
+	[TestStep(TestStage.Main)]
+	bool Poll()
 	{
-		Print("AsyncTest::Pool::counter=" + counter);
+		Print("MyAsyncTest.Poll: " + m_Count);
 
-		if(counter == 0)
+		if (m_Count == 0)
 		{
-			Print("AsyncTest::Pool::Result");
+			Print("MyAsyncTest.Poll Result");
 			SetResult(new TestBoolResult(false));
+			m_Count = 3;
 			return true;
 		}
 
-		Print("AsyncTest::Pool::Progress");
+		Print("MyAsyncTest.Poll Progress");
 
-		counter--;
+		m_Count--;
 		return false;
 	}
+
+	// Finalization process waiting for result for several frames.
+	[TestStep(TestStage.TearDown)]
+	bool Finalizing()
+	{
+		Print("MyAsyncTest.Finalizing: " + m_Count);
+		if (m_Count == 0)
+		{
+			Print("MyAsyncTest.Finalizing Done");
+			return true;
+		}
+
+		Print("MyAsyncTest.Finalizing Progress");
+		m_Count--;
+		return false;
+	}
+
+	// Simple blocking finalization call.
+	[TestStep(TestStage.TearDown)]
+	void Finalized()
+	{
+		Print("MyAsyncTest.Finalized");
+	}
 }
-*/
+//! [Stateful test]
+
+#endif

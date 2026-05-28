@@ -52,7 +52,7 @@ class SCR_DetonatorGadgetComponent : SCR_GadgetComponent
 	//! \return
 	bool IsAttachedToTheDetonator(SCR_ExplosiveChargeComponent explosiveChargeComp)
 	{
-		return m_aConnectedCharges.Contains(Replication.FindId(explosiveChargeComp));
+		return m_aConnectedCharges.Contains(Replication.FindItemId(explosiveChargeComp));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -349,7 +349,7 @@ class SCR_DetonatorGadgetComponent : SCR_GadgetComponent
 	//! Remove all charges from the listed of connected charges
 	void RemoveAllChargesFromTheList()
 	{
-		RplId detonatorId = Replication.FindId(this);
+		RplId detonatorId = Replication.FindItemId(this);
 		if (!detonatorId.IsValid())
 			return;
 

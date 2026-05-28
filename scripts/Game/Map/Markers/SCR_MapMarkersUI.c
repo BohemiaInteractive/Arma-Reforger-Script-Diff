@@ -944,7 +944,7 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 			SCR_MapMarkerBase marker = m_MarkerMgr.GetMarkerByWidget(widget);
 			if (marker)
 			{
-				if (marker.GetType() != SCR_EMapMarkerType.PLACED_CUSTOM && marker.GetType() != SCR_EMapMarkerType.PLACED_MILITARY)
+				if (!marker.CanBeRemovedByOwner() || (marker.GetType() != SCR_EMapMarkerType.PLACED_CUSTOM && marker.GetType() != SCR_EMapMarkerType.PLACED_MILITARY))
 					continue;
 				
 				m_MarkerRemoveEntry = radialUI.AddRadialEntry("#AR-MapMarker_DeleteHint");

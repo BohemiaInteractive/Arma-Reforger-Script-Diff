@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_SightsHasIlluminationCondition : SCR_AvailableActionCondition
 {
@@ -7,11 +6,8 @@ class SCR_SightsHasIlluminationCondition : SCR_AvailableActionCondition
 
 	//------------------------------------------------------------------------------------------------
 	//! Return true if currently controlled vehicle turret has illumination for sights
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-
 		SCR_2DOpticsComponent sights = null;
 
 		if (m_bCheckTurret)
@@ -76,4 +72,4 @@ class SCR_SightsHasIlluminationCondition : SCR_AvailableActionCondition
 		// Sights
 		return SCR_2DOpticsComponent.Cast(turret.FindComponent(SCR_2DOpticsComponent));
 	}
-};
+}

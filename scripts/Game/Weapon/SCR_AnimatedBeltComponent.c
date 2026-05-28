@@ -26,6 +26,7 @@ class SCR_AnimatedBeltComponent : ScriptComponent
 	protected float m_fBeltProgress;
 	protected float m_fBeltTarget;
 	protected float m_fBeltStartPoint;
+	protected int m_iBeltSystemIdx = -1;
 
 	//------------------------------------------------------------------------------------------------
 	//! Establish listeners to gunners entering this turret only after the magazine was attached to the turret
@@ -113,6 +114,18 @@ class SCR_AnimatedBeltComponent : ScriptComponent
 			return;
 
 		s_system.Unregister(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetBeltSystemIdx(int index)
+	{
+		m_iBeltSystemIdx = index;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetBeltSystemIdx()
+	{
+		return m_iBeltSystemIdx;
 	}
 
 	//------------------------------------------------------------------------------------------------

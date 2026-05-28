@@ -23,6 +23,8 @@ class UserActionContext: ScriptAndConfig
 	//! Fills the provided outActions array with user actions that belong to this context.
 	//! Returns the number of output elements.
 	proto external int GetActionsList(out notnull array<BaseUserAction> outActions);
+	//! Returns the action at the given index. If there is no action or the index is not valid, it returns null.
+	proto external BaseUserAction GetAction(int index);
 	//! Returns the amount of actions registered in this action context.
 	proto external int GetActionsCount();
 	//! Fills the provided vector array with the transformation matrix of this context in model (local) space.

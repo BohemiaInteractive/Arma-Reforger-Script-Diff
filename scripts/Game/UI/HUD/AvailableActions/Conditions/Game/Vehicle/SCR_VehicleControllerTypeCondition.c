@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 enum SCR_EVehicleControllerType
 {
 	ANY,
@@ -6,22 +5,18 @@ enum SCR_EVehicleControllerType
 	HELICOPTER
 }
 
-//------------------------------------------------------------------------------------------------
 //! Returns true if character is in a vehicle
 [BaseContainerProps()]
 class SCR_VehicleControllerTypeCondition : SCR_AvailableActionCondition
 {
-	[Attribute(defvalue: SCR_Enum.GetDefault(SCR_EVehicleControllerType.ANY), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_EVehicleControllerType))]
+	[Attribute(defvalue: SCR_EVehicleControllerType.ANY.ToString(), desc: "Vehicle Controller Type", uiwidget: UIWidgets.ComboBox, enumType: SCR_EVehicleControllerType)]
 	SCR_EVehicleControllerType m_eVehicleControllerType;
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns true when current controlled entity is in vehicle
 	//! Returns opposite if m_bNegateCondition is enabled
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-
 		BaseControllerComponent controller = data.GetCurrentVehicleController();
 		if (!controller)
 			return false;

@@ -33,8 +33,15 @@ class SCR_SaveArsenalLoadout : SCR_BaseFactionCheckUserAction
 			return false;
 		
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+		if (!playerController || playerController.IsPossessing())
+			return false;
 
-		return (!playerController || !playerController.IsPossessing());
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(user);
+		if (!character)
+			return false;
+
+		SCR_Faction faction = SCR_Faction.Cast(character.GetFaction());
+		return faction && faction.IsCustomLoadoutSupported();
 	}
 	
 	//------------------------------------------------------------------------------------------------

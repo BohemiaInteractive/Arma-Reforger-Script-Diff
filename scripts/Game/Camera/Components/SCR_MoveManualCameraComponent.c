@@ -9,6 +9,10 @@ class SCR_MoveManualCameraComponent : SCR_BaseManualCameraComponent
 	
 	protected bool m_bBlockedByRadialMenu;
 	
+#ifdef ENABLE_DIAG
+	protected const float DEBUG_DISTANCE_EXTENSION = 2000;
+#endif
+
 	//------------------------------------------------------------------------------------------------
 	override void EOnCameraSave(SCR_ManualCameraComponentSave data)
 	{
@@ -78,13 +82,19 @@ class SCR_MoveManualCameraComponent : SCR_BaseManualCameraComponent
 		);
 		
 		// Limit position to avoid large numbers
-		{
-			vector mins, maxs;
-			GetCameraEntity().GetWorld().GetBoundBox(mins, maxs);
-			param.transform[3][0] = Math.Clamp(param.transform[3][0], mins[0] - 1000, maxs[0] + 1000);
-			param.transform[3][1] = Math.Clamp(param.transform[3][1], -8000.0, 8000.0);
-			param.transform[3][2] = Math.Clamp(param.transform[3][2], mins[2] - 1000, maxs[2] + 1000);
-		}
+		vector mins, maxs;
+		GetGame().GetWorldEntity().GetTerrain(0, 0).GetTerrainBoundBox(mins, maxs); // bounds are in world space
+		vector worldPos = CoordFromCamera(param.transform[3]); // translate to world space coordinates
+
+#ifdef ENABLE_DIAG
+		mins -= vector.One * DEBUG_DISTANCE_EXTENSION; // its useful to be able to fly a bit further than world bounds
+		maxs += vector.One * DEBUG_DISTANCE_EXTENSION; // especially in case of MpTest world
+#endif
+
+		worldPos[0] = Math.Clamp(worldPos[0], mins[0], maxs[0]);
+		worldPos[1] = Math.Clamp(worldPos[1], -8000.0, 8000.0);
+		worldPos[2] = Math.Clamp(worldPos[2], mins[2], maxs[2]);
+		param.transform[3] = CoordToCamera(worldPos); // translate back to camera local space
 		
 		param.isManualInput = true;
 		param.isDirty = true;

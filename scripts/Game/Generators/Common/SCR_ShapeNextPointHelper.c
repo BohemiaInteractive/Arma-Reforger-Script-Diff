@@ -51,7 +51,7 @@ class SCR_ShapeNextPointHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return relative position
 	vector GetCurrentPosition()
 	{
 		return m_vCurrentPosition;
@@ -408,9 +408,6 @@ class SCR_ShapeNextPointHelper
 		anchorIndex = 0;
 		vector nextAnchor = result.m_aAnchorPoints[anchorIndex];
 
-		if (anchorPointsCount > 0)
-			result.m_vCurrentPosition = result.m_aAnchorPoints[0];
-
 		vector prevPoint;
 		foreach (int i, vector currPoint : result.m_aTesselatedPoints)
 		{
@@ -451,6 +448,8 @@ class SCR_ShapeNextPointHelper
 		result.m_iAnchorPointsCount = anchorPointsCount;
 //		result.m_iTesselatedPointsCount = tesselatedPointsCount;
 		result.m_iSegmentsCount = tesselatedPointsCount - 1;
+
+		result.SetOnAnchor(0); // sets m_vCurrentPosition & m_vCurrentDirection
 
 		return result;
 	}

@@ -117,7 +117,7 @@ class SCR_CampaignMapInfoDisplay : SCR_CampaignInfoDisplay
 			currentMapEntityMode == EMapEntityMode.COMBAT_SUPPORT_STATION;
 		}
 
-		if (!m_bCommanderRoleEnabled || isSupportStationMapMode)
+		if (!m_bCommanderRoleEnabled || isSupportStationMapMode || !faction.IsCommanderAvailable())
 		{
 			m_wCommanderNameWrapper.SetVisible(false);
 			return;

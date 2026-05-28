@@ -31,10 +31,13 @@ class SCR_EditableSpawnPointComponent : SCR_EditableDescriptorComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void SetTransform(vector transform[4], bool changedByUser = false)
+	override bool SetTransform(vector transform[4], bool changedByUser = false)
 	{	
-		super.SetTransform(transform, changedByUser);
+		if (!super.SetTransform(transform, changedByUser))
+			return false;
+
 		UpdateNearestLocation();
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------

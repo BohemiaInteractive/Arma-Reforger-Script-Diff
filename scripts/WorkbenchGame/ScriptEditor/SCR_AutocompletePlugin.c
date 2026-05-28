@@ -381,7 +381,7 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 			if (tokens.RemoveItemOrdered("private"))
 				keywords.Insert("private");
 		}
-	
+
 		if (!tokens.IsEmpty() && tokens[0] == "ref")
 		{
 			tokens.RemoveOrdered(0);
@@ -404,7 +404,6 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 			varName = tokens[tokensCount - 1];
 			tokens.Remove(tokensCount - 1);
 			varType = SCR_StringHelper.Join(SCR_StringHelper.SPACE, tokens, false);
-			
 		}
 
 		string newLine;
@@ -547,6 +546,7 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 					currentLine.Substring(0, currentLine.Length() - 2),
 					typename.EnumToString(LogLevel, m_eAddPrintLogLevel),
 					comment));
+
 			return true;
 		}
 
@@ -766,7 +766,7 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 		if (!keywords.Contains("ife"))				m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("ife", "if (condition)%1\n{\n\t\n}\nelse\n{\n\t\n}"));
 		if (!keywords.Contains("for"))				m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("for", "for (int i, count = arr.Count(); i < count; i++)%1\n{\n\t\n}"));
 		if (!keywords.Contains("forr"))				m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("forr", "for (int i = arr.Count() - 1; i >= 0; i--)%1\n{\n\t\n}")); // for, reversed
-		if (!keywords.Contains("foreach"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("foreach", "foreach (SCR_Class item : items)%1\n{\n\t\n}"));
+		if (!keywords.Contains("foreach"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("foreach", "foreach (string item : items)%1\n{\n\t\n}"));
 		if (!keywords.Contains("foreachi"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("foreachi", "foreach (int i, SCR_Class item : items)%1\n{\n\t\n}")); // foreach with index
 		if (!keywords.Contains("switch"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("switch", "switch (value)%1\n{\n\tcase 0:\n\t\tbreak;\n\n\tdefault:\n\t\tbreak;\n}"));
 		if (!keywords.Contains("while"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("while", "while (condition)%1\n{\n\t\n}"));
@@ -825,15 +825,16 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 				attributeDecorators.Insert(tmpData.m_sType);
 		}
 
-		if (!attributeDecorators.Contains("array"))			m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("array",			"a", "[Attribute(defvalue: \"" + "\", desc: \"%1\")]"));
-		if (!attributeDecorators.Contains("bool"))			m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("bool",			"b", "[Attribute(defvalue: \"1\", desc: \"%1\")]"));
-		if (!attributeDecorators.Contains("Color"))			m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("Color",			"", "[Attribute(defvalue: \"1 1 1 1\", desc: \"%1\")]"));
-		if (!attributeDecorators.Contains("enum"))			m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("enum",			"e", "[Attribute(defvalue: \"0\", desc: \"%1\", uiwidget: UIWidgets.ComboBox, enumType: %2)]"));
-		if (!attributeDecorators.Contains("float"))			m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("float",			"f", "[Attribute(defvalue: \"0\", desc: \"%1\", params: \"0 inf 0.01\")]"));
-		if (!attributeDecorators.Contains("int"))			m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("int",			"i", "[Attribute(defvalue: \"0\", desc: \"%1\", params: \"0 inf\")]"));
-		if (!attributeDecorators.Contains("ResourceName"))	m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("ResourceName",	"s", "[Attribute(defvalue: \"" + "\", desc: \"%1\", uiwidget: UIWidgets.ResourcePickerThumbnail, params: \"edds et wav\")]"));
-		if (!attributeDecorators.Contains("string"))		m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("string",			"s", "[Attribute(defvalue: \"Default value\", desc: \"%1\")]"));
-		if (!attributeDecorators.Contains("vector"))		m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("vector",			"v", "[Attribute(defvalue: \"0 0 0\", desc: \"%1\")]"));
+		if (!attributeDecorators.Contains("array"))				m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("array",			"a", "[Attribute(defvalue: \"" + "\", desc: \"%1\")]"));
+		if (!attributeDecorators.Contains("bool"))				m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("bool",			"b", "[Attribute(defvalue: \"1\", desc: \"%1\")]"));
+		if (!attributeDecorators.Contains("Color"))				m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("Color",			"", "[Attribute(defvalue: \"1 1 1 1\", desc: \"%1\")]"));
+		if (!attributeDecorators.Contains("enum"))				m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("enum",			"e", "[Attribute(defvalue: \"0\", desc: \"%1\", uiwidget: UIWidgets.ComboBox, enumType: %2)]"));
+		if (!attributeDecorators.Contains("float"))				m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("float",			"f", "[Attribute(defvalue: \"0\", desc: \"%1\", params: \"0 inf 0.01\")]"));
+		if (!attributeDecorators.Contains("int"))				m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("int",			"i", "[Attribute(defvalue: \"0\", desc: \"%1\", params: \"0 inf\")]"));
+		if (!attributeDecorators.Contains("LocalizedString"))	m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("string",			"s", "[Attribute(defvalue: \"#AR-Something\", desc: \"%1\")]"));
+		if (!attributeDecorators.Contains("ResourceName"))		m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("ResourceName",	"s", "[Attribute(defvalue: \"" + "\", desc: \"%1\", uiwidget: UIWidgets.ResourcePickerThumbnail, params: \"edds et wav\")]"));
+		if (!attributeDecorators.Contains("string"))			m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("string",			"s", "[Attribute(defvalue: \"Default value\", desc: \"%1\")]"));
+		if (!attributeDecorators.Contains("vector"))			m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("vector",			"v", "[Attribute(defvalue: \"0 0 0\", desc: \"%1\")]"));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -870,7 +871,7 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 
 	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("Close", true)]
-	protected int ButtonOK()
+	protected int ButtonClose()
 	{
 		return 1;
 	}

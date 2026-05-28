@@ -11,11 +11,22 @@ class SCR_FormatHelper
 	//! Print(SCR_FormatHelper.FloatToStringNoZeroDecimalEndings(value, 4)); // 1337.2305
 	//! \endcode
 	//! \param[in] value The float value to get the string from
-	//! \param[in] lenDec Length of decimals to show. Zeroes of course are not counted
+	//! \param[in] maxLenDec maximum number of decimals to show. Zeroes of course are not counted
 	//! return Converted float into a string with decimals without ending zeroes
-	static string FloatToStringNoZeroDecimalEndings(float value, int lenDec)
+	static string FloatToDecString(float value, int maxLenDec)
 	{
-		return value.ToString(lenDec: lenDec).ToFloat().ToString();
+		return value.ToString(lenDec: maxLenDec).ToFloat().ToString();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] value
+	//! \param[in] maxLenDec
+	//! \return
+//	[Obsolete("Use FloatToDecString instead")]
+	static string FloatToStringNoZeroDecimalEndings(float value, int maxLenDec)
+	{
+		return FloatToDecString(value, maxLenDec);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -62,17 +73,44 @@ class SCR_FormatHelper
 	{
 		int hour, minute, second;
 		SCR_DateTimeHelper.GetHourMinuteSecondFromSeconds(totalSeconds, hour, minute, second);
+		
+		return FormatTime(hour, minute, second) + "." + GetFormattedSubSeconds(totalSeconds, precision);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] totalSeconds
+	//! \param[in] precision 1 for deciseconds, 2 for centiseconds, 3 for milliseconds etc - 0 or below for automatic
+	//! \return time in format "hh:ii:ss.subSeconds", but hides hh or ii if they are 0
+	static string FormatTimeMSHideZeroes(float totalSeconds, int precision = 0)
+	{
+		int hour, minute, second;
+		SCR_DateTimeHelper.GetHourMinuteSecondFromSeconds(totalSeconds, hour, minute, second);
 
+		return GetTimeFormatting(0, hour, minute, second,
+		ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES,
+		ETimeFormatParam.DAYS
+		) + "." + GetFormattedSubSeconds(totalSeconds, precision);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] totalSeconds
+	//! \param[in] precision 1 for deciseconds, 2 for centiseconds, 3 for milliseconds etc - 0 or below for automatic
+	//! \returns subseconds with specified precision
+	static string GetFormattedSubSeconds(float totalSeconds, int precision = 0)
+	{
 		if (precision < 1)
 			precision = -1;
 
-		string formattedSubSeconds = (totalSeconds - (int)totalSeconds).ToString(0, precision);
-		if (totalSeconds < 0)
-			formattedSubSeconds = formattedSubSeconds.Substring(3, formattedSubSeconds.Length() - 3); // removing -0.
-		else
-			formattedSubSeconds = formattedSubSeconds.Substring(2, formattedSubSeconds.Length() - 2); // removing 0.
-
-		return FormatTime(hour, minute, second) + "." + formattedSubSeconds;
+		string formattedSubSeconds = (totalSeconds - (int)totalSeconds).ToString(lenDec: precision);
+		if (formattedSubSeconds.Contains("."))
+		{
+			if (totalSeconds < 0)
+				formattedSubSeconds = formattedSubSeconds.Substring(3, formattedSubSeconds.Length() - 3); // removing -0.
+			else
+				formattedSubSeconds = formattedSubSeconds.Substring(2, formattedSubSeconds.Length() - 2); // removing 0.
+		}
+		
+		return formattedSubSeconds;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -84,7 +122,7 @@ class SCR_FormatHelper
 	{
 		return string.Format("%1:%2:%3", hour.ToString(2), minute.ToString(2), second.ToString(2));
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Depending on the flags given it will return a variation on dd:hh:mm:ss and d:h:m:s.
 	//! Time variables that are -1 will always be hidden (So without days it would look: hh:mm:ss)

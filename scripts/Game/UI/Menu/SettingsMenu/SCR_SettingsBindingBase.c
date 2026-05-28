@@ -227,7 +227,7 @@ class SCR_SettingsBindingBase
 		if (m_OnEntryChanged)
 			m_OnEntryChanged.Invoke(this);		
 		
-		SCR_AnalyticsApplication.GetInstance().ChangeSetting(m_sModule, m_sName);
+		//SCR_AnalyticsApplication.GetInstance().ChangeSetting(m_sModule, m_sName);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -240,7 +240,7 @@ class SCR_SettingsBindingBase
 		if (m_OnEntryChanged)
 			m_OnEntryChanged.Invoke(this);
 
-		SCR_AnalyticsApplication.GetInstance().ChangeSetting(m_sModule, m_sName);
+		//SCR_AnalyticsApplication.GetInstance().ChangeSetting(m_sModule, m_sName);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -253,6 +253,6 @@ class SCR_SettingsBindingBase
 		if (m_OnEntryChanged)
 			m_OnEntryChanged.Invoke(this);
 		
-		SCR_AnalyticsApplication.GetInstance().ChangeSetting(m_sModule, m_sName);
+		//SCR_AnalyticsApplication.GetInstance().ChangeSetting(m_sModule, m_sName);
 	}
 };

@@ -62,7 +62,7 @@ class SCR_RadialMenuItemsComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnControllerChanged(SCR_RadialMenuController controller, bool hasControl)
+	protected void OnControllerChanged(SCR_RadialMenuController controller)
 	{
 		SCR_RadialMenu radialMenu = controller.GetRadialMenu();
 		if (!radialMenu)

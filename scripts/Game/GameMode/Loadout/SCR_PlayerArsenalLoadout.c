@@ -110,9 +110,9 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 		if (!factionComponent)
 			return;
 
-		SCR_JsonLoadContext context = new SCR_JsonLoadContext();
+		auto context = new JsonLoadContext();
 		bool loadSuccess = true;
-		loadSuccess &= context.ImportFromString(playerArsenalItems.loadout);
+		loadSuccess &= context.LoadFromString(playerArsenalItems.loadout);
 		// Read faction key and ensure same faction, otherwise delete saved arsenal loadout
 		string factionKey;
 		loadSuccess &= context.ReadValue(ARSENALLOADOUT_FACTION_KEY, factionKey) && factionKey != ARSENALLOADOUT_FACTIONKEY_NONE;
@@ -125,7 +125,7 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 	}
 
 	//------------------------------------------------------------------------------------------------
-	static bool ReadLoadoutString(IEntity owner, BaseSerializationSaveContext context)
+	static bool ReadLoadoutString(IEntity owner, SaveContext context)
 	{
 		if (!context.StartObject(ARSENALLOADOUT_KEY))
 			return false;
@@ -140,7 +140,7 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected static bool ReadEntityLoadoutString(IEntity owner, BaseSerializationSaveContext context)
+	protected static bool ReadEntityLoadoutString(IEntity owner, SaveContext context)
 	{
 		context.WriteValue("prefab", SCR_ResourceNameUtils.GetPrefabName(owner));
 
@@ -152,7 +152,7 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 
 	//------------------------------------------------------------------------------------------------
 	//! Add your modded logic here for custom components to store their data and read back later. Call super for multi mod compatiblity!
-	protected static bool ReadEntityCustomDataString(IEntity owner, BaseSerializationSaveContext context)
+	protected static bool ReadEntityCustomDataString(IEntity owner, SaveContext context)
 	{
 		return true;
 	}
@@ -196,7 +196,7 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected static bool ReadEntityStorageString(IEntity owner, BaseSerializationSaveContext context)
+	protected static bool ReadEntityStorageString(IEntity owner, SaveContext context)
 	{
 		set<BaseInventoryStorageComponent> storageCandiates();
 		FindStorageComponents(owner, storageCandiates);
@@ -274,7 +274,7 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 	//------------------------------------------------------------------------------------------------
 	//! Add any custom logic that should be saved for the main character entity the loadout is for.
 	//! Is written and read back after all components and storage slots are handled so it allows interacting with otherwise finished char.
-	protected static bool ReadCharacterDataLoadoutString(IEntity owner, BaseSerializationSaveContext context)
+	protected static bool ReadCharacterDataLoadoutString(IEntity owner, SaveContext context)
 	{
 		// By default just the chars active weapon is stored as additional meta data
 		int activeWeaponIdx = -1;
@@ -297,7 +297,7 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 	}
 
 	//------------------------------------------------------------------------------------------------
-	static bool ApplyLoadoutString(IEntity owner, BaseSerializationLoadContext context)
+	static bool ApplyLoadoutString(IEntity owner, LoadContext context)
 	{
 		if (!context.StartObject(ARSENALLOADOUT_KEY))
 			return false;
@@ -315,7 +315,7 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 	//------------------------------------------------------------------------------------------------
 	protected static bool ApplyEntityLoadoutString(
 		IEntity owner,
-		BaseSerializationLoadContext context,
+		LoadContext context,
 		InventoryStorageManagerComponent manager,
 		BaseInventoryStorageComponent parentStorage = null,
 		int slotId = -1)
@@ -349,7 +349,7 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 
 	//------------------------------------------------------------------------------------------------
 	// Read back any custom data per entity that was written by ReadEntityCustomDataString
-	protected static bool ApplyEntityCustomDataString(IEntity owner, BaseSerializationLoadContext context)
+	protected static bool ApplyEntityCustomDataString(IEntity owner, LoadContext context)
 	{
 		return true;
 	}
@@ -357,7 +357,7 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 	//------------------------------------------------------------------------------------------------
 	protected static bool ApplyEntityStorageString(
 		IEntity owner,
-		BaseSerializationLoadContext context,
+		LoadContext context,
 		InventoryStorageManagerComponent manager,
 		BaseInventoryStorageComponent parentStorage = null,
 		int slotId = -1)
@@ -448,7 +448,7 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected static bool ApplyCharacterDataLoadoutString(IEntity owner, BaseSerializationLoadContext context)
+	protected static bool ApplyCharacterDataLoadoutString(IEntity owner, LoadContext context)
 	{
 		int activeWeaponIdx;
 		context.ReadDefault(activeWeaponIdx, -1);
@@ -499,7 +499,7 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 
 	//------------------------------------------------------------------------------------------------
 	static void ComputeSuppliesCost(
-		BaseSerializationLoadContext context,
+		LoadContext context,
 		SCR_Faction faction,
 		SCR_ArsenalPlayerLoadout playerLoadout,
 		SCR_EArsenalSupplyCostType arsenalSupplyType,

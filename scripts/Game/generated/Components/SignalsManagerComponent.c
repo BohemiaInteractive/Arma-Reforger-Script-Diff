@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class SignalsManagerComponentClass: GameComponentClass
-{
-}
-
 class SignalsManagerComponent: GameComponent
 {
 	/*!

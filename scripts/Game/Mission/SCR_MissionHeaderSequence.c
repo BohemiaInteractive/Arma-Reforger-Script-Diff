@@ -25,7 +25,7 @@ class SCR_MissionHeaderSequence : SCR_MissionHeaderCombatOps
 
 		// If finishing this scenario furthers the progress, increase the saved index
 		progressData.Set(m_sProgressVariableName, m_iScenarioIndex + 1);
-		GetGame().SaveUserSettings();
 		GetGame().UserSettingsChanged();
+		GetGame().SaveUserSettings();
 	}
 }

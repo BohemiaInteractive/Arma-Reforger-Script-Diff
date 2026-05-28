@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-sealed class CharacterAnimGraphComponent: GenericComponent
+sealed class CharacterAnimGraphComponent: BaseAnimationControllerComponent
 {
 	//! Switch the active animation set instance to a new one.
 	//! \param	resNameAnimSetInstance		Resource name of a new anim set instance which must match animation graph.
@@ -27,32 +27,6 @@ sealed class CharacterAnimGraphComponent: GenericComponent
 	//! Remove graph attachment. Returns false when there is no attachment bound under given name.
 	proto external bool RemoveAttachment(string bindingName);
 	proto external void SetExternalIKPose(ResourceName ikPoseResource);
-	//! Binds anim command and returns it's ID
-	proto external int BindCommand(string commandName);
-	proto external void CallCommand(int cmdID, int intParam, float floatParam);
-	proto external void CallCommand4I(int cmdID, int intParam1, int intParam2, int intParam3, int intParam4, float floatParam);
-	//! Binds integer variable and returns it's ID
-	proto external int BindIntVariable(string varName);
-	proto external void SetIntVariable(int varId, int value);
-	proto external int GetIntVariable(int varId);
-	//! Binds float variable and returns it's ID
-	proto external int BindFloatVariable(string varName);
-	proto external void SetFloatVariable(int varId, float value);
-	proto external float GetFloatVariable(int varId);
-	//! Binds bool variable and returns it's ID
-	proto external int BindBoolVariable(string varName);
-	proto external void SetBoolVariable(int varId, bool value);
-	proto external bool GetBoolVariable(int varId);
-	proto external int BindTag(string tagName);
-	proto external bool IsTag(int tagId);
-	proto external bool IsSecondaryTag(int tagId);
-	proto external bool IsTagOrSecondaryTag(int tagId);
-	proto external int BindEvent(string eventName);
-	proto external bool IsEvent(int eventId);
-	//! Get event completion if eventId is present.
-	proto bool GetEventCompletion(int eventId, float timeSlice, out float completion);
-	//! Get event user data if eventId is present.
-	proto bool GetEventUserData(int eventId, out string eventUserString, out int eventUserInt);
 	proto external int BindIKTarget(string iKTargetName);
 	proto external bool SetIKTarget(int targetId, vector position, vector rotationRad);
 	proto external bool RemoveIKTarget(int targetId);

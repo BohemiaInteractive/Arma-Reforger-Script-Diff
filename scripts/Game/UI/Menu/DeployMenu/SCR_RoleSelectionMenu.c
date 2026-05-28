@@ -380,7 +380,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		array<int> players = group.GetPlayerIDs();
 
 		m_LoadoutRequestUIHandler.SetListWidget(list);
-		m_LoadoutRequestUIHandler.ShowPlayerLoadouts(players, group.GetMaxMembers());
+		m_LoadoutRequestUIHandler.ShowPlayerLoadouts(players, group);
 	}
 
 	//! Callback when local player joins a group.
@@ -456,7 +456,8 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 			m_MapEntity.CloseMap();
 		
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		gameMode.PauseGame(false, SCR_EPauseReason.MENU);
+		if (gameMode)
+			gameMode.PauseGame(false, SCR_EPauseReason.MENU);
 	}
 	
 	//------------------------------------------------------------------------------------------------

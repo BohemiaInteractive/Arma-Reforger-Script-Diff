@@ -8,11 +8,8 @@ class SCR_CanOperateVehicleDoorCondition : SCR_AvailableActionCondition
 	protected SCR_ECompartmentDoorType m_eDoorType;
 
 	//------------------------------------------------------------------------------------------------
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-
 		ChimeraCharacter character = data.GetCharacter();
 		if (!character)
 			return GetReturnResult(false);

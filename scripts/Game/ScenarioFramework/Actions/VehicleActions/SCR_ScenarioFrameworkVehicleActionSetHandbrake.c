@@ -16,7 +16,7 @@ class SCR_ScenarioFrameworkVehicleActionSetHandbrake : SCR_ScenarioFrameworkVehi
 		if (!m_VehicleController)
 			return;
 		
-		m_VehicleWheelSimulation = m_VehicleController.GetWheeledSimulation();
+		m_VehicleWheelSimulation = m_VehicleController.GetSimulation();
 		if (!m_VehicleWheelSimulation)
 			return;
 		

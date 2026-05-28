@@ -56,7 +56,7 @@ class SCR_FlagComponent : SCR_MilitaryBaseLogicComponent
 			flag.ClearFlags(EntityFlags.VISIBLE);
 			
 			if (signalsManager)
-				signalsManager.SetSignalValue(signalsManager.AddOrFindSignal("IsNotVisible"), 1);
+				signalsManager.SetSignalValue(signalsManager.AddOrFindSignal("Trigger"), 0);
 	
 			return;
 		}
@@ -64,7 +64,7 @@ class SCR_FlagComponent : SCR_MilitaryBaseLogicComponent
 		flag.SetFlags(EntityFlags.VISIBLE);
 		
 		if (signalsManager)
-			signalsManager.SetSignalValue(signalsManager.AddOrFindSignal("IsNotVisible"), 0);
+			signalsManager.SetSignalValue(signalsManager.AddOrFindSignal("Trigger"), 1);
 		
 		//Custom set material. Finds original material "slot" with MLOD and assigns appropriate new one, if possible.
 		VObject mesh = flag.GetVObject();

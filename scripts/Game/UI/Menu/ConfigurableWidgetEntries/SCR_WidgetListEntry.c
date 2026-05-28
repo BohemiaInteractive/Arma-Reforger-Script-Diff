@@ -829,7 +829,7 @@ class SCR_WidgetListEntrySelection : SCR_WidgetListEntry
 	int ValueId()
 	{
 		if (!m_Selection)
-			return INVALID_VALUE;
+			return -1;
 		
 		return m_Selection.m_iSelectedItem;
 	}

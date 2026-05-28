@@ -79,13 +79,13 @@ class SCR_ContentBrowserDetails_SaveOverviewSubMenu : SCR_ContentBrowserDetails_
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override protected bool CreateLines(array<MissionWorkshopItem> scenarios, Widget parent)
+	override protected void CreateLines(array<MissionWorkshopItem> scenarios, Widget parent)
 	{
 		Widget w = GetGame().GetWorkspace().CreateWidgets(m_sLinesLayout, parent);
 		
 		SCR_ContentBrowser_GMSaveLineComponent comp = SCR_ContentBrowser_GMSaveLineComponent.Cast(SCR_ContentBrowser_ScenarioLineComponent.FindComponent(w));
 		if (!comp)
-			return false;
+			return;
 
 		comp.SetSaveItem(m_SaveItem);
 		//m_aScenarioLines.Insert(comp);
@@ -95,8 +95,6 @@ class SCR_ContentBrowserDetails_SaveOverviewSubMenu : SCR_ContentBrowserDetails_
 		comp.GetOnFocus().Insert(OnLineFocus);
 		comp.GetOnFocusLost().Insert(OnLineFocusLost);
 		comp.GetOnMouseEnter().Insert(OnLineMouseEnter);
-		
-		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------

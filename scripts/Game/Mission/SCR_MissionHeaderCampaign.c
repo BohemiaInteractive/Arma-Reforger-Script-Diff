@@ -18,7 +18,7 @@ class SCR_MissionHeaderCampaign : SCR_MissionHeader
 	[Attribute("0", UIWidgets.CheckBox, "Use custom base list whitelist instead of blacklist")]
 	bool m_bCustomBaseWhitelist;
 	
-	[Attribute("0", UIWidgets.CheckBox, "Disable rank requirements for spawning vehicles ")]
+	[Attribute("0", UIWidgets.CheckBox, "Disable rank requirements for spawning vehicles")]
 	bool m_bIgnoreMinimumVehicleRank;
 	
 	[Attribute("-1", desc: "Fraction of XP awarded to players unloading supplies which they have not loaded themselves (override, -1 for default)", params: "-1 inf")]
@@ -35,6 +35,18 @@ class SCR_MissionHeaderCampaign : SCR_MissionHeader
 
 	[Attribute("1", desc: "When enabled, FOBs automatically regenerate supplies")]
 	bool m_bSuppliesAutoRegenerationEnabled;
+
+	[Attribute("0", UIWidgets.CheckBox, desc: "When enabled, random caches will spawn around the map")]
+	bool m_bSpawnRandomCaches;
+	
+	[Attribute("0", UIWidgets.CheckBox, desc: "When enabled, are allowed to have a Randomized Spawnpoint")]
+	bool m_bRandomSpawnpointsEnabled;
+	
+	[Attribute("1", UIWidgets.CheckBox, "INDFOR players can spawn on bases at the start of the game")]
+	bool m_bINDFORCanSpawnOnBases;
+
+	[Attribute("0", UIWidgets.CheckBox, "INDFOR players can spawn on distant bases at the start of the game")]
+	bool m_bINDFORCanSpawnOnDistantBases;
 
 	[Attribute(SCR_ECharacterRank.PRIVATE.ToString(), uiwidget: UIWidgets.ComboBox, desc: "All players will start the match at this rank.", enums: ParamEnumArray.FromEnum(SCR_ECharacterRank))]
 	SCR_ECharacterRank m_eStartingRank;

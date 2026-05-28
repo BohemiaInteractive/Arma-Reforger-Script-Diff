@@ -93,7 +93,7 @@ class SCR_AccessKeysEditorComponent : SCR_BaseEditorComponent
 	//! \param[in] accessKey Key to be added
 	void AddEntityAccessKey(SCR_EditableEntityComponent entity, EEditableEntityAccessKey accessKey)
 	{
-		Rpc(AddEntityAccessKeyServer, Replication.FindId(entity), accessKey);
+		Rpc(AddEntityAccessKeyServer, Replication.FindItemId(entity), accessKey);
 	}
 	//------------------------------------------------------------------------------------------------
 	//! Remove access key from an entity.
@@ -101,7 +101,7 @@ class SCR_AccessKeysEditorComponent : SCR_BaseEditorComponent
 	//! \param[in] accessKey Key to be removed
 	void RemoveEntityAccessKey(SCR_EditableEntityComponent entity, EEditableEntityAccessKey accessKey)
 	{
-		Rpc(RemoveEntityAccessKeyServer, Replication.FindId(entity), accessKey);
+		Rpc(RemoveEntityAccessKeyServer, Replication.FindItemId(entity), accessKey);
 	}
 	
 	//------------------------------------------------------------------------------------------------

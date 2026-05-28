@@ -89,7 +89,7 @@ class SCR_NameTagRulesetBase : Managed
 		{
 			if (zone.GetZoneName() == ZONE_SCOPED)
 			{
-				if ((!SCR_2DPIPSightsComponent.IsPIPActive() && !SCR_BinocularsComponent.IsZoomedView() && !SCR_2DSightsComponent.IsUsingSights()) || m_CurrentPlayerTag.m_CharController.IsFreeLookEnabled())
+				if ((!SCR_2DPIPSightsComponent.IsPIPActive() && SCR_PlayerController.s_pLocalPlayerController && !SCR_PlayerController.s_pLocalPlayerController.GetIsBinocularsZoomed() && !SCR_2DSightsComponent.IsUsingSights()) || m_CurrentPlayerTag.m_CharController.IsFreeLookEnabled())
 					continue;
 			}
 			

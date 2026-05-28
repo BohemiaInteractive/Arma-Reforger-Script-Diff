@@ -516,7 +516,7 @@ class SCR_FiringRangeManager : ScriptedGameTriggerEntity
 			return;
 		
 		rpl.Give(playerRplID);
-		firingRangeNetworkEntity.RegisterCommEntity(Replication.FindId(ent));
+		firingRangeNetworkEntity.RegisterCommEntity(Replication.FindItemId(ent));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -532,8 +532,8 @@ class SCR_FiringRangeManager : ScriptedGameTriggerEntity
 			return;
 			
 		// run it on all clients
-		Rpc(RpcAsk_AddIndicator, Replication.FindId(firingRangeController), localCoordOfHit, localVectorOfHit);
-		RpcAsk_AddIndicator(Replication.FindId(firingRangeController),localCoordOfHit,localVectorOfHit);
+		Rpc(RpcAsk_AddIndicator, Replication.FindItemId(firingRangeController), localCoordOfHit, localVectorOfHit);
+		RpcAsk_AddIndicator(Replication.FindItemId(firingRangeController),localCoordOfHit,localVectorOfHit);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -546,15 +546,15 @@ class SCR_FiringRangeManager : ScriptedGameTriggerEntity
 	//------------------------------------------------------------------------------------------------
 	void ControllerLight(notnull IEntity firingRangeController, ControllerLightType light, bool mode)
 	{
-		Rpc(RpcAsk_ControllerLight, Replication.FindId(firingRangeController), light, mode);
-		RpcAsk_ControllerLight(Replication.FindId(firingRangeController), light, mode);
+		Rpc(RpcAsk_ControllerLight, Replication.FindItemId(firingRangeController), light, mode);
+		RpcAsk_ControllerLight(Replication.FindItemId(firingRangeController), light, mode);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void SetControllerCounter(notnull IEntity firingRangeController, EControlerSection type, int value)
 	{
-		Rpc(RpcAsk_SetControllerCounter, Replication.FindId(firingRangeController), type, value);
-		RpcAsk_SetControllerCounter(Replication.FindId(firingRangeController), type, value);
+		Rpc(RpcAsk_SetControllerCounter, Replication.FindItemId(firingRangeController), type, value);
+		RpcAsk_SetControllerCounter(Replication.FindItemId(firingRangeController), type, value);
 	}
 		
 	//------------------------------------------------------------------------------------------------

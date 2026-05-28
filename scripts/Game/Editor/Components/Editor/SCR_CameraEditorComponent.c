@@ -35,7 +35,7 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 	protected IEntity m_PreActivateControlledEntity;
 	protected bool m_bIsReplacingCamera;	
 	protected ref ScriptInvokerBase<SCR_CameraEditorComponent_OnCameraCreated> m_OnCameraCreate = new ScriptInvokerBase<SCR_CameraEditorComponent_OnCameraCreated>();
-	private SCR_EditorManagerEntity editorManagerEntity;
+//	private SCR_EditorManagerEntity editorManagerEntity;
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Public Functions
@@ -228,6 +228,14 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 		return editorManagerEntity;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] position
+	void SetPreActivateCameraPosition(vector position)
+	{
+		m_vPreActivateCameraTransform[3] = position;
+	}
+
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Default functions
 	override void ResetEditorComponent()
@@ -258,9 +266,9 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 	{
 		SetEventMask(GetOwner(), EntityEvent.FRAME);
 		
-		SCR_EditorManagerCore editorCore = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
-		if (editorCore)
-			editorManagerEntity = editorCore.GetEditorManager(GetGame().GetPlayerController().GetPlayerId());
+//		SCR_EditorManagerCore editorCore = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+//		if (editorCore)
+//			editorManagerEntity = editorCore.GetEditorManager(GetGame().GetPlayerController().GetPlayerId());
 		
 		SCR_EditorManagerEntity editorManagerEntity = GetEditorManagerEntity();
 		if (editorManagerEntity)

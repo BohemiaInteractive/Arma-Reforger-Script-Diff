@@ -143,7 +143,7 @@ class SCR_PingEditorComponent : SCR_BaseEditorComponent
 		CallEvents(manager, false, reporterID, reporterInEditor, unlimitedOnly, position, target);
 
 		//--- Send the ping to server
-		Rpc(SendPingServer, unlimitedOnly, position, Replication.FindId(target));
+		Rpc(SendPingServer, unlimitedOnly, position, Replication.FindItemId(target));
 		
 		//~ Ping cooldown to prevent spamming
 		ActivateCooldown();
@@ -324,7 +324,7 @@ class SCR_PingEditorComponent : SCR_BaseEditorComponent
 		//Check if has target
 		if (target)
 		{
-			targetID = Replication.FindId(target);
+			targetID = Replication.FindItemId(target);
 			targetPlayerID = SCR_PossessingManagerComponent.GetPlayerIdFromMainEntity(target.GetOwner());
 		}
 	

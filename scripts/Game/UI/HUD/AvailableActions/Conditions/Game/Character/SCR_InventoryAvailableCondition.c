@@ -3,12 +3,14 @@ class SCR_InventoryAvailableCondition : SCR_AvailableActionCondition
 {
 	[Attribute("4")]
 	protected int m_iMaxShowCount;
-	protected static int s_iShowCounter;
 
 	[Attribute("1")]
 	protected bool m_bPersistent;
 
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	protected static int s_iShowCounter;
+
+	//------------------------------------------------------------------------------------------------
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
 		if (s_iShowCounter >= m_iMaxShowCount)
 			return false;
@@ -16,11 +18,13 @@ class SCR_InventoryAvailableCondition : SCR_AvailableActionCondition
 		return GetReturnResult(data.IsInventoryOpen());
 	}
 
+	//------------------------------------------------------------------------------------------------
 	static void IncrementCounter()
 	{
 		s_iShowCounter++;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	void SCR_InventoryAvailableCondition()
 	{
 		if (!m_bPersistent)
@@ -38,6 +42,7 @@ class SCR_InventoryAvailableCondition : SCR_AvailableActionCondition
 			container.Get("m_iInventoryOpenCount", s_iShowCounter)
 	}
 
+	//------------------------------------------------------------------------------------------------
 	void ~SCR_InventoryAvailableCondition()
 	{
 		if (!m_bPersistent)
@@ -54,4 +59,4 @@ class SCR_InventoryAvailableCondition : SCR_AvailableActionCondition
 		container.Set("m_iInventoryOpenCount", s_iShowCounter);
 		GetGame().UserSettingsChanged();
 	}
-};
+}

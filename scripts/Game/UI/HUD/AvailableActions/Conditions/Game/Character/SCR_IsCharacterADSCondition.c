@@ -12,11 +12,8 @@ class SCR_IsCharacterADSCondition : SCR_AvailableActionCondition
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns true when character is in any form of ADS
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-
 		if (m_bCheckGadget && data.GetGadgetRaised())
 			return GetReturnResult(true);
 

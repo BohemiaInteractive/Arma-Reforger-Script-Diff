@@ -3,18 +3,14 @@
 [BaseContainerProps()]
 class SCR_CharacterStanceCondition : SCR_AvailableActionCondition
 {
-	[Attribute("0", UIWidgets.ComboBox, "Character stance", "", ParamEnumArray.FromEnum(ECharacterStance) )]
+	[Attribute(defvalue: ECharacterStance.STAND.ToString(), desc: "Character Stance", uiwidget: UIWidgets.ComboBox, enumType: ECharacterStance)]
 	private ECharacterStance m_eCharacterStance;
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns true when current controlled entity is in desired stance
 	//! Returns opposite if m_bNegateCondition is enabled
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-
-		bool result = data.GetCharacterStance() == m_eCharacterStance;
-		return GetReturnResult(result);
+		return GetReturnResult(data.GetCharacterStance() == m_eCharacterStance);
 	}
-};
+}

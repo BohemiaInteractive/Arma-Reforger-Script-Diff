@@ -157,7 +157,7 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 		m_iEntriesFiltered = current;
 		m_iEntriesTotal = total;
 		
-		m_Widgets.m_ItemsFoundText.SetText(WidgetManager.Translate(ITEMS_FOUND_MESSAGE, current, total));
+		m_Widgets.m_ItemsFoundText.SetTextFormat(ITEMS_FOUND_MESSAGE, current, total);
 		SetItemsFoundMessageVisible(true);
 		
 		UpdateItemsFoundTooltip();

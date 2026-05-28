@@ -75,7 +75,7 @@ class SCR_ResourceSystemHelper
 		if (!consumer)
 			return EResourceReason.UNAVAILABLE;
 		
-		return consumer.RequestConsumtion(resourcesToConsume);
+		return consumer.RequestConsumtion(resourcesToConsume).GetReason();
 	}
 	
 	//------------------------------------------------------------------------------------------------

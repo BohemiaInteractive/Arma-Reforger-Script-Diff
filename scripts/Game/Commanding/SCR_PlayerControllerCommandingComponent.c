@@ -89,6 +89,12 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 		m_RadialMenuController.GetOnTakeControl().Insert(OnControllerTakeControl);
 		m_RadialMenuController.GetOnControllerChanged().Insert(OnControllerLostControl);
 
+		SCR_PlayerController playerContr = SCR_PlayerController.Cast(owner);
+		//Warning: OnPostInit is in hosted server triggered for each player controller, 
+		//that joins the session BUT the host executes this also for the components of the other players, 
+		//that is why we need to check if we lost ownership of the component
+		playerContr.GetOnOwnershipChangedInvoker().Insert(OnOwnershipChanged);
+		
 		InputManager input = GetGame().GetInputManager();
 		foreach (SCR_PlayerCommandingConfigActionPair actionConfigPair : m_CommandingMenuPairsConfig.m_aActionConfigPairs)
 		{
@@ -103,7 +109,23 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 
 		m_PhysicsHelper.InitPhysicsHelper();
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnOwnershipChanged(bool isChanging, bool becameOwner)
+	{
+		if (isChanging || becameOwner)
+			return;
+		
+		InputManager input = GetGame().GetInputManager();
+		foreach (SCR_PlayerCommandingConfigActionPair actionConfigPair : m_CommandingMenuPairsConfig.m_aActionConfigPairs)
+		{
+			if (!actionConfigPair)
+				continue;
+			
+			input.RemoveActionListener(actionConfigPair.GetActionName(), EActionTrigger.DOWN, OpenCommandingMenu);
+		}
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void OpenCommandingMenu()
 	{
@@ -150,9 +172,9 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//!
-	protected void OnControllerLostControl(SCR_RadialMenuController controller, bool hasControl)
+	protected void OnControllerLostControl(SCR_RadialMenuController controller)
 	{
-		if (!hasControl)
+		if (!controller.HasControl())
 			RemoveListenersFromRadial();
 	}
 
@@ -436,14 +458,17 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	protected void OnRadialMenuSelected(SCR_SelectionMenu menu, SCR_SelectionMenuEntry entry)
 	{
 		m_bIsCommandSelected = false;
-
-		if (!entry || entry.GetId() == string.Empty)
+		string entryId;	
+		if (entry) 
+			entryId = entry.GetId();
+		
+		if (entryId == string.Empty)
 		{
 			HideCommandPreview();
 			return;
 		}
 
-		ShowCommandPreview(entry.GetId());
+		ShowCommandPreview(entryId);
 	}
 
 	//------------------------------------------------------------------------------------------------

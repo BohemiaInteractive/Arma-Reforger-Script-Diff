@@ -345,7 +345,7 @@ class SCR_TaskNotificationComponent : ScriptComponent
 		if (!faction)
 			return;
 
-		SCR_BaseTaskNotificationData notificationData = SCR_BaseTaskNotificationData.Cast(m_TaskNotificationManager.GetTaskNotificationData(notificationType, msgType));
+		SCR_BaseTaskNotificationData notificationData = m_TaskNotificationManager.GetTaskNotificationData(notificationType, msgType);
 		if (!notificationData || !notificationData.CanSendNotification(receiverGroup))
 			return;
 

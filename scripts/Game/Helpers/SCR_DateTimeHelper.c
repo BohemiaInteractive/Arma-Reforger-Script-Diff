@@ -21,6 +21,48 @@ class SCR_DateTimeHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Get the day's number (e.g 1989-01-01 = 1, 1989-12-31 = 365, 2000-12-31 = 366)
+	//! \important Only works with Gregorian calendar, does NOT deal with e.g year 1582 shenanigans!
+	//! \param[in] year
+	//! \param[in] month
+	//! \param[in] day
+	//! \return in range 1..365 (normal year) or 366 (leap year) or -1 on error (wrong input values)
+	static int GetDayNumber(int year, int month, int day)
+	{
+		if (month < 1 || month > 12 || day < 1 || day > 31)
+			return -1;
+
+		int monthDays[12] = {
+			31, 28, 31, 30, 31, 30,
+			31, 31, 30, 31, 30, 31,
+		};
+
+		if (month > 2 && IsLeapYear(year))
+			monthDays[1] = 29;
+
+		if (day > monthDays[month - 1])
+			return -1;
+
+		int result;
+		for (int i; i < month - 1; ++i)
+		{
+			result += monthDays[i];
+		}
+
+		result += day;
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] year
+	//! \return true on leap year, false otherwise
+	static bool IsLeapYear(int year)
+	{
+		return year % 400 == 0 || (year % 100 != 0 && year % 4 == 0);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Returns translated date expression, either in short or verbose style
 	//! \param[in] day number
 	//! \param[in] month number from 1 to 12 (NOT 0-based)
@@ -108,6 +150,33 @@ class SCR_DateTimeHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] month 1..12
+	//! \param[in] year
+	//! \return the maximum value the day can take for a specific month or -1 on wrong input
+	static int GetMaxDayFromMonth(int month, int year = -1)
+	{
+		if (month < 1 || month > 12)
+			return -1;
+
+		// February specific
+		if (year > 0 && month == 2)
+		{
+			if (IsLeapYear(year))
+				return 29;
+			else
+				return 28;
+		}
+
+		if (month == 2)
+			return 28;
+		else if (month == 4 || month == 6 || month == 9 || month == 11)
+			return 30;
+		else
+			return 31;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! \param[in] hour0
 	//! \param[in] minute0
 	//! \param[in] second0
@@ -125,7 +194,7 @@ class SCR_DateTimeHelper
 
 		int result = time0 - time1;
 		if (result < 0)
-			result *= -1;
+			result = -result;
 
 		GetHourMinuteSecondFromSeconds(result, hour, minute, second);
 

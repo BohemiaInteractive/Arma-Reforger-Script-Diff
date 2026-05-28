@@ -42,7 +42,7 @@ class SCR_DisarmMineAction : SCR_BaseMineAction
 		params.SetAllowMovementDuringAction(false);
 		params.SetKeepInHandAfterSuccess(true);
 		params.SetIsMainUserOfTheItem(true);
-		params.SetKeepGadgetVisible(true);
+		params.SetKeepGadgetVisible(false);
 		params.SetCommandID(itemActionId);
 		params.SetCommandIntArg(COMMAND_INT_ARGUMENT);
 		params.SetAlignmentPoint(ptWS);

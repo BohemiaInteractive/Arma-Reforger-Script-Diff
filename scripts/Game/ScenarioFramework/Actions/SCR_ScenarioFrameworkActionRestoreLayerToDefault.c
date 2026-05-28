@@ -12,6 +12,9 @@ class SCR_ScenarioFrameworkActionRestoreLayerToDefault : SCR_ScenarioFrameworkAc
 	
 	[Attribute(defvalue: "true", desc: "If checked, it will also clear randomization and re-randomize it again instead of using cached elements from initial randomization")]
 	bool m_bAffectRandomization;
+	
+	[Attribute(defvalue: "true", desc: "If checked, previously spawned entities will remain in the world.")]
+	bool m_bDeleteSpawnedEntities;
 
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
@@ -30,6 +33,6 @@ class SCR_ScenarioFrameworkActionRestoreLayerToDefault : SCR_ScenarioFrameworkAc
 			return;
 		}
 
-		layer.RestoreToDefault(m_bIncludeChildren, m_bReinitAfterRestoration, m_bAffectRandomization);
+		layer.RestoreToDefault(m_bIncludeChildren, m_bReinitAfterRestoration, m_bAffectRandomization, m_bDeleteSpawnedEntities);
 	}
 }

@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class GamepadEffectsManagerComponentClass: GameComponentClass
-{
-}
-
 class GamepadEffectsManagerComponent: GameComponent
 {
 	proto external bool IsEnabled();

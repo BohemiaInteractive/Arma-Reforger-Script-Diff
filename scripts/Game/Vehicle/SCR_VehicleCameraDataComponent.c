@@ -5,6 +5,8 @@ class SCR_VehicleCameraDataComponentClass: ScriptComponentClass
 	bool m_bOverrideVehicleSettings;
 	[Attribute("1", UIWidgets.EditBox, "Height the camera should stay above the vehicle's bounding box center\n[m]")]
 	float m_fHeight;
+	[Attribute("0.3", UIWidgets.EditBox, "Pitch angle multiplier for zoom\n[m]")]
+	float m_fZoomAngleMult;
 	[Attribute("1", UIWidgets.EditBox, "Speed-based view bobbing multiplier\n[x * 100%]")]
 	float m_fBobScale;
 	[Attribute("1", UIWidgets.EditBox, "Acceleration-based view shaking multiplier\n[x * 100%]")]

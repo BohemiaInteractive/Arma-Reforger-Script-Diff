@@ -46,6 +46,41 @@ enum SCR_EPlayerIdType
 	EPIT_USERNAME
 }
 
+enum EBackendCallbackState
+{
+	EBCS_PENDING,
+	EBCS_SUCCESS,
+	EBCS_ERROR,
+	EBCS_TIMEOUT
+}
+
+class StateBackendCallback : BackendCallback
+{
+	EBackendCallbackState m_eState = EBackendCallbackState.EBCS_PENDING;
+	EApiCode m_eLastError = EApiCode.EACODE_ERROR_OK;
+	EStringMatchType m_eLastMatchType = EStringMatchType.ESMT_EQUALS;
+	
+	override void OnError( int code, int restCode, int apiCode )
+	{
+		super.OnError(code, restCode, apiCode);
+		m_eLastError = apiCode;
+		m_eState = EBackendCallbackState.EBCS_ERROR;
+	}
+	
+	override void OnSuccess( int code )
+	{
+		super.OnSuccess(code);
+		m_eState = EBackendCallbackState.EBCS_SUCCESS;
+	}
+	
+	override void OnTimeout()
+	{
+		super.OnTimeout();
+		m_eState = EBackendCallbackState.EBCS_TIMEOUT;
+	}
+}
+
+
 // Ban Server Command
 class BanCommand: ScrServerCommand
 {
@@ -317,8 +352,6 @@ class BanCommand: ScrServerCommand
 		{
 			return SCR_EPlayerIdType.EPIT_USERNAME;
 		}
-
-		return string.Empty;
 	}
 
 	// Find playerId from given player name

@@ -18,6 +18,7 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 
 	//------------------------------------------------------------------------------------------------
 	protected float m_fHeight;
+	protected float m_fZoomAngleMult;
 	protected float m_fDist_Desired;
 	protected float m_fDist_Min;
 	protected float m_fDist_Max;
@@ -101,6 +102,7 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 				if(vehicleCamData)
 				{
 					m_fHeight = vehicleCamData.m_fHeight;
+					m_fZoomAngleMult = vehicleCamData.m_fZoomAngleMult;
 					m_fDist_Desired = vehicleCamData.m_fDist_Desired;
 					m_fDist_Min = vehicleCamData.m_fDist_Min;
 					m_fDist_Max = vehicleCamData.m_fDist_Max;
@@ -307,6 +309,15 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		vector anglesChar = Math3D.MatrixToAngles(charMat);
 		CalculateLookAngles(yawPitchRoll, anglesChar, pOutResult);
 		
+		// raise camera when zooming in
+		float camHeight;
+		float camAngle;
+		if (m_CharacterCameraHandler)
+		{
+			camHeight = m_fHeight + m_CharacterCameraHandler.GetFocusMode();
+			camAngle = m_fAngleThirdPerson - m_fZoomAngleMult*m_CharacterCameraHandler.GetFocusMode();
+		}
+		
 		//! Roll
 		if (bCharacterAttached)
 		{
@@ -323,7 +334,7 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 				
 				// Camera offset
 				float heightSign = vehMat[1][1]; // Adjust the sign of the height direction as the vehicle rolls.
-				characterOffset = characterOffset + Vector(0, heightSign * m_fHeight, 0);
+				characterOffset = characterOffset + Vector(0, heightSign * camHeight, 0);
 			}
 			else
 			{
@@ -331,7 +342,7 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 				rollAngle = yawPitchRoll[2] * (1.0 - m_fRollFactor) * Math.DEG2RAD * pOutResult.m_CameraTM[2][2];
 				
 				// Camera offset
-				characterOffset = characterOffset + Vector(0, m_fHeight, 0);
+				characterOffset = characterOffset + Vector(0, camHeight, 0);
 				vector pitchRollMat[3];
 				Math3D.AnglesToMatrix({0, yawPitchRoll[1], yawPitchRoll[2]}, pitchRollMat);				
 				characterOffset = characterOffset.Multiply3(pitchRollMat); // apply vehicle pitch and roll to camera center
@@ -344,7 +355,7 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		}
 		else
 		{
-			pOutResult.m_CameraTM[3] = characterOffset + Vector(0, m_fHeight, 0);
+			pOutResult.m_CameraTM[3] = characterOffset + Vector(0, camHeight, 0);
 		}
 		
 		// viewbob update
@@ -370,9 +381,9 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 			if (applyCharAngle)
 			{
 				if (m_bUseNoParent)
-					SCR_Math3D.RotateAround(pOutResult.m_CameraTM, pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[0], m_fAngleThirdPerson - (1.0 - m_fPitchFactor) * yawPitchRoll[1] * Math.DEG2RAD, pOutResult.m_CameraTM);
+					SCR_Math3D.RotateAround(pOutResult.m_CameraTM, pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[0], camAngle - (1.0 - m_fPitchFactor) * yawPitchRoll[1] * Math.DEG2RAD, pOutResult.m_CameraTM);
 				else
-					SCR_Math3D.RotateAround(pOutResult.m_CameraTM, pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[0], m_fAngleThirdPerson - m_fPitchFactor * yawPitchRoll[1] * Math.DEG2RAD, pOutResult.m_CameraTM);
+					SCR_Math3D.RotateAround(pOutResult.m_CameraTM, pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[0], camAngle - m_fPitchFactor * yawPitchRoll[1] * Math.DEG2RAD, pOutResult.m_CameraTM);
 			}
 			else
 				SCR_Math3D.RotateAround(pOutResult.m_CameraTM, pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[0], 0, pOutResult.m_CameraTM);
@@ -460,12 +471,6 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		
 		//! apply to rotation matrix
 		Math3D.AnglesToMatrix(lookAngles, pOutResult.m_CameraTM);
-	}
-	
-	//-----------------------------------------------------------------------------
-	override void OnAfterCameraUpdate(float pDt, bool pIsKeyframe, inout vector transformMS[4])
-	{
-		//AddVehiclePitchRoll(m_OwnerVehicle, pDt, pOutResult.m_CameraTM);
 	}
 	
 	//------------------------------------------------------------------------------------------------

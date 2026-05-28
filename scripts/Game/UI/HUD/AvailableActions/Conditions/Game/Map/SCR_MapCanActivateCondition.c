@@ -1,16 +1,12 @@
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_MapCanActivateCondition : SCR_AvailableActionCondition
 {
 	//------------------------------------------------------------------------------------------------
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
 		if (data.m_bCanResetElementRotation)
 			return GetReturnResult(false);
-		
-		if (data.m_bCanActivateMapElement)
-			return GetReturnResult(true);
 
-		return GetReturnResult(false);
+		return GetReturnResult(data.m_bCanActivateMapElement);
 	}
-};
+}

@@ -20,6 +20,9 @@ class SCR_MenuMainTileComponent: SCR_MenuTileComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
+		if (button == MouseState.RIGHT)
+			return true;
+		
 		if (m_NewsFeed && m_NewsFeed.IsHovered())
 			return false;
 		

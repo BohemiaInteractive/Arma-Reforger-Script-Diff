@@ -704,9 +704,9 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 	protected EEditableEntityBudget GetFirstAvailableBudget()
 	{
 		if (!m_MaxBudgets || m_MaxBudgets.IsEmpty())
-			return null;
-		else
-			return m_MaxBudgets[0].GetBudgetType();
+			return 0;
+		
+		return m_MaxBudgets[0].GetBudgetType();
 	}
 
 	//------------------------------------------------------------------------------------------------

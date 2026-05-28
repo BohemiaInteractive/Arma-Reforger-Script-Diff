@@ -4,16 +4,17 @@ typedef func SCR_FactionManager_PlayerFactionChanged;
 
 class SCR_FactionManagerClass : FactionManagerClass
 {
+	static const string PLAY_LIMITS_CLI = "playerLimits";
 }
 
 class SCR_FactionManager : FactionManager
 {
 	[Attribute(defvalue: "1", desc: "Whether  or not the isPlayable state of a faction can be changed on run time")]
 	protected bool m_bCanChangeFactionsPlayable;
-	
-	[Attribute("", UIWidgets.Object, "List of rank types")]
-	protected ref array<ref SCR_RankID> m_aRanks;
-	
+
+	[Attribute(desc: "Default list of ranks")]
+	protected ref SCR_RankContainer m_DefaultRanks;
+
 	protected ref SCR_SortedArray<SCR_Faction> m_SortedFactions = new SCR_SortedArray<SCR_Faction>();
 	protected ref map<string, ref array<string>> m_aAncestors = new map<string, ref array<string>>();
 
@@ -35,8 +36,13 @@ class SCR_FactionManager : FactionManager
 	
 	//~ Script invokers
 	protected ref ScriptInvoker s_OnPlayerFactionCountChanged = new ScriptInvoker();
+	protected ref ScriptInvokerFaction m_OnFactionTaskEnabledChanged;
+
 	//~ Server only \/
-	protected ref ScriptInvokerBase<SCR_FactionManager_PlayerFactionChanged> m_OnPlayerFactionChanged_S;
+	protected ref ScriptInvokerBase<SCR_FactionManager_PlayerFactionChanged> m_OnPlayerFactionChanged;
+	
+	// if nonempty this stores player limits of factions, that are different on server and client
+	protected ref map<FactionKey, int> m_mPendingLimitUpdates;
 	
 	//------------------------------------------------------------------------------------------------
 	//! \return
@@ -49,13 +55,38 @@ class SCR_FactionManager : FactionManager
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return
+	ScriptInvokerFaction GetOnFactionTasksEnabledChanged()
+	{
+		if (!m_OnFactionTaskEnabledChanged)
+			m_OnFactionTaskEnabledChanged = new ScriptInvokerFaction();
+
+		return m_OnFactionTaskEnabledChanged;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! return Script invoker on player faction changed (Server only)
 	ScriptInvokerBase<SCR_FactionManager_PlayerFactionChanged> GetOnPlayerFactionChanged_S()
 	{
-		if (!m_OnPlayerFactionChanged_S)
-			m_OnPlayerFactionChanged_S = new ScriptInvokerBase<SCR_FactionManager_PlayerFactionChanged>();
+		if (!m_OnPlayerFactionChanged)
+			m_OnPlayerFactionChanged = new ScriptInvokerBase<SCR_FactionManager_PlayerFactionChanged>();
 		
-		return m_OnPlayerFactionChanged_S;
+		return m_OnPlayerFactionChanged;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Forces all factions to reevaluate if they support players saving custom loadouts
+	void UpdateCustomLoadoutSupportState(SCR_LoadoutManager loadoutMgr)
+	{
+		array<Faction> factions = {};
+		GetFactionsList(factions);
+		SCR_Faction faction;
+		foreach(Faction baseFaction : factions)
+		{
+			faction = SCR_Faction.Cast(baseFaction);
+			if (faction)
+				faction.UpdateCustomLoadoutSupportState(loadoutMgr);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -119,12 +150,24 @@ class SCR_FactionManager : FactionManager
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Update server player limit to clients
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void RPC_UpdatePlayerLimit(FactionKey factionKey, int playerLimit)
+	{
+		SCR_Faction scriptedFaction = SCR_Faction.Cast(GetFactionByKey(factionKey));
+		if (!scriptedFaction)
+			return;
+		
+		scriptedFaction.SetPlayerLimit(playerLimit);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Authority:
 	//! 	Event raised when provided player component has a faction set.
 	protected void OnPlayerFactionSet_S(SCR_PlayerFactionAffiliationComponent playerComponent, Faction faction)
 	{
-		if (m_OnPlayerFactionChanged_S)
-			m_OnPlayerFactionChanged_S.Invoke(playerComponent.GetPlayerId(), playerComponent, faction);
+		if (m_OnPlayerFactionChanged)
+			m_OnPlayerFactionChanged.Invoke(playerComponent.GetPlayerId(), playerComponent, faction);
 		
 		#ifdef _ENABLE_RESPAWN_LOGS
 		Print(string.Format("%1::OnPlayerFactionSet_S(playerId: %2, faction: %3)", Type().ToString(), playerComponent.GetPlayerId(), faction), LogLevel.NORMAL);
@@ -152,6 +195,44 @@ class SCR_FactionManager : FactionManager
 		Print(string.Format("%1::OnPlayerFactionCountChanged(faction: %2 [%3], count: %4)", Type().ToString(), faction, key, newCount), LogLevel.NORMAL);
 		#endif
 	}
+	
+	//------------------------------------------------------------------------------------------------	
+	// Helper method for overriding a specific players faction, can be used while the character is in the world.
+	//! \return true if the request went through to the server, otherwise false
+	bool SetPlayerFaction(notnull SCR_ChimeraCharacter character, notnull Faction faction)
+	{
+		character.m_pFactionComponent.SetAffiliatedFaction(faction);
+
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(character);
+
+		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
+		if (!playerController)
+			return false;
+
+		SCR_PlayerFactionAffiliationComponent playerFactionAffiliation = SCR_PlayerFactionAffiliationComponent.Cast(playerController.FindComponent(SCR_PlayerFactionAffiliationComponent));
+		if (!playerFactionAffiliation)
+			return false;
+
+		return playerFactionAffiliation.RequestFaction(faction);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Return affiliated ranks of a faction the player is affiliated with.
+	//! \param[in] playerId Id of target player corresponding to PlayerController/PlayerManager player id.
+	//! \return SCR_FactionRanks instance if faction is assigned, returns a default value otherwise.
+	SCR_RankContainer GetFactionRanks(int playerId)
+	{
+		Faction fac = GetPlayerFaction(playerId);
+		if (!fac)
+			return m_DefaultRanks;
+		
+		SCR_Faction faction = SCR_Faction.Cast(fac);
+		if (faction)
+			return faction.GetRanks();
+
+		// either something went wrong or the player doesn't have a faction yet so we stick to the default for now!
+		return m_DefaultRanks;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Return affiliated faction of provided player by their id.
@@ -169,7 +250,7 @@ class SCR_FactionManager : FactionManager
 
 		return null;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	static Faction SGetFaction(IEntity entity)
 	{
@@ -233,8 +314,20 @@ class SCR_FactionManager : FactionManager
 		if (!faction)
 			return 0;
 
-		int playerCount;
+		int playerCount, childPlayerCounts;
 		m_PlayerCount.Find(GetFactionIndex(faction), playerCount);
+		
+		array<SCR_Faction> factions = new array<SCR_Faction>;
+		m_SortedFactions.ToArray(factions);
+		foreach (SCR_Faction lookedAtFaction : factions)
+		{
+			if (!lookedAtFaction || lookedAtFaction == faction || lookedAtFaction.GetParent() != faction) 
+				continue;
+
+			m_PlayerCount.Find(GetFactionIndex(lookedAtFaction), childPlayerCounts);
+			playerCount += childPlayerCounts;
+		}
+		
 		return playerCount;
 	}
 
@@ -262,153 +355,7 @@ class SCR_FactionManager : FactionManager
 	{
 		return outFactions.CopyFrom(m_SortedFactions);
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] rankID
-	//! \return
-	SCR_RankID GetRankByID(SCR_ECharacterRank rankID)
-	{		
-		if (!m_aRanks)
-			return null;
-		
-		foreach (SCR_RankID rank: m_aRanks)
-		{	
-			if (rank && rank.GetRankID() == rankID)
-				return rank;
-		}
-		
-		return null;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	array<ref SCR_RankID> GetAllAvailableRanks()
-	{
-		array<ref SCR_RankID> outArray = {};
-		foreach (SCR_RankID rank: m_aRanks)
-		{
-			outArray.Insert(rank);
-		}
-		
-		return outArray;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] rankID
-	//! \return
-	bool IsRankRenegade(SCR_ECharacterRank rankID)
-	{
-		SCR_RankID rank = GetRankByID(rankID);
-		
-		if (rank)
-			return rank.IsRankRenegade();
-		else
-			return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] rankID
-	//! \return
-	int GetRequiredRankXP(SCR_ECharacterRank rankID)
-	{
-		SCR_RankID rank = GetRankByID(rankID);
-		if (!rank)
-			return int.MAX;
 
-		return rank.GetRequiredRankXP();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected SCR_ECharacterRank GetRenegadeRank()
-	{	
-		foreach (SCR_RankID rank: m_aRanks)
-		{
-			if (rank && rank.IsRankRenegade())
-				return rank.GetRankID();
-		}
-		
-		return SCR_ECharacterRank.INVALID;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] XP
-	//! \return
-	SCR_ECharacterRank GetRankByXP(int XP)
-	{
-		if (!m_aRanks)
-			return SCR_ECharacterRank.INVALID;
-		
-		int maxFoundXP = -100000;
-		SCR_ECharacterRank rankFound = GetRenegadeRank();
-		
-		foreach (SCR_RankID rank: m_aRanks)
-		{
-			int reqXP = GetRequiredRankXP(rank.GetRankID());
-			
-			if (reqXP <= XP && reqXP > maxFoundXP)
-			{
-				maxFoundXP = reqXP;
-				rankFound = rank.GetRankID();
-			}
-		}
-		
-		return rankFound;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] rank
-	//! \return the next higher rank
-	SCR_ECharacterRank GetRankNext(SCR_ECharacterRank rank)
-	{
-		int rankXP = GetRequiredRankXP(rank);
-		int higherXP = 99999;
-		SCR_ECharacterRank foundID = SCR_ECharacterRank.INVALID;
-		
-		foreach (SCR_RankID r: m_aRanks)
-		{
-			if (!r)
-				continue;
-			
-			SCR_ECharacterRank ID = r.GetRankID();
-			int thisXP = GetRequiredRankXP(ID);
-			
-			if (thisXP > rankXP && thisXP < higherXP)
-			{
-				higherXP = thisXP;
-				foundID = ID;
-			}
-		}
-		
-		return foundID;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] rank
-	//! \return the next lower rank
-	SCR_ECharacterRank GetRankPrev(SCR_ECharacterRank rank)
-	{
-		int rankXP = GetRequiredRankXP(rank);
-		int lowerXP = -99999;
-		SCR_ECharacterRank foundID = SCR_ECharacterRank.INVALID;
-		
-		foreach (SCR_RankID r: m_aRanks)
-		{
-			if (!r)
-				continue;
-			
-			SCR_ECharacterRank ID = r.GetRankID();
-			int thisXP = GetRequiredRankXP(ID);
-			
-			if (thisXP < rankXP && thisXP > lowerXP)
-			{
-				lowerXP = thisXP;
-				foundID = ID;
-			}
-		}
-		
-		return foundID;
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
@@ -418,10 +365,13 @@ class SCR_FactionManager : FactionManager
 		GetFactionsList(factions);
 		SCR_Faction scriptedFaction;
 		SCR_MissionHeader missionHeader = SCR_MissionHeader.Cast(GetGame().GetMissionHeader());
-		map<string, int> missionFactionLimitMap = new map<string, int>();
+		map<FactionKey, int> missionFactionLimitMap = new map<FactionKey, int>();
+		map<FactionKey, int> cliFactionLimitMap = new map<FactionKey, int>();
 
 		if (missionHeader)
 			missionFactionLimitMap = missionHeader.GetFactionLimitMap();
+		
+		cliFactionLimitMap = GetFactionLimitMapCLI();
 		
 		for (int i = factions.Count() - 1; i >= 0; i--)
 		{
@@ -434,8 +384,39 @@ class SCR_FactionManager : FactionManager
 				
 				m_SortedFactions.Insert(scriptedFaction.GetOrder(), scriptedFaction);
 				
-				if (missionFactionLimitMap && missionFactionLimitMap.Contains(scriptedFactionKey))
-					scriptedFaction.SetPlayerLimit(missionFactionLimitMap.Get(scriptedFactionKey));
+				int playerTotalLimit = -1;
+				int playerMissionLimit = -1;
+				
+				// player limit is a minimum of limits set in mission and in cli param - server side only, client gets the limits via RplProp
+				if (Replication.IsServer())
+				{
+					if (missionFactionLimitMap && missionFactionLimitMap.Contains(scriptedFactionKey))
+						playerMissionLimit = missionFactionLimitMap.Get(scriptedFactionKey);
+					
+					if (cliFactionLimitMap && cliFactionLimitMap.Contains(scriptedFactionKey))
+					{
+						if (playerMissionLimit >= 0)
+							playerTotalLimit = Math.Min(playerMissionLimit, cliFactionLimitMap.Get(scriptedFactionKey));
+						else
+							playerTotalLimit = cliFactionLimitMap.Get(scriptedFactionKey);
+					}
+					
+					if (playerTotalLimit < 0 && playerMissionLimit >= 0)
+						// we have only mission header limit
+						playerTotalLimit = playerMissionLimit;
+					
+					if (playerTotalLimit >= 0)
+					{
+						scriptedFaction.SetPlayerLimit(playerTotalLimit);
+						if (!m_mPendingLimitUpdates)
+						{
+							m_mPendingLimitUpdates = new map<FactionKey, int>();
+							SetEventMask(EntityEvent.FIXEDFRAME);
+						}
+						
+						m_mPendingLimitUpdates.Insert(scriptedFactionKey, playerTotalLimit);
+					}
+				}
 				
 				scriptedFaction.InitializeFaction();
 			}
@@ -461,6 +442,22 @@ class SCR_FactionManager : FactionManager
 		gameMode.GetOnPlayerDisconnected().Insert(OnPlayerDisconnected);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	override protected void EOnFixedFrame(IEntity owner, float timeSlice)
+	{
+		super.EOnFixedFrame(owner,timeSlice);
+		if (m_mPendingLimitUpdates)
+		{
+			foreach (FactionKey factionKey, int playerLimit : m_mPendingLimitUpdates)
+			{
+				Rpc(RPC_UpdatePlayerLimit, factionKey, playerLimit);
+			}
+			
+			m_mPendingLimitUpdates = null;
+		}
+		ClearEventMask(EntityEvent.FIXEDFRAME);
+	}
+	
 	#ifdef ENABLE_DIAG
 	//------------------------------------------------------------------------------------------------
 	protected override void EOnDiag(IEntity owner, float timeSlice)
@@ -480,6 +477,7 @@ class SCR_FactionManager : FactionManager
 				DbgUI.Text(string.Format("%1: %2 player(s)", faction.GetFactionKey(), GetFactionPlayerCount(faction)));
 			}
 		}
+		
 		DbgUI.End();
 	}
 	#endif
@@ -536,6 +534,42 @@ class SCR_FactionManager : FactionManager
 		return m_bCanChangeFactionsPlayable;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Set whether a faction should receive tasks/objectives
+	//! \param[in] faction faction to enable/disable tasks for
+	//! \param[in] isTasksEnabled whether to enable/disable tasks for the faction
+	void SetFactionTasksEnabled(notnull SCR_Faction faction, bool isTasksEnabled)
+	{
+		if (Replication.IsClient())
+			return;
+
+		string factionKey = faction.GetFactionKey();
+
+		RpcDo_SetFactionTasksEnabled(factionKey, isTasksEnabled);
+		Rpc(RpcDo_SetFactionTasksEnabled, factionKey, isTasksEnabled);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Set whether a faction should receive tasks/objectives for the whole server
+	//! \param[in] faction faction to enable/disable tasks for
+	//! \param[in] isTasksEnabled whether to enable/disable tasks for the faction
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void RpcDo_SetFactionTasksEnabled(string factionKey, bool isTasksEnabled)
+	{
+		SCR_Faction faction = SCR_Faction.Cast(GetFactionByKey(factionKey));
+
+		if (!faction || faction.IsTasksEnabled() == isTasksEnabled)
+			return;
+
+		faction.SetTasksEnabled(isTasksEnabled);
+
+		//Update the bases/tasks if the state of the player's faction changed
+		SCR_Faction playerfaction = SCR_Faction.Cast(GetLocalPlayerFaction());
+
+		if (playerfaction && playerfaction == faction && m_OnFactionTaskEnabledChanged)
+			m_OnFactionTaskEnabledChanged.Invoke(playerfaction);
+	}
+
 	//======================================== FACTION RELATIONS ========================================\\	
 
 	//------------------------------------------------------------------------------------------------
@@ -548,7 +582,7 @@ class SCR_FactionManager : FactionManager
 	void SetFactionsFriendly(notnull SCR_Faction factionA, notnull SCR_Faction factionB, int playerChanged = -1, bool updateAIs = true)
 	{		
 		//~ Already friendly
-		if (factionA.DoCheckIfFactionFriendly(factionB))
+		if (factionA.DoCheckIfFactionFriendly(factionB) && factionB.DoCheckIfFactionFriendly(factionA))
 			return;
 		
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
@@ -746,5 +780,96 @@ class SCR_FactionManager : FactionManager
 		
 		// Clear faction, this will result in proper update of things
 		playerFactionAffiliation.RequestFaction(null);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected bool RplSave(ScriptBitWriter writer)
+	{
+		array<Faction> factions = {};
+		GetFactionsList(factions);
+		
+		writer.WriteInt(factions.Count());
+
+		foreach (Faction basefaction : factions)
+		{
+			SCR_Faction faction = SCR_Faction.Cast(basefaction);
+			writer.WriteString(faction.GetFactionKey());
+			
+			faction.DoRplSave(writer);
+		}
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected bool RplLoad(ScriptBitReader reader)
+	{
+		int count;
+		reader.ReadInt(count);
+
+		for (int i = 0; i < count; i++)
+		{
+			string key;
+			reader.ReadString(key);
+			
+			SCR_Faction faction = SCR_Faction.Cast(GetFactionByKey(key));
+			faction.DoRplLoad(reader);
+		}
+
+		return true;
+	}
+
+	//-----------------------------------------------------------------------------------------------
+	//! Authority:
+	//! 	Retrieves player limit for listed factions from command line
+	//!		Format is Faction:Limit seperated by comma, e.g. -playerLimits "US:15" or -playerLimits "US:15,USSR:0"
+	protected map<FactionKey, int> GetFactionLimitMapCLI()
+	{
+		if (!System.IsCLIParam(SCR_FactionManagerClass.PLAY_LIMITS_CLI))
+			return null;
+		
+		map<FactionKey, int> result = new map<FactionKey, int>();
+		
+		string unparsedMap;
+		System.GetCLIParam(SCR_FactionManagerClass.PLAY_LIMITS_CLI, unparsedMap);
+		
+		FactionKey factionKey;
+		string limit;
+		bool limitRead;
+		
+		for (int index = 0, l = unparsedMap.Length(); index < l; index++)
+		{
+			switch (unparsedMap[index])
+			{
+				case ":" : 
+				{
+					limitRead = true;
+					break;
+				}
+				case "," :
+				{
+					limitRead = false;
+					result.Insert(factionKey, limit.ToInt());
+					factionKey = "";
+					limit = "";	
+					break;
+				}
+				default :
+				{
+					if (limitRead)
+						limit += unparsedMap[index];
+					else
+						factionKey += unparsedMap[index];
+				}
+			}
+		}
+		
+		if (limitRead)
+			result.Insert(factionKey, limit.ToInt());
+		
+		if (result.IsEmpty())
+			return null;
+		
+		return result;
 	}
 }

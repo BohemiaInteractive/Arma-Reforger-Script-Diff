@@ -1,5 +1,5 @@
 #ifdef WORKBENCH
-[WorkbenchPluginAttribute(name: "Maintain Editable Entities", category: "In-game Editor", wbModules: { "WorldEditor", "ResourceManager" }, awesomeFontCode: 0xF0AD)]
+[WorkbenchPluginAttribute(name: "Maintain Editable Entities", category: SCR_PluginCategory.EDITOR, wbModules: { "WorldEditor", "ResourceManager" }, awesomeFontCode: 0xF0AD)]
 class SCR_EditableEntityMaintenancePlugin : WorkbenchPlugin
 {
 	[Attribute("ArmaReforger")]

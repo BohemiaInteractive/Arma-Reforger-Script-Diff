@@ -10,9 +10,11 @@ class SCR_PowerlineGeneratorJunctionData
 	[Attribute(defvalue: "0", desc: "Set the junction's yaw offset; can be used to setup the Prefab properly", uiwidget: UIWidgets.Slider, params: "-180 180")]
 	float m_fYawOffset;
 
-	[Attribute(defvalue: "0", desc: "Set the junction's altitude offset; helps preventing the junction Prefab to dig into the ground", params: "-100 100 0.01", precision: 2)]
+	[Attribute(defvalue: "0", desc: "Set the junction's altitude offset; helps preventing the junction Prefab to dig into the ground", params: string.Format("-%1 %1 0.01", MAX_Y_OFFSET), precision: 2)]
 	float m_fYOffset;
 
 	[Attribute(defvalue: "0", desc: "Define whether or not this junction is a power source")]
 	bool m_bPowerSource;
+
+	static int MAX_Y_OFFSET = 100;
 }

@@ -30,10 +30,10 @@ class CompartmentAccessComponent: GameComponent
 	//! If force teleport, doorInfoIndex is ignored. closeDoor is still respected.
 	proto external bool GetInVehicle(IEntity vehicle, BaseCompartmentSlot compartment, bool forceTeleport, int doorInfoIndex, ECloseDoorAfterActions closeDoor, bool performWhenPaused);
 	//! If force teleport, doorInfoIndex is used for the teleport position and closeDoor is ignored.
-	proto external bool GetOutVehicle(EGetOutType type, int doorInfoIndex, ECloseDoorAfterActions closeDoor, bool performWhenPaused);
+	proto external bool GetOutVehicle(EGetOutType type, int doorInfoIndex, ECloseDoorAfterActions closeDoor, bool performWhenPaused, bool isExitTeleport = false);
 	//! Uses teleport - character is teleported to targetTransform, and door state will not be changed.
-	proto external bool GetOutVehicle_NoDoor(vector targetTransform[4], bool sendIntoRagdoll, bool performWhenPaused);
-	//! Kick another character out.
+	proto external bool GetOutVehicle_NoDoor(vector targetTransform[4], bool sendIntoRagdoll, bool performWhenPaused, bool isExitTeleport = false);
+	//! Kick another character out. It should use the teleport exit position.
 	proto external void KickFromVehicle(int doorInfoIndex);
 	//! Open door only
 	proto external bool OpenDoor(IEntity vehicle, ECharacterDoorAnimType doorAnimType, int doorInfoIndex);

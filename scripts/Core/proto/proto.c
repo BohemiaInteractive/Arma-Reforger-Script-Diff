@@ -39,17 +39,6 @@ reference - hint for tools (Material editor), that the variable may be used
 /*							Enforce engine API										*/
 /*===================================================================*/
 
-class ProfileData
-{
-	float FPS;
-	float FrameTimeMs;
-	float RenderTimeMs;
-	float GPUTimeMs;
-	float SimulationTimeMs;
-	private void ProfileData();
-	private void ~ProfileData();
-}
-
 //----------------------------------------------
 int VectorToRGBA( vector vec, float h)
 {
@@ -91,35 +80,4 @@ proto int ABGRF(float fa, float fr, float fg, float fb);
 int AWHITE(int a)
 {
 	return a << 24 | 0xffffff;
-}
-
-//-------------------------------------------------------------------------
-class Link<Class T>
-{
-	proto private native void Init(T init);
-	proto private native Object Get();
-
-	void Release()
-	{
-		T obj = Get();
-		if(obj)
-			obj.Release();
-	}
-	void Link(T init)
-	{
-		Init(init);
-	}
-
-	T Ptr()
-	{
-		return Get();
-	}
-
-	bool IsNull()
-	{
-		if(!Get())
-			return true;
-
-		return false;
-	}
 }

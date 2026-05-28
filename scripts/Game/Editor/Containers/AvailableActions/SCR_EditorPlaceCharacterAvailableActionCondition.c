@@ -1,9 +1,9 @@
 [BaseContainerProps()]
 class SCR_EditorPlaceCharacterAvailableActionCondition : SCR_AvailableActionCondition
 {
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	//------------------------------------------------------------------------------------------------
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		IEntity controlledEntity = SCR_PlayerController.GetLocalControlledEntity();
-		return !controlledEntity;
+		return GetReturnResult(!SCR_PlayerController.GetLocalControlledEntity());
 	}
-};
+}

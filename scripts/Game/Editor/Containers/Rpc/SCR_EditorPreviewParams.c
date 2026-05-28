@@ -18,23 +18,28 @@ class SCR_EditorPreviewParams
 	EEditorTransformVertical m_VerticalMode;
 	EEditorPlacingFlags m_PlacingFlags;
 	SCR_EditableEntityComponent m_CurrentLayer; //--- No replicated, used to extract data from SCR_PlacingEditorComponent.SpawnEntityResource()
+	//! action id with the id of the action component from whcih it came from
+	int m_iActionInfo = -1;
+	//! local cache of the action which was the reason for creation of this param
+	protected SCR_BaseEditorAction m_SourceAction;
+	
 	
 	//------------------------------------------------------------------------------------------------
 	static void Encode(SSnapSerializerBase snapshot, ScriptCtx hint, ScriptBitSerializer packet) 
 	{
-		snapshot.Serialize(packet, 84);
+		snapshot.Serialize(packet, 88);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	static bool Decode(ScriptBitSerializer packet, ScriptCtx hint, SSnapSerializerBase snapshot) 
 	{
-		return snapshot.Serialize(packet, 84);
+		return snapshot.Serialize(packet, 88);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	static bool SnapCompare(SSnapSerializerBase lhs, SSnapSerializerBase rhs, ScriptCtx hint) 
 	{
-		return lhs.CompareSnapshots(rhs, 84);
+		return lhs.CompareSnapshots(rhs, 88);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -48,7 +53,8 @@ class SCR_EditorPreviewParams
 			&& snapshot.Compare(prop.m_TargetRplID, 4)
 			&& snapshot.Compare(prop.m_TargetStaticID, 8)
 			&& snapshot.Compare(prop.m_TargetInteraction, 4)
-			&& snapshot.Compare(prop.m_PlacingFlags, 4);
+			&& snapshot.Compare(prop.m_PlacingFlags, 4)
+			&& snapshot.Compare(prop.m_iActionInfo, 4);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -63,6 +69,7 @@ class SCR_EditorPreviewParams
 		snapshot.SerializeBytes(prop.m_TargetStaticID, 8);
 		snapshot.SerializeBytes(prop.m_TargetInteraction, 4);
 		snapshot.SerializeBytes(prop.m_PlacingFlags, 4);
+		snapshot.SerializeBytes(prop.m_iActionInfo, 4);
 
 		return true;
 	}
@@ -79,6 +86,7 @@ class SCR_EditorPreviewParams
 		snapshot.SerializeBytes(prop.m_TargetStaticID, 8);
 		snapshot.SerializeBytes(prop.m_TargetInteraction, 4);
 		snapshot.SerializeBytes(prop.m_PlacingFlags, 4);
+		snapshot.SerializeBytes(prop.m_iActionInfo, 4);
 
 		return true;
 	}
@@ -126,7 +134,7 @@ class SCR_EditorPreviewParams
 			Print(string.Format("Cannot deserialize entity, target neither with RplId = %1 nor with EntityID = %2 found!", m_TargetRplID, m_TargetStaticID), LogLevel.ERROR);
 			return false;
 		}
-		
+
 		return true;
 	}
 
@@ -137,11 +145,68 @@ class SCR_EditorPreviewParams
 	{
 		if (target && target.GetOwner())
 		{
-			m_TargetRplID = Replication.FindId(target);
+			m_TargetRplID = Replication.FindItemId(target);
 			if (!m_TargetRplID.IsValid())
 				m_TargetStaticID = target.GetOwner().GetID();
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Converts action instance into a replication friendly id
+	//! \param action
+	//! \param actionCompOwner entity which has editor actions components
+	//! \return action id with the id of the component from which it is from. If action is not found then this returns -1
+	static int PackActionInfo(notnull SCR_BaseEditorAction action, notnull IEntity actionCompOwner)
+	{
+		SCR_BaseActionsEditorComponentClass data;
+		array<Managed> actionProviders = {};
+		actionCompOwner.FindComponents(SCR_BaseActionsEditorComponent, actionProviders);
+		SCR_BaseActionsEditorComponent actionProvider;
+		int output = -1;
+		foreach (int i, Managed comp : actionProviders)
+		{
+			actionProvider = SCR_BaseActionsEditorComponent.Cast(comp);
+			if (!comp)
+				continue;
+
+			data = SCR_BaseActionsEditorComponentClass.Cast(actionProvider.GetComponentData(actionCompOwner));
+			output = data.FindAction(action);
+			if (output < 0)
+				continue;
+
+			if (output >= 1000)
+			{
+				Print("SCR_EditorPreviewParams.SetActionInfo: System supports only up to 999 actions per SCR_BaseActionsEditorComponent! Processing of action with ID = " + output + " from " + comp + " was aborted.", LogLevel.ERROR);
+				return -1;
+			}
+
+			output += i * 1000;
+			return output;
+		}
+
+		return output;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Finds and returns the action which was used for creation of this SCR_EditorPreviewParams instance
+	//! \param actionCompOwner IEntity which has editor actions components
+	//! \return action instance from stored action info
+	SCR_BaseEditorAction GetSourceAction(notnull IEntity actionCompOwner)
+	{
+		if (m_SourceAction)
+			return m_SourceAction;
+
+		array<Managed> actionProviders = {};
+		actionCompOwner.FindComponents(SCR_BaseActionsEditorComponent, actionProviders);
+		int componentId = Math.Floor(m_iActionInfo * 0.001);
+		if (!actionProviders.IsIndexValid(componentId))
+			return null;
+
+		SCR_BaseActionsEditorComponent actionProvider = SCR_BaseActionsEditorComponent.Cast(actionProviders[componentId]);
+		SCR_BaseActionsEditorComponentClass data = SCR_BaseActionsEditorComponentClass.Cast(actionProvider.GetComponentData(actionCompOwner));
+		m_SourceAction = data.GetAction(m_iActionInfo - componentId * 1000);
+		return m_SourceAction;
+	} 
 
 	//------------------------------------------------------------------------------------------------
 	//! Create params for entity placement.
@@ -194,7 +259,7 @@ class SCR_EditorPreviewParams
 		params.m_bIsUnderwater = previewManager.IsUnderwater();
 		params.m_TargetInteraction = previewManager.GetTargetInteraction();
 		params.SetTarget(previewManager.GetTarget());
-		params.m_ParentID = Replication.FindId(parent);
+		params.m_ParentID = Replication.FindItemId(parent);
 		params.m_bParentChanged = parentChanged;
 		
 		return params;

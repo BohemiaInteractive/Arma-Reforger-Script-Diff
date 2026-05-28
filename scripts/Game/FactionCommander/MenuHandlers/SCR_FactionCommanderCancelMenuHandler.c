@@ -28,6 +28,6 @@ class SCR_FactionCommanderCancelMenuHandler : SCR_FactionCommanderBaseTaskMenuHa
 		if (!comp)
 			return;
 
-		comp.CancelTask(playerId, task.GetTaskID());
+		comp.CancelTask(task.GetTaskID());
 	}
 }

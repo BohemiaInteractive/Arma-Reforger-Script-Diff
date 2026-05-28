@@ -145,7 +145,7 @@ class SCR_AssetCardFrontUIComponent : SCR_ScriptedWidgetComponent
 	//! \param[in] info
 	//! \param[in] prefab
 	//! \param[in] blockingBudgetInfo
-	void InitCard(int prefabID, SCR_UIInfo info, ResourceName prefab, SCR_UIInfo blockingBudgetInfo = null)
+	void InitCard(int prefabID, SCR_UIInfo info, ResourceName prefab, SCR_UIInfo blockingBudgetInfo = null, SCR_ContentBrowserEditorComponent contentBrowser = null)
 	{
 		if (!m_wWidget)
 			return;
@@ -173,6 +173,7 @@ class SCR_AssetCardFrontUIComponent : SCR_ScriptedWidgetComponent
 					if (faction)
 					{
 						Widget factionColor;
+						Color color = Color.FromInt(faction.GetFactionColor().PackToInt());
 						foreach (string factionColorName: m_aFactionColorNames)
 						{
 							if (infoCard.IsFullBackgroundAssetCard() && factionColorName == "ColorOverlay")
@@ -180,7 +181,7 @@ class SCR_AssetCardFrontUIComponent : SCR_ScriptedWidgetComponent
 							
 							factionColor = m_wWidget.FindAnyWidget(factionColorName);
 							if (factionColor)
-								factionColor.SetColor(Color.FromInt(faction.GetFactionColor().PackToInt()));
+								factionColor.SetColor(color);
 						}
 					}
 				}
@@ -238,7 +239,9 @@ class SCR_AssetCardFrontUIComponent : SCR_ScriptedWidgetComponent
 				ImageWidget traitIcon;
 				if (faction)
 				{
-					SCR_ContentBrowserEditorComponent contentBrowser = SCR_ContentBrowserEditorComponent.Cast(SCR_ContentBrowserEditorComponent.GetInstance(SCR_ContentBrowserEditorComponent, false, true));
+					if (!contentBrowser)
+						contentBrowser = SCR_ContentBrowserEditorComponent.Cast(SCR_ContentBrowserEditorComponent.GetInstance(SCR_ContentBrowserEditorComponent, false, true));
+
 					if (!contentBrowser || contentBrowser.AreFactionsShownOnContentCards())
 					{
 						if (FindTraitIcon(traitIndex, traitWidget, traitIcon))

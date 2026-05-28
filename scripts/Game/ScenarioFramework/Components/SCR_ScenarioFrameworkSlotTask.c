@@ -194,7 +194,7 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 	//! \param[in] includeChildren Resets actions' activation count, cancels task if TaskLayer exists, resets TaskLayer, and restores default
 	//! \param[in] reinitAfterRestoration Resets all action counts after restoring default state, also cancels current task if TaskLayer is present.
 	//! \param[in] affectRandomization Affects randomization state during restoration process.
-	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true, bool deleteSpawnedEntities = true)
 	{
 		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActionsOnFinished)
 		{
@@ -232,7 +232,7 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 		m_TaskLayer = null;
 		m_bTaskResolvedBeforeLoad = false;
 		
-		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization, deleteSpawnedEntities);
 	}
 
 	//------------------------------------------------------------------------------------------------

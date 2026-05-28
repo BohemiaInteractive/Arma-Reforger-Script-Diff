@@ -55,6 +55,14 @@ class SCR_GameCoresManager
 				core.OnGameEnd();
 		}
 	}
+	void OnBeforeWorldCleanup()
+	{
+		foreach (SCR_GameCoreBase core: m_CoresSorted)
+		{
+			if (core)
+				core.OnBeforeWorldCleanup();
+		}
+	}
 	
 	/*!
 	Get game core of given type.

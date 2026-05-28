@@ -16,7 +16,7 @@ Curve class for float values. Expected to use as a property (using Attribute) an
 \code
 	class ConfigExample
 	{
-		[Attribute(uiwidget: UIWidgets.CurveDialog, params:"type=Akima, ends=OpenFlat, paramRange=0 1 fixed, valueRange=0 1 fixed")]
+		[Attribute(params:"type=Akima, ends=OpenFlat, paramRange=0 1 fixed, valueRange=0 1 fixed")]
 		ref CurveFloat m_Curve;
 	}
 

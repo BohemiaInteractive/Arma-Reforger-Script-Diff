@@ -11,15 +11,21 @@ Do not modify, this script is generated
 
 sealed class Math
 {
+	/** \name Constants
+	 * Populated by the engine.
+	 */
+	///@{
+
+	static const float PI;
+	static const float PI2;
+	static const float PI_HALF;
+	static const float RAD2DEG;
+	static const float DEG2RAD;
+	static const float E;
+	///@}
+
 	private void Math();
 	private void ~Math();
-
-	static const float PI = 3.14159265358979;
-	static const float PI2 = 6.28318530717958;
-	static const float PI_HALF = 1.570796326794;
-	static const float RAD2DEG = 57.2957795130823208768;
-	static const float DEG2RAD = 0.01745329251994329577;
-	static const float E = 2.71828182845905;
 
 	/*!
 	Returns value `f` rounded to the closest whole number.

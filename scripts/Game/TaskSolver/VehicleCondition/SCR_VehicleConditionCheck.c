@@ -1,11 +1,21 @@
+[EnumLinear()]
+enum SCR_EVehicleConditionCheckType
+{
+	MISSING_VEHICLE,
+	INOPERABLE_VEHICLE,
+	VEHICLE_PILOT_TAKEN
+}
+
 [BaseContainerProps()]
 class SCR_VehicleConditionCheck
 {
-	[Attribute()]
-	protected string m_sConditionName;
+	protected SCR_EVehicleConditionCheckType m_eConditionType = SCR_EVehicleConditionCheckType.MISSING_VEHICLE;
 
-	[Attribute()]
-	protected ref SCR_UIInfo m_FailedConditionUIInfo;
+	//------------------------------------------------------------------------------------------------
+	SCR_EVehicleConditionCheckType GetConditionType()
+	{
+		return m_eConditionType;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Checks if provided Vehicle object is not null.
@@ -14,17 +24,5 @@ class SCR_VehicleConditionCheck
 	bool CheckCondition(Vehicle vehicle)
 	{
 		return vehicle != null;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	SCR_UIInfo GetFailedConditionUIInfo()
-	{
-		return m_FailedConditionUIInfo;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void SetFailedConditionUIInfo(SCR_UIInfo uiInfo)
-	{
-		m_FailedConditionUIInfo = uiInfo;
 	}
 }

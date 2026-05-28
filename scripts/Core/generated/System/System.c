@@ -186,7 +186,7 @@ sealed class System
 	static proto EPlatform GetPlatform();
 	/*!
 	Checks if the app runs in console mode (no rendering, audio or input)
-	@return True if the app runs in console mode. False otherwise.
+	\return True if the app runs in console mode. False otherwise.
 	*/
 	static proto bool IsConsoleApp();
 	/*!
@@ -208,6 +208,20 @@ sealed class System
 	\param contrast		contrast of image
 	*/
 	static proto float SetFinalImageAttributes(float gamma, float brightness, float contrast);
+	/*!
+	read config constant value
+	\param constantName name of constant
+	\param value output variable where will be value copied
+	\return true when constant is found and output value type match, false otherwise
+
+	\code
+		Color val;
+		if (System.GetConstantValue("UI.BLUE", val))
+			Print(val);
+		>> Color val =   Color<0x000001EC8C2B94F8> { 0.000000, 0.000000, 1.000000, 1.000000 }
+	\endcode
+	*/
+	static proto bool GetConstantValue(string constantName, out void value);
 }
 
 /*!

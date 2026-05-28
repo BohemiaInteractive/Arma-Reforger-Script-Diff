@@ -2,7 +2,6 @@ void ScriptInvoker_FactionPlayableChangedMethod(SCR_Faction faction, bool playab
 typedef func ScriptInvoker_FactionPlayableChangedMethod;
 typedef ScriptInvokerBase<ScriptInvoker_FactionPlayableChangedMethod> ScriptInvoker_FactionPlayableChanged;
 
-//------------------------------------------------------------------------------------------------
 class SCR_Faction : ScriptedFaction
 {
 	[Attribute(defvalue: "0", desc: "Order in which the faction appears in the list. Lower values are first.")]
@@ -22,12 +21,18 @@ class SCR_Faction : ScriptedFaction
 
 	[Attribute(defvalue: "1", desc: "Will the faction appear in the respawn menu?")]
 	protected bool m_bIsPlayable;
-
-	[Attribute(defvalue: "1", desc: "If true will show the faction in the welcome screen even if it is not playable")]
-	protected bool m_bShowInWelcomeScreenIfNonPlayable;
 	
-	[Attribute("true", desc: "Is this a military faction? This affects AI functionality related to combat.")]
+	[Attribute(defvalue: "1", desc: "Will players in the faction be able to volunteer to become a commander? \nKeep in mind commanders might be disabled altogether in the mission header.")]
+	protected bool m_bIsCommanderAvailable;
+
+	[Attribute(desc: "This faction will punish people who lost their rank by removing them from the faction\nIf the player gains rank they can (re)join FIA specifically")]
+	protected bool m_bExileRenegadePunishment;
+	
+	[Attribute("1", desc: "Is this a military faction? This affects AI functionality related to combat.")]
 	protected bool m_bIsMilitary;
+	
+	[Attribute("true", desc: "This faction can receive tasks.")]
+	protected bool m_bTasksEnabled;
 	
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Flag icon of this particular faction.", params: "edds")]
 	private ResourceName m_sFactionFlag;
@@ -35,14 +40,20 @@ class SCR_Faction : ScriptedFaction
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Faction flag material, used on flag poles.", params: "emat")]
 	protected ResourceName m_FactionFlagMaterial;
 
-	[Attribute("0", UIWidgets.SearchComboBox, "", enums: ParamEnumArray.FromEnum(EEditableEntityLabel))]
+	[Attribute("0", UIWidgets.SearchComboBox, "", enumType: EEditableEntityLabel)]
 	protected EEditableEntityLabel m_FactionLabel;
+	
+	[Attribute(defvalue: EOverrideWelcomeScreenFactionDisplay.NONE.ToString(), desc: "An extra override if the spawn menu will show the faction in the welcome screen regardless of it being playable", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EOverrideWelcomeScreenFactionDisplay))]
+	protected EOverrideWelcomeScreenFactionDisplay m_eShowInWelcomeScreenOverride;
 	
 	[Attribute("1", desc: "If this is false it would mean that every AI will be hostile towards their own faction members and essentially allow for Deathmatch. Use with caution, only checked on init, you can still set the faction hostile towards itself in runtime. This essentially makes sure it adds itself to FriendlyFactionsIds.")]
 	protected bool m_bFriendlyToSelf;
 	
 	[Attribute(desc: "List of faction IDs that are considered friendly for this faction. Note: If factionA has factionB as friendly but FactionB does not have FactionA as friendly then they are still both set as friendly so for init it is only required for one faction.")]
 	protected ref array<string> m_aFriendlyFactionsIds;
+
+	[Attribute(desc: "Parent faction ID, players in this faction will be considered a part of their parent faction, but are seperate in gameplay to allow for custom interactions with AI, spawning and communication.\nNo value means this faction will be created independently.")]
+	protected string m_sParentFactionId;
 
 	[Attribute()]
 	protected ref SCR_FactionCallsignInfo m_CallsignInfo;
@@ -52,6 +63,9 @@ class SCR_Faction : ScriptedFaction
 
 	[Attribute(desc: "Group preset for predefined groups")]
 	protected ref array<ref SCR_GroupPreset> m_aPredefinedGroups;
+
+	[Attribute(SCR_EGroupRole.ASSAULT.ToString(), UIWidgets.ComboBox, "Default group role when creating a new group", enumType: SCR_EGroupRole)]
+	protected SCR_EGroupRole m_eDefaultGroupRoleForNewGroup;
 
 	[Attribute(desc: "Create only predefined groups")]
 	protected bool m_bCreateOnlyPredefinedGroups;
@@ -65,8 +79,8 @@ class SCR_Faction : ScriptedFaction
 	protected ref array<string>> m_aAncestors;
 	protected ref ScriptInvoker_FactionPlayableChanged m_OnFactionPlayableChanged; //Gives Faction and Bool enabled
 
-	[Attribute("", UIWidgets.Object, "List of ranks")]
-	protected ref array<ref SCR_CharacterRank> m_aRanks;
+	[Attribute(desc: "List of ranks")]
+	protected ref SCR_RankContainer m_FactionRankInfo;
 	
 	[Attribute(desc: "List of Entity catalogs. Each holds a list of entity Prefab and data of a given type. Catalogs of the same type are merged into one. Note this array is moved to a map on init and set to null")]
 	protected ref array<ref SCR_EntityCatalog> m_aEntityCatalogs;
@@ -103,7 +117,9 @@ class SCR_Faction : ScriptedFaction
 	
 	protected bool m_bCatalogInitDone;
 	protected bool m_bIsPlayableDefault;
+	protected bool m_bIsCustomLoadoutSupported;
 	protected ref set<Faction> m_FriendlyFactions = new set<Faction>;
+	protected Faction m_ParentFaction;
 	
 	static const int AI_COMMANDER_ID = 0;
 	protected int m_iCommanderId = AI_COMMANDER_ID;
@@ -126,15 +142,37 @@ class SCR_Faction : ScriptedFaction
 	{
 		return m_bCreateOnlyPredefinedGroups;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	bool IsCustomLoadoutSupported()
+	{
+		return m_bIsCustomLoadoutSupported;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Updates local state of which determines if players from this faction can save custom loadouts
+	void UpdateCustomLoadoutSupportState(SCR_LoadoutManager loadoutMgr)
+	{
+		m_bIsCustomLoadoutSupported = loadoutMgr && loadoutMgr.IsFactionSupportingCsutomLoadouts(this);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! \param groupArray
 	void GetPredefinedGroups(notnull array<ref SCR_GroupPreset> groupArray)
 	{
 		for (int i = 0, count = m_aPredefinedGroups.Count(); i < count; i++)
 		{
-			groupArray.Insert(m_aPredefinedGroups[i]);
+			if (m_aPredefinedGroups[i].IsEnabled())
+				groupArray.Insert(m_aPredefinedGroups[i]);
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return default group role for a new group
+	SCR_EGroupRole GetDefaultGroupRoleForNewGroup()
+	{
+		return m_eDefaultGroupRoleForNewGroup;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -150,14 +188,30 @@ class SCR_Faction : ScriptedFaction
 	{
 		foreach (SCR_GroupRolePresetConfig preset : m_aGroupRolePresetConfigs)
 		{
-			groupArray.Insert(preset);
+			if (preset.IsEnabled())
+				groupArray.Insert(preset);
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_RankContainer GetRanks()
+	{
+		return m_FactionRankInfo;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	bool IsGroupRolesConfigured()
 	{
-		return !m_aGroupRolePresetConfigs.IsEmpty();
+		if (m_aGroupRolePresetConfigs.IsEmpty())
+			return false;
+
+		foreach (SCR_GroupRolePresetConfig preset : m_aGroupRolePresetConfigs)
+		{
+			if (preset.IsEnabled())
+				return true;
+		}
+
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -282,11 +336,22 @@ class SCR_Faction : ScriptedFaction
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	bool IsCommanderAvailable()
+	{
+		return m_bIsCommanderAvailable;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsRenegadePunishedExile()
+	{
+		return m_bExileRenegadePunishment;
+	}
+	//------------------------------------------------------------------------------------------------
 	//! If faction should be shown in the welcome screen if it is not playable
 	//! \return True if it should show even if not playable otherwise hide
-	bool IsShownInWelcomeScreenIfNonPlayable()
+	EOverrideWelcomeScreenFactionDisplay ShowInWelcomeScreenOverride()
 	{
-		return m_bShowInWelcomeScreenIfNonPlayable;
+		return m_eShowInWelcomeScreenOverride;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -305,6 +370,21 @@ class SCR_Faction : ScriptedFaction
 			m_bIsPlayable = false;
 		else
 			m_bIsPlayable = isPlayable;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check if the faction should receive tasks
+	//! \return
+	bool IsTasksEnabled()
+	{
+		return m_bTasksEnabled;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param isTasksEnabled 
+	void SetTasksEnabled(bool isTasksEnabled)
+	{
+		m_bTasksEnabled = isTasksEnabled;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -442,6 +522,28 @@ class SCR_Faction : ScriptedFaction
 	}
 
 	//------------------------------------------------------------------------------------------------
+	bool IsRelatedFaction(notnull Faction otherFaction)
+	{
+		if (this == otherFaction || m_ParentFaction == otherFaction)
+			return true;
+
+		SCR_Faction scrOtherFaction = SCR_Faction.Cast(otherFaction);
+		if (scrOtherFaction && scrOtherFaction.GetParent() == this)
+			return true;
+
+ 		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	Faction GetParent()
+	{
+		if (m_ParentFaction)
+			return m_ParentFaction;
+
+		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get the number of players assigned to this faction
 	*/
@@ -511,73 +613,6 @@ class SCR_Faction : ScriptedFaction
 	int GetFactionRadioFrequency()
 	{
 		return m_iFactionRadioFrequency;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected SCR_CharacterRank GetRankByID(SCR_ECharacterRank rankID)
-	{
-		if (!m_aRanks)
-			return null;
-
-		foreach (SCR_CharacterRank rank : m_aRanks)
-		{
-			if (rank.GetRankID() == rankID)
-				return rank;
-		}
-
-		return null;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \param rankID
-	//! \return
-	string GetRankName(SCR_ECharacterRank rankID)
-	{
-		SCR_CharacterRank rank = GetRankByID(rankID);
-
-		if (rank)
-			return rank.GetRankName();
-		else
-			return string.Empty;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \param rankID
-	//! \return
-	string GetRankNameUpperCase(SCR_ECharacterRank rankID)
-	{
-		SCR_CharacterRank rank = GetRankByID(rankID);
-
-		if (rank)
-			return rank.GetRankNameUpperCase();
-		else
-			return string.Empty;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \param rankID
-	//! \return
-	string GetRankNameShort(SCR_ECharacterRank rankID)
-	{
-		SCR_CharacterRank rank = GetRankByID(rankID);
-
-		if (rank)
-			return rank.GetRankNameShort();
-		else
-			return string.Empty;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \param rankID
-	//! \return
-	string GetRankInsignia(SCR_ECharacterRank rankID)
-	{
-		SCR_CharacterRank rank = GetRankByID(rankID);
-
-		if (rank)
-			return rank.GetRankInsignia();
-		else
-			return string.Empty;
 	}
 	
 	//------------------------------------------------------------------------------------------------ 
@@ -681,12 +716,25 @@ class SCR_Faction : ScriptedFaction
 		if (SCR_Global.IsEditMode()) 
 			return;
 		
+		
+		// These faction relations are hardset, we do them here to avoid doing unnecessary networking calls
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (factionManager)
+		{
+			Faction parent = factionManager.GetFactionByKey(m_sParentFactionId);
+
+			if (parent)
+				m_ParentFaction = parent;
+
+			if (IsRenegadePunishedExile() && factionManager.GetFactionByKey("RNGD"))	
+					this.SetFactionFriendly(factionManager.GetFactionByKey("RNGD"));
+		}
+
 		//~ Server only
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if ((gameMode && gameMode.IsMaster()) || (!gameMode && Replication.IsServer()))
 		{
 			//~ Set faction friendly
-			SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 			if (!factionManager)
 			{
 				//~ Still make sure faction is friendly towards itself	
@@ -726,6 +774,7 @@ class SCR_Faction : ScriptedFaction
 					}
 				}
 			}
+			
 		}
 		
 		//~ Init the catalog for faster processing
@@ -786,8 +835,12 @@ class SCR_Faction : ScriptedFaction
 		
 		if (m_aBaseCallsigns.IsIndexValid(index))
 			return m_aBaseCallsigns[index];
-		
-		index -= m_aBaseCallsigns.Count();
+
+		int count = m_aBaseCallsigns.Count();
+		if (count < 1)
+			return null;
+
+		index = Math.Repeat(index, count);
 		
 		if (m_aBaseCallsigns.IsIndexValid(index))
 			return m_aBaseCallsigns[index];
@@ -859,6 +912,7 @@ class SCR_Faction : ScriptedFaction
 		{
 			result.Insert(key);
 		}
+		
 		return result;
 	}
 
@@ -873,9 +927,31 @@ class SCR_Faction : ScriptedFaction
 	{
 		return m_bIsPlayableDefault;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool DoRplSave(ScriptBitWriter writer)
+	{
+		writer.WriteBool(IsTasksEnabled());
+		writer.WriteInt(GetPlayerLimit());
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool DoRplLoad(ScriptBitReader reader)
+	{
+		bool isTasksEnabled;
+		reader.ReadBool(isTasksEnabled);
+
+		SetTasksEnabled(isTasksEnabled);
+		
+		int playerLimit;
+		reader.ReadInt(playerLimit);
+		
+		SetPlayerLimit(playerLimit);
+		return true;
+	}
 }
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_BaseContainerCustomTitleField("m_sCallsign")]
 class SCR_MilitaryBaseCallsign
 {
@@ -918,4 +994,15 @@ class SCR_MilitaryBaseCallsign
 	{
 		return m_iSignalIndex;
 	}
+}
+
+[EnumLinear()]
+enum EOverrideWelcomeScreenFactionDisplay
+{
+	// No override will be applied, "normal behaviour" will show playable factions and hide non playable ones
+	NONE,
+	// Always show the faction
+	ALWAYSSHOW,
+	// Never show the faction in the menu
+	NEVERSHOW
 }

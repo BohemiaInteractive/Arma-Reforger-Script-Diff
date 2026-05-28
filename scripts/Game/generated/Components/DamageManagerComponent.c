@@ -44,19 +44,19 @@ class DamageManagerComponent: HitZoneContainerComponent
 	//! Returns aiming damage modifier.
 	//! \warning Only usable by ChimeraCharacters.
 	proto external float GetAimingDamage();
-	//Get default hitzone's health [0...1]
+	//! Get default hitzone's health [0...1]
 	proto external float GetHealthScaled();
 	//sets the health scaled to the default HitZone [0, ..., 1]
 	proto external bool SetHealthScaled(float health);
-	//Returns current amount of health on the default hitzone
+	//! Returns current amount of health on the default hitzone
 	proto external float GetHealth();
-	//Returns default hitzone's max health
+	//! Returns default hitzone's max health
 	proto external float GetMaxHealth();
-	// Returns default hitzone's DamageState
+	//! Returns default hitzone's DamageState
 	proto external EDamageState GetState();
-	//returns true if the default hitzone is in Destroyed damage state
+	//! Returns true if the default hitzone is in Destroyed damage state
 	proto external bool IsDestroyed();
-	//Sets the given entity as the last instigator of damage.
+	//! Sets the given entity as the last instigator of damage.
 	proto external void SetInstigatorEntity(IEntity instigator);
 	proto external void SetInstigator(notnull Instigator instigator);
 	//! Sets the instigator and broadcasts the change to clients
@@ -126,7 +126,6 @@ class DamageManagerComponent: HitZoneContainerComponent
 	\param owner Entity this component is attached to.
 	*/
 	event protected void OnPostInit(IEntity owner);
-	event protected void OnDelete(IEntity owner);
 	/*!
 	Called during EOnFrame.
 	\param owner Entity this component is attached to.

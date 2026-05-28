@@ -47,12 +47,12 @@ class SCR_FactionCommanderCommandConflictMenuHandler : SCR_FactionCommanderConfl
 
 		if (!IsTaskValid(hoveredEntity))
 		{
-			comp.CreateTask(GetTaskPrefab(), position, group, playerId, this);
+			comp.CreateTask(GetTaskPrefab(), position, group, playerId);
 			return;
 		}
 
 		SCR_Task task = SCR_Task.Cast(hoveredEntity);
 		if (group)
-			comp.AssignGroupToTask(group.GetGroupID(), task.GetTaskID(), playerId);
+			comp.AssignGroupToTask(group.GetGroupID(), task.GetTaskID());
 	}
 }

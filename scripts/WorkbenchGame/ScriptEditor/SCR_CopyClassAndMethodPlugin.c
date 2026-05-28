@@ -64,7 +64,7 @@ class SCR_CopyClassAndMethodPlugin : WorkbenchPlugin
 
 		foreach (int lineId, string line : lines)
 		{
-			if (lineId == linesCount)
+			if (lineId > linesCount)
 				break;
 
 			line.Replace(SCR_StringHelper.SPACE, string.Empty);
@@ -72,6 +72,12 @@ class SCR_CopyClassAndMethodPlugin : WorkbenchPlugin
 
 			if (!isComment)
 			{
+				if (line.StartsWith("["))
+					continue;
+
+				if (line.StartsWith("/" + "/"))
+					continue;
+
 				if (line.StartsWith(bracketOpen))
 				{
 					scopes.Insert(lineId - 1);
@@ -86,9 +92,17 @@ class SCR_CopyClassAndMethodPlugin : WorkbenchPlugin
 					isComment = true;
 				}
 			}
-			else if (line.StartsWith(commentClose))
+			else
 			{
-				isComment = false;
+				if (line.Contains(SCR_StringHelper.DOUBLE_SLASH)) // QnD inline comment removal
+				{
+					array<string> tokens = {};
+					line.Split(SCR_StringHelper.DOUBLE_SLASH, tokens, true);
+					line = tokens[0];
+				}
+
+				if (line.StartsWith(commentClose) || line.EndsWith(commentClose))
+					isComment = false;
 			}
 		}
 
@@ -96,6 +110,8 @@ class SCR_CopyClassAndMethodPlugin : WorkbenchPlugin
 			scopes.Insert(cursorLineId);
 
 		string line = lines[scopes[0]];
+		if (SCR_StringHelper.StartsWithAny(line, { "[", "#", "/" + "/" }))
+			return false;
 
 		array<string> lineArray = {};
 		line.Split(SCR_StringHelper.SPACE, lineArray, false);
@@ -121,7 +137,7 @@ class SCR_CopyClassAndMethodPlugin : WorkbenchPlugin
 			scopes[1] = scopes[1] - 1;
 
 		// methodName = lines[scopes[1]];
-		lines[scopes[1]].Split("(", lineArray, false);
+		lines[scopes[1]].Split("(", lineArray, false); // )
 		if (lineArray.Count() >= 2)
 		{
 			methodName = lineArray[0];

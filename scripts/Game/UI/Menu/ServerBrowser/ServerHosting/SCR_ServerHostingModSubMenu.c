@@ -741,7 +741,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_UP, EActionTrigger.DOWN, OnUpSort);
 		
 		if (m_NavChangeSortOrder)
-			SetNavigationButtonVisibile(m_NavChangeSortOrder, true);
+			SetNavigationButtonVisible(m_NavChangeSortOrder, true);
 		
 		if (m_NavSelectSort)
 		{
@@ -751,10 +751,10 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		}
 		
 		if (m_NavEnable)
-			SetNavigationButtonVisibile(m_NavEnable, false);
+			SetNavigationButtonVisible(m_NavEnable, false);
 	
 		if (m_NavEnableAll)
-			SetNavigationButtonVisibile(m_NavEnableAll, false);
+			SetNavigationButtonVisible(m_NavEnableAll, false);
 		
 		// Panel buttons
 		m_Widgets.m_ButtonEnableAllComponent0.SetEnabled(false);
@@ -776,7 +776,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_UP, EActionTrigger.DOWN, OnUpSort);
 		
 		if (m_NavChangeSortOrder)
-			SetNavigationButtonVisibile(m_NavChangeSortOrder, false);
+			SetNavigationButtonVisible(m_NavChangeSortOrder, false);
 		
 		if (m_NavSelectSort)
 		{
@@ -786,10 +786,10 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		}
 		
 		if (m_NavEnable)
-			SetNavigationButtonVisibile(m_NavEnable, true);
+			SetNavigationButtonVisible(m_NavEnable, true);
 		
 		if (m_NavEnableAll)
-			SetNavigationButtonVisibile(m_NavEnableAll, true);
+			SetNavigationButtonVisible(m_NavEnableAll, true);
 		
 		// Panel buttons
 		m_Widgets.m_ButtonEnableAllComponent0.SetEnabled(true);

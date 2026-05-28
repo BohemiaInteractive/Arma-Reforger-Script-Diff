@@ -41,7 +41,7 @@ class SCR_ScenarioFrameworkActionOnResourceConsumerChange : SCR_ScenarioFramewor
 		}
 		
 		consumer.GetOnResourcesChanged().Insert(OnResourceChanged);
-		m_Handle = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandle(consumer, Replication.FindId(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
+		m_Handle = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandle(consumer, Replication.FindItemId(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
 	}
 	
 	//------------------------------------------------------------------------------------------------

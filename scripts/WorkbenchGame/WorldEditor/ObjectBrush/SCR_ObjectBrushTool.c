@@ -33,13 +33,13 @@ class SCR_ObjectBrushTool : WorldEditorTool
 	[Attribute(defvalue: "10", uiwidget: UIWidgets.Slider, desc: "Strength of the brush (objects per hectare (100×100m))", params: string.Format("%1 %2 %3", STRENGTH_MIN, STRENGTH_MAX, STRENGTH_STEP), category: "Object Brush")]
 	protected float m_fStrength;
 
-	[Attribute(uiwidget: UIWidgets.GraphDialog, desc: "Used to determine the scale fall off", category: "Object Brush")]
+	[Attribute(uiwidget: UIWidgets.CurveDialog, desc: "Used to determine the scale fall off", category: "Object Brush")]
 	protected ref Curve m_ScaleFallOffCurve;
 
 	[Attribute(defvalue: "0", desc: "Apply density fall off to the brush", category: "Object Brush")]
 	protected bool m_bDensityFallOffEnabled;
 
-	[Attribute(uiwidget: UIWidgets.GraphDialog, desc: "Used to determine the density fall off", category: "Object Brush")]
+	[Attribute(uiwidget: UIWidgets.CurveDialog, desc: "Used to determine the density fall off", category: "Object Brush")]
 	protected ref Curve m_DensityFallOffCurve;
 
 	[Attribute(defvalue: "10", uiwidget: UIWidgets.SpinBox, desc: "Sets how many sub areas will be made; higher amount of subareas will result in a more fluid density fall off", params: "1 100 1", category: "Object Brush")]

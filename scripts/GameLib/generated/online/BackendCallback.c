@@ -77,7 +77,7 @@ class BackendCallback: Managed
 	//! Returns result code from RestApi.
 	proto external ERestResult GetRestResult();
 	//! Returns type of request that invoked callback.
-	proto external EBackendRequest GetBackendRequest();
+	proto external int GetBackendRequest();
 	//! Returns backend error of failed request.
 	proto external EBackendError GetBackendError();
 	/*!

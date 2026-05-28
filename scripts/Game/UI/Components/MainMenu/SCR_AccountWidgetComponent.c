@@ -184,7 +184,7 @@ class SCR_AccountWidgetComponent : SCR_ScriptedWidgetComponent
 			tooltipMessage = m_sTooltipMessageConnecting;
 			tooltipMessageColor = m_ColorConnecting;
 		}
-		else if (m_BackendApi.IsAuthenticated())
+		else if (BackendAuthenticatorApi.IsAuthenticated())
 		{
 			color = m_ColorOnline;
 			image = m_sIconOnline;

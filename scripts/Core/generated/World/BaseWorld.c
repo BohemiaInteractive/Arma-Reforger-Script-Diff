@@ -19,6 +19,8 @@ sealed class BaseWorld: global_pointer
 	returns loaded entity ID
 	*/
 	proto external EntityID GetEntity(int subScene, int entityIndex);
+	proto external int GetNumSubScenes();
+	proto external string GetSubSceneName(int subScene);
 	proto external float GetSurfaceY(float x, float z);
 	proto external void GetActiveEntities(notnull out array<IEntity> entities);
 	/*!
@@ -156,19 +158,6 @@ sealed class BaseWorld: global_pointer
 	\param decal 	item to be removed
 	*/
 	proto external void RemoveDecal(Decal decal);
-	/*!
-	Creates continous visual mark, e.g. from wheel when a car is moving on the ground
-	\param entity		entity where the Track should be created (only terrain is supported ATM)
-	\param origin		first point of the decal, nothing is done now
-	\param normal		normal of surface
-	\param edgeSize	Edge size of decal
-	\param lifeTime	Lifetime in seconds
-	\param materialName Material used for decal
-	\param prevDecal	Previous decal, we are connecting to
-	\param alpha		translucency of point
-	\return TrackDecal pointer or null
-	*/
-	proto external TrackDecal CreateTrackDecal(IEntity entity, vector origin, vector normal, float edgeSize, float lifeTime, string materialName, Decal prevDecal, float alpha);
 	proto external int GetCurrentCameraId();
 	/*!
 	Changes camera position
@@ -186,6 +175,7 @@ sealed class BaseWorld: global_pointer
 	proto external void SetCameraNearPlane(int cam, float nearplane);
 	//! Default 160000 units
 	proto external void SetCameraFarPlane(int cam, float farplane);
+	proto external float GetCameraFarPlane(int cam);
 	//! set HDR camera exposure (if hdrBrightness > 0, camera is set to manual mode with this exposure, set -1 to enable again auto mode)
 	proto external void SetCameraHDRBrightness(int cam, float hdrBrightness);
 	//! adjust camera EV (light stops), 0 = no adjustment, both positive/negative values are allowed

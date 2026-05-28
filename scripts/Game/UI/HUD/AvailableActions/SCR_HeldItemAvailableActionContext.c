@@ -14,7 +14,7 @@ class SCR_HeldItemAvailableActionContext : SCR_AvailableActionContext
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool IsAvailable(SCR_AvailableActionsConditionData data, float timeSlice)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data, float timeSlice)
 	{
 		IEntity heldItem = data.GetHeldGadget();
 		if (!heldItem)

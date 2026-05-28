@@ -110,7 +110,7 @@ class SCR_ArmExplosiveChargeWithRemoteFuzeAction : SCR_ExplosiveChargeAction
 		if (m_ChargeComp.GetTrigger())
 			m_ChargeComp.GetTrigger().SetUser(m_ActionUser);
 
-		RplId detonatorId = Replication.FindId(m_HeldDetonatorComp);
+		RplId detonatorId = Replication.FindItemId(m_HeldDetonatorComp);
 		if (detonatorId.IsValid())
 			m_ChargeComp.ConnectDetonator(SCR_EFuzeType.REMOTE, detonatorId);
 	}

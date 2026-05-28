@@ -49,7 +49,7 @@ class SCR_SimpleKeybindDialogUI : SCR_KeybindDialogBase
 				UIConstants.GetActionDisplayStateAttribute(SCR_EActionDisplayState.NON_INTERACTABLE_HINT)
 			);
 			
-			m_wCloseHint.SetText(WidgetManager.Translate(CLOSE_HINT, actionText));
+			m_wCloseHint.SetTextFormat(CLOSE_HINT, actionText);
 		}
 		
 		SetMessageColor(Color.FromInt(UIColors.NEUTRAL_ACTIVE_STANDBY.PackToInt()));
@@ -71,8 +71,8 @@ class SCR_SimpleKeybindDialogUI : SCR_KeybindDialogBase
 		{
 			m_Binding.Save();
 
-			if (!m_WasCanceled)
-				SCR_AnalyticsApplication.GetInstance().ChangeKeybind(m_sActionName, m_Entry.m_sPreset);
+			//if (!m_WasCanceled)
+			//	SCR_AnalyticsApplication.GetInstance().ChangeKeybind(m_sActionName, m_Entry.m_sPreset);
 			
 			if (m_OnKeyCaptured)
 				m_OnKeyCaptured.Invoke(); //TODO: there is no "capturing cancelled" state nor check. This will be called upon closing the dialog as well. FIX

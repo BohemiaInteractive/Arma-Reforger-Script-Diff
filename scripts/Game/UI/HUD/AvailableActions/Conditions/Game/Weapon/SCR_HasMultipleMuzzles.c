@@ -1,17 +1,12 @@
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_HasMultipleMuzzles : SCR_AvailableActionCondition
 {
-	ref array<BaseMuzzleComponent> muzzles = {};
+	protected ref array<BaseMuzzleComponent> m_aMuzzles = {};
 
 	//------------------------------------------------------------------------------------------------
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
 		BaseWeaponComponent weapon = data.GetCurrentWeapon();
-		if (!weapon)
-			return false;
-
-		int count = weapon.GetMuzzlesList(muzzles);
-		return GetReturnResult(count > 1);
+		return GetReturnResult(weapon && weapon.GetMuzzlesList(m_aMuzzles) > 1);
 	}
-};
+}

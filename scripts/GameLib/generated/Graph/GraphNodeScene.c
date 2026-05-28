@@ -11,10 +11,21 @@ Do not modify, this script is generated
 
 class GraphNodeScene: ScriptAndConfig
 {
-	//Nodes property index in graph data, it is an array of GraphNode
-	//static const int NODES;  //< This is commented since it is automatically define by CPP, but you can still use it of course
-	//Connections property index in graph data, it is an array of GraphNodeConnectionBase
-	//static const int CONNECTIONS; //< This is commented since it is automatically define by CPP, but you can still use it of course
+	/** \name Constants
+	 * Populated by the engine.
+	 */
+	///@{
+
+	/*!
+	Nodes property index in graph data, it is an array of GraphNode
+	*/
+	static const int NODES;
+	/*!
+	Connections property index in graph data, it is an array of GraphNodeConnectionBase
+	*/
+	static const int CONNECTIONS;
+	///@}
+
 	void GraphNodeScene() {}
 
 	// --- Model
@@ -24,8 +35,12 @@ class GraphNodeScene: ScriptAndConfig
 	proto external void DeleteSelectedItems();
 	//! Start drawing temporary connection from pPort, clear define if we should clear other current temporary connection
 	proto external void BeginDrawConnection(notnull GraphNodePortBase pPort, bool clear = true);
+	//! Set node name
+	proto external void SetNodeName(notnull GraphNode node, string newNodeName);
 	//! Returns a position snapped to the grid
 	proto external vector SnapToGrid(vector scenePos);
+	//! Returns every items
+	proto external int GetAllItems(notnull array<GraphGraphicsItem> allItems);
 	//! Returns graphics item at scene position
 	proto external GraphGraphicsItem ItemAt(vector scenePos);
 	//! Returns every selected items

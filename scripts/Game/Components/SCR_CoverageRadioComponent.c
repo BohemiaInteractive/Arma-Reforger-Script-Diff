@@ -284,7 +284,7 @@ class SCR_CoverageRadioComponent : ScriptedRadioComponent
 		{
 			m_aEncryptionKeyCoverSend.Insert(encryptionKey);
 
-			if (m_sSavedEncryptionKey != encryptionKey)
+			if (m_sSavedEncryptionKey != encryptionKey || !IsPowered())
 				return;
 
 			foreach (SCR_CoverageRadioComponent inRangeOfRadio : m_aInRangeOfRadios)
@@ -296,7 +296,7 @@ class SCR_CoverageRadioComponent : ScriptedRadioComponent
 		{
 			m_aEncryptionKeyCoverReceive.Insert(encryptionKey);
 
-			if (m_sSavedEncryptionKey != encryptionKey)
+			if (m_sSavedEncryptionKey != encryptionKey || !IsPowered())
 				return;
 
 			foreach (SCR_CoverageRadioComponent radioInRange : m_aRadiosInRange)
@@ -351,22 +351,17 @@ class SCR_CoverageRadioComponent : ScriptedRadioComponent
 
 		SetEventMask(owner, EntityEvent.INIT);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	void ~SCR_CoverageRadioComponent()
+	override void OnDelete(IEntity owner)
 	{
 		// Map descriptor is only used for visual stuff. No need for it on headless.
 		if (RplSession.Mode() != RplMode.Dedicated)
 		{
-			IEntity owner = GetOwner();
+			SCR_RadioCoverageMapDescriptorComponent mapDescriptor = SCR_RadioCoverageMapDescriptorComponent.Cast(GetOwner().FindComponent(SCR_RadioCoverageMapDescriptorComponent));
 
-			if (owner)
-			{
-				SCR_RadioCoverageMapDescriptorComponent mapDescriptor = SCR_RadioCoverageMapDescriptorComponent.Cast(GetOwner().FindComponent(SCR_RadioCoverageMapDescriptorComponent));
-
-				if (mapDescriptor)
-					mapDescriptor.SetParentRadio(null);
-			}
+			if (mapDescriptor)
+				mapDescriptor.SetParentRadio(null);
 		}
 
 		SCR_RadioCoverageSystem manager = SCR_RadioCoverageSystem.GetInstance();
@@ -391,5 +386,6 @@ class SCR_CoverageRadioComponent : ScriptedRadioComponent
 			manager.UnregisterRadioComponent(this);
 
 		OnPowerToggle(false);
+		super.OnDelete(owner);
 	}
 }

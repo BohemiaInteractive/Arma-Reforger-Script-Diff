@@ -73,7 +73,7 @@ class SCR_ServicesStatusHelper
 	//! \return
 	static bool IsAuthenticated()
 	{
-		return IsBackendReady() && GetGame().GetBackendApi().IsAuthenticated();
+		return IsBackendReady() && BackendAuthenticatorApi.IsAuthenticated();
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-class MortarAnimationComponent: BaseItemAnimationComponent
+class MortarAnimationComponent: CompartmentAnimationComponent
 {
 }
 

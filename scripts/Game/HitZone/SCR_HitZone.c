@@ -1,10 +1,7 @@
 class SCR_HitZone : HitZone
 {
 	[Attribute(desc: "Rules for passing damage to parent, root and own default hitzone")]
-	protected ref array<ref SCR_DamagePassRule> m_aDamagePassRules;
-
-	[Attribute(defvalue: "1", desc: "Fire damage multiplier\n[x * 100%]", params: "0 1000 0.01")]
-	protected float m_fFireMultiplier;
+	protected ref array<ref SCR_BaseDamagePassRule> m_aDamagePassRules;
 
 	protected ref ScriptInvokerVoid m_OnHealthChanged;
 	protected ref ScriptInvoker m_OnDamageStateChanged; // TODO: make it a ScriptInvoker w/ ScriptedHitZone
@@ -112,85 +109,10 @@ class SCR_HitZone : HitZone
 		if (m_aDamagePassRules.IsEmpty())
 			return;
 
-		SCR_HitZone defaultHitZone;
-		SCR_DamageManagerComponent damageManager = SCR_DamageManagerComponent.Cast(GetHitZoneContainer());
-		if (damageManager)
+		const SCR_DamageManagerComponent damageManager = SCR_DamageManagerComponent.Cast(GetHitZoneContainer());
+		foreach (SCR_BaseDamagePassRule rule : m_aDamagePassRules)
 		{
-			defaultHitZone = SCR_HitZone.Cast(damageManager.GetDefaultHitZone());
-
-			if (defaultHitZone == this)
-				defaultHitZone = null;
+			rule.HandlePassedDamage(damageContext, this, damageManager);
 		}
-
-		SCR_HitZone rootHitZone;
-		IEntity owner = GetOwner();
-		IEntity root = owner.GetRootParent();
-		if (root)
-		{
-			damageManager = SCR_DamageManagerComponent.GetDamageManager(root);
-			if (damageManager)
-				rootHitZone = SCR_HitZone.Cast(damageManager.GetDefaultHitZone());
-
-			if (rootHitZone == this)
-				rootHitZone = null;
-		}
-
-		SCR_HitZone parentHitZone;
-		IEntity parent = owner.GetParent();
-		if (parent)
-		{
-			damageManager = SCR_DamageManagerComponent.GetDamageManager(parent);
-			if (damageManager)
-				parentHitZone = SCR_HitZone.Cast(damageManager.GetDefaultHitZone());
-
-			if (parentHitZone == this)
-				parentHitZone = null;
-		}
-
-		// Forward non-DOT damage to root or parent default hitzone, ignoring own base damage multiplier
-		BaseDamageContext context;
-		foreach (SCR_DamagePassRule rule : m_aDamagePassRules)
-		{
-			// If damage types are defined, only allow passing specified damage types
-			if (!rule.m_aSourceDamageTypes.IsEmpty() && !rule.m_aSourceDamageTypes.Contains(damageContext.damageType))
-				continue;
-
-			// If damage states are defined, only allow passing while damage state is allowed
-			if (!rule.m_aDamageStates.IsEmpty() && !rule.m_aDamageStates.Contains(GetDamageState()))
-				continue;
-
-			context = BaseDamageContext.Cast(damageContext.Clone());
-			context.damageValue *= rule.m_fMultiplier;
-
-			// Change passed damage type unless it is set to true
-			if (rule.m_eOutputDamageType != EDamageType.TRUE)
-				context.damageType = rule.m_eOutputDamageType;
-
-			if (rule.m_bPassToRoot && rootHitZone)
-				rootHitZone.HandlePassedDamage(context);
-
-			if (rule.m_bPassToParent && parentHitZone)
-				parentHitZone.HandlePassedDamage(context);
-
-			if (rule.m_bPassToDefaultHitZone && defaultHitZone)
-				defaultHitZone.HandlePassedDamage(context);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	/*!
-	Handle damage in this hit zone. Clones the damage context so that it does not override passed one
-	//! \param[in] damageContext - damage context to be received in this hit zone
-	*/
-	void HandlePassedDamage(notnull BaseDamageContext damageContext)
-	{
-		DamageManagerComponent damageManager = DamageManagerComponent.Cast(GetHitZoneContainer());
-		if (!damageManager)
-			return;
-
-		BaseDamageContext context = BaseDamageContext.Cast(damageContext.Clone());
-		context.struckHitZone = this;
-
-		damageManager.HandleDamage(context);
 	}
 }

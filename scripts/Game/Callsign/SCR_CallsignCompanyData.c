@@ -64,6 +64,35 @@ class SCR_CallsignCompanyData
 		firstAvailibleSquad = firstAvailiblePlatoonData.GetFirstAvailibleSquad();
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! Finds a platoon with the most available squad callsigns and gets the first available callsign in the platoon. Meaning if platoon 1 has 2 (out of 4) squads taken and platoon 2 has only one (out of 4) taken, it will pick the first available squad of the second platoon.
+	//! \param[out] platoon index
+	//! \param[out] squad index
+	//! \return bool true if successfully found an available callsign
+	bool GetFirstAvailableSquadCallsign(out int firstAvailablePlatoon, out int firstAvailableSquad)
+	{
+		firstAvailableSquad = int.MAX;
+		SCR_CallsignPlatoonData platoonData;
+
+		int firstSquad;
+		foreach (int index, SCR_CallsignPlatoonData platoon: m_mPlatoonCallsigns)
+		{
+			firstSquad = platoon.GetFirstAvailibleSquad();
+			if (firstSquad < firstAvailableSquad)
+			{
+				firstAvailableSquad = firstSquad;
+				firstAvailablePlatoon = index;
+			}
+			else if (firstSquad == firstAvailableSquad && index < firstAvailablePlatoon)
+			{
+				firstAvailableSquad = firstSquad;
+				firstAvailablePlatoon = index;
+			}
+		}
+
+		return firstAvailableSquad < int.MAX;
+	}
+
 	//---------------------------------------- Add availible Callsign ----------------------------------------\\
 	/*!
 	Adds callsign back to availible callsign pool

@@ -54,18 +54,18 @@ class SCR_TreeSoundGroup : SCR_SoundGroup
 		SCR_AmbientSoundsComponent ambientSoundsComponent = randomPositionaSounds.GetAmbientSoundsComponent();
 		
 		ETreeSoundTypes treeSoundType = ambientSoundsComponent.GetDominantTree();					
-		if (treeSoundType == EQueryType.TreeConifer)
+		if (treeSoundType == EAmbientSoundType.TreeConifer)
 		{					
-			IEntity tree = ambientSoundsComponent.GetRandomTree(EQueryType.TreeConifer, TREE_CONIFER_HEIGHT_LIMIT);
+			IEntity tree = ambientSoundsComponent.GetRandomTree(EAmbientSoundFlags.TreeConifer, TREE_CONIFER_HEIGHT_LIMIT);
 			if (!tree)
 				return;
 				
 			soundType = 0;
 			position = GetRandomPositionOnEntity(tree);			
 		}
-		else if  (treeSoundType == EQueryType.TreeLeafy)
+		else if  (treeSoundType == EAmbientSoundType.TreeLeafy)
 		{
-			IEntity tree = ambientSoundsComponent.GetRandomTree(EQueryType.TreeLeafy, TREE_LEAFY_HEIGHT_LIMIT);
+			IEntity tree = ambientSoundsComponent.GetRandomTree(EAmbientSoundFlags.TreeLeafy, TREE_LEAFY_HEIGHT_LIMIT);
 			if (!tree)
 				return;
 				
@@ -254,7 +254,7 @@ class SCR_VegetationSoundGroup : SCR_SoundGroup
 	//!
 	override void GetSoundTypeAndPosition(SCR_RandomPositionalSounds randomPositionaSounds, vector cameraPosition, float spawnDistance, out int soundType, out vector position)
 	{					
-		IEntity entity = randomPositionaSounds.GetAmbientSoundsComponent().GetRandomTree(EQueryType.TreeWithered, TREE_HEIGHT_LIMIT);		
+		IEntity entity = randomPositionaSounds.GetAmbientSoundsComponent().GetRandomTree(EAmbientSoundFlags.TreeWithered, TREE_HEIGHT_LIMIT);		
 		if (entity)
 		{
 			soundType = 0;
@@ -263,7 +263,7 @@ class SCR_VegetationSoundGroup : SCR_SoundGroup
 			return;
 		}
 		
-		entity = randomPositionaSounds.GetAmbientSoundsComponent().GetRandomTree(EQueryType.TreeBush, BUSH_HEIGHT_LIMIT);
+		entity = randomPositionaSounds.GetAmbientSoundsComponent().GetRandomTree(EAmbientSoundFlags.TreeBush, BUSH_HEIGHT_LIMIT);
 		if (entity)
 		{
 			soundType = 1;

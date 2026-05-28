@@ -16,6 +16,8 @@ enum VCFlags
 	NOFILTER,
 	//! Inherit visibility from parent
 	INHERIT_PARENT_VISIBILITY,
+	//! Inherit LOD from parent
+	INHERIT_PARENT_LOD,
 	//! This instance do not cast shadows.
 	NOSHADOW,
 	//! This instance ignore light interactions.

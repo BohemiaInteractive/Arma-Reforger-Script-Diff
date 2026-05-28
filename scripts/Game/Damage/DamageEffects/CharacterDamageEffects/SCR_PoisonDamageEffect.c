@@ -154,6 +154,12 @@ class SCR_PoisonDamageEffect : SCR_DotDamageEffect
 			return;
 
 		poisonScreenEffect.OnDamageEffectRemoved(this);
+		
+		SCR_CharacterDamageManagerComponent characterDamageMgr = SCR_CharacterDamageManagerComponent.Cast(dmgManager);
+		if (!characterDamageMgr)
+			return;
+		
+		characterDamageMgr.RegenPhysicalHitZones();
 	}
 
 	//------------------------------------------------------------------------------------------------

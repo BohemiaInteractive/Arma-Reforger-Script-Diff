@@ -4,6 +4,7 @@ Entity Health Attribute for getting and setting varriables in Editor Attribute w
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_HealthEditorAttribute : SCR_ValidTypeBaseValueListEditorAttribute
 {
+	//------------------------------------------------------------------------------------------------
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{
 		//~ With the new health system health can no longer be set with just a slider.
@@ -30,6 +31,8 @@ class SCR_HealthEditorAttribute : SCR_ValidTypeBaseValueListEditorAttribute
 		
 		return SCR_BaseEditorAttributeVar.CreateFloat(Math.Round(damageComponent.GetHealthScaled() * 100));
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{
 		if (!var) 
@@ -40,17 +43,22 @@ class SCR_HealthEditorAttribute : SCR_ValidTypeBaseValueListEditorAttribute
 		if (!owner) 
 			return;
 		
-		DamageManagerComponent damageComponent = DamageManagerComponent.Cast(owner.FindComponent(DamageManagerComponent));
+		SCR_DamageManagerComponent damageComponent = SCR_DamageManagerComponent.Cast(owner.FindComponent(SCR_DamageManagerComponent));
 		if (!damageComponent) 
 			return;
 		
 		if (!damageComponent.IsDamageHandlingEnabled())
 			return;
 		
-		float health = (var.GetFloat() / 100);
-		
+		float health = var.GetFloat() * 0.01;
+		if (health == 0)
+		{
+			Instigator killer = Instigator.CreateInstigatorGM(playerID);
+			damageComponent.Kill(killer);
+			return;
+		}
+
 		HitZone defaultHitzone = damageComponent.GetDefaultHitZone();
-		
 		defaultHitzone.SetHealthScaled(health);
 	}
-};
+}

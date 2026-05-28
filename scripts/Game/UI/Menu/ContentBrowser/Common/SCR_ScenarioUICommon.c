@@ -33,9 +33,14 @@ class SCR_ScenarioUICommon
 		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
 		if (mgr)
 			mgr.GetDownloadQueueState(nCompleted, nTotal);
+		
+		SCR_AddonManager addonMgr = SCR_AddonManager.GetInstance();
 
 		if (nTotal > 0)
 			SCR_StartScenarioWhileDownloadingDialog.CreateDialog(scenario);
+		else if (addonMgr && addonMgr.CountOfEnabledAddons() > 0 && scenario.GetPlayerCount() == 1 && !scenario.GetOwner() && !scenario.Author())
+		// This checks if any of addons are enabled, scenario is singleplayer, it didn't come from the workshop and there's no author, which is default for all BI missions now.
+			SCR_StartScenarioWhileAddonsEnabledDialog.CreateDialog(scenario);
 		else
 			scenario.Play();
 	}
@@ -57,28 +62,21 @@ class SCR_ScenarioUICommon
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static bool HasSave(MissionWorkshopItem mission)
-	{
-		if (!mission)
-			return false;
-
-		array<SaveGame> outSaveGames();
-		return GetGame().GetSaveGameManager().GetSaves(outSaveGames, mission.Id()) > 0;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	static bool LoadSave(MissionWorkshopItem scenario, SCR_MissionHeader header, ChimeraMenuPreset startMenu)
 	{
-		if (!SCR_ScenarioUICommon.CanPlay(scenario))
-			return false;
-
-		array<SaveGame> saves();		
-		if (GetGame().GetSaveGameManager().GetSaves(saves, scenario.Id()) == 0)
-			return false; // No saves available
-		
-		GetGame().GetSaveGameManager().Load(saves[saves.Count() - 1], false);
+		const SaveGameManager manager = GetGame().GetSaveGameManager();
+		manager.GetSaves(scenario.Id(), new SaveGameObtainCallback(ProcessLoadSave, scenario));
 		SCR_MenuLoadingComponent.SaveLastMenu(startMenu);
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected static void ProcessLoadSave(bool success, array<SaveGame> saves, MissionWorkshopItem scenario)
+	{
+		if (!saves.IsEmpty())
+			GetGame().GetSaveGameManager().Load(saves[saves.Count() - 1], false);
+
+		TryPlayScenario(scenario);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -87,32 +85,8 @@ class SCR_ScenarioUICommon
 		if (!SCR_ScenarioUICommon.CanPlay(scenario))
 			return false;
 
-		array<SaveGame> saves();		
-		GetGame().GetSaveGameManager().GetSaves(saves, scenario.Id());
-
-		Tuple2<int, MissionWorkshopItem> sharedCtx(saves.Count(), scenario);
-		SaveGameOperationCb callback(OnRestartScenarioCleanupComplete, sharedCtx);
-		foreach (SaveGame save : saves)
-		{
-			GetGame().GetSaveGameManager().Delete(save, callback);
-		}
-
+		TryPlayScenario(scenario);
 		return true;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected static void OnRestartScenarioCleanupComplete(bool success, Managed context)
-	{
-		auto sharedCtx = Tuple2<int, MissionWorkshopItem>.Cast(context);
-		if (!success || !sharedCtx.param2)
-		{
-			sharedCtx.param1 = -1; // Error, future invokes will never make it reach count 0
-			return;
-		}
-
-		// Last delete of old data complete
-		if (--sharedCtx.param1 == 0)
-			TryPlayScenario(sharedCtx.param2);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -449,11 +423,16 @@ class SCR_ScenarioUICommon
 		if (!button)
 			return;
 
-		visible = visible && entryFocused && !HasSave(mission);
+		visible &= entryFocused;
 
 		button.SetVisible(visible);
-		if (visible)
-			SCR_ListEntryHelper.UpdateMouseButtonColor(button, GetPlayHighestPriorityIssue(mission) != SCR_EScenarioIssues.NONE, entryFocused);
+		if (!visible)
+			return;
+
+		SCR_ListEntryHelper.UpdateMouseButtonColor(button, GetPlayHighestPriorityIssue(mission) != SCR_EScenarioIssues.NONE, entryFocused);
+
+		SaveGameObtainCallback cb(UpdateSaveRelatedMouseButton, new Tuple2<SCR_ModularButtonComponent, bool>(button, false));
+		GetGame().GetSaveGameManager().GetSaves(mission.Id(), cb);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -462,11 +441,14 @@ class SCR_ScenarioUICommon
 		if (!button)
 			return;
 
-		visible = visible && entryFocused && HasSave(mission);
+		button.SetVisible(false);
+		if (!visible || !entryFocused)
+			return;
 
-		button.SetVisible(visible);
-		if (visible)
-			SCR_ListEntryHelper.UpdateMouseButtonColor(button, GetPlayHighestPriorityIssue(mission) != SCR_EScenarioIssues.NONE, entryFocused);
+		SCR_ListEntryHelper.UpdateMouseButtonColor(button, GetPlayHighestPriorityIssue(mission) != SCR_EScenarioIssues.NONE, entryFocused);
+
+		SaveGameObtainCallback cb(UpdateSaveRelatedMouseButton, new Tuple2<SCR_ModularButtonComponent, bool>(button, true));
+		GetGame().GetSaveGameManager().GetSaves(mission.Id(), cb);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -475,13 +457,27 @@ class SCR_ScenarioUICommon
 		if (!button)
 			return;
 
-		visible = visible && HasSave(mission);
+		button.SetVisible(false);
+		if (!visible)
+			return;
 
-		button.SetVisible(visible);
-		if (visible)
-			SCR_ListEntryHelper.UpdateMouseButtonColor(button, GetPlayHighestPriorityIssue(mission) != SCR_EScenarioIssues.NONE, entryFocused);
+		SCR_ListEntryHelper.UpdateMouseButtonColor(button, GetPlayHighestPriorityIssue(mission) != SCR_EScenarioIssues.NONE, entryFocused);
+
+		SaveGameObtainCallback cb(UpdateSaveRelatedMouseButton, new Tuple2<SCR_ModularButtonComponent, bool>(button, true));
+		GetGame().GetSaveGameManager().GetSaves(mission.Id(), cb);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected static void UpdateSaveRelatedMouseButton(bool success, array<SaveGame> saves, Managed ctx)
+	{
+		if (!success || saves.IsEmpty())
+			return;
+
+		auto context = Tuple2<SCR_ModularButtonComponent, bool>.Cast(ctx);
+		if (context.param1)
+			context.param1.SetVisible(context.param2);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	static void UpdatePlayMouseButtonTooltip(SCR_ScriptedWidgetTooltip tooltip, MissionWorkshopItem mission)
 	{
@@ -494,11 +490,14 @@ class SCR_ScenarioUICommon
 		if (!button)
 			return;
 
-		visible = visible && !HasSave(mission);
 		button.SetVisible(visible, false);
+		if (!visible)
+			return;
 
-		if (visible)
-			SetInputButtonEnabled(button, GetPlayHighestPriorityIssue(mission), GetOwnerRevisionAvailability(mission));
+		SetInputButtonEnabled(button, GetPlayHighestPriorityIssue(mission), GetOwnerRevisionAvailability(mission));
+		
+		SaveGameObtainCallback cb(UpdateSaveRelatedInputButton, new Tuple2<SCR_InputButtonComponent, bool>(button, false));
+		GetGame().GetSaveGameManager().GetSaves(mission.Id(), cb);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -507,26 +506,33 @@ class SCR_ScenarioUICommon
 		if (!button)
 			return;
 
-		visible = visible && HasSave(mission);
-		button.SetVisible(visible, false);
+		button.SetVisible(false, false);
+		if (!visible)
+			return;
 
-		if (visible)
-			SetInputButtonEnabled(button, GetPlayHighestPriorityIssue(mission), GetOwnerRevisionAvailability(mission));
+		SetInputButtonEnabled(button, GetPlayHighestPriorityIssue(mission), GetOwnerRevisionAvailability(mission));
+		
+		SaveGameObtainCallback cb(UpdateSaveRelatedInputButton, new Tuple2<SCR_InputButtonComponent, bool>(button, true));
+		GetGame().GetSaveGameManager().GetSaves(mission.Id(), cb);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	static void UpdateRestartInputButton(SCR_InputButtonComponent button, MissionWorkshopItem mission, bool visible = true)
 	{
-		if (!button)
-			return;
-
-		visible = visible && HasSave(mission);
-		button.SetVisible(visible, false);
-
-		if (visible)
-			SetInputButtonEnabled(button, GetPlayHighestPriorityIssue(mission), GetOwnerRevisionAvailability(mission));
+		UpdateContinueInputButton(button, mission, visible); // It does the same for now
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected static void UpdateSaveRelatedInputButton(bool success, array<SaveGame> saves, Managed ctx)
+	{
+		if (!success || saves.IsEmpty())
+			return;
+
+		auto context = Tuple2<SCR_InputButtonComponent, bool>.Cast(ctx);
+		if (context.param1)
+			context.param1.SetVisible(context.param2, false);
+	}
+	
 	// --- Join (Find Servers) ---
 	//------------------------------------------------------------------------------------------------
 	static void UpdateJoinMouseButton(SCR_ModularButtonComponent button, MissionWorkshopItem mission, bool entryFocused, bool visible = true)

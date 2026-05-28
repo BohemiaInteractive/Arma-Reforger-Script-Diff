@@ -1,6 +1,6 @@
 class SCR_AIAnimateBehavior : SCR_AIBehaviorBase
 {
-	ref SCR_BTParamRef<IEntity> m_RootEntity = new SCR_BTParamRef<IEntity>(SCR_AIActionTask.ENTITY_PORT);
+	ref SCR_BTParam<IEntity> m_RootEntity = new SCR_BTParam<IEntity>(SCR_AIActionTask.ENTITY_PORT);
 	ref SCR_BTParamRef<SCR_AIAnimationScript> m_AgentScript = new SCR_BTParamRef<SCR_AIAnimationScript>(SCR_AIActionTask.AGENT_SCRIPT_PORT);
 	ref SCR_BTParamRef<ScriptInvokerBase<SCR_AIOnAnimationBehaviorAction>> m_RelatedInvoker = new SCR_BTParamRef<ScriptInvokerBase<SCR_AIOnAnimationBehaviorAction>>(SCR_AIActionTask.RELATED_INVOKER_PORT);
 	

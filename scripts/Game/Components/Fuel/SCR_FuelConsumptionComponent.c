@@ -165,7 +165,7 @@ class SCR_FuelConsumptionComponent : ScriptGameComponent
 			{
 				float throttle = wheeledSimulation.GetThrottle();
 				if (throttle >= MIN_THRUST && wheeledSimulation.GetGear() != NEUTRAL_GEAR && wheeledSimulation.GetClutch() >= MIN_CLUTCH)
-					currentConsumption = m_ComponentData.m_fFuelConsumption * throttle * wheeledSimulation.EngineGetRPM() / wheeledSimulation.EngineGetRPMPeakTorque();
+					currentConsumption = m_ComponentData.m_fFuelConsumption * throttle * wheeledSimulation.EngineGetRPM() / wheeledSimulation.EngineGetRPMPeakPower();
 				else if (throttle >= MIN_THRUST)
 					currentConsumption = m_ComponentData.m_fFuelConsumptionIdle * wheeledSimulation.EngineGetRPM() / wheeledSimulation.EngineGetRPMIdle();
 				else

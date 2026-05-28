@@ -39,6 +39,9 @@ class SCR_MenuTileComponent : ScriptedWidgetComponent
 	[Attribute("Icon")]
 	protected string m_sIconImageName;
 
+	[Attribute("true")]
+	protected bool m_bIgnoreTutorialWarning;
+
 	protected Widget m_wRoot;
 	protected ImageWidget m_wImageDefault;
 	protected ImageWidget m_wImageSelected;
@@ -126,8 +129,17 @@ class SCR_MenuTileComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
+		if (button == MouseState.RIGHT)
+			return true;
+		
 		m_OnClicked.Invoke(this);
 		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IgnoreTutorialWarning()
+	{
+		return m_bIgnoreTutorialWarning;
 	}
 	
 	//------------------------------------------------------------------------------------------------

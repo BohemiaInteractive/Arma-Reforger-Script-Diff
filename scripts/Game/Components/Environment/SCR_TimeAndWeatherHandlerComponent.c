@@ -70,7 +70,7 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 	[Attribute(defvalue: "0", desc: "Override Date", category:"Date")]
 	protected bool m_bDateOverride;
 
-	[Attribute(defvalue: "1", UIWidgets.Slider, desc: "Day", params: "1 12", category:"Date")]
+	[Attribute(defvalue: "1", UIWidgets.Slider, desc: "Day", params: "1 31", category:"Date")]
 	protected int m_iDay;
 
 	[Attribute(defvalue: "1", UIWidgets.Slider, desc: "Month", params: "1 12", category:"Date")]

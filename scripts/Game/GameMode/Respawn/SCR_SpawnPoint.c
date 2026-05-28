@@ -67,12 +67,9 @@ class SCR_SpawnPoint : SCR_Position
 	[Attribute("0", desc: "Spawn at a random place on the map")]
 	protected bool m_bRandomizedSpawn;
 	
-	[Attribute("500", desc: "Radius around enemy bases for the random spawn to avoid")]
-	protected float m_fRandomSpawnSafeRange;
-	
-	[Attribute("20", desc: "Random position attempt count")]
+	[Attribute("10", params: "1 inf", desc: "Random position attempt count")]
 	protected int m_iRandomSpawnMaxAttempts;
-
+	
 	// List of all spawn points
 	private static ref array<SCR_SpawnPoint> m_aSpawnPoints = new array<SCR_SpawnPoint>();
 
@@ -365,10 +362,16 @@ class SCR_SpawnPoint : SCR_Position
 	}
 
 	//------------------------------------------------------------------------------------------------
+	bool IsSpawnPointRandom()
+	{
+		return m_bRandomizedSpawn;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void GetPositionAndRotation(out vector pos, out vector rot)
 	{
 		if (m_bRandomizedSpawn && GetRandomPositionAndRotation(pos,rot))
-				return;
+			return;
 
 		if (m_bUseNearbySpawnPositions)
 		{
@@ -404,7 +407,7 @@ class SCR_SpawnPoint : SCR_Position
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Return spawn point index or -1 if not existant
+	//! Return spawn point index or -1 if not existent
 	static int GetSpawnPointIndex(SCR_SpawnPoint spawnPoint)
 	{
 		return m_aSpawnPoints.Find(spawnPoint);
@@ -689,7 +692,7 @@ class SCR_SpawnPoint : SCR_Position
 			terminate if preparation fails (returns false). Player is then informed about spawn.
 
 			Following a successful preparation is CanSpawnFinalize_S, and SpawnFinalize_S after which
-			the process is sucessfully ended.
+			the process is successfully ended.
 
 			\param requestComponent Player request component
 			\param data Data received for this request
@@ -720,7 +723,7 @@ class SCR_SpawnPoint : SCR_Position
 			(E.g. upon seating a character we can await until character is properly seated)
 
 			Following a successful preparation is CanSpawnFinalize_S, and SpawnFinalize_S after which
-			the process is sucessfully ended.
+			the process is successfully ended.
 
 			\param requestComponent Player request component
 			\param data Data received for this request
@@ -838,96 +841,32 @@ class SCR_SpawnPoint : SCR_Position
 	//------------------------------------------------------------------------------------------------
 	protected bool GetRandomPositionAndRotation(out vector vOutPosition, out vector vOutRotation)
 	{
-		BaseWorld world = GetGame().GetWorld();
-		if (!world) 
+		SCR_RandomSpawnManagerComponent randomSpawnManager = SCR_RandomSpawnManagerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_RandomSpawnManagerComponent));
+
+		if (!randomSpawnManager)
+		{
+			vOutPosition = this.GetOrigin();
 			return false;
+		}
 
-		int zMin, zMax, zStep;
-		string spawnPointFaction;
-		float posX, posZ, traceCoef, distance;
-		vector vRandomSpawnCenter, vTestPosition;
+		vector safePosition;
+		BaseWorld world = GetWorld();
 		
-		TraceFlags flags = TraceFlags.ENTS | TraceFlags.OCEAN;
-		TraceParam trace = new TraceParam();
-		trace.Flags = flags | TraceFlags.WORLD;
-		vector traceOffset = Vector(0, 10, 0);
-		bool bPointIsSafe = true;
-		
+		// Attempt a few times in case the pre-calculated points are now occupied by moving objects
 		for (int i; i < m_iRandomSpawnMaxAttempts; i++)
-		{	
-			vRandomSpawnCenter = GetRandomWorldPosition();
-			bPointIsSafe = true;
+		{
+			if (!randomSpawnManager.RequestSpawnPosition(m_sFaction, m_aSpawnPoints, safePosition))
+				break;
 			
-			if (m_fRandomSpawnSafeRange > 0)
+			if (SCR_WorldTools.TraceCylinder(safePosition + m_vCylinderVectorOffset, m_fPlayerCylinderRadius, m_fPlayerCylinderHeight, TraceFlags.ENTS, world))
 			{
-				foreach (SCR_SpawnPoint spawnPoint : m_aSpawnPoints) 
-				{
-					if (!spawnPoint)
-						continue;
-					
-					spawnPointFaction = spawnPoint.GetFactionKey();
-					if (spawnPointFaction != m_sFaction)
-					{
-						distance = vector.DistanceXZ(vRandomSpawnCenter, spawnPoint.GetOrigin());
-	    				if (distance <= m_fRandomSpawnSafeRange)
-						{
-							bPointIsSafe = false;
-							break;
-						}
-					}
-				}
-			}
-			
-			if (!bPointIsSafe)
-				continue;
-			
-			for (int r; r <= m_fRandomSpawnRadius; r++)
-			{	
-				for (int x = -r; x <= r; x++)
-				{
-					posX = m_fColliderWidth * x;
-					posZ = m_fColliderHeight * (x - SCR_Math.fmod(x, 1)) * 0.5;
-					zMin = Math.Max(-r - x, -r);
-					zMax = Math.Min(r - x, r);
-					if (Math.AbsInt(x) == r)
-						zStep = 1;
-					else
-						zStep = zMax - zMin;
-
-					for (int z = zMin; z <= zMax; z += zStep)
-					{
-						vTestPosition = vRandomSpawnCenter + Vector(posX, 0, posZ + m_fColliderHeight * z);
-						trace.Start = vTestPosition;
-						trace.End = vTestPosition - traceOffset;
-						traceCoef = world.TraceMove(trace, null);
-						vTestPosition[1] = Math.Max(trace.Start[1] - traceCoef * traceOffset[1] + 0.01, world.GetSurfaceY(vTestPosition[0], vOutPosition[2]));
-		
-						if (!SCR_WorldTools.TraceCylinder(vTestPosition + m_vCylinderVectorOffset, m_fPlayerCylinderRadius, m_fPlayerCylinderHeight, flags, world))
-							continue;
-							
-						vOutRotation = GetAngles();
-						vOutPosition = vTestPosition;
-						return true;
-					}
-				}
+				vOutPosition = safePosition;
+				vOutRotation = {Math.RandomFloat(0, 360), 0, 0};
+				return true;
 			}
 		}
 		
+		vOutPosition = GetOrigin();
 		return false;
 	}
-
-	//------------------------------------------------------------------------------------------------
-	vector GetRandomWorldPosition()
-	{
-		BaseWorld world = GetGame().GetWorld();
-		if (!world) 
-			return GetOrigin();
-		
-		vector mins, maxs;
-		world.GetBoundBox(mins, maxs);
-		vector vRandomizedValue = Vector(Math.RandomFloat(mins[0], maxs[0]), 0, Math.RandomFloat(mins[2], maxs[2]));
-		vRandomizedValue[1] = world.GetSurfaceY(vRandomizedValue[0], vRandomizedValue[2]);
-	    return vRandomizedValue;
-	}
-
 }

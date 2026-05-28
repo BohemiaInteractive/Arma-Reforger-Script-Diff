@@ -24,7 +24,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 
 	[Attribute(defvalue: "1", desc: "Least amount of AIs in the group after balancing occurs. Will not exceed maximum number of units defined in the group prefab.", category: "Balance")]
 	int m_iMinUnitsInGroup;
-	
+
 	[Attribute(defvalue: "1", desc: "When enabled and AI enters a vehicle, whole AI group won't be despawned by the Dynamic Despawn feature until the whole group is outside the vehicle", category: "Activation")]
 	bool m_bExcludeFromDynamicDespawnOnVehicleEntered;
 
@@ -64,13 +64,13 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	{
 		return m_aAIPrefabsForRemoval;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Restores default settings, clears waypoints, AI group, prefabs, slots, and initializes randomization.
 	//! \param[in] includeChildren Includes restoring default settings for child objects as well.
 	//! \param[in] reinitAfterRestoration Resets object state after restoration, allowing for fresh initialization.
 	//! \param[in] affectRandomization Affects whether randomization is reset during default restoration.
-	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true, bool deleteSpawnedEntities = true)
 	{
 		m_aWaypoints.Clear();
 		m_AIGroup = null;
@@ -78,8 +78,8 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 		m_aSlotWaypoints.Clear();
 		m_iCurrentlySpawnedWaypoints = 0;
 		m_bWaypointsInitialized = false;
-		
-		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
+
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization, deleteSpawnedEntities);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -93,7 +93,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 			GetOnAllChildrenSpawned().Insert(DynamicDespawn);
 			return;
 		}
-		
+
 		GetOnAllChildrenSpawned().Remove(ProcessWaypoints);
 		GetOnAllChildrenSpawned().Remove(SetWaypointToAI);
 
@@ -120,31 +120,31 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 		m_aSpawnedEntities.Clear();
 		m_aWaypoints.Clear();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnAgentCompartmentEntered(AIAgent agent, IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
 	{
 		if (m_bExcludeFromDynamicDespawn)
 			return;
-		
+
 		if (!agent || !Vehicle.Cast(targetEntity))
 			return;
-		
+
 		m_bExcludeFromDynamicDespawn = true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnAgentCompartmentLeft(AIAgent agent, IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
 	{
 		if (!m_bExcludeFromDynamicDespawn)
 			return;
-		
+
 		if (!agent || !Vehicle.Cast(targetEntity))
 			return;
-		
+
 		array<AIAgent> agents = {};
 		m_AIGroup.GetAgents(agents);
-		
+
 		bool isInVehicle;
 		foreach (AIAgent groupAgent : agents)
 		{
@@ -155,25 +155,26 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 				break;
 			}
 		}
-		
+
 		if (!isInVehicle)
 			m_bExcludeFromDynamicDespawn = false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Clears cached values and handles Waypoint Sets
 	//! \return true if all initialization steps succeed, false otherwise.
 	override bool InitOtherThings()
 	{
-		m_aWaypoints.Clear();
-		m_AIGroup = null;
-		m_iCurrentlySpawnedWaypoints = 0;
-		m_bWaypointsInitialized = false;
 		SCR_AIGroup.IgnoreSpawning(true);
 
-		if (m_eActivationType == SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT && m_WaypointSet && !m_WaypointSet.m_aLayerName.IsEmpty())
+		if (!m_bWaypointsInitialized &&
+			m_eActivationType == SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT &&
+			m_WaypointSet &&
+			!m_WaypointSet.m_aLayerName.IsEmpty())
+		{
 			InitWaypoints();
-		
+		}
+
 		return super.InitOtherThings();
 	}
 
@@ -182,6 +183,12 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	//! \param[in] layer for which this is called
 	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
+		if (m_bInitiated)
+		{
+			GetOnAllChildrenSpawned().Remove(AfterAllChildrenSpawned);
+			return;
+		}
+
 		m_bInitiated = true;
 
 		if (m_Entity)
@@ -198,7 +205,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	{
 		if (!m_bInitiated)
 			return;
-		
+
 		foreach (SCR_ScenarioFrameworkPlugin plugin : m_aPlugins)
 		{
 			plugin.Init(this);
@@ -211,7 +218,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 
 		if (!m_bWaypointsInitialized)
 			SetWaypointToAI(this);
-		
+
 		SCR_ScenarioFrameworkSystem.InvokeSlotAISpawned(this, m_Entity);
 	}
 
@@ -224,7 +231,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 			AfterAllAgentsSpawned();
 			return;
 		}
-		
+
 		m_bGroupWasNull = false;
 		m_AIGroup = SCR_AIGroup.Cast(m_Entity);
 		if (!m_AIGroup)
@@ -284,7 +291,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 			AfterAllAgentsSpawned();
 			return;
 		}
-		
+
 		if (m_AIGroup.GetNumberOfMembersToSpawn() != m_AIGroup.GetAgentsCount())
 			return;
 
@@ -327,7 +334,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 						basePosition[1] = GetOwner().GetOrigin()[1];
 					}
 					vector formationPosition = basePosition + formDef.GetOffsetPosition(i);
-					
+
 					World world = agentEntity.GetWorld();
 					if (world)
 					{
@@ -340,25 +347,25 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 					}
 					agentEntity.SetOrigin(formationPosition);
 					agentEntity.Update();
-					
+
 					SCR_AICombatComponent combatComponent = SCR_AICombatComponent.Cast(agentEntity.FindComponent(SCR_AICombatComponent));
 					if (combatComponent)
 					{
 						combatComponent.SetAISkill(m_eAISkill);
 						combatComponent.SetPerceptionFactor(m_fPerceptionFactor);
 					}
-					
+
 					if (!m_bExcludeFromDynamicDespawnOnVehicleEntered)
 						continue;
-					
+
 					SCR_ChimeraAIAgent chimeraAgent = SCR_ChimeraAIAgent.Cast(agent);
 					if (!chimeraAgent)
 						continue;
-					
+
 					SCR_AIInfoComponent info = chimeraAgent.m_InfoComponent;
 					if (!info)
 						continue;
-					
+
 					info.m_OnCompartmentEntered.Insert(OnAgentCompartmentEntered);
 					info.m_OnCompartmentLeft.Insert(OnAgentCompartmentLeft);
 				}
@@ -378,18 +385,18 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 					combatComponent.SetAISkill(m_eAISkill);
 					combatComponent.SetPerceptionFactor(m_fPerceptionFactor);
 				}
-				
+
 				if (!m_bExcludeFromDynamicDespawnOnVehicleEntered)
 					continue;
-				
+
 				SCR_ChimeraAIAgent chimeraAgent = SCR_ChimeraAIAgent.Cast(agent);
 				if (!chimeraAgent)
 					continue;
-					
+
 				SCR_AIInfoComponent info = chimeraAgent.m_InfoComponent;
 				if (!info)
 					continue;
-					
+
 				info.m_OnCompartmentEntered.Insert(OnAgentCompartmentEntered);
 				info.m_OnCompartmentLeft.Insert(OnAgentCompartmentLeft);
 			}
@@ -406,7 +413,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 		array<SCR_ScenarioFrameworkLayerBase> layerChildren = {};
 		SCR_ScenarioFrameworkLayerBase layerBase;
 		SCR_ScenarioFrameworkSlotWaypoint slotWaypoint;
-		
+
 		BaseWorld world = GetGame().GetWorld();
 		if (!world)
 			return;
@@ -540,16 +547,16 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 		{
 			m_AIGroup.AddWaypoint(waypoint);
 		}
-		
+
 		if (m_aWaypoints.IsEmpty())
 		{
 			m_bWaypointsInitialized = false;
 			return;
 		}
-		
+
 		if (m_vPosition != vector.Zero || !m_bSpawnAIOnWPPos || m_aWaypoints.IsEmpty())
 			return;
-		
+
 		AIWaypoint waypoint = m_aWaypoints[0];
 		AIWaypointCycle cycleWaypoint = AIWaypointCycle.Cast(waypoint);
 		if (cycleWaypoint)
@@ -566,15 +573,15 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 				return;
 			}
 		}
-			
+
 		AIFormationComponent formComp = AIFormationComponent.Cast(m_AIGroup.FindComponent(AIFormationComponent));
 		if (!formComp)
 			return;
-			
+
 		AIFormationDefinition formDef = formComp.GetFormation();
 		if (!formDef)
 			return;
-			
+
 		array<AIAgent> agents = {};
 		m_AIGroup.GetAgents(agents);
 
@@ -583,7 +590,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 			IEntity agentEntity = agent.GetControlledEntity();
 			if (!agentEntity)
 				continue;
-	
+
 			agentEntity.SetOrigin(waypoint.GetOrigin() + formDef.GetOffsetPosition(i));
 		}
 	}

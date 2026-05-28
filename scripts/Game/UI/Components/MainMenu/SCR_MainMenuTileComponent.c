@@ -21,6 +21,9 @@ class SCR_MainMenuTileComponent: SCR_TileBaseComponent
 	
 	protected bool m_bFocused;
 	protected bool m_bDisabled;
+	
+	protected bool m_bIsTutorialNeeded;
+	protected MissionWorkshopItem m_TutorialMission;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -110,12 +113,14 @@ class SCR_MainMenuTileComponent: SCR_TileBaseComponent
 		SCR_ButtonImageComponent comp = SCR_ButtonImageComponent.Cast(m_wRoot.FindHandler(SCR_ButtonImageComponent));
 		if (comp)
 			 comp.SetImageSaturation(!m_bDisabled);
-		
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
+		if (button == MouseState.RIGHT)
+			return true;
+		
 		OnPlayOrContinue();
 
 		return super.OnClick(w, x, y, button);
@@ -195,6 +200,13 @@ class SCR_MainMenuTileComponent: SCR_TileBaseComponent
 		if (showRecommended)
 			m_wNewIcon.SetVisible(true);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetTutorial(notnull MissionWorkshopItem tutorialMission)
+	{
+		m_TutorialMission = tutorialMission;
+		m_bIsTutorialNeeded = true;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \return
@@ -229,9 +241,11 @@ class SCR_MainMenuTileComponent: SCR_TileBaseComponent
 	{
 		if (m_bDisabled || !m_Item || !SCR_ScenarioUICommon.CanPlay(m_Item))
 			return;
+		
+		if (IsShowingTutorial(false))
+			return;
 
-		SCR_ScenarioUICommon.TryPlayScenario(m_Item);
-		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.MainMenu);
+		OnPlayScenario();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -240,8 +254,10 @@ class SCR_MainMenuTileComponent: SCR_TileBaseComponent
 		if (m_bDisabled)
 			return;
 		
-		SCR_ScenarioUICommon.LoadSave(m_Item, m_Header, ChimeraMenuPreset.MainMenu);
-		SCR_ScenarioUICommon.TryPlayScenario(m_Item);
+		if (IsShowingTutorial(true))
+			return;
+		
+		OnContinueScenario();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -259,6 +275,62 @@ class SCR_MainMenuTileComponent: SCR_TileBaseComponent
 	{
 		SCR_ScenarioUICommon.TryPlayScenario(m_Item);
 		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.MainMenu);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayScenario()
+	{
+		SCR_ScenarioUICommon.TryPlayScenario(m_Item);
+		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.MainMenu);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnContinueScenario()
+	{
+		SCR_ScenarioUICommon.LoadSave(m_Item, m_Header, ChimeraMenuPreset.MainMenu);
+		SCR_ScenarioUICommon.TryPlayScenario(m_Item);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayTutorial()
+	{
+		SCR_ScenarioUICommon.TryPlayScenario(m_TutorialMission);
+		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.MainMenu);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool IsShowingTutorial(bool isContinue)
+	{
+		if (m_bIsTutorialNeeded)
+		{
+			BaseContainer settings = GetGame().GetGameUserSettings().GetModule("SCR_RecentGames");
+
+			if (settings)
+			{
+				int playTutorialShowCount;
+				
+				settings.Get("m_iPlayTutorialShowCount", playTutorialShowCount);
+				playTutorialShowCount++;
+				
+				settings.Set("m_iPlayTutorialShowCount", playTutorialShowCount);
+				GetGame().UserSettingsChanged();
+			}
+
+			// Tutorial confirmation dialog
+			SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateTutorialDialog();
+			if (dialog)
+			{
+				dialog.m_OnConfirm.Insert(OnPlayTutorial);
+				if (isContinue)
+					dialog.m_OnCancel.Insert(OnContinueScenario);
+				else
+					dialog.m_OnCancel.Insert(OnPlayScenario);
+				
+				return true;
+			}
+		}
+		
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -335,7 +335,7 @@ class SCR_ResourceGenerator : SCR_ResourceInteractor
 	//------------------------------------------------------------------------------------------------
 	protected bool PropCompareNetworkedVariables(SSnapSerializerBase snapshot, ScriptCtx hint) 
 	{
-		RplId componentRplId = Replication.FindId(m_ResourceComponent);
+		RplId componentRplId = Replication.FindItemId(m_ResourceComponent);
 		
 		return	snapshot.Compare(componentRplId,				4)
 			&&	snapshot.Compare(m_fStorageRange,				4)
@@ -352,7 +352,7 @@ class SCR_ResourceGenerator : SCR_ResourceInteractor
 	{
 		float aggregatedResourceValue		= GetAggregatedResourceValue();
 		float aggregatedMaxResourceValue	= GetAggregatedMaxResourceValue();
-		RplId componentRplId				= Replication.FindId(m_ResourceComponent);
+		RplId componentRplId				= Replication.FindItemId(m_ResourceComponent);
 		
 		snapshot.SerializeBytes(componentRplId,				4);
 		snapshot.SerializeBytes(m_fStorageRange,			4);

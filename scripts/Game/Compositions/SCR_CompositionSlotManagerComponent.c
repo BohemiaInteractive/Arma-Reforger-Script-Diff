@@ -43,7 +43,7 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 		if (Replication.IsClient())
 			return;
 		
-		RplId rplID = Replication.FindId(slot);
+		RplId rplID = Replication.FindItemId(slot);
 		if (rplID.IsValid())
 			SetOccupiedDynamic(rplID, occupant != null, occupant);
 		else
@@ -72,7 +72,7 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 	IEntity GetOccupant(IEntity slot)
 	{
 		IEntity occupant;
-		RplId slotID = Replication.FindId(slot);
+		RplId slotID = Replication.FindItemId(slot);
 		if (slotID.IsValid())
 			m_aOccupiedDynamic.Find(slotID, occupant);
 		else
@@ -87,7 +87,7 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 	//! \return
 	bool IsOccupied(IEntity slot)
 	{
-		RplId slotID = Replication.FindId(slot);
+		RplId slotID = Replication.FindItemId(slot);
 		if (slotID.IsValid())
 			return m_aOccupiedDynamic.Contains(slotID);
 		else

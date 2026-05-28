@@ -470,7 +470,7 @@ class SCR_EffectsModuleComponent : ScriptComponent
 	{
 		if (!m_EffectConfig)
 			return false;
-
+		
 		bool isPaused, isLooping;
 
 		reader.ReadBool(isPaused);

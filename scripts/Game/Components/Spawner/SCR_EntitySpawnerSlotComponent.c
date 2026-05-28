@@ -129,7 +129,7 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 	{
 		SCR_EntitySpawnerSlotComponentClass prefabData = SCR_EntitySpawnerSlotComponentClass.Cast(GetComponentData(GetOwner()));
 		if (!prefabData)
-			return null;
+			return SCR_EEntitySpawnerSlotType.INVALID;
 
 		return prefabData.GetSlotType();
 	}
@@ -463,6 +463,7 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 
 enum SCR_EEntitySpawnerSlotType
 {
+	INVALID = 0,
 	GROUP_SMALL = 1 << 0,
 	GROUP_MEDIUM = 1 << 1,
 	GROUP_BIG = 1 << 2,

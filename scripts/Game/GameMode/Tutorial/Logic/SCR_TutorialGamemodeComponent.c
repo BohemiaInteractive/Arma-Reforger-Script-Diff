@@ -338,15 +338,31 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetSavedTime(float time)
+	void SetSavedTime()
 	{
-		m_fSavedTime = time;
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetOwner().GetWorld());
+		if (!world)
+			return;
+
+		TimeAndWeatherManagerEntity manager = world.GetTimeAndWeatherManager();
+		if (!manager)
+			return;
+		
+		m_fSavedTime = manager.GetEngineTime();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	float GetSavedTime()
+	float GetTimeElapsed()
 	{
-		return m_fSavedTime;
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetOwner().GetWorld());
+		if (!world)
+			return 0;
+
+		TimeAndWeatherManagerEntity manager = world.GetTimeAndWeatherManager();
+		if (!manager)
+			return 0;
+		
+		return manager.GetEngineTime() - m_fSavedTime;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -408,7 +424,7 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 		m_bCourseBreaking = true;
 		
 		SCR_ETutorialCourses course = m_ActiveConfig.GetCourseType();
-		SCR_AnalyticsApplication.GetInstance().TutorialCourseEnds(course, breakType);
+		//SCR_AnalyticsApplication.GetInstance().TutorialCourseEnds(course, breakType);
 
 		m_bOutroBreak = course == SCR_ETutorialCourses.OUTRO;
 		
@@ -418,7 +434,7 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 		
 		// User or Course induced break, resulting into Fast travel
 		if (breakType == SCR_ETutorialBreakType.FORCED)
-		{
+		{	
 			m_OnFastTravelDone.Insert(FinalizeBreak);
 			FastTravel(m_ActiveConfig.GetFastTravelPosition());
 			return;
@@ -994,6 +1010,10 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 			CompartmentAccessComponent compartmentComp = m_Player.GetCompartmentAccessComponent();
 			if (compartmentComp)
 			{
+				IEntity vehicle = compartmentComp.GetVehicleIn(m_Player);
+				if (vehicle)
+					vehicle.GetPhysics().SetVelocity("0 0 0");
+				
 				compartmentComp.GetOutVehicle(EGetOutType.TELEPORT, -1, false, false);
 				
 				//Call later for repeated attempt to finalize Fast Travel, after player leaves the vehicle
@@ -1166,6 +1186,21 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] modeEntity
+	void OnEditorClosed(SCR_EditorModeEntity modeEntity)
+	{
+		if (!SCR_HintManagerComponent.GetInstance())
+			return;
+		
+		if (m_Stage)
+		{
+			SCR_HintUIInfo hintInfo = m_Stage.GetStageInfo().GetHint();
+			if (hintInfo)
+				SCR_HintManagerComponent.ShowHint(hintInfo, true);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//!
 	SCR_PreviewEntityEditorComponent GetPreviewEntityComponent()
 	{
@@ -1192,6 +1227,7 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 			return;
 		
 		editorManager.GetOnModeAdd().Insert(OnModeAdded);
+		editorManager.GetOnClosed().Insert(OnEditorClosed);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1582,8 +1618,8 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 				
 			}
 			
-			if (m_ActiveConfig && m_ActiveConfig.GetCourseType() != SCR_ETutorialCourses.INTRO)
-				SCR_AnalyticsApplication.GetInstance().TutorialCourseEnds(finishedCourse, SCR_EAnalyticsCourseEndReason.COMPLETED);
+			//if (m_ActiveConfig && m_ActiveConfig.GetCourseType() != SCR_ETutorialCourses.INTRO)
+			//	SCR_AnalyticsApplication.GetInstance().TutorialCourseEnds(finishedCourse, SCR_EAnalyticsCourseEndReason.COMPLETED);
 			
 			m_iActiveStage = 0;
 			
@@ -1731,8 +1767,8 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 				world.GetMusicManager().Play("SOUND_COURSE_START");
 		}
 		
-		if (config != SCR_ETutorialCourses.INTRO && config != SCR_ETutorialCourses.FREE_ROAM)
-			SCR_AnalyticsApplication.GetInstance().TutorialCourseStarts(config);
+		//if (config != SCR_ETutorialCourses.INTRO && config != SCR_ETutorialCourses.FREE_ROAM)
+		//	SCR_AnalyticsApplication.GetInstance().TutorialCourseStarts(config);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1921,9 +1957,9 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 		position.GetTransform(bedTransformation);
 		
 		if (fast)	
-			characterController.StartLoitering(8, false, true, true, bedTransformation, false);
+			characterController.StartLoitering(position, 8, false, true, true, bedTransformation, false);
 		else
-			characterController.StartLoitering(7, true, true, true, bedTransformation, false);
+			characterController.StartLoitering(position, 7, true, true, true, bedTransformation, false);
 		
  		GetGame().GetCallqueue().CallLater(Fadeout, 1500, false, false, 1, 0);
 	}
@@ -1987,11 +2023,11 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 		
 		IEntity door = GetGame().GetWorld().FindEntityByName("TUT_BAR_DOOR_01");
 		if (door)
-			door.SetOrigin("0 0 0");
+			door.SetOrigin("0 -1000 0");
 		
 		door = GetGame().GetWorld().FindEntityByName("TUT_BAR_DOOR_02");
 		if (door)
-			door.SetOrigin("0 0 0");
+			door.SetOrigin("0 -1000 0");
 		
 		if (SCR_Enum.HasFlag(m_eFinishedCourses, SCR_ETutorialCourses.INTRO))
 			SpawnPlayer("Respawn_Start_Load");

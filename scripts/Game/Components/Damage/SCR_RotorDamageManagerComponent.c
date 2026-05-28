@@ -25,6 +25,9 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 	[Attribute(defvalue: "1.0")]
 	protected float m_fCharacterDamageMultiplier;
 
+	[Attribute(defvalue: "50.0")]
+	protected float m_fCharacterImpulseMultiplier;
+
 	[Attribute(defvalue: "10.0")]
 	protected float m_fMinCharacterDamage;
 
@@ -64,15 +67,39 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void DamageOther(notnull IEntity other, float damage)
+	protected void DamageOther(notnull IEntity other, float damage, notnull Contact contact, float rotorRPM)
 	{
-		ChimeraCharacter character = ChimeraCharacter.Cast(other);
-		SCR_DamageManagerComponent characterDamageManager;
-		if (character)
-			characterDamageManager = character.GetDamageManager();
-
-		if (!characterDamageManager || characterDamageManager.IsDestroyed())
+		ChimeraCharacter character = ChimeraCharacter.Cast(other);		
+		if (!character)
 			return;
+		
+		SCR_DamageManagerComponent characterDamageManager = character.GetDamageManager();
+		CharacterAnimationComponent characterAnimationComponent = character.GetAnimationComponent();
+		if (!characterDamageManager || !characterAnimationComponent)
+			return;
+		
+		vector transformDir[4], rotorMat[4];
+		m_RotorHitZone.GetPointInfo().GetWorldTransform(rotorMat);
+		
+		if (characterDamageManager.IsDestroyed())
+		{
+			const float ragrollEffectRadius = 0.5;
+			const float ragrollEffectMaxTime = 2;
+			vector forwardVec = vector.Direction(rotorMat[3], contact.Position).Normalized();
+			vector upVec = rotorMat[1];
+			vector impactOrientationMat[4];
+			Math3D.DirectionAndUpMatrix(forwardVec, upVec, impactOrientationMat);
+			vector worldImpactDir = impactOrientationMat[0];	
+			if (m_HelicopterSimulation.RotorGetSpinDirection(m_RotorHitZone.GetRotorIndex()) == SpinDirection.CLOCKWISE)
+				worldImpactDir = -worldImpactDir;
+		
+			vector hitPosLocal = character.CoordToLocal(contact.Position);
+			vector directionLocal = character.VectorToLocal(worldImpactDir).Normalized();
+			float force = rotorRPM * m_fCharacterImpulseMultiplier;
+			characterAnimationComponent.AddRagdollEffectorDamage(hitPosLocal, directionLocal, force, ragrollEffectRadius, ragrollEffectMaxTime);
+			
+			return;
+		}
 		
 		damage = Math.Clamp(damage * m_fCharacterDamageMultiplier, m_fMinCharacterDamage, m_fMaxCharacterDamage);
 
@@ -90,8 +117,6 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 		GameMaterial gameMaterial;
 		array<int> colliderIDs = {};
 		array<SurfaceProperties> surfaces = {};
-		vector transformDir[4], rotorMat[4];//dir z poz rotora do charactera
-		m_RotorHitZone.GetPointInfo().GetWorldTransform(rotorMat);
 		vector direction;
 		int nodeID;
 		MeshObject meshObject = character.GetVObject().ToMeshObject();
@@ -308,7 +333,7 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 		if (m_RotorHitZone.IsSpinning())
 		{
 			if (character)
-				DamageOther(other, damage);
+				DamageOther(other, damage, contact, rotorRPM);
 			
 			RPC_OnContactBroadcast(contact.Position, contact.Normal, contact.ShapeIndex1);
 			Rpc(RPC_OnContactBroadcast, contact.Position, contact.Normal, contact.ShapeIndex1);

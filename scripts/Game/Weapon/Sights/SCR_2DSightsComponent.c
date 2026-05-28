@@ -253,7 +253,7 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 			SelectZoomLevel(m_iSelectedZoomLevel);
 
 			if (parent && pParentCharacter)
-				pParentCharacter.SetNewZoomLevel(m_iSelectedZoomLevel, true, Replication.FindId(parent.FindComponent(WeaponComponent)));
+				pParentCharacter.SetNewZoomLevel(m_iSelectedZoomLevel, true, Replication.FindItemId(parent.FindComponent(WeaponComponent)));
 		}
 
 		// Up
@@ -263,7 +263,7 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 			SelectZoomLevel(m_iSelectedZoomLevel);
 
 			if (parent && pParentCharacter)
-				pParentCharacter.SetNewZoomLevel(m_iSelectedZoomLevel, false, Replication.FindId(parent.FindComponent(WeaponComponent)));
+				pParentCharacter.SetNewZoomLevel(m_iSelectedZoomLevel, false, Replication.FindItemId(parent.FindComponent(WeaponComponent)));
 		}
 	}
 

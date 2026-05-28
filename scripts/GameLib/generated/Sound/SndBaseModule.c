@@ -23,18 +23,20 @@ class SndBaseModule: ScriptAndConfig
 	proto external void SetSignalValueStr(string signal, float value);
 	//! Sets signal value by index returned by GetSignalIndex(string name).
 	proto external void SetSignalValue(int signal, float value);
-	//! Set transformation of all sounds played by this component.
-	proto external void SetTransformation(vector transf[]);
-	//! Sets transformation of the sound associated with the given handle
-	proto external void SetSoundTransformation(AudioHandle handle, vector transf[]);
-	//! Update playback of triggered sounds.
-	proto external void UpdateTrigger();
-	//! Check if sound associated with given handle has finished playing.
-	proto external bool IsFinishedPlaying(AudioHandle handle);
 	//! Returns the index of the given signal name or -1 if not found.
 	proto external int GetSignalIndex(string name);
+	//! Sets transformation of all sounds played by this component.
+	proto external void SetTransformation(vector transf[]);
+	//! Update playback of triggered sounds.
+	proto external void UpdateTrigger();
 	//! Terminate the sound associated with the given handle
 	proto external void Terminate(AudioHandle handle);
+	//! Check if sound associated with given handle has finished playing.
+	proto external bool IsFinishedPlaying(AudioHandle handle);
+	//! Sets transformation of the sound associated with the given handle
+	proto external void SetSoundTransformation(AudioHandle handle, vector transf[]);
+	//! Sets the volume for a given sound.
+	proto external void SetVolume(AudioHandle handle, float volume);
 
 	// callbacks
 

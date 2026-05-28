@@ -101,7 +101,7 @@ class SCR_ScenarioFrameworkActionVoiceOverPlayLine : SCR_ScenarioFrameworkAction
 		}
 		else
 		{
-			if (!Replication.FindId(entity))
+			if (!Replication.FindItemId(entity))
 				PrintFormat("ScenarioFramework Action %1 detected %2 without RplComponent thus VO won't work!", object, entity);
 		
 			voiceoverSystem.PlayLineFor(m_sLineName, entity, playerIDs, m_bPlayImmediately);

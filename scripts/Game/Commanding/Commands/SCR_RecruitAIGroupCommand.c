@@ -30,6 +30,56 @@ class SCR_RecruitAIGroupCommand : SCR_BaseGroupCommand
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override bool CanBeExecuted(IEntity target)
+	{
+		if (!target || !super.CanBeExecuted(target))
+			return false;
+	
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(target);
+		if (!character)
+			return false;
+		
+		if (!character.IsRecruitable())
+		{
+			SetCannotExecuteReason(SCR_BaseRadialCommand.CANNOT_EXECUTE_SOLDIER_NA);
+			return false;
+		}
+		
+		SCR_PlayerControllerGroupComponent groupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+		if (!groupController)
+			return false;
+		
+		SCR_AIGroup group = groupController.GetPlayersGroup();
+		if (!group)
+			return false;
+	
+		// Check if target's faction is friendly to controller's Faction.
+		// Currently target faction may be different from player controller's faction.	
+		Faction targetFaction = character.GetFaction();
+		Faction controllerFaction = group.GetFaction();
+		if (targetFaction && controllerFaction && (targetFaction.GetFactionKey() != controllerFaction.GetFactionKey()))
+			return false;	
+					
+		SCR_AIGroup slaveGroup = group.GetSlave();
+		if (!slaveGroup)
+			return false;
+				
+		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
+		if (!commandingManager)
+			return false;
+		
+		int maxAI = commandingManager.GetMaxAIPerGroup();
+		//in case there is a limit on how many AIs can be in single group.
+		if (maxAI != -1 && slaveGroup.GetServerAgentsCount() >= maxAI)
+		{
+			SetCannotExecuteReason(SCR_BaseRadialCommand.CANNOT_EXECUTE_SOLDIER_NA);
+			return false;
+		}
+		
+		return true;
+	}
+		
+	//------------------------------------------------------------------------------------------------
 	override bool CanBeShown()
 	{
 		if (!CanBeShownInCurrentLifeState())
@@ -44,7 +94,7 @@ class SCR_RecruitAIGroupCommand : SCR_BaseGroupCommand
 		if (!character)
 			return false;
 		
-		if (character.IsRecruited() || !character.IsRecruitable())
+		if (character.IsRecruited())
 			return false;
 		
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
@@ -61,19 +111,6 @@ class SCR_RecruitAIGroupCommand : SCR_BaseGroupCommand
 		
 		SCR_AIGroup group = groupController.GetPlayersGroup();
 		if (!group)
-			return false;
-		
-		SCR_AIGroup slaveGroup = group.GetSlave();
-		if (!slaveGroup)
-			return false;
-		
-		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
-		if (!commandingManager)
-			return false;
-		
-		int maxAI = commandingManager.GetMaxAIPerGroup();
-		//in case there is a limit on how many AIs can be in single group.
-		if (maxAI != -1 && slaveGroup.GetAgentsCount() >= maxAI)
 			return false;
 		
 		if (!CanRoleShow())

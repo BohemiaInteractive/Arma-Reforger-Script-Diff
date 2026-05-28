@@ -3,11 +3,8 @@ class SCR_WeaponChangeSwitchOpticsCondition : SCR_AvailableActionCondition
 {
 	//------------------------------------------------------------------------------------------------
 	//! Return true if currently held weapon has more than 1 scopes
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-	
 		IEntity controlledEntity = SCR_PlayerController.GetLocalControlledEntity();
 		if (!controlledEntity)
 			return null;
@@ -33,4 +30,4 @@ class SCR_WeaponChangeSwitchOpticsCondition : SCR_AvailableActionCondition
 
 		return canSwitchOptics;
 	}
-};
+}

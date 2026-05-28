@@ -151,10 +151,20 @@ class SCR_EditorModeEntity : SCR_EditorBaseEntity
 		Event_OnDeactivate.Invoke();
 		ClearFlags(EntityFlags.ACTIVE);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	void ActivateModeServer()
 	{
+		int playerId = m_EditorManager.GetPlayerID();
+		IEntity character = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId);
+		string additionalInfo;
+		if (character)
+			additionalInfo = string.Format(" while being at %1", character.GetOrigin());
+
+		PrintFormat("INFO: Editor %1: Player %2 opened the editor%3.", typename.EnumToString(EEditorMode, GetModeType()), SCR_PlayerIdentityUtils.GetPlayerLogInfo(playerId), additionalInfo, level: LogLevel.NORMAL);
 		Event_OnActivateServer.Invoke();
 	}
+
 	void DeactivateModeServer()
 	{
 		Event_OnDeactivateServer.Invoke();

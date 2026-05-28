@@ -99,6 +99,9 @@ class CharacterCameraADS : CharacterCameraBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnBlendingIn(float blendAlpha)
 	{
+		if (!m_WeaponManager)
+			return;
+		
 		// The weapon may change at any moment
 		BaseWeaponComponent currentWeapon = m_WeaponManager.GetCurrentWeapon();
 		if (m_LastWeaponComponent && currentWeapon != m_LastWeaponComponent && m_LastWeaponComponent.IsSightADSActive())
@@ -116,6 +119,9 @@ class CharacterCameraADS : CharacterCameraBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnBlendingOut(float blendAlpha)
 	{
+		if (!m_WeaponManager)
+			return;
+		
 		// The weapon may change at any moment
 		BaseWeaponComponent currentWeapon = m_WeaponManager.GetCurrentWeapon();
 		if (m_LastWeaponComponent && currentWeapon != m_LastWeaponComponent && m_LastWeaponComponent.IsSightADSActive())
@@ -735,8 +741,8 @@ class CharacterCameraADS : CharacterCameraBase
 		}
 
 		//! sights in relation to hand
-		vector viewMatHandRel[4];
-		Math3D.MatrixInvMultiply4(handBoneTM, lookRot, pOutResult.m_CameraTM);
+		if (!m_ControllerComponent.GetIsWeaponDeployed())
+			Math3D.MatrixInvMultiply4(handBoneTM, lookRot, pOutResult.m_CameraTM);
 
 		//! apply position
 		pOutResult.m_CameraTM[3] = finalPos;

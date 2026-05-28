@@ -73,6 +73,17 @@ class SCR_TaskSolverManagerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Returns the task solver entry for the given type
+	//! \param[in] type The type of the requested task solver entry.
+	SCR_TaskSolverEntry GetTaskSolverEntry(typename type)
+	{
+		if (!m_TaskSolverConfig)
+			return null;
+
+		return m_TaskSolverConfig.GetTaskSolverEntry(type);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Updates all solvers
 	void Update(float timeSlice)
 	{
@@ -145,9 +156,11 @@ class SCR_TaskSolverManagerComponent : SCR_BaseGameModeComponent
 			SCR_ResupplyTaskSolverEntry entry = SCR_ResupplyTaskSolverEntry.Cast(
 				m_TaskSolverConfig.GetTaskSolverEntry(SCR_ResupplyTaskSolverEntry)
 			);
+
 			if (entry)
 				resupplySolver.SetResupplyTaskSolverEntry(entry);
 		}
+
 		// Extend as needed for other types.
 	}
 

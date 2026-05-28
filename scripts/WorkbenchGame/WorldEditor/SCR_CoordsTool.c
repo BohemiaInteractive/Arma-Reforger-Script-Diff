@@ -1,105 +1,39 @@
 #ifdef WORKBENCH
 [WorkbenchToolAttribute(
-	"Coords Tool",
-	"Tool that allows you to navigate to coordinates input or clipboard\n" +
-	"or copy current one to clipboard, with entry history.\n" +
-	"To use an entry, copy its link and use \"Go to clipboard link\"",
-	awesomeFontCode : 0xF5A0)]
+	PLUGIN_NAME,
+	"Navigate to input/clipboard link/coordinates with bookmarks."
+	+ "\nTo use an entry, copy its link/coordinates and use \"Go to clipboard link\"."
+	+ "\nTo copy the current camera's link, use the World Editor's Ctrl+Shift+L shortcut.",
+	awesomeFontCode: 0xF5A0)]
 class SCR_CoordsTool : WorldEditorTool
 {
-	[Attribute(defvalue: "0 0 0", desc: "VectorCoordinates: Position in world space to set the camera position to.", category: "Coordinates")]
+	/*
+		Coordinates
+	*/
+
+	[Attribute(defvalue: "0 0 0", desc: "Position in world space to set the camera position to.", category: "Coordinates")]
 	protected vector m_vPosition;
 
-	[Attribute(defvalue: "0 0 0", desc: "VectorCoordinates: Angles as pitch, yaw, roll to set the camera rotation to.", category: "Coordinates")]
+	[Attribute(defvalue: "0 0 0", desc: "Pitch, yaw, roll to set the camera rotation to.", category: "Coordinates")]
 	protected vector m_vRotation;
 
-	[Attribute(defvalue: "0", desc: "Prefix the link with https prefix (" + WEB_PREFIX + ")", category: "Options")]
-	protected bool m_bUseWebPrefix;
+	[Attribute(desc: "In-game map coordinates - if defined, clicking \"Go to coords\" goes to these coordinates (empty the field to get the Position field to work again)", category: "Coordinates")]
+	protected string m_sMapCoordinates;
+
+	/*
+		Data
+	*/
+
+	[Attribute(defvalue: "0", desc: "Use full link and save/load world, otherwise only save/load coordinates", category: "Data")]
+	protected bool m_bUseFullLink;
 
 	[Attribute(desc: "Logged entries - most recent entry at the top", category: "Data")]
 	protected ref array<ref SCR_CoordsTool_CoordsEntry> m_aEntries;
 
-	protected static const string WEB_PREFIX = "https:/" + "/enfusionengine.com/api/redirect?to=";
+	protected static const float MIN_CAMERA_Y = 5;
+	protected static const string WEB_PREFIX = "https://enfusionengine.com/api/redirect?to=";
 
-	//------------------------------------------------------------------------------------------------
-	// to be moved one day to SCR_WorldEditorToolHelper?
-	protected static string GetCurrentWorldEditorLink(bool useWebPrefix)
-	{
-		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
-		if (!worldEditorAPI)
-			return string.Empty;
-
-		BaseWorld world = worldEditorAPI.GetWorld();
-		if (!world)
-			return string.Empty;
-
-		vector transform[4];
-		world.GetCurrentCamera(transform);
-
-		return GetWorldEditorLink(transform, useWebPrefix);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Get a World Editor link in Enfusion protocol format
-	//! \param[in] transformation The transformation to create the link at.
-	//! \return Enfusion protocol link, with or without the enfusionengine.com prefix
-	static string GetWorldEditorLink(vector transformation[4], bool useWebPrefix = false)
-	{
-		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
-		if (!worldEditorAPI)
-			return string.Empty;
-
-		string fullLink;
-		worldEditorAPI.GetWorldPath(fullLink);
-
-		if (fullLink.IsEmpty())
-			return string.Empty;
-
-		// Fetch position
-		vector position = transformation[3];
-
-		// Fetch angles
-		vector angles = Math3D.MatrixToAngles(transformation);
-		if (angles == vector.Zero) // prevents 0 0 -0
-			angles = vector.Zero;
-
-		string worldPath = fullLink;
-		if (worldPath[0] != "$")
-		{
-			// if we don't have an exact path (should not happen),
-			// fallback to the original solution:
-
-			// we want to substring only /worlds/(...)
-			// to prevent exposing local folders, etc.
-			int begin = fullLink.IndexOf("worlds\\");
-			if (begin == -1)
-				begin = fullLink.IndexOf("worlds/");
-
-			if (begin == -1)
-				return string.Empty;
-
-			worldPath = fullLink.Substring(begin, fullLink.Length() - begin);
-		}
-
-		// Have consistent link
-		worldPath.Replace("\\", "/");
-
-		// Create link
-		string link = string.Format(
-			"enfusion://WorldEditor/%1;%2,%3,%4;%5,%6,%7",
-			worldPath,
-			position[0],
-			position[1],
-			position[2],
-			angles[1],
-			angles[0],
-			angles[2]);
-
-		if (useWebPrefix)
-			link = WEB_PREFIX + link;
-
-		return link;
-	}
+	protected static const string PLUGIN_NAME = "Coords Tool";
 
 	//------------------------------------------------------------------------------------------------
 	//! Sets world editor camera position and rotation.
@@ -107,42 +41,50 @@ class SCR_CoordsTool : WorldEditorTool
 	//! \param[in] rot Rotation as pitch, yaw, roll in degrees.
 	protected void SetCamera(vector pos, vector rot)
 	{
-		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
-		if (!worldEditorAPI)
-			return;
-
 		vector yawPitchRoll = { rot[1], rot[0], rot[2] };
 		vector lookDirection = yawPitchRoll.AnglesToVector();
-		worldEditorAPI.SetCamera(pos, lookDirection);
+		m_API.SetCamera(pos, lookDirection);
 
-		Print("Camera set to Position = " + pos + ", Rotation = " + rot, LogLevel.NORMAL);
+		PrintFormat("Camera set to Position %1 Rotation %2", pos, rot, level: LogLevel.NORMAL);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Parses string for coordinates and returns true in case of success, false otherwise.
-	//! \param[in] coordsLink link format enfusion://, https://enfusionengine.com/api/redirect?to=, or X,Y,Z;Pitch,Yaw,Roll
+	//! \param[in] input link format (https://enfusionengine.com/api/redirect?to=)enfusion://, X,Y,Z;Pitch,Yaw,Roll or map coordinates (e.g 123 456)
 	//! \param[out] pos position
 	//! \param[out] rot rotation
 	//! \return coordinates extraction success status
-	protected bool GetCoordsFromInput(string coordsLink, out vector pos, out vector rot)
+	protected bool GetCoordsFromInput(string input, out vector pos, out vector rot)
 	{
-		if (SCR_StringHelper.IsEmptyOrWhiteSpace(coordsLink))
+		input.TrimInPlace();
+		if (!input)
 			return false;
 
-		if (coordsLink.StartsWith(WEB_PREFIX))
-			coordsLink = coordsLink.Substring(WEB_PREFIX.Length(), coordsLink.Length() - WEB_PREFIX.Length());
+		if (GetCoordsFromString(input, pos, rot))
+			return true;
+
+		if (GetCoordsFromMapCoordsString(input, pos, rot))
+			return true;
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool GetCoordsFromString(string input, out vector pos, out vector rot)
+	{
+		input.Replace(WEB_PREFIX, "");
 
 		// Try parse as enflink to get coords
 		// enf link is world;pos;rot
-		if (coordsLink.Contains(";") && coordsLink.StartsWith("enfusion"))
+		if (input.Contains(";") && input.StartsWith("enfusion"))
 		{
-			int separatorIndex = coordsLink.IndexOf(";");
-			coordsLink = coordsLink.Substring(separatorIndex + 1, coordsLink.Length() - separatorIndex - 1);
+			int separatorIndex = input.IndexOf(";");
+			input = input.Substring(separatorIndex + 1, input.Length() - separatorIndex - 1);
 		}
 
 		// split coords into two
 		array<string> values = {};
-		coordsLink.Split(";", values, true);
+		input.Split(";", values, true);
 
 		// check validity
 		int length = values.Count();
@@ -155,93 +97,140 @@ class SCR_CoordsTool : WorldEditorTool
 		if (SCR_StringHelper.IsEmptyOrWhiteSpace(posString))
 			return false;
 
-		vector tempPos = posString.ToVector();
-		vector tempRot;
-
+		pos = posString.ToVector();
 		if (length > 1)
 		{
 			string rotString = values[1];
 			if (!rotString.IsEmpty())
 			{
 				rotString.Replace(",", " ");
-				tempRot = rotString.ToVector();
+				rot = rotString.ToVector();
 			}
 		}
-
-		pos = tempPos;
-		rot = tempRot;
 
 		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! When clicked by the user, sets the camera to desired position.
+	protected bool GetCoordsFromMapCoordsString(string input, out vector pos, out vector rot)
+	{
+		if (!input)
+			return false;
+
+		string mapCoordinates = SCR_StringHelper.Filter(input, SCR_StringHelper.DIGITS);
+		int length = mapCoordinates.Length();
+
+		if (length % 2 != 0)
+			return false;
+
+		int halfLength = length * 0.5;
+		int leftCoords = mapCoordinates.Substring(0, halfLength).ToInt();
+		int rightCoords = mapCoordinates.Substring(halfLength, halfLength).ToInt();
+
+		float multiplier = Math.Pow(10, 5 - halfLength);	// 1000 for 00 00, 100 for 000 000, 10 for 0000 0000
+															// 1 for 00000 00000, 0.1 for 000000 000000
+
+		rot = { -45, 0, 0 };
+		pos = { leftCoords * multiplier + 0.5 * multiplier, 0, rightCoords * multiplier };
+		pos[1] = m_API.GetTerrainSurfaceY(pos[0], pos[2]);
+
+		if (multiplier < MIN_CAMERA_Y)
+			multiplier = MIN_CAMERA_Y;
+
+		if (pos[1] <= 0)
+			pos[1] = multiplier;
+		else
+			pos[1] = pos[1] + multiplier;
+
+		PrintFormat("Parsed game coordinates: %1 %2", leftCoords.ToString(halfLength), rightCoords.ToString(halfLength), level: LogLevel.NORMAL);
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("Add entry")]
 	protected void AddEntry()
 	{
 		if (!m_aEntries)
 			m_aEntries = {};
 
-		string link = GetCurrentWorldEditorLink(m_bUseWebPrefix);
+		string link = SCR_WorldEditorToolHelper.GetCurrentWorldEditorLink();
 		if (link.IsEmpty())
 		{
 			Print("Error obtaining the link", LogLevel.WARNING);
 			return;
 		}
 
-		int count = m_aEntries.Count();
-		if (count > 0)
+		// FOR NOW strip world path as it is not useful
+		if (!m_bUseFullLink)
 		{
-			SCR_CoordsTool_CoordsEntry firstEntry = m_aEntries[0];
-			if (firstEntry.m_sLink == link)
+			int semicolonIndex = link.IndexOf(";");
+			if (semicolonIndex > -1)
+				link = link.Substring(semicolonIndex + 1, link.Length() - semicolonIndex - 1);
+		}
+
+		foreach (int i, SCR_CoordsTool_CoordsEntry entry : m_aEntries)
+		{
+			if (entry.m_sLink == link)
 			{
-				Print("Current position is last log entry", LogLevel.NORMAL);
+				if (i == 0)
+					Print("Current position is the last entry", LogLevel.NORMAL);
+				else
+					Print("Current position is already stored as entry #" + (i + 1), LogLevel.NORMAL);
+
 				return;
 			}
 		}
 
-		string worldName;
-		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
-		if (worldEditorAPI)
-		{
-			worldEditorAPI.GetWorldPath(worldName);
-			worldName = FilePath.StripExtension(FilePath.StripPath(worldName));
-			if (!worldName.IsEmpty())
-				worldName = " (" + worldName + ")";
-		}
-
 		SCR_CoordsTool_CoordsEntry entry = new SCR_CoordsTool_CoordsEntry();
-		entry.m_sName = "Link #" + (count + 1) + worldName;
+		entry.m_sName = string.Format("Link #%1 (%2 world)", m_aEntries.Count() + 1, SCR_WorldEditorToolHelper.GetWorldName());
 		entry.m_sLink = link;
 		m_aEntries.InsertAt(entry, 0);
 		UpdatePropertyPanel();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Copies current transform and generates enfusion link, which is copied to clipboard.
-	[ButtonAttribute("Copy link to clipboard")]
-	protected void CopyLinkToClipboard()
+	[ButtonAttribute("Load clipboard")]
+	protected void NavigateToClipboardLink()
 	{
-		string link = GetCurrentWorldEditorLink(m_bUseWebPrefix);
-		if (link.IsEmpty())
+		string input = System.ImportFromClipboard();
+		vector pos, rot;
+		if (!GetCoordsFromInput(input, pos, rot))
 		{
-			Print("Link could not be copied, an error occurred.", LogLevel.WARNING);
+			Print("Clipboard data is in invalid format. Expected:"
+				+ "\n- enfusion link format \"enfusion://WorldEditor/world/path.ent;x,y,z(;pitch,yaw,roll)\""
+				+ "\n- coordinates format: \"x,y,z(;pitch,yaw,roll)\""
+				+ "\n- game map coordinates format e.g \"123 456\" (any even length, with or without space)",
+				LogLevel.WARNING);
+
 			return;
 		}
 
-		System.ExportToClipboard(link);
-		Print("Link copied to clipboard: " + link, LogLevel.NORMAL);
-	}
-
-	[ButtonAttribute("Go to clipboard link")]
-	protected void NavigateToClipboardLink()
-	{
-		vector pos;
-		vector rot;
-		if (!GetCoordsFromInput(System.ImportFromClipboard(), pos, rot))
+		if (m_bUseFullLink && input.StartsWith("enfusion://WorldEditor/"))
 		{
-			Print("String is in invalid format. Expected enfusion protocol link or in following format: \"x,y,z;pitch,yaw,roll\"!", LogLevel.NORMAL);
-			return;
+			string worldPath;
+			m_API.GetWorldPath(worldPath);
+			if (worldPath.StartsWith("$"))
+				worldPath = "~" + worldPath.Substring(1, worldPath.Length() - 1);
+
+			if (!input.Contains(worldPath)) // same world, no need to reload
+			{
+				input = input.Substring(23, input.Length() - 23);
+				int charIndex = input.IndexOf(";");
+				if (charIndex > -1)
+					input = input.Substring(0, charIndex);
+	
+				charIndex = input.IndexOf("~");
+				if (charIndex > -1)
+				{
+					charIndex = input.IndexOfFrom(charIndex, ":");
+					if (charIndex > -1)
+						input = input.Substring(charIndex + 1, input.Length() - charIndex - 1);
+				}
+	
+				WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
+				worldEditor.SetOpenedResource(input);
+			}
 		}
 
 		SetCamera(pos, rot);
@@ -252,6 +241,13 @@ class SCR_CoordsTool : WorldEditorTool
 	[ButtonAttribute("Go to coords")]
 	protected void NavigateToCoords()
 	{
+		vector pos, rot;
+		if (GetCoordsFromMapCoordsString(m_sMapCoordinates, pos, rot))
+		{
+			SetCamera(pos, rot);
+			return;
+		}
+
 		SetCamera(m_vPosition, m_vRotation);
 	}
 }

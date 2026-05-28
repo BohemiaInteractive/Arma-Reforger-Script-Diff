@@ -1,5 +1,5 @@
 [BaseContainerProps(configRoot: true)]
-class SCR_ResourceGeneratorContainerQueue : SCR_ResourceContainerQueue<SCR_ResourceGenerator>
+class SCR_ResourceGeneratorContainerQueue : SCR_ResourceContainerQueue
 {
 	//------------------------------------------------------------------------------------------------
 	override void DebugDraw()

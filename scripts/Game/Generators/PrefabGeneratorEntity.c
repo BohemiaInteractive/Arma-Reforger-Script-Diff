@@ -94,7 +94,7 @@ class PrefabGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 	[Attribute(category: "Perlin", defvalue: "0", desc: "Perlin Phase Offset")]
 	protected float m_fPerlinOffset;
 
-	[Attribute(category: "Perlin", defvalue: "0", desc: "Disables asset generation bellow perlin threshold")]
+	[Attribute(category: "Perlin", defvalue: "0", desc: "Disables asset generation below perlin threshold")]
 	protected bool m_fPerlinThrowAway; // m_b
 
 	/*
@@ -485,7 +485,17 @@ class PrefabGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 
 			if (m_fOffsetVariance != 0)
 			{
-				float offsetRandom = m_RandomGenerator.RandFloatXY(-m_fOffsetVariance * 0.5 + m_fGap * 0.5, m_fOffsetVariance * 0.5 - m_fGap * 0.5);
+				float min = -m_fOffsetVariance * 0.5 + m_fGap * 0.5;
+				float max = m_fOffsetVariance * 0.5 - m_fGap * 0.5;
+				float offsetRandom;
+				if (min == max)
+					offsetRandom = max;
+				else
+				if (min < max)
+					offsetRandom = m_RandomGenerator.RandFloatXY(min, max);
+				else
+					offsetRandom = m_RandomGenerator.RandFloatXY(max, min);
+
 				if (offsetRandom < 0)
 					offsetRandom -= m_fGap * 0.5;
 				else

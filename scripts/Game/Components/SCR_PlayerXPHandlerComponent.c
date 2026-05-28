@@ -16,8 +16,6 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 	protected int m_iPlayerXPSinceLastSpawn;
 
 	protected float m_fSuicidePenaltyTimestamp;
-	
-	protected float m_fMedicalAssistanceXPRewardTimestamp;
 
 	protected int m_iSurvivalRewardCycle;
 
@@ -82,11 +80,16 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 	//! \return rank
 	SCR_ECharacterRank GetPlayerRankByXP()
 	{
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetOwner());
+		if (!playerController)
+			return SCR_ECharacterRank.PRIVATE;
+
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		if (!factionManager)
 			return SCR_ECharacterRank.PRIVATE;
 
-		return factionManager.GetRankByXP(m_iPlayerXP);
+		SCR_RankContainer ranks = factionManager.GetFactionRanks(playerController.GetPlayerId());
+		return ranks.GetRankByXP(m_iPlayerXP);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -144,41 +147,52 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 		if (!comp)
 			return;
 
-		auto factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		if (!factionManager)
 			return;
 
-		const SCR_ECharacterRank newRank = factionManager.GetRankByXP(m_iPlayerXP);
+		const SCR_ECharacterRank newRank = factionManager.GetFactionRanks(playerController.GetPlayerId()).GetRankByXP(m_iPlayerXP);
 		comp.SetCharacterRank(newRank, !notify);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Cheat method to change player's rank - server side
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_CheatRank(int playerID, bool demote)
+	protected void RpcAsk_CheatRank(bool demote)
 	{
+		if (!GetGame().IsDev())
+			return;
+		
+		SCR_PlayerController owner = SCR_PlayerController.Cast(GetOwner());
+		if (!owner)
+			return;
+		
+		int playerID = owner.GetPlayerId();
+		
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 
-		SCR_ECharacterRank rank = factionManager.GetRankByXP(m_iPlayerXP);
+		SCR_RankContainer ranks = factionManager.GetFactionRanks(playerID);
+
+		SCR_ECharacterRank rank = ranks.GetRankByXP(m_iPlayerXP);
 		int reqXP;
 
 		if (demote)
 		{
-			SCR_ECharacterRank newRank = factionManager.GetRankPrev(rank);
+			SCR_ECharacterRank newRank = ranks.GetPreviousRank(rank);
 
 			if (newRank == SCR_ECharacterRank.INVALID)
 				return;
 
-			reqXP = factionManager.GetRequiredRankXP(newRank) - m_iPlayerXP;
+			reqXP = ranks.GetRequiredRankXP(newRank) - m_iPlayerXP;
 		}
 		else
 		{
-			SCR_ECharacterRank newRank = factionManager.GetRankNext(rank);
+			SCR_ECharacterRank newRank = ranks.GetNextRank(rank);
 
 			if (newRank == SCR_ECharacterRank.INVALID)
 				return;
 
-			reqXP = factionManager.GetRequiredRankXP(newRank) - m_iPlayerXP;
+			reqXP = ranks.GetRequiredRankXP(newRank) - m_iPlayerXP;
 		}
 
 		SCR_XPHandlerComponent comp = SCR_XPHandlerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_XPHandlerComponent));
@@ -190,16 +204,39 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Cheat method to change player's rank
+	//! Cheat method to change player's XP - server side
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void RpcAsk_CheatXP(int xpChange)
+	{
+		if (!GetGame().IsDev())
+				return;
+			
+		SCR_PlayerController owner = SCR_PlayerController.Cast(GetOwner());
+		if (!owner)
+			return;
+		
+		int playerID = owner.GetPlayerId();
+		
+		SCR_XPHandlerComponent comp = SCR_XPHandlerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_XPHandlerComponent));
+		
+		if (!comp)
+			return;
+		
+		comp.AwardXP(playerID, SCR_EXPRewards.CHEAT, xpChange);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] demote
 	void CheatRank(bool demote = false)
 	{
-		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetOwner());
-
-		if (!playerController)
-			return;
-
-		int playerID = playerController.GetPlayerId();
-		Rpc(RpcAsk_CheatRank, playerID, demote);
+		Rpc(RpcAsk_CheatRank, demote);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] xpChange
+	void CheatXP(int xpChange)
+	{
+		Rpc(RpcAsk_CheatXP, xpChange);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -208,37 +245,6 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 	{
 		if (m_OnXPChanged)
 			m_OnXPChanged.Invoke(currentXP, rewardID, XPToAdd, volunteer, profileUsed, skillLevel);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Reward the player for using medical items for healing characters other than self
-	//! Currently the reward is given even when AI character or enemy character is healed
-	//! After receiving XP award for medical assistance, there is a reward cooldown with duration based on parameter m_iMedicalAssistanceAwardCooldown
-	void MedicalAssistanceReward()
-	{
-		// Check if the cooldown period from previous medical assistance award passed
-		float curTime = GetGame().GetWorld().GetWorldTime();
-		if (curTime <= m_fMedicalAssistanceXPRewardTimestamp)
-			return;
-
-		BaseGameMode gameMode = GetGame().GetGameMode();
-		if (!gameMode)
-			return;
-
-		SCR_XPHandlerComponent comp = SCR_XPHandlerComponent.Cast(gameMode.FindComponent(SCR_XPHandlerComponent));
-		if (!comp)
-			return;
-
-		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetOwner());
-		if (!playerController)
-			return;
-
-		int playerID = playerController.GetPlayerId();
-
-		comp.AwardXP(playerID, SCR_EXPRewards.MEDICAL_ASSISTANCE);
-
-		// When XP awarded, add cooldown to next available medical xp reward
-		m_fMedicalAssistanceXPRewardTimestamp = curTime + comp.GetMedicalAssistanceRewardCooldown() * 1000;
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -59,7 +59,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 	[Attribute(defvalue: "", category: "Forest", desc: "Forest generator clusters to spawn in this forest generator polygon", params: "noDetails")]
 	protected ref array<ref ForestGeneratorCluster> m_aClusters;
 
-	[Attribute(defvalue: "", category: "Forest", desc: "Curve defining general outline scaling; from inside (left, forest core) to outside (right, forest outline)", uiwidget: UIWidgets.GraphDialog, params: string.Format("%1 %2 0 %3", SCALE_CURVE_RANGE, SCALE_CURVE_MAX_VALUE - SCALE_CURVE_MIN_VALUE, SCALE_CURVE_MIN_VALUE))]
+	[Attribute(defvalue: "", category: "Forest", desc: "Curve defining general outline scaling; from inside (left, forest core) to outside (right, forest outline)", uiwidget: UIWidgets.CurveDialog, params: string.Format("%1 %2 0 %3", SCALE_CURVE_RANGE, SCALE_CURVE_MAX_VALUE - SCALE_CURVE_MIN_VALUE, SCALE_CURVE_MIN_VALUE))]
 	protected ref Curve m_aGlobalOutlineScaleCurve;
 
 	[Attribute(defvalue: "0", category: "Forest", desc: "Distance from shape over which the scaling occurs", uiwidget: UIWidgets.Slider, params: "0 100 0.1")]
@@ -669,7 +669,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 			return;
 		}
 
-		if (worldEditorAPI.UndoOrRedoIsRestoring())
+		if (worldEditorAPI.UndoOrRedoIsRestoring() || !worldEditorAPI.AreGeneratorEventsEnabled())
 			return;
 
 		SetSeed();

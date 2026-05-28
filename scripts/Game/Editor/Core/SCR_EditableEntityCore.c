@@ -29,7 +29,7 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 
 	[Attribute(desc: "Budget settings for every entity type.")]
 	private ref array<ref SCR_EditableEntityCoreBudgetSetting> m_BudgetSettings;
-	
+
 	private ref map<EEditableEntityBudget, ref SCR_EditableEntityCoreBudgetSetting> m_BudgetSettingsInternal = new map<EEditableEntityBudget, ref SCR_EditableEntityCoreBudgetSetting>;
 
 	[Attribute(desc: "Label Groups which will have labels displayed in content browser. Groups are needed for certain functionality. If GROUPLESS group exist then all labels not defined in the EditableEntityCore config will be automatically added to the the groupless list but never displayed as a filter")]
@@ -43,9 +43,9 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	private ref map<EEditableEntityLabelGroup, ref array<SCR_EditableEntityCoreLabelSetting>> m_LabelListMap = new map<EEditableEntityLabelGroup, ref array<SCR_EditableEntityCoreLabelSetting>>;
 	private ref map<EEditableEntityLabelGroup, SCR_EditableEntityCoreLabelGroupSetting> m_LabelGroupSettingsMap = new map<EEditableEntityLabelGroup, SCR_EditableEntityCoreLabelGroupSetting>;
 	private ref map<EEditableEntityLabel, SCR_EditableEntityCoreLabelSetting> m_LabelSettingsMap = new map<EEditableEntityLabel, SCR_EditableEntityCoreLabelSetting>;
-	
+
 	private ref set<SCR_EditableEntityComponent> m_Entities;
-	
+
 	ref map<RplId, ref array<RplId>> m_OrphanEntityIds = new map<RplId, ref array<RplId>>();
 	private SCR_EditableEntityComponent m_CurrentLayer;
 
@@ -75,7 +75,7 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 
 	//! Called when entity budget is updated
 	ref ScriptInvoker_EntityCoreBudgetUpdatedEvent Event_OnEntityBudgetUpdated = new ScriptInvoker_EntityCoreBudgetUpdatedEvent();
-	
+
 	//! Called when the whole budget is updated
 	ref ScriptInvoker_EntityCoreBudgetUpdatedPerEntityEvent Event_OnEntityBudgetUpdatedPerEntity = new ScriptInvoker_EntityCoreBudgetUpdatedPerEntityEvent();
 
@@ -88,11 +88,11 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	// UGC Authors
 	// Authors = people who currently own entity in a world
 	private ref map<string, ref SCR_EditableEntityAuthor> m_mAuthors = new map<string, ref SCR_EditableEntityAuthor>; // Held by server, needs to be requested by client.
-	
+
 	protected bool m_bAuthorRequesting;
-	
+
 	ref ScriptInvoker_AuthorRequestedFinishedEvent Event_OnAuthorsRegisteredFinished = new ScriptInvoker_AuthorRequestedFinishedEvent;
-	
+
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param entity
@@ -111,7 +111,7 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	void RemoveFromRoot(SCR_EditableEntityComponent entity)
 	{
 		if (!m_Entities) return;
-		
+
 		int index = m_Entities.Find(entity);
 		if (index != -1) m_Entities.Remove(index);
 	}
@@ -133,7 +133,7 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		{
 			Print(string.Format("Default type settings not found for '%1'!", Type().EnumToString(EEditableEntityType, entity.GetEntityType())), LogLevel.ERROR);
 		}
-		
+
 		Event_OnEntityRegistered.Invoke(entity);
 
 		//:| Player ownership isn't ready if we don't wait for a frame before calling UpdateBudgets.
@@ -150,7 +150,7 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		UpdateBudgets(entity, false, owner);
 		Event_OnEntityUnregistered.Invoke(entity);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Add orphaned entity.
 	//! This can happen when an entity is intialised, but its parent was not yet streamed in.
@@ -162,7 +162,7 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		array<RplId> orphanIds;
 		if (!m_OrphanEntityIds.Find(parentId, orphanIds))
 			orphanIds = {};
-		
+
 		orphanIds.Insert(orphanId);
 		m_OrphanEntityIds.Insert(parentId, orphanIds);
 	}
@@ -176,12 +176,12 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	{
 		if (!parentId.IsValid())
 			return 0;
-		
+
 		//--- Check if there are some orphans for given parent. If not, terminate
 		array<RplId> orphanIds = {};
 		if (!m_OrphanEntityIds.Find(parentId, orphanIds))
 			return 0;
-		
+
 		//--- Find all editable orphans
 		SCR_EditableEntityComponent orphan;
 		for (int i = orphanIds.Count() - 1; i >= 0; i--)
@@ -193,14 +193,14 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 				orphanIds.Remove(i);
 			}
 		}
-		
+
 		//--- No orphans left, unregister the parent
 		if (orphanIds.IsEmpty())
 			m_OrphanEntityIds.Remove(parentId);
-		
+
 		return outOrphans.Count();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Get all entities.
 	//! \param[out] entities Array to be filled with child entities
@@ -210,7 +210,7 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	{
 		entities.Clear();
 		if (!m_Entities) return;
-		foreach (SCR_EditableEntityComponent entity: m_Entities)
+		foreach (SCR_EditableEntityComponent entity : m_Entities)
 		{
 			entities.Insert(entity);
 			if (!onlyDirect) entity.GetChildren(entities, onlyDirect, skipIgnored);
@@ -225,17 +225,17 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	{
 		entities.Clear();
 		if (!m_Entities) return;
-		foreach (SCR_EditableEntityComponent entity: m_Entities)
+		foreach (SCR_EditableEntityComponent entity : m_Entities)
 		{
 			if (!entity.HasAccessSelf(accessKey)) continue;
-			
+
 			entities.Insert(entity);
-			
+
 			if (entity.IsLayer())
 			{
 				set<SCR_EditableEntityComponent> subEntities = new set<SCR_EditableEntityComponent>;
 				entity.GetChildren(subEntities, false, accessKey);
-				foreach (SCR_EditableEntityComponent child: subEntities)
+				foreach (SCR_EditableEntityComponent child : subEntities)
 				{
 					entities.Insert(child);
 				}
@@ -251,34 +251,34 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	int GetAllEntitiesByAuthorUID(out notnull set<SCR_EditableEntityComponent> entities, string playerUID)
 	{
 		entities.Clear();
-		if (!m_Entities) 
+		if (!m_Entities)
 			return 0;
-		
-		foreach (SCR_EditableEntityComponent entity: m_Entities)
+
+		foreach (SCR_EditableEntityComponent entity : m_Entities)
 		{
 			string authorUID = entity.GetAuthorUID();
 			if (authorUID.IsEmpty() || authorUID != playerUID)
 				continue;
-			
+
 			entities.Insert(entity);
-			
+
 			if (entity.IsLayer())
 			{
 				set<SCR_EditableEntityComponent> subEntities = new set<SCR_EditableEntityComponent>;
 				entity.GetChildren(subEntities);
-				foreach (SCR_EditableEntityComponent child: subEntities)
+				foreach (SCR_EditableEntityComponent child : subEntities)
 				{
 					if (authorUID.IsEmpty() || authorUID != playerUID)
 						continue;
-					
+
 					entities.Insert(child);
 				}
 			}
 		}
-		
+
 		return entities.Count();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Static call for GetAllEntitiesByAuthorUID for ease of use -> only works for Streamed in Entities
 	//! \param[out] entities Array to be filled with editable entities
@@ -288,7 +288,7 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 		if (!core)
 			return 0;
-		
+
 		return core.GetAllEntitiesByAuthorUID(entities, playerUID);
 	}
 
@@ -299,34 +299,34 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	int GetAllEntitiesByAuthorID(out notnull set<SCR_EditableEntityComponent> entities, int playerID)
 	{
 		entities.Clear();
-		if (!m_Entities) 
+		if (!m_Entities)
 			return 0;
-		
-		foreach (SCR_EditableEntityComponent entity: m_Entities)
+
+		foreach (SCR_EditableEntityComponent entity : m_Entities)
 		{
 			int authorID = entity.GetAuthorPlayerID();
 			if (playerID != authorID)
 				continue;
-			
+
 			entities.Insert(entity);
-			
+
 			if (entity.IsLayer())
 			{
 				set<SCR_EditableEntityComponent> subEntities = new set<SCR_EditableEntityComponent>;
 				entity.GetChildren(subEntities);
-				foreach (SCR_EditableEntityComponent child: subEntities)
+				foreach (SCR_EditableEntityComponent child : subEntities)
 				{
 					if (playerID != authorID)
 						continue;
-					
+
 					entities.Insert(child);
 				}
 			}
 		}
-		
+
 		return entities.Count();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Static call for GetAllEntitiesByAuthorUID for ease of use -> only works for Streamed in Entities
 	//! \param[out] entities Array to be filled with editable entities
@@ -336,10 +336,10 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 		if (!core)
 			return 0;
-		
+
 		return core.GetAllEntitiesByAuthorID(entities, playerID);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Find nearest entity to given position.
 	//! \param pos Position from which the distance is measured
@@ -351,26 +351,26 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	{
 		float nearestDis = float.MAX;
 		SCR_EditableEntityComponent nearestEntity;
-		
+
 		set<SCR_EditableEntityComponent> entities = new set<SCR_EditableEntityComponent>();
 		if (onlyDirect)
 			entities = m_Entities;
 		else
 			GetAllEntities(entities);
-		
-		foreach (SCR_EditableEntityComponent entity: m_Entities)
+
+		foreach (SCR_EditableEntityComponent entity : m_Entities)
 		{
 			if (entity.GetEntityType() != type || !entity.HasEntityFlag(flags))
 				continue;
-			
+
 			vector entityPos;
 			if (!entity.GetPos(entityPos))
 				continue;
-			
+
 			float dis = vector.DistanceSq(entityPos, pos);
 			if (dis > nearestDis)
 				continue;
-			
+
 			nearestDis = dis;
 			nearestEntity = entity;
 		}
@@ -445,18 +445,18 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 			budgets.Insert(budget);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Get current budget settings of given type
 	//! \param[out] SCR_EditableEntityCoreBudgetSetting
 	bool GetBudget(EEditableEntityBudget budgetType, out SCR_EditableEntityCoreBudgetSetting budgetSettings)
 	{
 		budgetSettings = m_BudgetSettingsInternal.Get(budgetType);
-		
+
 		bool result = budgetSettings;
-		
+
 		#ifdef BUDGET_OPTIMIZATION_CHECKS
-		if(result && !budgetSettings)
+		if (result && !budgetSettings)
 		{
 			Print("GetBudget: Budget type wasn't defined!", LogLevel.ERROR);
 			return GetBudget_Old(budgetType, budgetSettings);
@@ -465,7 +465,7 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 
 		return result;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Pre-optimization version of GetBudget
 	//! \param[out] SCR_EditableEntityCoreBudgetSetting
@@ -482,16 +482,16 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		}
 		return false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Get all entity label group settings
 	//! \param[out] Array with current entity label groups
 	void GetLabelGroups(out notnull array<ref SCR_EditableEntityCoreLabelGroupSetting> labelGroups)
 	{
-		foreach ( SCR_EditableEntityCoreLabelGroupSetting labelGroup : m_LabelGroupSettings)
+		foreach (SCR_EditableEntityCoreLabelGroupSetting labelGroup : m_LabelGroupSettings)
 		{
 			int index = labelGroups.Count();
-			
+
 			for (int i = 0; i < index; i++)
 			{
 				if (labelGroups[i].GetOrder() >= labelGroup.GetOrder())
@@ -500,26 +500,26 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 					break;
 				}
 			}
-			
+
 			labelGroups.InsertAt(labelGroup, index);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Get the order of the given group type
 	//! \param groupLabel given group type
 	//! \return order
 	int GetLabelGroupOrder(EEditableEntityLabelGroup groupLabel)
 	{
-		foreach ( SCR_EditableEntityCoreLabelGroupSetting labelGroup : m_LabelGroupSettings)
+		foreach (SCR_EditableEntityCoreLabelGroupSetting labelGroup : m_LabelGroupSettings)
 		{
 			if (labelGroup.GetLabelGroupType() == groupLabel)
 				return labelGroup.GetOrder();
 		}
-		
+
 		return -1;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Get group enum value of passed entity label
 	//! \param EEditableEntityLabel enum value
@@ -530,7 +530,7 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		SCR_EditableEntityCoreLabelSetting labelSettings;
 		if (!m_LabelSettingsMap.Find(label, labelSettings))
 			return false;
-		
+
 		labelGroup = labelSettings.GetLabelGroupType();
 		return labelGroup != EEditableEntityLabelGroup.NONE;
 	}
@@ -572,13 +572,13 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		{
 			if (labelSetting.IsValid(currentMode))
 				uiInfo = labelSetting.GetInfo();
-			else 
+			else
 				uiInfo = null;
 		}
-			
+
 		return uiInfo != null;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Get UI infos and Linked Conflict service point of passed entity label for BuildMode specific Labels
 	//! Will ignore any non-buildmode labels as well as any build mode labels that have neither UIInfo nor linked Conflict service point
@@ -589,15 +589,15 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		SCR_EditableEntityCampaignBuildingLabelSetting buildModeLabelSetting = SCR_EditableEntityCampaignBuildingLabelSetting.Cast(m_LabelSettingsMap.Get(entityLabel));
 		if (!buildModeLabelSetting)
 			return null;
-		
+
 		SCR_UIInfo uiInfo = buildModeLabelSetting.GetInfo();
 		SCR_EServicePointType linkedConflictServicePoint = buildModeLabelSetting.GetLinkedConflictServicePoint();
 		if (!uiInfo && linkedConflictServicePoint < 0)
 			return null;
-		
+
 		return new SCR_EditableEntityCampaignBuildingModeLabelData(entityLabel, uiInfo, linkedConflictServicePoint);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Get UI infos and Linked Conflict service point of all passed entity labels for BuildMode specific Labels
 	//! Will ignore any non-buildmode labels as well as any build mode labels that have neither UIInfo nor linked Conflict service point
@@ -607,32 +607,32 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	int GetCampaignBuildingModeLabelsData(notnull array<EEditableEntityLabel> entityLabels, notnull out array<ref SCR_EditableEntityCampaignBuildingModeLabelData> validBuildmodeLabelData)
 	{
 		validBuildmodeLabelData.Clear();
-		
+
 		SCR_EditableEntityCampaignBuildingLabelSetting buildModeLabelSetting;
 		SCR_UIInfo uiInfo;
 		SCR_EServicePointType linkedConflictServicePoint;
-		
+
 		foreach (EEditableEntityLabel entityLabel : entityLabels)
-		{			
+		{
 			if (entityLabel == EEditableEntityLabel.TRAIT_SERVICE)
 				continue;
-			
+
 			buildModeLabelSetting = SCR_EditableEntityCampaignBuildingLabelSetting.Cast(m_LabelSettingsMap.Get(entityLabel));
 			if (!buildModeLabelSetting)
 				continue;
-			
+
 			uiInfo = buildModeLabelSetting.GetInfo();
 			linkedConflictServicePoint = buildModeLabelSetting.GetLinkedConflictServicePoint();
-			
+
 			if (!uiInfo && linkedConflictServicePoint < 0)
 				continue;
-			
+
 			validBuildmodeLabelData.Insert(new SCR_EditableEntityCampaignBuildingModeLabelData(entityLabel, uiInfo, linkedConflictServicePoint));
 		}
-		
+
 		return validBuildmodeLabelData.Count();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Get UI info of passed entity label for BuildMode labels. Will return null if no UIInfo assigned or if not a building mode specific label
 	//! \param entityLabel label to get data from
@@ -642,10 +642,10 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		SCR_EditableEntityCampaignBuildingLabelSetting buildModeLabelSetting = SCR_EditableEntityCampaignBuildingLabelSetting.Cast(m_LabelSettingsMap.Get(entityLabel));
 		if (!buildModeLabelSetting)
 			return null;
-		
+
 		return buildModeLabelSetting.GetInfo();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Get linked conflict service point of passed entity label for BuildMode labels. Will ignore any non assigned values (-1 or less)
 	//! \param entityLabel label to get data from
@@ -655,10 +655,10 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		SCR_EditableEntityCampaignBuildingLabelSetting buildModeLabelSetting = SCR_EditableEntityCampaignBuildingLabelSetting.Cast(m_LabelSettingsMap.Get(entityLabel));
 		if (!buildModeLabelSetting)
 			return -1;
-		
+
 		return buildModeLabelSetting.GetLinkedConflictServicePoint();
 	}
-		
+
 	//------------------------------------------------------------------------------------------------
 	//! Get specific label order. Returns -1 if label not found
 	//! \return int label order.
@@ -668,18 +668,18 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		array<SCR_EditableEntityCoreLabelSetting> labels = {};
 		EEditableEntityLabelGroup groupLabel;
 		GetLabelGroupType(entityLabel, groupLabel);
-		
+
 		if (!GetLabelsOfGroup(groupLabel, labels))
 			return -1;
-		
+
 		int count = labels.Count();
-		
-		for(int i = 0; i < count; i++)
-        {
-            if (labels[i].GetLabelType() == entityLabel)
+
+		for (int i = 0; i < count; i++)
+		{
+			if (labels[i].GetLabelType() == entityLabel)
 				return i;
-        }
-		
+		}
+
 		return -1;
 	}
 
@@ -690,22 +690,22 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	{
 		if (labels.IsEmpty())
 			return;
-		
+
 		array<EEditableEntityLabelGroup> orderedGroups = {};
 		map<EEditableEntityLabelGroup, ref array<EEditableEntityLabel>> groupsWithLabels = new map<EEditableEntityLabelGroup, ref array<EEditableEntityLabel>>();
-		
+
 		int groupLabelCount = 0;
 		bool groupAdded = false;
 		EEditableEntityLabelGroup groupLabel;
 
 		//~ Get label groups of the given label and get order of the group
-		foreach (EEditableEntityLabel label: labels)
+		foreach (EEditableEntityLabel label : labels)
 		{
 			GetLabelGroupType(label, groupLabel);
-			
+
 			if (!groupsWithLabels.Contains(groupLabel))
 				groupsWithLabels.Insert(groupLabel, new array<EEditableEntityLabel>());
-				
+
 			groupsWithLabels[groupLabel].Insert(label);
 
 			//~ New list so add it and continue
@@ -715,15 +715,15 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 				groupLabelCount++;
 				continue;
 			}
-			
+
 			//~ Already in list so continue
 			if (orderedGroups.Contains(groupLabel))
 				continue;
-			
+
 			groupAdded = false;
 			//~ Check existing and place it in the correct order
-			for(int i = 0; i < groupLabelCount; i++)
-	        {
+			for (int i = 0; i < groupLabelCount; i++)
+			{
 				//~ Group Label is higher order so add it to the list and break loop
 				if (GetLabelGroupOrder(groupLabel) <= GetLabelGroupOrder(orderedGroups[i]))
 				{
@@ -732,30 +732,30 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 					groupAdded = true;
 					break;
 				}
-	        }
-			
+			}
+
 			if (groupAdded)
 				continue;
-			
+
 			orderedGroups.Insert(groupLabel);
 			groupLabelCount++;
 		}
-		
+
 		array<EEditableEntityLabel> orderedLabels = {};
 		int orderedLabelCount;
 		bool labelAdded = false;
 		array<EEditableEntityLabel> allOrderedLabels = {};
-		
+
 		array<EEditableEntityLabel> labelsTest = {};
-		
+
 		//~ For each ordered group get the labels and order those as well
-		foreach (EEditableEntityLabelGroup group: orderedGroups)
-		{			
+		foreach (EEditableEntityLabelGroup group : orderedGroups)
+		{
 			orderedLabelCount = 0;
 			orderedLabels.Clear();
-			
+
 			//~ Go over each label in the group and order them from highest to lowest
-			foreach (EEditableEntityLabel label: groupsWithLabels[group])
+			foreach (EEditableEntityLabel label : groupsWithLabels[group])
 			{
 				//~ New list so add it and continue
 				if (orderedLabels.IsEmpty())
@@ -764,11 +764,11 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 					orderedLabelCount++;
 					continue;
 				}
-				
+
 				labelAdded = false;
 				//~ Check existing and place it in the correct order
-				for(int i = 0; i < orderedLabelCount; i++)
-		        {
+				for (int i = 0; i < orderedLabelCount; i++)
+				{
 					//~ Label is higher order so add it to the list and break loop
 					if (GetLabelOrder(label) <= GetLabelOrder(orderedLabels[i]))
 					{
@@ -777,20 +777,20 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 						labelAdded = true;
 						break;
 					}
-		        }
-				
+				}
+
 				if (labelAdded)
 					continue;
-				
+
 				//~ Lowest order so add it there
 				orderedLabels.Insert(label);
 				orderedLabelCount++;
 			}
-			
+
 			//~ Add the ordered labels to the overal ordered list
 			allOrderedLabels.InsertAll(orderedLabels);
 		}
-		
+
 		//~ Set out labels to ordered labels
 		labels.Copy(allOrderedLabels);
 	}
@@ -801,7 +801,7 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	void LoadSettings(SCR_EditableEntityComponent entity)
 	{
 		if (!entity) return;
-		
+
 		//--- Get settings for the entity based on its type
 		SCR_EditableEntityCoreTypeSetting setting = null;
 		if (!m_TypeSettingsMap.Find(entity.GetEntityType(), setting))
@@ -809,7 +809,7 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 			Print(string.Format("Default type settings not found for '%1'!", Type().EnumToString(EEditableEntityType, entity.GetEntityType())), LogLevel.ERROR);
 			return;
 		}
-		
+
 		//--- Set default max draw distance
 		if (entity.GetMaxDrawDistanceSq() <= 0)
 			entity.SetMaxDrawDistance(setting.GetMaxDrawDistance());
@@ -823,7 +823,7 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		SCR_EditableEntityCoreTypeSetting setting = null;
 		if (entity && !m_TypeSettingsMap.Find(entity.GetEntityType(), setting))
 			return setting;
-		
+
 		return null;
 	}
 
@@ -847,7 +847,7 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		if (!m_Entities) return;
 		Print("--------------------------------------------------", LogLevel.DEBUG);
 		Print(string.Format("--- ALL (%1)", m_Entities.Count()), LogLevel.DEBUG);
-		foreach (SCR_EditableEntityComponent entity: m_Entities)
+		foreach (SCR_EditableEntityComponent entity : m_Entities)
 		{
 			entity.Log();
 		}
@@ -863,14 +863,14 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	{
 		if (!entity)
 			return;
-		
+
 		EEditableEntityType entityType = entity.GetEntityType();
 		if (entity.HasEntityFlag(EEditableEntityFlag.LOCAL) || entity.HasEntityFlag(EEditableEntityFlag.NON_INTERACTIVE))
 			return;
-		
+
 		if (!owner)
 			owner = entity.GetOwner();
-		
+
 		if (added)
 		{
 			// Budget update is delayed by one frame since AI-control can not be determined directly on spawn
@@ -889,7 +889,7 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	//! \param added
 	//! \param owner
 	protected void UpdateBudgetForEntity(SCR_EditableEntityComponent entity, bool added, IEntity owner)
-	{	
+	{
 		// Entity was deleted before delayed update could run, ignore entity.
 		// Will be ignored for both delayed Register and Unregister so shouldn't affect total budget
 		if (!entity)
@@ -904,7 +904,7 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 				if (editableGroupComponent)
 					editableGroupComponent.GetPrefabBudgetCost(entityBudgetCosts);
 			}
-			
+
 			foreach	(SCR_EntityBudgetValue budgetCost : entityBudgetCosts)
 			{
 				QueueBudgetChange(budgetCost.GetBudgetType(), added, entity, budgetCost);
@@ -921,34 +921,34 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		SCR_EditableEntityCoreBudgetSetting budgetSettings;
 		if (!GetBudget(budgetType, budgetSettings))
 			return;
-		
-		const int originalBudgetValue = budgetSettings.GetCurrentBudget();	
+
+		const int originalBudgetValue = budgetSettings.GetCurrentBudget();
 		int budgetChange = budgetSettings.GetMinBudgetCost();
-		
+
 		//budget change cant be less than minimum budget cost
-		if(budgetCost)
+		if (budgetCost)
 			budgetChange = Math.Max(budgetChange, budgetCost.GetBudgetValue());
-		
+
 		//if we are deleting the entity we reduce the budget
-		if(!added)
+		if (!added)
 			budgetChange *= -1;
 
 		//budget we should have if we had been applying all budget changes at the same time
 		const int adjustedCurrentBudget = budgetSettings.GetCurrentBudget() + m_accumulatedBudgetChanges[budgetType];
 		const int updatedBudgetValue = adjustedCurrentBudget + budgetChange;
-		
-		//update current budget changes	
+
+		//update current budget changes
 		m_accumulatedBudgetChanges[budgetType] = m_accumulatedBudgetChanges[budgetType] + budgetChange;
 
 		Event_OnEntityBudgetUpdatedPerEntity.Invoke(budgetType, adjustedCurrentBudget, budgetChange, updatedBudgetValue, entity);
 
-		if(!budgetChangesAccumulated)
+		if (!budgetChangesAccumulated)
 		{
 			GetGame().GetCallqueue().CallLater(ApplyQueuedBudgetChanges);
 			budgetChangesAccumulated = true;
 		}
 	}
-	
+
 	protected void ApplyQueuedBudgetChanges()
 	{
 		SCR_EditableEntityCoreBudgetSetting budgetSettings = null;
@@ -956,48 +956,48 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		int originalBudgetValue = 0;
 
 		EEditableEntityBudget budgetType = 0;
-		
+
 		MapIterator it = m_accumulatedBudgetChanges.Begin();
 		const MapIterator end = m_accumulatedBudgetChanges.End();
-		
-		while(it != end)
+
+		while (it != end)
 		{
 			//Print("Budget: " + m_accumulatedBudgetChanges.GetIteratorKey(it));
 			//Print("Value: " + m_accumulatedBudgetChanges.GetIteratorElement(it));
 
 			budgetChange = m_accumulatedBudgetChanges.GetIteratorElement(it);
-			if(budgetChange == 0)
+			if (budgetChange == 0)
 			{
 				//advance to next budget
 				it = m_accumulatedBudgetChanges.Next(it);
 				continue;
 			}
-			
+
 			budgetType = m_accumulatedBudgetChanges.GetIteratorKey(it);
 			budgetSettings = m_BudgetSettingsInternal[budgetType];
-			
+
 			originalBudgetValue = budgetSettings.GetCurrentBudget();
-			
+
 			//substraced budget change has to be a positive number
-			if(budgetChange > 0)
+			if (budgetChange > 0)
 				budgetChange = budgetSettings.AddToBudget(budgetChange);
 			else
 				budgetChange = budgetSettings.SubtractFromBudget(-budgetChange);
-			
+
 			const int updatedBudgetValue = budgetSettings.GetCurrentBudget();
-			
+
 			if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_BUDGET_CHANGES))
 				Print(string.Format("New budget for type %1: %2", budgetType, updatedBudgetValue), LogLevel.NORMAL);
-			
+
 			Event_OnEntityBudgetUpdated.Invoke(budgetType, originalBudgetValue, budgetChange, updatedBudgetValue);
-			
+
 			//reset it for next budget update
 			m_accumulatedBudgetChanges[budgetType] = 0;
-			
+
 			//advance to next budget
 			it = m_accumulatedBudgetChanges.Next(it);
 		}
-		
+
 		budgetChangesAccumulated = false;
 	}
 	//------------------------------------------------------------------------------------------------
@@ -1007,12 +1007,12 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	//! \param entity
 	//! \param budgetCost
 	protected void UpdateBudget(EEditableEntityBudget budgetType, bool added, SCR_EditableEntityComponent entity, SCR_EntityBudgetValue budgetCost = null)
-	{	
+	{
 		SCR_EditableEntityCoreBudgetSetting budgetSettings;
 		if (!GetBudget(budgetType, budgetSettings))
 			return;
-		
-		int originalBudgetValue = budgetSettings.GetCurrentBudget();	
+
+		int originalBudgetValue = budgetSettings.GetCurrentBudget();
 		int budgetChange = 0;
 		if (added)
 		{
@@ -1022,23 +1022,59 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		{
 			budgetChange = budgetSettings.SubtractFromBudget(budgetCost);
 		}
-		
+
 		int updatedBudgetValue = originalBudgetValue + budgetChange;
-		
+
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_BUDGET_CHANGES))
 			Print(string.Format("New budget for type %1: %2", budgetType, updatedBudgetValue), LogLevel.NORMAL);
-		
+
 		Event_OnEntityBudgetUpdated.Invoke(budgetType, originalBudgetValue, budgetChange, updatedBudgetValue, entity);
 	}
-	
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+
+	//------------------------------------------------------------------------------------------------
+	void DeleteAllEntitiesThatHaveBudgetOfType(EEditableEntityBudget budgetToFree)
+	{
+		set<SCR_EditableEntityComponent> entitiesToCheck = new set<SCR_EditableEntityComponent>;
+		array<SCR_EditableEntityComponent> entitiesToDelete = {};
+
+		foreach (SCR_EditableEntityComponent component : m_Entities)
+		{
+			//entity or its children doesnt have this budget type
+			if (!component.EntityHasBudgetOfType(budgetToFree))
+				continue;
+
+			entitiesToCheck.Clear();
+
+			//we want to check this entity and all its children
+			entitiesToCheck.Insert(component);
+			component.GetChildren(entitiesToCheck);
+
+			foreach (SCR_EditableEntityComponent entityToCheck : entitiesToCheck)
+			{
+				array<ref SCR_EntityBudgetValue> entityBudgetCosts = {};
+
+				//entity doesn't have the budget we want
+				if (!entityToCheck.EntityHasBudgetOfType(budgetToFree))
+					continue;
+
+				entitiesToDelete.Insert(entityToCheck);
+			}
+		}
+
+		foreach (SCR_EditableEntityComponent component : entitiesToDelete)
+		{
+			component.Delete(true);
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Authors logic (UGC)
 	//------------------------------------------------------------------------------------------------
 	void RegisterAuthorServer(SCR_EditableEntityAuthor newAuthor)
 	{
 		if (RplSession.Mode() == RplMode.Client)
 			return;
-		
+
 		if (!m_mAuthors.Contains(newAuthor.m_sAuthorUID))
 		{
 			newAuthor.m_iEntityCount++;
@@ -1051,13 +1087,13 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 			Print("SCR_EditableEntityCore::RegisterAuthorServer - Author Updated", LogLevel.VERBOSE);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void AuthorEntityRemovedServer(SCR_EditableEntityAuthor newAuthor)
 	{
 		if (RplSession.Mode() == RplMode.Client)
 			return;
-		
+
 		if (!m_mAuthors.Contains(newAuthor.m_sAuthorUID))
 		{
 			Print("SCR_EditableEntityCore::AuthorEntityRemovedServer - This should not happen, author has to be registered if entity is being removed", LogLevel.ERROR);
@@ -1065,54 +1101,54 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		else
 		{
 			m_mAuthors[newAuthor.m_sAuthorUID].m_iEntityCount--;
-			
+
 			if (m_mAuthors[newAuthor.m_sAuthorUID].m_iEntityCount <= 0)
 				m_mAuthors.Remove(newAuthor.m_sAuthorUID);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	set<SCR_EditableEntityAuthor> GetAllAuthorsServer()
 	{
 		if (RplSession.Mode() == RplMode.Client)
 			return new set<SCR_EditableEntityAuthor>();
-		
+
 		set<SCR_EditableEntityAuthor> authors = new set<SCR_EditableEntityAuthor>();
-		
+
 		foreach (SCR_EditableEntityAuthor author : m_mAuthors)
 		{
 			authors.Insert(author);
 		}
-		
+
 		return authors;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void RequestAllAuthors()
 	{
 		SCR_EditorManagerCore managerCore = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
 		if (!managerCore)
 			return;
-		
+
 		SCR_EditorManagerEntity manager = managerCore.GetEditorManager();
 		if (!manager)
 			return;
-		
+
 		if (!m_bAuthorRequesting)
 		{
 			m_bAuthorRequesting = true;
 			manager.RequestAllAuthors();
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Do not call this function yourself, this has to be requested by server
 	void AddAuthorOnRequest(notnull SCR_EditableEntityAuthor newAuthor)
 	{
 		if (m_mAuthors.IsEmpty())
 			m_mAuthors.Insert(newAuthor.m_sAuthorUID, newAuthor);
-		
-		foreach(SCR_EditableEntityAuthor author : m_mAuthors)
+
+		foreach (SCR_EditableEntityAuthor author : m_mAuthors)
 		{
 			if (author.m_sAuthorUID == newAuthor.m_sAuthorUID)
 			{
@@ -1121,23 +1157,23 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 				return;
 			}
 		}
-		
+
 		m_mAuthors.Insert(newAuthor.m_sAuthorUID, newAuthor);
-		
+
 		PrintFormat("SCR_EditableEntityCore::AddAuthorOnRequest - %1", newAuthor.m_sAuthorUID, level: LogLevel.VERBOSE);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void OnAuthorRequestFinished()
 	{
 		m_bAuthorRequesting = false;
-		
+
 		set<SCR_EditableEntityAuthor> authors = new set<SCR_EditableEntityAuthor>();
 		foreach (SCR_EditableEntityAuthor author : m_mAuthors)
 		{
 			authors.Insert(author);
 		}
-		
+
 		Event_OnAuthorsRegisteredFinished.Invoke(authors);
 	}
 
@@ -1145,6 +1181,15 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	SCR_EditableEntityAuthor FindAuthorByIdentity(UUID authorIdentity)
 	{
 		return m_mAuthors[authorIdentity];
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayerIdentityAvailable(int playerId)
+	{
+		const UUID identity = SCR_PlayerIdentityUtils.GetPlayerIdentityId(playerId);
+		SCR_EditableEntityAuthor author = FindAuthorByIdentity(identity);
+		if (author)
+			author.m_iAuthorID = playerId;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1175,14 +1220,22 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_ALL, "", "Log All", "Editable Entities");
 		DiagMenu.RegisterRange(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_TYPE, "", "Log Type", "Editable Entities", string.Format("-1 %1 -1 1", state.GetVariableCount() - 1));
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_DISABLE, "", "Disable entities", "Editable Entities");
+
+		auto gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (gameMode)
+			gameMode.GetOnPlayerAuditSuccess().Insert(OnPlayerIdentityAvailable);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	override void OnGameEnd()
+	override void OnBeforeWorldCleanup()
 	{
+		auto gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (gameMode)
+			gameMode.GetOnPlayerAuditSuccess().Remove(OnPlayerIdentityAvailable);
+
 		m_Entities = null;
 		m_CurrentLayer = null;
-		
+
 		Event_OnEntityRegistered = new ScriptInvoker;
 		Event_OnEntityUnregistered = new ScriptInvoker;
 		Event_OnParentEntityChanged = new ScriptInvoker;
@@ -1193,60 +1246,60 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 
 		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES);
 		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_ALL);
-	
+
 		Restart();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//This class doesnt reset between server restarts, so we do a soft-reset of its contents here. 
+	//This class doesnt reset between server restarts, so we do a soft-reset of its contents here.
 	void Restart()
- 	{
-    	m_TypeSettingsMap = new map<EEditableEntityType, SCR_EditableEntityCoreTypeSetting>;
-    	m_LabelSettingsMap = new map<EEditableEntityLabel, SCR_EditableEntityCoreLabelSetting>;
-    	m_LabelListMap = new map<EEditableEntityLabelGroup, ref array<SCR_EditableEntityCoreLabelSetting>>;
-    	m_LabelGroupSettingsMap = new map<EEditableEntityLabelGroup, SCR_EditableEntityCoreLabelGroupSetting>;
+	{
+		m_TypeSettingsMap = new map<EEditableEntityType, SCR_EditableEntityCoreTypeSetting>;
+		m_LabelSettingsMap = new map<EEditableEntityLabel, SCR_EditableEntityCoreLabelSetting>;
+		m_LabelListMap = new map<EEditableEntityLabelGroup, ref array<SCR_EditableEntityCoreLabelSetting>>;
+		m_LabelGroupSettingsMap = new map<EEditableEntityLabelGroup, SCR_EditableEntityCoreLabelGroupSetting>;
 		m_BudgetSettingsInternal = new map<EEditableEntityBudget, ref SCR_EditableEntityCoreBudgetSetting>;
-		
+
 		m_Entities = null;
 		m_CurrentLayer = null;
-		
+
 		m_OrphanEntityIds = new map<RplId, ref array<RplId>>();
 		m_CurrentLayer = null;
 
 		m_accumulatedBudgetChanges = new map<EEditableEntityBudget, int>;
 		budgetChangesAccumulated = false;
-	
+
 		// UGC Authors
 		// Authors = people who currently own entity in a world
 		m_mAuthors = new map<string, ref SCR_EditableEntityAuthor>; // Held by server, needs to be requested by client.
-		m_bAuthorRequesting = false;  
-	
+		m_bAuthorRequesting = false;
+
 		Init();
-		
+
 		//clear budget costs between restarts
-		foreach(SCR_EditableEntityCoreBudgetSetting setting : m_BudgetSettings)
+		foreach (SCR_EditableEntityCoreBudgetSetting setting : m_BudgetSettings)
 		{
 			setting.SetCurrentBudget(0);
 			setting.UnreserveBudget(setting.GetReservedBudget());
 		}
 	}
-  
-  	//------------------------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	void Init()
 	{
-		foreach (SCR_EditableEntityCoreTypeSetting setting: m_TypeSettings)
+		foreach (SCR_EditableEntityCoreTypeSetting setting : m_TypeSettings)
 		{
 			m_TypeSettingsMap.Insert(setting.GetType(), setting)
 		}
-		
+
 		foreach (SCR_EditableEntityCoreLabelSetting labelSetting : m_EntityLabels)
 		{
 			if (!labelSetting)
 				continue;
-			
+
 			m_LabelSettingsMap.Insert(labelSetting.GetLabelType(), labelSetting);
 		}
-		
+
 
 		//~ Check if groupless label group exist and create a labelSetting for any label not defined in EntityCore with LabelGroup GROUPLESS
 		foreach (SCR_EditableEntityCoreLabelGroupSetting labelGroup : m_LabelGroupSettings)
@@ -1258,14 +1311,14 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 				array<int> allLabels = {};
 				int count = SCR_Enum.GetEnumValues(EEditableEntityLabel, allLabels);
 				SCR_EditableEntityCoreLabelSetting labelSetting;
-				
+
 				//~ Create new groupless labels
 				for (int i = 0; i < count; i++)
 				{
 					//~ Already in m_EntityLabels
 					if (m_LabelSettingsMap.Contains(allLabels[i]))
 						continue;
-					
+
 					labelSetting = SCR_EditableEntityCoreLabelSetting.CreateGrouplessLabel(allLabels[i]);
 					m_EntityLabels.Insert(labelSetting);
 					m_LabelSettingsMap.Insert(allLabels[i], labelSetting);
@@ -1274,39 +1327,39 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 				break;
 			}
 		}
-		
+
 		foreach (SCR_EditableEntityCoreLabelGroupSetting labelGroup : m_LabelGroupSettings)
 		{
 			array<SCR_EditableEntityCoreLabelSetting> groupLabels = {};
 			EEditableEntityLabelGroup labelGroupType = labelGroup.GetLabelGroupType();
 			m_LabelGroupSettingsMap.Insert(labelGroupType, labelGroup);
-			
+
 			foreach (SCR_EditableEntityCoreLabelSetting entityLabel : m_EntityLabels)
 			{
 				if (!entityLabel)
 					continue;
-				
+
 				if (entityLabel.GetLabelGroupType() == labelGroupType)
 				{
 					groupLabels.Insert(entityLabel);
 				}
 			}
-		
+
 			m_LabelListMap.Insert(labelGroupType, groupLabels);
 		}
-		
+
 		//overwrite the nulls with the actual values where valid
-		foreach(SCR_EditableEntityCoreBudgetSetting budgetSetting : m_BudgetSettings)
+		foreach (SCR_EditableEntityCoreBudgetSetting budgetSetting : m_BudgetSettings)
 		{
 			m_BudgetSettingsInternal.Insert(budgetSetting.GetBudgetType(), budgetSetting);
-		}	
+		}
 	}
-	
+
 	// constructor
 	void SCR_EditableEntityCore()
 	{
 		Restart();
 		//--- Square the value
-		m_fPlayerDrawDistance = m_fPlayerDrawDistance * m_fPlayerDrawDistance;		
+		m_fPlayerDrawDistance = m_fPlayerDrawDistance * m_fPlayerDrawDistance;
 	}
 }

@@ -137,9 +137,6 @@ class SCR_SelectionMenuEntry : SCR_UIInfo
 	//------------------------------------------------------------------------------------------------
 	string GetId()
 	{
-		if (m_sId.IsEmpty())
-			Print("Selection menu entry has enmpty id", LogLevel.WARNING);
-
 		return m_sId;
 	}
 

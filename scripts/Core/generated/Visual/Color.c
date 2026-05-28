@@ -11,30 +11,36 @@ Do not modify, this script is generated
 
 class Color: Managed
 {
+	/** \name Constants
+	 * Populated by the engine.
+	 */
+	///@{
+
 	//! color constants - hex codes
-	static const int BLACK = 0xff000000; // black
-	static const int GRAY_25 = 0xff404040; // charcoal
-	static const int GRAY = 0xff808080; // gray
-	static const int GRAY_75 = 0xffc0c0c0; // silver
-	static const int WHITE = 0xffffffff; // white
-	static const int RED = 0xffff0000; // red
-	static const int GREEN = 0xff00ff00; // lime
-	static const int BLUE = 0xff0000ff; // blue
-	static const int DARK_RED = 0xff800000; // maroon
-	static const int DARK_GREEN = 0xff008000; // green
-	static const int DARK_BLUE = 0xff000080; // navy
-	static const int CYAN = 0xff00ffff; // cyan
-	static const int MAGENTA = 0xffff00ff; // magenta
-	static const int YELLOW = 0xffffff00; // yellow
-	static const int DARK_CYAN = 0xff008080; // teal
-	static const int DARK_MAGENTA = 0xff800080; // purple
-	static const int DARK_YELLOW = 0xff808000; // olive
-	static const int ORANGE = 0xffff8000; // dark orange
-	static const int CHARTREUSE = 0xff80ff00; // chartreuse
-	static const int SPRING_GREEN = 0xff00ff80; // spring green
-	static const int DODGER_BLUE = 0xff0080ff; // dodger blue
-	static const int VIOLET = 0xff8000ff; // electric indigo
-	static const int PINK = 0xffff0080; // deep pink
+	static const int BLACK;
+	static const int GRAY_25;
+	static const int GRAY;
+	static const int GRAY_75;
+	static const int WHITE;
+	static const int RED;
+	static const int GREEN;
+	static const int BLUE;
+	static const int DARK_RED;
+	static const int DARK_GREEN;
+	static const int DARK_BLUE;
+	static const int CYAN;
+	static const int MAGENTA;
+	static const int YELLOW;
+	static const int DARK_CYAN;
+	static const int DARK_MAGENTA;
+	static const int DARK_YELLOW;
+	static const int ORANGE;
+	static const int CHARTREUSE;
+	static const int SPRING_GREEN;
+	static const int DODGER_BLUE;
+	static const int VIOLET;
+	static const int PINK;
+	///@}
 
 	//! color constants - color objects
 	static const ref Color Black = new Color(0.0, 0.0, 0.0, 1.0); // black
@@ -73,6 +79,8 @@ class Color: Managed
 	static proto ref Color FromIntSRGB(int color);
 	//! Creates a new color instance in linear color space from RGBA integers in range 0-255 which are in sRGB color space
 	static proto ref Color FromSRGBA(int r, int g, int b, int a);
+	//! Creates a new color instance from Color object
+	proto ref Color Copy();
 	//! Returns Red component
 	proto external float R();
 	//! Returns Green component

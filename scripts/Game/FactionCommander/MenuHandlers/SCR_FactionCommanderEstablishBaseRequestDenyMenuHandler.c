@@ -23,6 +23,6 @@ class SCR_FactionCommanderEstablishBaseRequestDenyMenuHandler : SCR_FactionComma
 		if (!task)
 			return;
 
-		comp.CancelTask(playerId, task.GetTaskID());
+		comp.CancelTask(task.GetTaskID());
 	}
 }

@@ -148,6 +148,28 @@ class WorldSubsceneComponent: GenericComponent
 	\param value Intended portal sound passing flag (S) state: true = passing sound even if closed, false = not set (driven by aperture)
 	*/
 	proto external void SetPortalPassingSound(int portalIdx, bool value);
+	/*!
+	Returns the number of areas in this subscene. There's always at least one area representing
+	the outside world and it has always index = 0. The rest of the areas are internal building
+	rooms separated by portals.
+
+	\return The number of reachable areas
+	*/
+	proto external int GetAreaCount();
+	/*!
+	Lookup for an area using a local space point.
+
+	\param positionLS Position in the local space.
+	\return Index of the area or 0xFFFF when no area is found
+	*/
+	proto external int FindArea(vector positionLS);
+	/*!
+	Gets approximated volume (in meters^3) of a specified area.
+
+	\param areaIdx Index of the area
+	\return Approximated volume of a area or 0.0f when the index is out of bounds
+	*/
+	proto external float GetAreaApproxVolume(int areaIdx);
 }
 
 /*!

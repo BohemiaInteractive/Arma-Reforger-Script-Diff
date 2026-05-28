@@ -442,7 +442,6 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 		if (!m_ScenarioSelect || !m_ScenarioModSelect)
 			return;
 		
-		int selecteScenario = m_ScenarioSelect.GetSelectedOption();
 		array<ref SCR_LocalizedProperty> ownerMods = {};
 		
 		int count = 0;

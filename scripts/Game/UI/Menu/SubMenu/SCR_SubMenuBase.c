@@ -92,7 +92,6 @@ class SCR_SubMenuBase : SCR_ScriptedWidgetComponent
 	protected void ShowNavigationButtons(bool show)
 	{
 		bool visible;
-		
 		foreach (SCR_InputButtonComponent comp : m_aNavigationButtons)
 		{
 			if (m_aNavigationButtonsVisibilityFlags.Contains(comp))
@@ -127,7 +126,7 @@ class SCR_SubMenuBase : SCR_ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	// Use this to control the visibility of buttons created with CreateNavigationButton() method
-	protected void SetNavigationButtonVisibile(SCR_InputButtonComponent button, bool show, bool animate = false)
+	protected void SetNavigationButtonVisible(SCR_InputButtonComponent button, bool show, bool animate = false)
 	{
 		if (!button)
 			return;

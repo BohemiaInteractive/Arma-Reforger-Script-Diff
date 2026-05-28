@@ -2,6 +2,7 @@ class SCR_MapCampaignBuildingUI : SCR_MapUIBaseComponent
 {
 	protected SCR_MapCampaignUI m_MapCampaignUI
 	protected SCR_CampaignBuildingProviderComponent m_TemporaryProviderComponent;
+	protected SCR_CampaignMilitaryBaseComponent m_Base;
 
 	//------------------------------------------------------------------------------------------------
 	override void Init()
@@ -31,7 +32,12 @@ class SCR_MapCampaignBuildingUI : SCR_MapUIBaseComponent
 	protected void OnBaseClicked(SCR_CampaignMapUIBase baseUI)
 	{
 		array<SCR_CampaignBuildingProviderComponent> campaignBuildingProvides = {};
-		int providerCount = baseUI.GetBase().GetBuildingProviders(campaignBuildingProvides);
+		m_Base = baseUI.GetBase();
+
+		if (!m_Base)
+			return;
+
+		int providerCount = m_Base.GetBuildingProviders(campaignBuildingProvides);
 		m_TemporaryProviderComponent = null;
 		if (providerCount > 0)
 		{
@@ -61,14 +67,45 @@ class SCR_MapCampaignBuildingUI : SCR_MapUIBaseComponent
 		SCR_CampaignBuildingBudgetToEvaluateData aiBudgetData = m_TemporaryProviderComponent.GetBudgetData(EEditableEntityBudget.AI);
 		aiBudgetData.SetShowBudgetInUI(true);
 
-		int playerID = SCR_PlayerController.GetLocalPlayerId();
-		m_TemporaryProviderComponent.RequestBuildingMode(playerID, true);
-
 		SCR_EditorManagerEntity editorManager = GetEditorManager();
 		if (!editorManager)
 			return;
 
+		editorManager.GetOnModeAdd().Insert(OnModeAdded);
 		editorManager.GetOnClosed().Insert(OnModeClosed);
+
+		int playerID = SCR_PlayerController.GetLocalPlayerId();
+		m_TemporaryProviderComponent.RequestEnterBuildingMode(playerID, true, true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnCameraCreate(SCR_ManualCamera manualCamera)
+	{
+		SCR_CampaignBuildingCameraEditorComponent editorCameraManager = GetCampaignBuildingCameraEditorComponent();
+		if (!editorCameraManager)
+			return;
+
+		editorCameraManager.GetOnCameraCreate().Remove(OnCameraCreate);
+
+		// set the camera to the base position
+		if (m_Base)
+			editorCameraManager.SetPreActivateCameraPosition(m_Base.GetOwner().GetOrigin());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnModeAdded(SCR_EditorModeEntity modeEntity)
+	{
+		SCR_EditorManagerEntity editorManager = GetEditorManager();
+		if (!editorManager)
+			return;
+
+		editorManager.GetOnModeAdd().Remove(OnModeAdded);
+
+		SCR_CampaignBuildingCameraEditorComponent editorCameraManager = GetCampaignBuildingCameraEditorComponent();
+		if (!editorCameraManager)
+			return;
+
+		editorCameraManager.GetOnCameraCreate().Insert(OnCameraCreate);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -87,6 +124,20 @@ class SCR_MapCampaignBuildingUI : SCR_MapUIBaseComponent
 
 		SCR_CampaignBuildingBudgetToEvaluateData aiBudgetData = m_TemporaryProviderComponent.GetBudgetData(EEditableEntityBudget.AI);
 		aiBudgetData.SetShowBudgetInUI(false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected SCR_CampaignBuildingCameraEditorComponent GetCampaignBuildingCameraEditorComponent()
+	{
+		SCR_EditorManagerEntity editorManager = GetEditorManager();
+		if (!editorManager)
+			return null;
+
+		SCR_EditorModeEntity modeEntity = editorManager.FindModeEntity(EEditorMode.BUILDING);
+		if (!modeEntity)
+			return null;
+
+		return SCR_CampaignBuildingCameraEditorComponent.Cast(modeEntity.FindComponent(SCR_CampaignBuildingCameraEditorComponent));
 	}
 
 	//------------------------------------------------------------------------------------------------

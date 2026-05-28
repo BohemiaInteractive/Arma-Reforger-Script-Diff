@@ -82,10 +82,7 @@ class SCR_DamageIntensityHolder
 	SCR_DamageIntensityEntry GetValidIntensityEntry(notnull SCR_DamageManagerComponent damageManager)
 	{
 		HitZone defaultHitZone = damageManager.GetDefaultHitZone();
-		if (defaultHitZone)
-			return GetValidIntensityEntry(defaultHitZone.GetHealthScaled());
-		
-		return null;
+		return GetValidIntensityEntry(defaultHitZone.GetHealthScaled());
 	}
 	
 	//------------------------------------------------------------------------------------------------

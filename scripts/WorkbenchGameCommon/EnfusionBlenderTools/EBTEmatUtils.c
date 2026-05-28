@@ -26,7 +26,7 @@ class EBTContainerFields
 	static const string components = "components";
 	static const string meshObject = "MeshObject";
 	static const string object = "Object";
-	static const ref array<string> supportedTypes = {"GenericEntity", "Building", "GameEntity", "StaticModelEntity"};
+	static const ref array<string> supportedTypes = {"GenericEntity", "Building", "GameEntity", "StaticModelEntity","DestructibleEntity","SCR_DestructibleEntity"};
 }
 
 

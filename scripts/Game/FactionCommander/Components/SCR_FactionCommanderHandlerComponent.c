@@ -109,7 +109,7 @@ class SCR_FactionCommanderHandlerComponent : SCR_BaseGameModeComponent
 		if (previousGroupID >= 0)
 		{
 			SCR_AIGroup previousGroup = groupsManager.FindGroup(previousGroupID);
-			if (previousGroup && previousGroup.GetPlayerCount() < previousGroup.GetMaxMembers())
+			if (previousGroup && !previousGroup.IsFull())
 			{
 				playerControllerGroupComponent.RequestJoinGroup(previousGroupID);
 				return;
@@ -408,6 +408,35 @@ class SCR_FactionCommanderHandlerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected void DisableVolunteerCooldown(int playerId, KickCauseCode cause)
+	{
+		WorldTimestamp cooldownTimestamp = m_mVotingTimestamps.Get(playerId);
+		if (!cooldownTimestamp)
+			return;
+
+		string groupId, reasonId;
+		KickCauseGroup2 groupInt;
+		int reasonInt;
+
+		// Remove volunteer cooldown timer on stalls and timeouts
+		GetGame().GetFullKickReason(cause, groupInt, reasonInt, groupId, reasonId);
+		if (groupInt == KickCauseGroup2.PLAYER_MANAGER || (groupInt == RplKickCauseGroup.REPLICATION && reasonInt == RplError.SHUTDOWN))
+			return;
+
+		ChimeraWorld world = GetGame().GetWorld();
+		if (!world)
+			return;
+
+		WorldTimestamp now = world.GetServerTimestamp();
+		if (cooldownTimestamp.Greater(now))
+		{
+			m_mVotingTimestamps.Set(playerId, now);
+			SetNextVolunteeringTimestamp(playerId, now);
+		}
+
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnPlayerRegistered(int playerId)
 	{
 		super.OnPlayerRegistered(playerId);
@@ -424,6 +453,8 @@ class SCR_FactionCommanderHandlerComponent : SCR_BaseGameModeComponent
 
 		if (Replication.IsClient())
 			return;
+
+		DisableVolunteerCooldown(playerId, cause);
 
 		FactionManager fManager = GetGame().GetFactionManager();
 

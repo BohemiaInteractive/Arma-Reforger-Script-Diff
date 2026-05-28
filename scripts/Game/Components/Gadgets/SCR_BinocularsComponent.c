@@ -9,18 +9,16 @@ class SCR_BinocularsComponent : SCR_GadgetComponent
 	
 	protected Widget m_RootWidget = null;	// binoculars layout
 	
-	protected static bool m_bZoomed = false;		// local character zoomed state
-	
 	// Optics reference 
 	protected SCR_2DOpticsComponent m_Optic;
 	
 	//------------------------------------------------------------------------------------------------
-	//! Get whether the local character is in a zoomed state
-	static bool IsZoomedView()
+	//! Set whether the local character is zoomed in with the binoculars
+	protected void SetZoomedViewPlayer(bool value)
 	{
-		return m_bZoomed;
+		SCR_PlayerController.s_pLocalPlayerController.SetIsBinocularsZoomed(value);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Switch between zoomed view
 	//! \param[in] state is desired state
@@ -38,16 +36,12 @@ class SCR_BinocularsComponent : SCR_GadgetComponent
 		
 		// Activate optics 
 		if (state)
-		{
 			m_Optic.OnSightADSActivated();
-			m_bZoomed = true;
-		}
 		else
-		{
 			m_Optic.OnSightADSDeactivated();
-			m_bZoomed = false;
-		}
 		
+		SetZoomedViewPlayer(state);
+
 		// Invoke use
 		if (GetOwner().GetParent() == SCR_PlayerController.GetLocalControlledEntity())
 			s_OnBinocToggled.Invoke(state);
@@ -70,7 +64,7 @@ class SCR_BinocularsComponent : SCR_GadgetComponent
 			return;
 		}
 		
-		if (m_iMode == EGadgetMode.IN_HAND && m_bZoomed)
+		if (m_iMode == EGadgetMode.IN_HAND && SCR_PlayerController.s_pLocalPlayerController && SCR_PlayerController.s_pLocalPlayerController.GetIsBinocularsZoomed())
 			ToggleFocused(false);
 		
 		super.ModeClear(mode);

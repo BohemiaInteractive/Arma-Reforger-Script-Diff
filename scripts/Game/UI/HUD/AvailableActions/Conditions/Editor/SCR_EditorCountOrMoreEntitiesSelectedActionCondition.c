@@ -5,14 +5,18 @@ class SCR_EditorCountOrMoreEntitiesSelectedActionCondition: SCR_AvailableActionC
 	[Attribute("1", desc: "if this amount or higher entities selected. Will return true")]
 	protected int m_iCount;
 	
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	//------------------------------------------------------------------------------------------------
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
+		SCR_EntitiesManagerEditorComponent entitiesManager = data.GetEditorEntitiesManagerComponent();
+		if (!entitiesManager)
 			return false;
-		
+
+		SCR_BaseEditableEntityFilter filter = entitiesManager.GetFilter(EEditableEntityState.SELECTED);
+		if (!filter)
+			return false;
+
 		set <SCR_EditableEntityComponent> entities = new set <SCR_EditableEntityComponent>;
-		int count = SCR_BaseEditableEntityFilter.GetEnititiesStatic(entities, EEditableEntityState.SELECTED);
-		
-		return GetReturnResult(count >= m_iCount);
+		return GetReturnResult(filter.GetEntities(entities) >= m_iCount);
 	}
-};
+}

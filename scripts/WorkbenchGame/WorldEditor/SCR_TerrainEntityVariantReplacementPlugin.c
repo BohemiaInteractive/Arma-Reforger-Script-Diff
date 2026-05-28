@@ -131,7 +131,7 @@ class SCR_TerrainEntityVariantReplacementPlugin : WorkbenchPlugin
 		if (m_iReplacementMode == SET_ANCESTOR_REFRESH || m_iReplacementMode == SET_ANCESTOR)
 			return;
 
-		if (m_iReplacementMode != SET_ANCESTOR_FORCE_RELOAD && Workbench.ScriptDialog("Save/Load operation", "SetAncestor requires a terrain save/load. Proceed?", new SCR_OKCancelWorkbenchDialog()) == 0)
+		if (m_iReplacementMode != SET_ANCESTOR_FORCE_RELOAD && Workbench.ScriptDialog("Save/Load operation", "SetAncestor requires a terrain save/load. Proceed?", new WorkbenchDialog_OKCancel()) == 0)
 			return;
 
 		if (!worldEditor.Save())

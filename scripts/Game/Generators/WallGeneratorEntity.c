@@ -195,7 +195,7 @@ class WallGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 		// straight line mode variables start
 		bool isStraightLineMode = isPolyline; // in case we make it a checkbox
 
-		s_World = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi().GetWorld();
+		s_World = world;
 
 		if (!m_WallGroupContainer) // needs s_World
 			m_WallGroupContainer = new SCR_WallGroupContainer(m_aWallGroups, UseXAsForward, MiddleObject);

@@ -345,7 +345,7 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 				{
 					GoToDamagePhase(lastPhase, false);
 					ReplicateDestructibleState(lastPhase);
-					
+
 					if (componentData.m_bDestroyChildrenWhenDestroyed)
 						DeleteDestructibleChildrenDelayed();
 				}
@@ -476,7 +476,7 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 	//------------------------------------------------------------------------------------------------
 	protected override bool HasDataToReplicate()
 	{
-		if (GetDamagePhase() != 0)
+		if( GetDamagePhase() != 0)
 			return true;
 
 		return false;
@@ -523,11 +523,13 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 
 		if (IsProxy())
 			return;
-
-		SCR_DestructionMultiPhaseComponentClass componentData = SCR_DestructionMultiPhaseComponentClass.Cast(GetComponentData(GetOwner()));
-		if (!componentData)
+		
+		// The default hitzone will always exist in play mode, but while in edit mode in WB it is not guaranteed to exist.
+		// Therefore, we make sure to check if it exists during init.
+		if (!GetDefaultHitZone())
 			return;
 
+		SCR_DestructionMultiPhaseComponentClass componentData = SCR_DestructionMultiPhaseComponentClass.Cast(GetComponentData(GetOwner()));
 		if (!componentData.m_aDamagePhases || componentData.m_aDamagePhases.IsEmpty())
 			return;
 

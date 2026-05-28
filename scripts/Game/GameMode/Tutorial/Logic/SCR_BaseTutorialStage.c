@@ -198,6 +198,7 @@ class SCR_BaseTutorialStage : GenericEntity
 
 		if (hintInfo && SCR_HintManagerComponent.GetInstance().GetCurrentHint() != hintInfo)
 		{
+			hintInfo.SetPriority(1);
 			hintInfo.SetPersistent(true);
 			SCR_HintManagerComponent.ShowHint(hintInfo);
 		}

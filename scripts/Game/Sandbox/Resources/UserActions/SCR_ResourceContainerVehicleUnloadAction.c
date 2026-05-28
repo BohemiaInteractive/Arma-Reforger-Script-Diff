@@ -115,7 +115,7 @@ class SCR_ResourceContainerVehicleUnloadAction : SCR_ScriptedUserAction
 		m_bCanPerform = false;
 		
 		if (!m_ResourceInventoryPlayerComponentRplId  || !m_ResourceInventoryPlayerComponentRplId.IsValid())
-			m_ResourceInventoryPlayerComponentRplId = Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
+			m_ResourceInventoryPlayerComponentRplId = Replication.FindItemId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
 		
 		if (!m_ResourceComponent 
 		||	!m_ResourceInventoryPlayerComponentRplId.IsValid()

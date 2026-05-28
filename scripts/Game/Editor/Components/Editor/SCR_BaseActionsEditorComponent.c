@@ -366,7 +366,13 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 		SCR_EditableEntityComponent hoveredEntityComponent;
 		set<SCR_EditableEntityComponent> selectedEntityComponents = new set<SCR_EditableEntityComponent>;
 		DeSerializeEntities(hoveredEntityID, selectedEntityIds, hoveredEntityComponent, selectedEntityComponents);
-		
+
+		if (!action.CanBeShown(hoveredEntityComponent, selectedEntityComponents, cursorWorldPosition, flags))
+			return;
+
+		if (!action.CanBePerformed(hoveredEntityComponent, selectedEntityComponents, cursorWorldPosition, flags))
+			return;
+
 		ActionPerform(action, hoveredEntityComponent, selectedEntityComponents, cursorWorldPosition, flags, param);
 		
 		Rpc(ActionPerformOwner, actionIndex, cursorWorldPosition, flags, param);
@@ -422,7 +428,7 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 	//------------------------------------------------------------------------------------------------
 	private bool GetRplIdFromEditableEntity(SCR_EditableEntityComponent entity, out RplId entityRplId)
 	{
-		entityRplId = Replication.FindId(entity);
+		entityRplId = Replication.FindItemId(entity);
 		return entityRplId != -1;
 	}
 	

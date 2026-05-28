@@ -10,10 +10,10 @@ class SCR_ArtilleryWaypointGroupCommand : SCR_WaypointGroupCommand
 	[Attribute(desc: "Max possible offset that can be added to the target position. [m]", params: "0 inf")]
 	protected float m_fMaxPositionOffset;
 
-	[Attribute(desc: "Curve that describes bottom end of the random distance.\nWhen values are reed, the X axis is determined by (DistanceFromCharacterToTargetPosition - PositionOffsetCloseDistance) / PositionOffsetFarDistance,\n while Y axis will be used to determine min offset distance by multipling it by MaxPositionOffset", uiwidget: UIWidgets.GraphDialog, params: "1 1 0 0")]
+	[Attribute(desc: "Curve that describes bottom end of the random distance.\nWhen values are reed, the X axis is determined by (DistanceFromCharacterToTargetPosition - PositionOffsetCloseDistance) / PositionOffsetFarDistance,\n while Y axis will be used to determine min offset distance by multipling it by MaxPositionOffset", uiwidget: UIWidgets.CurveDialog, params: "1 1 0 0")]
 	protected ref Curve m_aMinPositionOffset;
 	
-	[Attribute(desc: "Curve that describes top end of the random distance.\nWhen values are reed, the X axis is determined by (DistanceFromCharacterToTargetPosition - PositionOffsetCloseDistance) / PositionOffsetFarDistance,\n while Y axis will be used to determine max offset distance by multipling it by MaxPositionOffset", uiwidget: UIWidgets.GraphDialog, params: "1 1 0 0")]
+	[Attribute(desc: "Curve that describes top end of the random distance.\nWhen values are reed, the X axis is determined by (DistanceFromCharacterToTargetPosition - PositionOffsetCloseDistance) / PositionOffsetFarDistance,\n while Y axis will be used to determine max offset distance by multipling it by MaxPositionOffset", uiwidget: UIWidgets.CurveDialog, params: "1 1 0 0")]
 	protected ref Curve m_aMaxPositionOffset;
 
 #ifdef ENABLE_DIAG

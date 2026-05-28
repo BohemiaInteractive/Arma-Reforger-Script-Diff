@@ -67,6 +67,9 @@ class SCR_HintManagerComponent : SCR_BaseGameModeComponent
 		if ((!CanShow() || (!ignoreShown && WasShown(info))) && !info.IsInSequence())
 			return false;
 		
+		if (!info.ShouldFactionSeeHint())
+			return false;
+		
 		//--- Ignore if the new hint has lower priority than the current one
 		if (m_bIsShown && m_LatestHint)
 		{

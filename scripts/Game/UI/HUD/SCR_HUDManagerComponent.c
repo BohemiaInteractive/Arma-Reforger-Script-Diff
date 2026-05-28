@@ -31,7 +31,7 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 	[Attribute()]
 	string m_sDefaultForegroundLayer;
 
-	[Attribute("0 0 1 1", UIWidgets.GraphDialog, params: "0.1 0.6 0 0.4", desc: "Adaptive opacity (y) based on screen brightness (x).", category: "AdaptiveOpacity")]
+	[Attribute("0 0 1 1", UIWidgets.CurveDialog, params: "0.1 0.6 0 0.4", desc: "Adaptive opacity (y) based on screen brightness (x).", category: "AdaptiveOpacity")]
 	private ref Curve m_AdaptiveOpacityCurve;	
 	
 	[Attribute("SCR_InterfaceSettings", desc: "Classname of the InterfaceSettings menu")]

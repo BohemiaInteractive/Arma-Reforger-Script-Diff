@@ -9,14 +9,19 @@ class SCR_CampaignBuildingCameraEditorComponent : SCR_CameraEditorComponent
 {
 	override protected void CreateCamera()
 	{
+		SCR_CampaignBuildingEditorComponent buildingComp = SCR_CampaignBuildingEditorComponent.Cast(FindEditorComponent(SCR_CampaignBuildingEditorComponent, true, true));
+		if (!buildingComp || !buildingComp.GetTrigger())
+		{
+			m_Manager.Close();
+			return;
+		}
+
 		super.CreateCamera();	
 		
 		SCR_AttachManualCameraComponent attachComponent = SCR_AttachManualCameraComponent.Cast(m_Camera.FindCameraComponent(SCR_AttachManualCameraComponent));
 		if (!attachComponent)
 			return; 
 		
-		SCR_CampaignBuildingEditorComponent buildingComp = SCR_CampaignBuildingEditorComponent.Cast(FindEditorComponent(SCR_CampaignBuildingEditorComponent, true, true));
-		if (buildingComp)
-			attachComponent.AttachTo(buildingComp.GetTrigger());
+		attachComponent.AttachTo(buildingComp.GetTrigger());
 	}
 };

@@ -16,8 +16,8 @@ class SCR_ControllerPresetsSettingsSubmenu: SCR_SettingsSubMenuBase
 	{
 		super.OnTabCreate(menuRoot, buttonsLayout, index);
 		
-		EPlatform platform = System.GetPlatform();
-		if (platform == EPlatform.PS4 || platform == EPlatform.PS5 || platform == EPlatform.PS5_PRO || platform == EPlatform.UNKNOWN)
+		PlatformKind platformKind = GetGame().GetPlatformService().GetLocalPlatformKind(); 
+		if (platformKind == PlatformKind.XBOX || platformKind == PlatformKind.PSN)
 		{
 			HideMenuItem("Devices");
 			HideMenuItem("JoystickPreset");
@@ -112,7 +112,7 @@ class SCR_ControllerPresetsSettingsSubmenu: SCR_SettingsSubMenuBase
 		if (keybindModule)
 			keybindModule.SelectControllerPresets(presetIndex: index);
 		
-		SCR_AnalyticsApplication.GetInstance().ChangeSetting("Presets", "Controller Preset");
+		//SCR_AnalyticsApplication.GetInstance().ChangeSetting("Presets", "Controller Preset");
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -1,6 +1,8 @@
 [BaseContainerProps()]
 class SCR_AnalyticsDataCollectionMilitaryBaseEventsModule : SCR_AnalyticsDataCollectionModule
 {
+	protected SCR_CampaignMilitaryBaseComponent baseInCreation;
+	
 	//------------------------------------------------------------------------------------------------
 	protected override void Enable()
 	{
@@ -8,6 +10,8 @@ class SCR_AnalyticsDataCollectionMilitaryBaseEventsModule : SCR_AnalyticsDataCol
 
 		SCR_CampaignMilitaryBaseComponent.GetOnFactionChangedExtended().Insert(OnBaseFactionChanged);
 		SCR_CampaignMilitaryBaseComponent.GetOnBaseUnderAttack().Insert(OnBaseUnderAttack);
+		SCR_CampaignMilitaryBaseComponent.GetOnBaseCreatedAsFOB().Insert(HandleBaseCreation);
+		SCR_CampaignMilitaryBaseManager.GetOnBaseDisassembled().Insert(OnBaseDisassembledAsFOB);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -16,7 +20,9 @@ class SCR_AnalyticsDataCollectionMilitaryBaseEventsModule : SCR_AnalyticsDataCol
 		super.Disable();
 
 		SCR_CampaignMilitaryBaseComponent.GetOnFactionChangedExtended().Remove(OnBaseFactionChanged);
-		SCR_CampaignMilitaryBaseComponent.GetOnBaseUnderAttack().Insert(OnBaseUnderAttack);
+		SCR_CampaignMilitaryBaseComponent.GetOnBaseUnderAttack().Remove(OnBaseUnderAttack);
+		SCR_CampaignMilitaryBaseComponent.GetOnBaseCreatedAsFOB().Remove(HandleBaseCreation);
+		SCR_CampaignMilitaryBaseManager.GetOnBaseDisassembled().Remove(OnBaseDisassembledAsFOB);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -24,9 +30,19 @@ class SCR_AnalyticsDataCollectionMilitaryBaseEventsModule : SCR_AnalyticsDataCol
 	//! \param[in] base
 	//! \param[in] previousFaction
 	//! \param[in] currentFaction
-	protected void OnBaseFactionChanged(SCR_CampaignMilitaryBaseComponent base, Faction previousFaction, Faction currentFaction)
+	protected void OnBaseFactionChanged(notnull SCR_CampaignMilitaryBaseComponent base, Faction previousFaction, Faction currentFaction)
 	{
-		SCR_SessionDataEvent sessionEvent = SetSessionEventBaseInfo(base, previousFaction, currentFaction);
+		if(baseInCreation)
+		{
+			if(base == baseInCreation)
+			{
+				GetGame().GetCallqueue().Remove(OnBaseCreatedAsFOB);
+				OnBaseCreatedAsFOB(base, currentFaction);
+				return;
+			}
+		}
+		
+		SCR_SessionDataEvent sessionEvent = SetSessionEventBaseInfoWhenOffensive(base, previousFaction, currentFaction);
 		if (!sessionEvent)
 			return;
 
@@ -39,48 +55,108 @@ class SCR_AnalyticsDataCollectionMilitaryBaseEventsModule : SCR_AnalyticsDataCol
 	//! \param[in] base
 	//! \param[in] defendingFaction
 	//! \param[in] attackingFaction
-	protected void OnBaseUnderAttack(SCR_CampaignMilitaryBaseComponent base, Faction defendingFaction, Faction attackingFaction)
+	protected void OnBaseUnderAttack(notnull SCR_CampaignMilitaryBaseComponent base, Faction defendingFaction, Faction attackingFaction)
 	{
-		SCR_SessionDataEvent sessionEvent = SetSessionEventBaseInfo(base, defendingFaction, attackingFaction);
+		SCR_SessionDataEvent sessionEvent = SetSessionEventBaseInfoWhenOffensive(base, defendingFaction, attackingFaction);
 		if (!sessionEvent)
 			return;
 
 		//Send event of SessionBaseAttacked
 		GetGame().GetStatsApi().SessionBaseAttacked(sessionEvent);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	//! Gets string names of base, attacking faction and defending faction
+	//! OnBaseCreatedAsFOB is inserted on a queue
 	//! \param[in] base
-	//! \param[in] defendingFaction
-	//! \param[in] attackingFaction
-	//! \param[out] baseName
-	//! \param[out] defendingFactionName
-	//! \param[out] attackingFactionName
-	protected void GetBaseAndFactionNames(out string baseName, out string defendingFactionName, out string attackingFactionName, SCR_CampaignMilitaryBaseComponent base, Faction defendingFaction, Faction attackingFaction)
+	//! \param[in] establishingFaction
+	protected void HandleBaseCreation(notnull SCR_CampaignMilitaryBaseComponent base, Faction establishingFaction)
 	{
-		baseName = base.GetBaseName();
-		defendingFactionName = defendingFaction.GetFactionKey();
-		attackingFactionName = attackingFaction.GetFactionKey();
+		baseInCreation = base;
+		GetGame().GetCallqueue().CallLater(OnBaseCreatedAsFOB, 1000, false, base, establishingFaction);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Base is created, send event to analytics db
+	//! \param[in] base
+	//! \param[in] establishingFaction
+	protected void OnBaseCreatedAsFOB(notnull SCR_CampaignMilitaryBaseComponent base, Faction establishingFaction)
+	{
+		if(baseInCreation)
+			baseInCreation = null;
+		
+		SCR_SessionDataEvent sessionEvent = SetSessionEventBaseInfoWhenCreatingOrErasing(base, establishingFaction);
+		if (!sessionEvent)
+			return;
+		
+		//Send event of SessionBaseAttacked
+		GetGame().GetStatsApi().CreateSessionEvent(sessionEvent, "baseCreated");
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Base is erased, send event to analytics db
+	//! \param[in] base
+	//! \param[in] establishingFaction
+	protected void OnBaseDisassembledAsFOB(notnull SCR_CampaignMilitaryBaseComponent base, Faction establishingFaction)
+	{
+		SCR_SessionDataEvent sessionEvent = SetSessionEventBaseInfoWhenCreatingOrErasing(base, establishingFaction);
+		if (!sessionEvent)
+			return;
+		
+		//Send event of SessionBaseAttacked
+		GetGame().GetStatsApi().CreateSessionEvent(sessionEvent, "baseDisassembled");
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected SCR_SessionDataEvent SetSessionEventBaseInfo(SCR_CampaignMilitaryBaseComponent base, Faction defendingFaction, Faction attackingFaction)
+	protected SCR_SessionDataEvent SetSessionEventBaseInfoWhenCreatingOrErasing(notnull SCR_CampaignMilitaryBaseComponent base, Faction establishingFaction)
 	{
-		if (!base || !defendingFaction || !attackingFaction)
+		if (!base)
 			return null;
-
-		string baseName, defendingFactionName, attackingFactionName;
-		GetBaseAndFactionNames(baseName, defendingFactionName, attackingFactionName, base, defendingFaction, attackingFaction);
 
 		SCR_SessionDataEvent sessionEvent = GetSessionDataEvent();
 		if (!sessionEvent)
 			return null;
+		
+		sessionEvent.name_base = "FoB";
+		sessionEvent.name_faction_base_def = "";
+		sessionEvent.name_faction_base_att = "";
+		if (establishingFaction)
+			sessionEvent.name_faction_base_establishing = establishingFaction.GetFactionKey();
+		else
+			sessionEvent.name_faction_base_establishing = "Unknown faction";
+		
+		vector basePosition;
+		
+		if (base.GetOwner())
+			basePosition = base.GetOwner().GetOrigin();
+		else
+			basePosition = vector.Zero;
+		
+		sessionEvent.base_position_x = basePosition[0];
+		sessionEvent.base_position_y = basePosition[1];
+		sessionEvent.base_position_z = basePosition[2];
+		
+		return sessionEvent;
+	}
+	
+	protected SCR_SessionDataEvent SetSessionEventBaseInfoWhenOffensive(notnull SCR_CampaignMilitaryBaseComponent base, Faction defendingFaction, Faction attackingFaction)
+	{
+		if (!base || !defendingFaction || !attackingFaction)
+			return null;
 
-		sessionEvent.name_base = baseName;
-		sessionEvent.name_faction_base_def = defendingFactionName;
-		sessionEvent.name_faction_base_att = attackingFactionName;
+		SCR_SessionDataEvent sessionEvent = GetSessionDataEvent();
+		if (!sessionEvent)
+			return null;
+		
+		sessionEvent.name_base = base.GetBaseName();
+		sessionEvent.name_faction_base_def = defendingFaction.GetFactionKey();
+		sessionEvent.name_faction_base_att = attackingFaction.GetFactionKey();
+		sessionEvent.name_faction_base_establishing = "";
 
+		vector basePosition = base.GetOwner().GetOrigin();
+		sessionEvent.base_position_x = basePosition[0];
+		sessionEvent.base_position_y = basePosition[1];
+		sessionEvent.base_position_z = basePosition[2];
+		
 		return sessionEvent;
 	}
 

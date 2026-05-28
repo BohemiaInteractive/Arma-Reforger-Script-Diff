@@ -15,23 +15,26 @@ class SCR_DeployableVariantContainer : ScriptAndConfig
 	[Attribute(desc: "List of additionall prefabs that should be spawned when item is deployed", params: "et", category: "Setup")]
 	protected ref array<ref SCR_AdditionalDeployablePart> m_aAdditionalPrefabs;
 
-	[Attribute(desc: "Coordinate describing the bounding box volume used for obstruction check.\nIf left zero, then game will try to load it from data. This will work only if there is an override of the bouding volume.\nEnsure that individual components of this vector are smaller than their counterparts in 'Replacement Prefab Bounding Box Maxs'", category: "Validation")]
+	[Attribute(desc: "Coordinate describing the bounding box volume used for obstruction check.\nIf left zero, then game will try to load it from data. This will work only if there is an override of the bouding volume.\nEnsure that individual components of this vector are smaller than their counterparts in 'Replacement Prefab Bounding Box Maxs'", params: "inf inf purpose=coords space=entity anglesVar=Angles", category: "Validation")]
 	protected vector m_vReplacementPrefabBoundingBoxMins;
 
-	[Attribute(desc: "Coordinate describing the bounding box volume used for obstruction check.\nIf left zero, then game will try to load it from data of replacement prefab. This will work only if there is an override of the bouding volume", category: "Validation")]
+	[Attribute(desc: "Coordinate describing the bounding box volume used for obstruction check.\nIf left zero, then game will try to load it from data of replacement prefab. This will work only if there is an override of the bouding volume", params: "inf inf purpose=coords space=entity anglesVar=Angles", category: "Validation")]
 	protected vector m_vReplacementPrefabBoundingBoxMaxs;
 
 	[Attribute(defvalue: "0", desc: "Use this part rotation and position for the positioning of the replacement entity")]
 	protected bool m_bUsePartRotationAndPosition;
 
-	[Attribute(desc: "Additional offset to the position at which entity will be spawned", category: "Setup")]
+	[Attribute(desc: "Additional offset to the position at which entity will be spawned", params: "inf inf purpose=coords space=entity anglesVar=Angles", category: "Setup")]
 	protected vector m_vAdditionalPlacementOffset;
 
-	[Attribute(desc: "Additional rotation that will applied to the spawned entity", category: "Setup")]
+	[Attribute(desc: "Additional rotation that will applied to the spawned entity", params: "inf inf purpose=angles space=entity coordsVar=coordsVariableName", category: "Setup")]
 	protected vector m_vAdditionalPlacementRotation;
 
 	[Attribute("-1", desc: "Max allowed tilt (in dgrees) from zero value on give axis.\nValue below 0 means that there is no angle restriction", params: "-1 180")]
 	protected float m_fMaxAllowedTilt;
+
+	[Attribute(desc: "Class which is going to check if the surface on which this variant is being deployed is a valid one.\nIf this is left empty then there is no validation of the surface entity.")]
+	protected ref SCR_DeployableSurfaceValidation m_SurfaceValidator;
 
 	//------------------------------------------------------------------------------------------------
 	//! \return
@@ -138,6 +141,25 @@ class SCR_DeployableVariantContainer : ScriptAndConfig
 	bool IsUsingPartPositionAndRotation()
 	{
 		return m_bUsePartRotationAndPosition;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Validates if provided entity can be considered as a valid surface for deployment
+	//! \param[in] surfaceEnt entity on which the item is going to be deployed
+	//! \param[in] worldPosition position in world space
+	//! \param[in] surfaceNorm normal of the face on which the item is going to be deployed
+	//! \param[in] nodeIndex bone id to which is attached the collider on which the item is going to be deployed
+	//! \param[in] colliderIndex collider id on which the item is going to be deployed
+	//! \param[in] surfaceProps properties of the surface on which the item is going to be deployed
+	//! \param[in] surfaceMaterial name of the material of the surface on which the item is going to be deployed
+	//! \param[in] colliderName name of the collider on which the item is going to be deployed
+	//! \return true if item can be deployed on this surface, otherwise false
+	bool IsSurfaceValid(IEntity surfaceEnt, vector worldPosition, vector surfaceNorm, int nodeIndex, int colliderIndex, SurfaceProperties surfaceProps, string surfaceMaterial, string colliderName)
+	{
+		if (!m_SurfaceValidator)
+			return true;
+
+		return m_SurfaceValidator.IsSurfaceValid(surfaceEnt, worldPosition, surfaceNorm, nodeIndex, colliderIndex, surfaceProps, surfaceMaterial, colliderName);
 	}
 
 	//------------------------------------------------------------------------------------------------

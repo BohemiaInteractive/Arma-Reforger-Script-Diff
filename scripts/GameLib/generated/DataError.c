@@ -20,4 +20,6 @@ enum DataError
 	ADDON_LOAD_ERROR,
 	//! Attempting to create connection between developer and non-developer binaries.
 	IS_DEV_BINARY_MISMATCH,
+	//! Addons load (additional/missing addons or load order) differ between client and server.
+	ADDON_LOAD_MISMATCH,
 }

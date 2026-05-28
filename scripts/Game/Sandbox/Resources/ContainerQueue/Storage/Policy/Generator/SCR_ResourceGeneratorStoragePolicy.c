@@ -1,5 +1,5 @@
 [BaseContainerProps(), SCR_ResourceStorageTypeTitle()]
-class SCR_ResourceGeneratorStoragePolicy : SCR_ResourceStoragePolicyBase<SCR_ResourceGenerator>
+class SCR_ResourceGeneratorStoragePolicy : SCR_ResourceStoragePolicyBase
 {
 	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "Resource consumption source order.", enums: ParamEnumArray.FromEnum(EResourceContainerStorageType))]
 	protected EResourceContainerStorageType m_eStorageType;

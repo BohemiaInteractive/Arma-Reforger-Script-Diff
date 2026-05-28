@@ -29,7 +29,7 @@ class SCR_ConfigHelper
 	//! \param[in] removeEntryPart if true, removes the last path element \
 	//! examples: path/to/entryName → path/to (to target the parent container itself)
 	//! \return found child BaseContainer, or null if path is incorrect
-	protected static BaseContainer GetChildBaseContainerByPath(BaseContainer container, string subChildPath, bool removeEntryPart = false)
+	static BaseContainer GetChildBaseContainerByPath(BaseContainer container, string subChildPath, bool removeEntryPart = false)
 	{
 		if (!container)
 			return null;

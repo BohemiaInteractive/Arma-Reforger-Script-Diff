@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class SoundComponentClass: SimpleSoundComponentClass
-{
-}
-
 class SoundComponent: SimpleSoundComponent
 {
 	//! Play a sound from the owner entity's position

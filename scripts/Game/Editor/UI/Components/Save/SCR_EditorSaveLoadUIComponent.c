@@ -70,7 +70,7 @@ class SCR_EditorSaveLoadUIComponent : SCR_SaveDialogUIComponent
 	override protected void OnDeletePrompt()
 	{
 		if (m_SelectedSave)
-			GetGame().GetSaveGameManager().Delete(m_SelectedSave, new SaveGameOperationCb(OnSaveDeleted, m_SelectedSave));
+			GetGame().GetSaveGameManager().Delete(m_SelectedSave, new SaveGameOperationCallback(OnSaveDeleted, m_SelectedSave));
 		
 		super.OnDeletePrompt();
 	}

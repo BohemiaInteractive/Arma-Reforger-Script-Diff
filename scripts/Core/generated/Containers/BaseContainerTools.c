@@ -14,10 +14,18 @@ sealed class BaseContainerTools
 	private void BaseContainerTools();
 	private void ~BaseContainerTools();
 
+	//! Fills the specified UI widget with the value from the container (supports boolean, scalar, and integer properties)
 	static proto bool WriteToWidget(BaseContainer cont, Widget w, string varName);
+	//! Reads the value from the specified UI widget and stores it in the container (supports boolean, scalar, and integer properties)
 	static proto bool ReadFromWidget(BaseContainer cont, Widget w, string varName);
+	//! Copies properties from the container to the instance (the instance's class must match the container's class)
 	static proto void WriteToInstance(notnull Class inst, BaseContainer src);
+	//! Copies properties from the instance to the container (the instance's class must match the container's class)
 	static proto void ReadFromInstance(notnull Class inst, BaseContainer src);
+	//! Reads a property value from an instance member (member must be exposed as container property)
+	static proto bool ReadPropertyFromInstance(notnull Class inst, string propertyName, out void val);
+	//! Writes a property value to an instance member (member must be exposed as container property)
+	static proto bool WritePropertyToInstance(notnull Class inst, string propertyName, void val);
 	/*!
 	Load BaseContainer from file.
 	\code

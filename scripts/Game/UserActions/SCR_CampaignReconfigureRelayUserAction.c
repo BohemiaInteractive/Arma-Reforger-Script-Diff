@@ -44,80 +44,83 @@ class SCR_CampaignReconfigureRelayUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override void OnActionStart(IEntity pUserEntity)
 	{
-		if (m_Base)
-			SCR_CampaignReconfigureHQRadioUserAction.ToggleBaseCaptured(m_Base, true);
+		if (!m_Base)
+			return;
+
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(pUserEntity);
+		if (!character)
+			return;
+
+		ToggleBaseCapture(character, m_Base, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnActionCanceled(IEntity pOwnerEntity, IEntity pUserEntity)
 	{
-		if (m_Base)
-			SCR_CampaignReconfigureHQRadioUserAction.ToggleBaseCaptured(m_Base, false);
+		if (!m_Base)
+			return;
+
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(pUserEntity);
+		if (!character)
+			return;
+
+		ToggleBaseCapture(character, m_Base, false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void ToggleBaseCapture(notnull SCR_ChimeraCharacter character, notnull SCR_CampaignMilitaryBaseComponent base, bool isBeingCaptured)
+	{
+		if (character.GetRplComponent().Role() != RplRole.Authority)
+			return;
+
+		SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(character.GetFaction());
+		if (!faction)
+			return;
+
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(character);
+
+		if (isBeingCaptured)
+			base.BeginCapture(faction, playerId);
+		else
+			base.EndCapture();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity) 
-	{	
+	{
 		if (!m_Base)
 			return;	
-		
-		bool isAI = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(pUserEntity) == 0;
-		
-		if (isAI)
-		{
-			FactionAffiliationComponent comp = FactionAffiliationComponent.Cast(pUserEntity.FindComponent(FactionAffiliationComponent));
-			
-			if (!comp)
-				return;
-			
-			m_Base.SetFaction(SCR_CampaignFaction.Cast(comp.GetAffiliatedFaction()));
-			
-			return;
-		}
-		else
-		{
-			PlayerController playerController = GetGame().GetPlayerController();
-			
-			if (!playerController)
-				return;
-			
-			SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(playerController.FindComponent(SCR_CampaignNetworkComponent));
-	
-			if (campaignNetworkComponent)
-				campaignNetworkComponent.CaptureBase(m_Base);
-		}
+
+		if (!CanBePerformedScript(pUserEntity))
+			return; // authority needs to make sure that user is able to actually do this
+
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(pUserEntity);
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(pUserEntity);
+		SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(character.GetFaction());
+
+		m_Base.CaptureRelay(faction, playerId);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{
-		SCR_CampaignFaction playerFaction;
-		bool isAI = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(user) == 0;
-		
-		if (isAI)
-		{
-			FactionAffiliationComponent comp = FactionAffiliationComponent.Cast(user.FindComponent(FactionAffiliationComponent));
-			
-			if (!comp)
-				return false;
-			
-			playerFaction = SCR_CampaignFaction.Cast(comp.GetAffiliatedFaction());
-		}
-		else
-			playerFaction = SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
-		
-		if (!playerFaction)
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(user);
+		if (!character)
+			return false;
+
+		SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(character.GetFaction());
+		if (!faction)
 			return false;
 		
 		// Already ours
-		if (m_Base.GetFaction() == playerFaction)
+		if (m_Base.GetFaction() == faction)
 		{
 			SetCannotPerformReason("#AR-Campaign_Action_Done");
 			return false;
 		}
 		
 		// No radio signal
-		if (m_Base != playerFaction.GetMainBase() && !m_Base.IsHQRadioTrafficPossible(playerFaction))
+		if (m_Base != faction.GetMainBase() && !m_Base.IsHQRadioTrafficPossible(faction))
 		{
 			SetCannotPerformReason("#AR-Campaign_Action_NoSignal");
 			return false;
@@ -129,12 +132,12 @@ class SCR_CampaignReconfigureRelayUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
-		return (m_Base != null);
+		return m_Base != null;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool HasLocalEffectOnlyScript()
+	override bool CanBroadcastScript()
 	{
-		return true;
+		return false;
 	}
-};
+}

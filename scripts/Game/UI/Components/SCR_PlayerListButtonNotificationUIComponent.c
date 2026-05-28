@@ -62,7 +62,7 @@ class SCR_PlayerListButtonNotificationUIComponent: ScriptedWidgetComponent
 		
 		if (m_PlayerControllerGroupComponent)
 		{
-			if (m_PlayerControllerGroupComponent.GetGroupInviteID() > -1)
+			if (m_PlayerControllerGroupComponent.HasGroupInvites())
 			{
 				m_NotificationTypesActive++;
 				m_bHasGroupInvite = true;

@@ -68,17 +68,14 @@ class SCR_ResupplyTaskSolverEntry : SCR_TaskSolverEntry
 	}
 
 	//------------------------------------------------------------------------------------------------
-	array<ref SCR_ConditionCheckUIEntry> GetConditionCheckUIEntries()
-	{
-		return m_aConditionCheckUIEntries;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	SCR_ConditionCheckUIEntry GetTaskSolverEntry(typename conditionCheckTypename)
+	SCR_ConditionCheckUIEntry GetTaskSolverEntry(int conditionCheckType)
 	{
 		foreach (SCR_ConditionCheckUIEntry conditionCheckUIEntry : m_aConditionCheckUIEntries)
 		{
-			if (conditionCheckUIEntry.Type() == conditionCheckTypename)
+			if (!conditionCheckUIEntry)
+				continue;
+
+			if (conditionCheckUIEntry.GetConditionType() == conditionCheckType)
 				return conditionCheckUIEntry;
 		}
 

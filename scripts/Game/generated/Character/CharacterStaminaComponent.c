@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class CharacterStaminaComponentClass: BaseStaminaComponentClass
-{
-}
-
 class CharacterStaminaComponent: BaseStaminaComponent
 {
 	/*void SCR_OnBreathStateChanged(float breathValue)

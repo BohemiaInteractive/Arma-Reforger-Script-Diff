@@ -278,7 +278,7 @@ class SCR_SupplyInventorySlotUI : SCR_InventorySlotUI
 		if (!resourceInventoryPlayerComponent)
 			return;
 		
-		RplId resourceInventoryPlayerComponentRplId = Replication.FindId(resourceInventoryPlayerComponent);
+		RplId resourceInventoryPlayerComponentRplId = Replication.FindItemId(resourceInventoryPlayerComponent);
 		
 		if (!resourceInventoryPlayerComponentRplId.IsValid())
 			return;

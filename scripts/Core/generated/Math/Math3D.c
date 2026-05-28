@@ -86,16 +86,16 @@ sealed class Math3D
 		vector mat[4];
 		vector dir = "1 0 1";
 		vector up = "0 1 0";
-		DirectionAndUpMatrix( dir, up, mat );
+		Math3D.DirectionAndUpMatrix( dir, up, mat );
 		Print( mat );
 
 		>> <0.707107,0,-0.707107>,<0,1,0>,<0.707107,0,0.707107>,<0,0,0>
 	\endcode
 	\param dir direction vector
 	\param up up vector
-	\param[out] mat created rotation matrix
+	\param[out] mat `vector[3]` or `vector[4]` created rotation matrix
 	*/
-	static proto void DirectionAndUpMatrix(vector dir, vector up, out vector mat[4]);
+	static proto void DirectionAndUpMatrix(vector dir, vector up, out vector mat[]);
 	/*!
 	Transforms rotation matrix.
 	\code

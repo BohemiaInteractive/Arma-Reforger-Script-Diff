@@ -104,7 +104,7 @@ class BlenderOperatorDescription : JsonApiStruct
 	}
 }
 
-static void StartBlenderWithOperator(BlenderOperatorDescription operatorDescription, bool runInBakcground = false)
+static void StartBlenderWithOperator(BlenderOperatorDescription operatorDescription, bool runInBackground = false)
 {
 	string pathToExecutable;
 	if (!EBTConfigPlugin.GetDefaultBlenderPath(pathToExecutable))
@@ -113,9 +113,13 @@ static void StartBlenderWithOperator(BlenderOperatorDescription operatorDescript
 	operatorDescription.Pack();
 	
 	string runInBackgroundCommand = "";
-	if (runInBakcground)
-		runInBackgroundCommand = " \"-b\"";
 	
+	if (runInBackground)
+	{
+		runInBackgroundCommand = " \"-b\"";
+	}
+	
+		
 	string jsonString = operatorDescription.AsString();
 	
 	jsonString.Replace("\"", "\\*");
@@ -143,8 +147,9 @@ static void StartBlenderWithServer(bool runInBackground = true)
 		return;
 	
 	string cmd = string.Format("\"%1\" --background --python-expr \"import EnfusionBlenderTools.core.server as s; s.EBT_HTTP_Server.start(background_mode=True); s.EBT_HTTP_Server.background_loop()\"", pathToExecutable); 
+	if (EBTConfigPlugin.CopyToClipboard())
+		System.ExportToClipboard(cmd);
 	Workbench.RunProcess(cmd);
-	
 }
 
 #endif

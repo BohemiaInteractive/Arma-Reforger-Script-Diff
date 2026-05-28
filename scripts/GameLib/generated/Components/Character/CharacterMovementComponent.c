@@ -15,6 +15,7 @@ class CharacterMovementComponent: PawnMovementComponent
 	proto external bool HasRootMotion();
 	proto external bool SetRootMotion(bool rootMotion);
 	proto external vector GetVelocityWS();
+	proto external vector GetRawVelocityWS();
 	proto external vector GetVelocityMS();
 	proto external vector GetAngularVelocity();
 	proto external void SetMovementMode(ECharacterMovementMode mode);
@@ -29,6 +30,7 @@ class CharacterMovementComponent: PawnMovementComponent
 	proto external float GetSwimmingMaxSpeed();
 	proto external float GetMoveMinAnalogSpeed();
 	proto external IEntity GetFloorEntity();
+	proto external SurfaceProperties GetFloorSurface();
 	proto external vector GetFloorNormal();
 	proto external void GetFloorNormalAngles(out float frontalAngle, out float lateralAngle);
 	proto external float GetMovementMaxSlopeAngle();
@@ -36,13 +38,22 @@ class CharacterMovementComponent: PawnMovementComponent
 	proto external int GetCurrentMoveTimeStamp();
 	proto external void SetJumpInput(bool state);
 	proto external bool IsJumpInput();
+	proto external float GetWaterLevel();
+	proto external float GetWaterImmersionDepth();
+	proto external void SetSwimmingBuoyancy(float value);
+	proto external float GetSwimmingBuoyancy();
 	proto external bool IsMovingOnGround();
 	proto external bool IsFalling();
+	proto external bool IsSwimming();
 	proto external bool CanChangeCollisionShape(string shapeName);
 	proto external void ChangeCollisionShape(string shapeName);
 	proto external void EnableSlidingAlongObstacles(bool state);
 	proto external bool IsFlyModeColliding();
 	proto external void SetFlyModeColliding(bool state);
+	proto external bool IsMaintainGroundVelocityEnabled();
+	proto external void SetMaintainGroundVelocity(bool enable);
+	//! Resets the maintain ground velocity to the state on prefab.
+	proto external void ResetMaintainGroundVelocityFlag();
 }
 
 /*!

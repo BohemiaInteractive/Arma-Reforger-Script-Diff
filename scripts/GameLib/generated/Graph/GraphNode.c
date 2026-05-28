@@ -11,8 +11,17 @@ Do not modify, this script is generated
 
 class GraphNode: ScriptAndConfig
 {
-	//Name property index in node data, it is a string
-	//static const int NAME;  //< This is commented since it is automatically define by CPP, but you can still use it of course
+	/** \name Constants
+	 * Populated by the engine.
+	 */
+	///@{
+
+	/*!
+	Name property index in node data, it is a string
+	*/
+	static const int NAME;
+	///@}
+
 	//Used to describe ports of a nodes that are not static but dynamic
 	static void GetPortsInfo(BaseContainer graphSrc, BaseContainer nodeSrc, notnull array<ref GraphPortInfo> inputPorts, notnull array<ref GraphPortInfo> outputPorts);
 	private void GraphNode() {}
@@ -33,6 +42,10 @@ class GraphNode: ScriptAndConfig
 	proto external vector GetPosition();
 	//! Get size of the node
 	proto external vector GetSize();
+	proto external void SetHeaderColor(notnull Color headerColor);
+	proto external ref Color GetHeaderColor();
+	proto external void SetBackgroundColor(notnull Color backgroundColor);
+	proto external ref Color GetBackgroundColor();
 	proto external void SetSelectedColor(notnull Color selectedColor);
 	proto external ref Color GetSelectedColor();
 	proto external void SetUnselectedColor(notnull Color selectedColor);

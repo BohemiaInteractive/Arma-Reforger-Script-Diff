@@ -68,7 +68,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 		// But we can switch back to it later, and we must setup the workshop api again
 		InitWorkshopApi();
 		
-		SCR_AnalyticsApplication.GetInstance().ScenariosSetTab(m_eMode);
+		//SCR_AnalyticsApplication.GetInstance().ScenariosSetTab(m_eMode);
 
 		m_bIsOpened = true;
 	}
@@ -482,8 +482,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	{
 		ScenarioList_ClearMissionEntries();
 
-		if (!CreateLines(scenarios, m_Widgets.m_ScenarioList))
-			return;
+		CreateLines(scenarios, m_Widgets.m_ScenarioList);
 
 		// Set focus on first line
 		Widget firstLine = m_Widgets.m_ScenarioList.GetChildren();
@@ -504,7 +503,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	{
 		UpdateScenarioList(false);
 		
-		SCR_AnalyticsApplication.GetInstance().ScenariosUseSearch();		
+		//SCR_AnalyticsApplication.GetInstance().ScenariosUseSearch();		
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -513,7 +512,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	{
 		UpdateScenarioList(false);
 		
-		SCR_AnalyticsApplication.GetInstance().ScenariosSetSorting(sortHeader.GetSortElementName());
+		//SCR_AnalyticsApplication.GetInstance().ScenariosSetSorting(sortHeader.GetSortElementName());
 	}
 
 	// ---- PUBLIC ----

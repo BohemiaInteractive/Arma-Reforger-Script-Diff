@@ -496,7 +496,7 @@ class SCR_PrefabBoneSnappingTool : WorldEditorTool
 		if (!resourceName) // .IsEmpty()
 			return;
 
-		if (!Workbench.ScriptDialog("", "This will open the selected Prefab in Prefab Edit mode. Continue?\nSelected Prefab: " + resourceName, new SCR_OKCancelWorkbenchDialog()))
+		if (!Workbench.ScriptDialog("", "This will open the selected Prefab in Prefab Edit mode. Continue?\nSelected Prefab: " + resourceName, new WorkbenchDialog_OKCancel()))
 			return;
 
 		if (!SCR_WorldEditorToolHelper.GetWorldEditor().SetOpenedResource(resourceName))

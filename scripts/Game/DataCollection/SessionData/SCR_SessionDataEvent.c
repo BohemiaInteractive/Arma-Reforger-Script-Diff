@@ -8,6 +8,7 @@ class SCR_SessionDataEvent
 	string name_base;
 	string name_faction_base_def;
 	string name_faction_base_att;
+	string name_faction_base_establishing;
 	string name_reason_end;
 	int num_players_in_squad;
 	int num_players_kick_voted;
@@ -17,4 +18,15 @@ class SCR_SessionDataEvent
 	string array_supplies_from_type;
 	string array_supplies_to_type;
 	string array_supplies_values;
+	string array_supplies_by_player;
+	string array_supplies_from_pos;
+	string array_supplies_to_pos;
+	string array_supplies_faction;
+	float base_position_x;
+	float base_position_y;
+	float base_position_z;
+	string task_name;
+	string task_state;
+	string task_id;
+	string task_author_id;
 }

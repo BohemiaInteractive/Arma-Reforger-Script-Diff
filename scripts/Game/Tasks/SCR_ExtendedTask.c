@@ -932,8 +932,12 @@ class SCR_ExtendedTask : SCR_Task
 		
 		SCR_ExtendedTaskData extendedData = SCR_ExtendedTaskData.Cast(m_TaskData);
 		if (!extendedData)
+		{
+			writer.WriteBool(false);
 			return true;
+		}
 		
+		writer.WriteBool(true);
 		writer.WriteRplId(extendedData.m_ParentTask);
 		writer.WriteInt(extendedData.m_iNodeDepth);
 		
@@ -969,9 +973,17 @@ class SCR_ExtendedTask : SCR_Task
 		if (!super.RplLoad(reader))
 			return false;
 		
-		SCR_ExtendedTaskData extendedData = SCR_ExtendedTaskData.Cast(m_TaskData);
-		if (!extendedData)
+		bool hasExtendedData;
+		reader.ReadBool(hasExtendedData);
+		if (!hasExtendedData)
 			return true;
+		
+		SCR_ExtendedTaskData extendedData = SCR_ExtendedTaskData.Cast(m_TaskData);
+		if (!extendedData) // this shouldn't happen but just being safe
+		{
+			extendedData = new SCR_ExtendedTaskData();
+			m_TaskData = extendedData;
+		}
 		
 		reader.ReadRplId(extendedData.m_ParentTask);
 		reader.ReadInt(extendedData.m_iNodeDepth);
@@ -1014,7 +1026,7 @@ class SCR_ExtendedTask : SCR_Task
 		if (!extendedData)
 			return;
 		
-		extendedData.m_ParentTask = null;
+		extendedData.m_ParentTask = RplId.Invalid();
 		extendedData.m_iNodeDepth = 0;
 	
 		extendedData.m_aChildTasks = {};

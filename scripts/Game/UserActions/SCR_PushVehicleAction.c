@@ -3,7 +3,7 @@ class SCR_PushVehicleAction : SCR_ScriptedUserAction
 	protected const float FORCE_SCALE						= 1.0;
 	protected const float COUNTERFORCE_SCALE				= -1.5;
 
-	[Attribute(defvalue: "1", desc: "Mass to force\n[N per kg]")]
+	[Attribute(defvalue: "1", desc: "Mass to force\n[N per kg]", params: "0.01 inf 0.01")]
 	protected float m_fMassToForce;
 
 	[Attribute(defvalue: "1000", desc: "Force limit\n[N]", params: "1 100000 1")]
@@ -91,6 +91,17 @@ class SCR_PushVehicleAction : SCR_ScriptedUserAction
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return amount of force which should be added to the force which is going to be applied to the vehicle
+	protected float GetAdditionalForce();
+
+	//------------------------------------------------------------------------------------------------
+	//! \return factor which determines how much force can be used in relation to the vehicle mass
+	protected float GetMaxForceToMassFactor()
+	{
+		return 1;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void ApplyForce(IEntity rootEntity, IEntity pUserEntity, float timeSlice, vector forceOffset = vector.Zero)
 	{
 		// Only run where vehicle is being simulated
@@ -115,7 +126,12 @@ class SCR_PushVehicleAction : SCR_ScriptedUserAction
 		//normalized to prevent force scaling based on how far player is away from the vehicle
 		forceDirection.Normalize();
 
-		float force = Math.Min(m_fMassToForce * physics.GetMass(), m_fForceLimit);
+		float mass = physics.GetMass();
+		float force = Math.Min(m_fMassToForce * mass, m_fForceLimit);
+
+		// limit the amount of force to prevent f.e. S105 from being flipped into space, as without that a ~850kg car, could expirience a 16200 impulse when unflipped with support station
+		force = Math.Min(force + GetAdditionalForce(), mass * GetMaxForceToMassFactor());
+
 		if (!m_bPull)
 			force *= -1;
 

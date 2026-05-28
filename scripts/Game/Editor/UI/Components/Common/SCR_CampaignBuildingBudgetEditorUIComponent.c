@@ -96,7 +96,7 @@ class SCR_CampaignBuildingBudgetEditorUIComponent : SCR_BudgetEditorUIComponent
 	{
 		SCR_CampaignBuildingProviderComponent provider = GetProviderComponent();
 		if (!provider)
-			return UNLIMITED_PROP_BUDGET;
+			return 0;
 		
 		return provider.GetCurrentPropValue();
 	}

@@ -9,12 +9,10 @@ class SCR_EditorHasLastNotificationLocationActionCondition: SCR_AvailableActionC
 	protected vector m_vLocation = vector.Zero;
 	protected bool m_bShowLocation;
 	protected bool m_bIsListeningToDisable;
-	
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+
+	//------------------------------------------------------------------------------------------------
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-		
 		if (!m_NotificationsComponent)
 		{
 			m_NotificationsComponent = SCR_NotificationsComponent.GetInstance();
@@ -41,10 +39,11 @@ class SCR_EditorHasLastNotificationLocationActionCondition: SCR_AvailableActionC
 		
 		return GetReturnResult(m_vLocation != vector.Zero && m_bShowLocation);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	protected void SetLocationDisabled()
 	{
 		m_bShowLocation = false;
 		m_bIsListeningToDisable = false;
 	}
-};
+}

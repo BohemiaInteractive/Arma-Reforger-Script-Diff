@@ -75,13 +75,6 @@ class SCR_TutorialFastTravelMapMenuUI : ChimeraMenuBase
 
 		SetupSpinbox();
 
-		InputManager inputMan = GetGame().GetInputManager();
-		if (!inputMan)
-			return;
-
-		inputMan.AddActionListener("TutorialFastTravelMapMenuClose", EActionTrigger.DOWN, Close);
-		inputMan.AddActionListener("TutorialFastTravelMapMenuConfirm", EActionTrigger.DOWN, ConfirmSelection);
-
 		SCR_TaskManagerUIComponent taskManagerUI = SCR_TaskManagerUIComponent.GetInstance();
 		if (taskManagerUI)
 			taskManagerUI.GetOnTaskSelected().Insert(SelectTask);
@@ -155,6 +148,18 @@ class SCR_TutorialFastTravelMapMenuUI : ChimeraMenuBase
 		m_MapEntity.ZoomPanSmooth(0.35, m_MapEntity.GetMapSizeX()/ 2, m_MapEntity.GetMapSizeY()* 0.5);
 
 		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_HUD_MAP_OPEN);
+		
+		InputManager inputMan = GetGame().GetInputManager();
+		if (inputMan)
+		{
+			inputMan.AddActionListener("TutorialFastTravelMapMenuClose", EActionTrigger.DOWN, Close);
+			inputMan.AddActionListener("TutorialFastTravelMapMenuConfirm", EActionTrigger.DOWN, ConfirmSelection);
+			inputMan.AddActionListener("TutorialFastTravelMapSpinboxLeaveHorizontal", EActionTrigger.DOWN, ResetFocus);
+			inputMan.AddActionListener("TutorialFastTravelMapSpinboxLeaveVertical", EActionTrigger.DOWN, ResetFocus);
+			OnInputDeviceIsGamepad(!inputMan.IsUsingMouseAndKeyboard());
+		}
+		
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -172,7 +177,12 @@ class SCR_TutorialFastTravelMapMenuUI : ChimeraMenuBase
 		if (!inputMan)
 			return;
 
+		inputMan.RemoveActionListener("TutorialFastTravelMapSpinboxLeaveHorizontal", EActionTrigger.DOWN, ResetFocus);
+		inputMan.RemoveActionListener("TutorialFastTravelMapSpinboxLeaveVertical", EActionTrigger.DOWN, ResetFocus);
 		inputMan.RemoveActionListener("TutorialFastTravelMapMenuClose", EActionTrigger.DOWN, Close);
+		inputMan.RemoveActionListener("TutorialFastTravelMapMenuConfirm", EActionTrigger.DOWN, ConfirmSelection);
+		
+		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -180,5 +190,52 @@ class SCR_TutorialFastTravelMapMenuUI : ChimeraMenuBase
 	{
 		if (!m_MapEntity)
 			m_MapEntity = SCR_MapEntity.GetMapInstance();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void TasksIgnoreStandardInputs(bool ignore)
+	{
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (!taskSystem)
+			return;
+
+		array<SCR_Task> tasks = {};
+		taskSystem.GetTasks(tasks);
+
+		SCR_TutorialTaskMapUIComponent mapUiComp;
+		foreach (SCR_Task task : tasks)
+		{
+			mapUiComp = GetTaskMapUIComponent(task);
+			if (mapUiComp)
+				mapUiComp.IgnoreStandardInputs(ignore);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ResetFocus()
+	{
+		GetGame().GetWorkspace().SetFocusedWidget(null);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
+	{
+		if (!m_SpinboxComp)
+			return;
+		
+		ScriptInvokerBool invoker = m_SpinboxComp.GetOnFocus();
+		if (!invoker)
+			return;
+		
+		if (isGamepad)
+		{
+			TasksIgnoreStandardInputs(true);
+			invoker.Insert(TasksIgnoreStandardInputs);
+		}
+		else
+		{
+			TasksIgnoreStandardInputs(false);
+			invoker.Remove(TasksIgnoreStandardInputs);
+		}
 	}
 }

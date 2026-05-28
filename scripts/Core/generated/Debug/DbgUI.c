@@ -84,6 +84,7 @@ sealed class DbgUI
 	static proto void Spacer(int height);
 	static proto void Panel(string label, int width, int height, int color = 0xaa555555);
 	static proto bool Button(string txt, int minWidth = 0);
+	static proto void Image(string label, ResourceName imgPath, int width, int height);
 	static proto void InputText(string txt, out string value, int pxWidth = 150);
 	static proto void InputInt(string txt, out int value, int pxWidth = 150);
 	static proto void InputFloat(string txt, out float value, int pxWidth = 150);

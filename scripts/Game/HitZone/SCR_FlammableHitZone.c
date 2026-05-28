@@ -102,7 +102,7 @@ class SCR_FlammableHitZone : SCR_VehicleHitZone
 
 	override bool HasDataToReplicate()
 	{	
-		if (m_eFireState <= SCR_EBurningState.NONE)
+		if(m_eFireState <= SCR_EBurningState.NONE)
 			return false;
 		
 		return true;
@@ -161,15 +161,15 @@ class SCR_FlammableHitZone : SCR_VehicleHitZone
 	void InitFireRates()
 	{
 		float maxDamage = GetMaxHealth();
+		float fireMultiplier = GetDamageMultiplier(EDamageType.FIRE);
 		
-		if (m_fFireMultiplier <= 0)
+		if (fireMultiplier <= 0)
 			return;
-
 		if (m_fMinFireBurningTime > 0)
-			m_fFireDamageRateMax = maxDamage / (m_fMinFireBurningTime * m_fFireMultiplier);
+			m_fFireDamageRateMax = maxDamage / (m_fMinFireBurningTime * fireMultiplier);
 
 		if (m_fMaxFireBurningTime > 0)
-			m_fFireDamageRateMin = maxDamage / (m_fMaxFireBurningTime * m_fFireMultiplier);
+			m_fFireDamageRateMin = maxDamage / (m_fMaxFireBurningTime * fireMultiplier);
 
 		if (m_fLightSmokeStopTime > 0)
 			m_fLightSmokeReductionRate = m_fFireDamageRateMin * (m_fHeavySmokeThreshold - m_fLightSmokeThreshold) / m_fLightSmokeStopTime;

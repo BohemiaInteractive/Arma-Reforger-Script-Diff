@@ -110,4 +110,23 @@ class SCR_ArsenalItemListConfig
 		}
 		return false;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] prefab
+	//! \param[out] itemUseMilitarySupplyAllocation
+	//! \return
+	bool GetUseMilitarySupplyAllocationForPrefab(ResourceName prefab, out SCR_EArsenalItemType itemUseMilitarySupplyAllocation)
+	{
+		for (int i = 0, count = m_aArsenalItems.Count(); i < count; i++)
+		{
+			SCR_ArsenalItem item = m_aArsenalItems[i];
+			if (item.GetItemResourceName() == prefab)
+			{
+				itemUseMilitarySupplyAllocation = item.GetUseMilitarySupplyAllocation();
+				return true;
+			}
+		}
+		
+		return false;
+	}
 }

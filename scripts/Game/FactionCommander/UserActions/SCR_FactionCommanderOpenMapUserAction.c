@@ -52,7 +52,7 @@ class SCR_FactionCommanderOpenMapUserAction : ScriptedUserAction
 		if (m_FactionCommanderBaseLogic && !m_FactionCommanderBaseLogic.IsControlledByFaction(playerFaction))
 			return false;
 
-		if (m_MobileAssemblyComponent && m_MobileAssemblyComponent.GetParentFaction() != playerFaction)
+		if (m_MobileAssemblyComponent && m_MobileAssemblyComponent.GetAffiliatedFaction() != playerFaction)
 			return false;
 
 		if (m_bAlwaysShow)
@@ -81,7 +81,7 @@ class SCR_FactionCommanderOpenMapUserAction : ScriptedUserAction
 		if (m_FactionCommanderBaseLogic && !m_FactionCommanderBaseLogic.IsControlledByFaction(playerFaction))
 			return false;
 
-		if (m_MobileAssemblyComponent && m_MobileAssemblyComponent.GetParentFaction() != playerFaction)
+		if (m_MobileAssemblyComponent && m_MobileAssemblyComponent.GetAffiliatedFaction() != playerFaction)
 			return false;
 
 		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(user);

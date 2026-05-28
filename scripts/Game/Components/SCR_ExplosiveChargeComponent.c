@@ -278,7 +278,7 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 			if (!m_aConnectedDetonators.Count())
 				return;
 
-			RplId triggerId = Replication.FindId(this);
+			RplId triggerId = Replication.FindItemId(this);
 			if (!triggerId.IsValid())
 				return;
 
@@ -344,7 +344,7 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 	{
 		if (!m_RplID.IsValid())
 		{
-			m_RplID = Replication.FindId(this);
+			m_RplID = Replication.FindItemId(this);
 			if (!m_RplID.IsValid())
 				return false;
 		}
@@ -380,7 +380,7 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 	override void EOnInit(IEntity owner)
 	{
 		super.EOnInit(owner);
-		m_RplID = Replication.FindId(this);
+		m_RplID = Replication.FindItemId(this);
 		m_RplComp = RplComponent.Cast(owner.FindComponent(RplComponent));
 		m_Trigger = SCR_ExplosiveTriggerComponent.Cast(owner.FindComponent(SCR_ExplosiveTriggerComponent));
 		InventoryItemComponent iic = InventoryItemComponent.Cast(owner.FindComponent(InventoryItemComponent));

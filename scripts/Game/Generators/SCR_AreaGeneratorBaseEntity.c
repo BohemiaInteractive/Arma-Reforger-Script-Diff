@@ -4,6 +4,7 @@ class SCR_AreaGeneratorBaseEntityClass : SCR_GeneratorBaseEntityClass
 
 //! SCR_AreaGeneratorBaseEntity responsibilities:
 //! - carry obstacle detection interface
+//! - obtain shape's area
 class SCR_AreaGeneratorBaseEntity : SCR_GeneratorBaseEntity
 {
 	/*
@@ -105,6 +106,35 @@ class SCR_AreaGeneratorBaseEntity : SCR_GeneratorBaseEntity
 	{
 		if (s_ObstacleDetector)
 			s_ObstacleDetector.ClearObstacles();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] forcePolyLine set to true to only obtain the area between anchor points, not all the curves
+	//! (can help with performance in case of big shapes)
+	//! \return parent shape's area in square metre, 0 if no parent shape
+	protected float GetShapeArea(bool forcePolyLine = false)
+	{
+		if (!m_ParentShapeSource)
+			return 0;
+
+		bool isShapeClosed;
+		m_ParentShapeSource.Get("IsClosed", isShapeClosed);
+
+		array<vector> tesselatedPoints;
+		if (forcePolyLine)
+			tesselatedPoints = GetAnchorPoints(m_ParentShapeSource, isShapeClosed: isShapeClosed);
+		else
+			tesselatedPoints = GetTesselatedShapePoints(m_ParentShapeSource, isShapeClosed: isShapeClosed);
+
+		array<float> tesselatedPoints2D = {};
+		tesselatedPoints2D.Reserve(tesselatedPoints.Count() * 2);
+		foreach (vector point : tesselatedPoints)
+		{
+			tesselatedPoints2D.Insert(point[0]);
+			tesselatedPoints2D.Insert(point[2]);
+		}
+
+		return SCR_Math2D.GetPolygonArea(tesselatedPoints2D);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -344,10 +344,10 @@ class MaterialValidator: NetApiHandler
 		BaseContainer material = resource.GetResource().ToBaseContainer();
 		material_report.mat_name = material.GetName();
 		
-		int uv_min = 0;
-		int uv_max = 5;
-		int ext_min = 5;
-		int ext_max = 95;
+		const int uv_min = 0;
+		const int uv_max = 5;
+		const int ext_min = 5;
+		const int ext_max = 95;
 		
 		matValid.ValidateUVs(material, uv_min, uv_max, material_report); //Done
 		matValid.CheckDefaults(material, material_report);

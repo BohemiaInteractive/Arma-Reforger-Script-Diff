@@ -6,6 +6,8 @@ class SCR_MapCommandPostUI : ScriptedWidgetComponent
 	protected ButtonWidget m_wCloseButtonWidget;
 	protected SCR_InputButtonComponent m_InputButton;
 
+	protected SCR_CampaignMilitaryBaseComponent m_ActiveBase;
+
 	protected bool m_bCommanderRoleEnabled;
 
 	protected string m_sModeName;
@@ -36,6 +38,10 @@ class SCR_MapCommandPostUI : ScriptedWidgetComponent
 		if (SCR_Global.IsEditMode())
 			return;
 
+		SetActiveBase();
+		SCR_CampaignMilitaryBaseManager.GetOnBaseDisassembled().Insert(OnBaseDisassembled);
+		SCR_CampaignMilitaryBaseComponent.GetOnFactionChangedExtended().Insert(OnBaseFactionChanged);
+
 		m_GameplaySettings = GetGame().GetGameUserSettings().GetModule("SCR_GameplaySettings");
 
 		m_wCloseButtonWidget = ButtonWidget.Cast(w.FindAnyWidget("Toolbar_PlayButton_CloseMap"));
@@ -61,6 +67,9 @@ class SCR_MapCommandPostUI : ScriptedWidgetComponent
 	override void HandlerDeattached(Widget w)
 	{
 		SCR_CampaignLogisticMapUIBase.GetOnBaseSelected().Remove(OnBaseClicked);
+
+		SCR_CampaignMilitaryBaseManager.GetOnBaseDisassembled().Remove(OnBaseDisassembled);
+		SCR_CampaignMilitaryBaseComponent.GetOnFactionChangedExtended().Remove(OnBaseFactionChanged);
 
 		if (m_InputButton)
 			m_InputButton.m_OnClicked.Remove(OnCloseButtonClicked);
@@ -95,6 +104,30 @@ class SCR_MapCommandPostUI : ScriptedWidgetComponent
 
 		// Skip closing if another faction commander changed or local player is a new commander
 		if (!playerFaction || playerFaction != faction || commanderPlayerId == playerId)
+			return;
+
+		CloseMenu();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Closes the Command Post Menu when base where commander is using Command Post is disassembled
+	protected void OnBaseDisassembled(SCR_CampaignMilitaryBaseComponent base, Faction faction)
+	{
+		if (!m_ActiveBase || base != m_ActiveBase)
+			return;
+
+		CloseMenu();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Closes the Command Post Menu when base where commander is using Command Post is captured by other faction
+	protected void OnBaseFactionChanged(SCR_CampaignMilitaryBaseComponent base, Faction defendingFaction, Faction attackingFaction)
+	{
+		if (!m_ActiveBase || base != m_ActiveBase)
+			return;
+
+		Faction playerFaction = SCR_PlayerController.GetLocalMainEntityFaction();
+		if (attackingFaction == playerFaction)
 			return;
 
 		CloseMenu();
@@ -195,5 +228,23 @@ class SCR_MapCommandPostUI : ScriptedWidgetComponent
 		m_wModeTopBar.SetColor(m_ModeColor);
 		m_wModeIcon.SetColor(m_ModeColor);
 		m_wModeIcon.LoadImageFromSet(0, m_sWrapperImageset, m_sIconName);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetActiveBase()
+	{
+		IEntity playerEntity = SCR_PlayerController.GetLocalMainEntity();
+		if (!playerEntity)
+			return;
+
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		if (!campaign)
+			return;
+
+		SCR_CampaignMilitaryBaseManager baseManager = campaign.GetBaseManager();
+		if (!baseManager)
+			return;
+
+		m_ActiveBase = baseManager.FindClosestBase(playerEntity.GetOrigin());
 	}
 }

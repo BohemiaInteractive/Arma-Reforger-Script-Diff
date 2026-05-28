@@ -126,6 +126,13 @@ class SCR_AutotuneStickyNotificationUIComponent : SCR_StickyNotificationUICompon
 		
 		return;// disabled showing auto tune notification
 
+		SCR_BaseGameMode mode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (!mode)
+			return;
+		
+		if (!mode.GetAutotuneEnabled())
+			return;
+		
 		m_PlayerControllerGroupComponent = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
 		if (!m_PlayerControllerGroupComponent)
 		{
@@ -143,6 +150,13 @@ class SCR_AutotuneStickyNotificationUIComponent : SCR_StickyNotificationUICompon
 	//------------------------------------------------------------------------------------------------
 	void OnTaskAssigneeChanged(SCR_Task task, SCR_TaskExecutor executor, int requesterID)
 	{
+		if (!task || !executor || m_PlayerControllerGroupComponent.IsPlayerLeaderOwnGroup())
+			return;
+
+		SCR_TaskExecutorGroup groupExecutor = SCR_TaskExecutorGroup.Cast(executor);
+		if (!groupExecutor || groupExecutor.GetGroupID() != m_PlayerControllerGroupComponent.GetGroupID())
+			return;
+
 		//we dont care if the player doesnt have entity as there is no radio to tune
 		IEntity controlled = GetGame().GetPlayerManager().GetPlayerControlledEntity(SCR_PlayerController.GetLocalPlayerId());		
 		if (!controlled)
@@ -155,6 +169,9 @@ class SCR_AutotuneStickyNotificationUIComponent : SCR_StickyNotificationUICompon
 	//------------------------------------------------------------------------------------------------
 	void OnGroupLeaderChanged(int groupId, int playerId)
 	{
+		if (!m_PlayerControllerGroupComponent || m_PlayerControllerGroupComponent.GetGroupID() != groupId || !m_PlayerControllerGroupComponent.IsPlayerLeaderOwnGroup())
+			return;
+
 		//becoming leader notification overrides previous ones as its important
 		if (m_eAutotuneReason != SCR_EAutotuneReason.UNKNOWN && m_eAutotuneReason != SCR_EAutotuneReason.BECAME_COMMANDER)
 			DisableSticky();

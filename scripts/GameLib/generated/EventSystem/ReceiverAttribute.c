@@ -20,7 +20,7 @@ Methods must have a signature compatible with the associated event.
 
 \see \ref Page_EventSystem
 */
-class ReceiverAttribute
+class ReceiverAttribute: UniqueAttribute
 {
 }
 

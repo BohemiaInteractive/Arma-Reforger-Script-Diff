@@ -152,7 +152,7 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 			{
 				IEntity owner = agent.GetControlledEntity();
 				if (owner)
-					responderRplId = Replication.FindId(owner);	
+					responderRplId = Replication.FindItemId(owner);	
 			}
 		}
 		

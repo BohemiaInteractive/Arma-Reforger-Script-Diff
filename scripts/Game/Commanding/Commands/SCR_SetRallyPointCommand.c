@@ -147,6 +147,8 @@ class SCR_SetRallyPointCommand : SCR_BaseRadialCommand
 		SCR_SelectionMenuEntry foundEntry;
 		SCR_SelectionMenuCategoryEntry categoryEntry;
 		string commandName;
+		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
+		SCR_SetRallyPointCommand command;
 
 		foreach (SCR_SelectionMenuEntry entry : mapRadialMenu.GetEntries())
 		{
@@ -158,7 +160,7 @@ class SCR_SetRallyPointCommand : SCR_BaseRadialCommand
 				return foundEntry;
 
 			commandName = entry.GetId();
-			SCR_SetRallyPointCommand command = SCR_SetRallyPointCommand.Cast(SCR_CommandingManagerComponent.GetInstance().FindCommand(commandName));
+			command = SCR_SetRallyPointCommand.Cast(commandingManager.FindCommand(commandName));
 			if (!command)
 				continue;
 
@@ -175,7 +177,9 @@ class SCR_SetRallyPointCommand : SCR_BaseRadialCommand
 		SCR_SelectionMenuEntry foundEntry;
 		SCR_SelectionMenuCategoryEntry categoryEntry;
 		string commandName;
-
+		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
+		SCR_SetRallyPointCommand command;
+		
 		foreach (SCR_SelectionMenuEntry element : category.GetEntries())
 		{
 			categoryEntry = SCR_SelectionMenuCategoryEntry.Cast(element);
@@ -190,7 +194,7 @@ class SCR_SetRallyPointCommand : SCR_BaseRadialCommand
 				continue;
 
 			commandName = commandingEntry.GetEntryIdentifier();
-			SCR_SetRallyPointCommand command = SCR_SetRallyPointCommand.Cast(SCR_CommandingManagerComponent.GetInstance().FindCommand(commandName));
+			command = SCR_SetRallyPointCommand.Cast(commandingManager.FindCommand(commandName));
 			if (!command)
 				continue;
 

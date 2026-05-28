@@ -5,11 +5,8 @@ class SCR_VONMenuActiveActionCondition: SCR_AvailableActionCondition
 	protected SCR_RadialMenu m_RadialMenu;
 	
 	//------------------------------------------------------------------------------------------------
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-		
 		if (!m_RadialMenu)
 		{
 			SCR_VONController vonController = SCR_VONController.Cast(GetGame().GetPlayerController().FindComponent(SCR_VONController));
@@ -22,4 +19,4 @@ class SCR_VONMenuActiveActionCondition: SCR_AvailableActionCondition
 		
 		return GetReturnResult(m_RadialMenu.IsOpened());
 	}
-};
+}

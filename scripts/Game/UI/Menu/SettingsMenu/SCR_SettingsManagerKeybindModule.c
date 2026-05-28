@@ -198,7 +198,7 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 		m_Binding.StartCapture(actionName, device, preset, false);
 		m_Binding.SaveCapture();
 		m_Binding.Save();
-		SCR_AnalyticsApplication.GetInstance().ChangeKeybind(actionName, preset);
+		//SCR_AnalyticsApplication.GetInstance().ChangeKeybind(actionName, preset);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -296,7 +296,7 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 		}
 		
 		m_Binding.Save();
-		SCR_AnalyticsApplication.GetInstance().ResetAllKeybinds();
+		//SCR_AnalyticsApplication.GetInstance().ResetAllKeybinds();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -430,7 +430,6 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 		
 		array<ResourceName> setPresets = {};
 		m_Binding.GetCustomConfigs(setPresets);
-		string path;
 		foreach (int i, SCR_ControllerPreset preset : presets)
 		{
 			if (setPresets.Contains(preset.GetResourceName()))

@@ -6,11 +6,8 @@ class SCR_CharacterSprintingCondition : SCR_AvailableActionCondition
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns true if character is sprinting.
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-
 		bool result = data.GetIsCharacterSprinting();
 		result = result && (!m_bCheckPersistentState && data.GetCharacterSprintingTime() != 0 || m_bCheckPersistentState && data.GetCharacterSprintingTime() == 0);
 

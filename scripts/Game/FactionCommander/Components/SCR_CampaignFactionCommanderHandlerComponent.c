@@ -57,7 +57,18 @@ class SCR_CampaignFactionCommanderHandlerComponent : SCR_FactionCommanderHandler
 		if (!campaignFaction || !campaignFaction.IsPlayable())
 			return;
 
-		GetGame().GetCallqueue().CallLater(CheckSeizeTasks, SCR_GameModeCampaign.DEFAULT_DELAY, false, campaignFaction);
+		GetGame().GetCallqueue().CallLater(CheckSeizeTasks, SCR_GameModeCampaign.DEFAULT_DELAY, false, campaignFaction, -1);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnFactionTasksEnabledChanged(Faction faction)
+	{
+		SCR_CampaignFaction campaignFaction = SCR_CampaignFaction.Cast(faction);
+
+		if (!campaignFaction)
+			return;
+
+		GetGame().GetCallqueue().CallLater(CheckSeizeTasks, SCR_GameModeCampaign.DEFAULT_DELAY, false, campaignFaction, -1);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -78,7 +89,7 @@ class SCR_CampaignFactionCommanderHandlerComponent : SCR_FactionCommanderHandler
 		}
 
 		// used call later, because base callsings are not set yet
-		GetGame().GetCallqueue().CallLater(CheckSeizeTasks, SCR_GameModeCampaign.DEFAULT_DELAY, false, faction);
+		GetGame().GetCallqueue().CallLater(CheckSeizeTasks, SCR_GameModeCampaign.DEFAULT_DELAY, false, faction, -1);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -88,7 +99,7 @@ class SCR_CampaignFactionCommanderHandlerComponent : SCR_FactionCommanderHandler
 		if (!campaignFaction)
 			return;
 
-		CheckSeizeTasks(campaignFaction);
+		CheckSeizeTasks(campaignFaction, commanderPlayerId);
 
 		if (!campaignFaction.IsAICommander())
 			campaignFaction.SendHQMessage(SCR_ERadioMsg.COMMANDER_ARRIVAL);
@@ -97,7 +108,7 @@ class SCR_CampaignFactionCommanderHandlerComponent : SCR_FactionCommanderHandler
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void CheckSeizeTasks(notnull SCR_CampaignFaction faction)
+	protected void CheckSeizeTasks(notnull SCR_CampaignFaction faction, int playerid)
 	{
 		SCR_MilitaryBaseSystem militaryBaseSystem = SCR_MilitaryBaseSystem.GetInstance();
 		if (!militaryBaseSystem)
@@ -125,7 +136,7 @@ class SCR_CampaignFactionCommanderHandlerComponent : SCR_FactionCommanderHandler
 			foreach (Faction f : factions)
 			{
 				campaignFaction = SCR_CampaignFaction.Cast(f);
-				if (!campaignFaction || !campaignFaction.IsPlayable() || !campaignFaction.IsAICommander())
+				if (!campaignFaction || !campaignFaction.IsPlayable() || !campaignFaction.IsAICommander() || !campaignFaction.IsTasksEnabled())
 					continue;
 
 				if (baseFaction == campaignFaction)
@@ -134,7 +145,7 @@ class SCR_CampaignFactionCommanderHandlerComponent : SCR_FactionCommanderHandler
 				if (!campaignbase.IsHQRadioTrafficPossible(campaignFaction))
 					continue;
 
-				CreateSeizeTask(campaignFaction, campaignbase);
+				CreateSeizeTask(campaignFaction, campaignbase, playerid);
 			}
 		}
 	}
@@ -143,7 +154,7 @@ class SCR_CampaignFactionCommanderHandlerComponent : SCR_FactionCommanderHandler
 	//! Create seize task
 	//! \param[in] faction
 	//! \param[in] targetBase
-	void CreateSeizeTask(notnull SCR_CampaignFaction faction, SCR_CampaignMilitaryBaseComponent targetBase)
+	void CreateSeizeTask(notnull SCR_CampaignFaction faction, SCR_CampaignMilitaryBaseComponent targetBase, int playerid)
 	{
 		if (GetTaskOnBase(targetBase, faction, SCR_SeizeCampaignMilitaryBaseTaskEntity))
 			return;
@@ -373,6 +384,10 @@ class SCR_CampaignFactionCommanderHandlerComponent : SCR_FactionCommanderHandler
 		baseSystem.GetOnBaseFactionChanged().Insert(OnBaseFactionChanged);
 
 		GetOnFactionCommanderChanged().Insert(OnCommanderChanged);
+		
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (factionManager)
+			factionManager.GetOnFactionTasksEnabledChanged().Insert(OnFactionTasksEnabledChanged);
 	}
 
 	//------------------------------------------------------------------------------------------------

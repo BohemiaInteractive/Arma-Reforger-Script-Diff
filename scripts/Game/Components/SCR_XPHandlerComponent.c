@@ -12,9 +12,6 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 	[Attribute("1800", UIWidgets.EditBox, "If suicide is committed more than once in this time (seconds), a penalty is issued.", params: "0 inf 1")]
 	protected int m_iSuicidePenaltyCooldown;
-	
-	[Attribute("180", UIWidgets.EditBox, "Player cannot be awarded medical assistance xp reward until this many seconds pass since the previous medical assistance reward", params: "0 inf 1")]
-	protected int m_iMedicalAssistanceRewardCooldown;
 
 	[Attribute("0.1", UIWidgets.EditBox, "Fraction of the vehicle cost to be awarded as XP to player destroying it", params: "0 inf 1")]
 	protected float m_fEnemyVehicleDestroyXPMultiplier;
@@ -27,9 +24,6 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 	[Attribute("1", UIWidgets.EditBox, "Ratio of XP awarded to supplies spent in repair action (ratio of 0.5: 10 supplies spent on repair rewards 5 XP", params: "0 inf 1")]
 	protected float m_fVehicleRepairXPMultiplier;
-
-	[Attribute(desc: "Seize XP reward config")]
-	protected ref SCR_SeizeXpRewardConfig m_mSeizeXPRewardConfig;
 
 	static protected bool s_bXpSystemEnabled;
 	
@@ -62,12 +56,6 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	int GetMedicalAssistanceRewardCooldown()
-	{
-		return m_iMedicalAssistanceRewardCooldown;
-	}
-
-	//------------------------------------------------------------------------------------------------
 	int GetSurvivalRewardCooldown()
 	{
 		return m_iSurvivalRewardCooldown;
@@ -82,19 +70,21 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	int GetSeizeBaseProgressionRewardTimer()
 	{
-		if (!m_mSeizeXPRewardConfig)
+		SCR_SeizeXpRewardInfo seizeXPRewardInfo = SCR_SeizeXpRewardInfo.Cast(GetXpRewardInfo(SCR_EXPRewards.BASE_SEIZED));
+		if (!seizeXPRewardInfo)
 			return 0;
 
-		return m_mSeizeXPRewardConfig.GetSeizeProgressionTimer();
+		return seizeXPRewardInfo.GetSeizeProgressionTimer();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	int GetSeizeBaseProgressionXP(string baseFactionKey)
 	{
-		if (!m_mSeizeXPRewardConfig)
+		SCR_SeizeXpRewardInfo seizeXPRewardInfo = SCR_SeizeXpRewardInfo.Cast(GetXpRewardInfo(SCR_EXPRewards.BASE_SEIZED));
+		if (!seizeXPRewardInfo)
 			return 0;
 
-		return m_mSeizeXPRewardConfig.GetSeizeProgressionXpReward(baseFactionKey);
+		return seizeXPRewardInfo.GetSeizeProgressionXpReward(baseFactionKey);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -349,15 +339,7 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnHealingStatPointsAdded(int playerId)
 	{
-		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerId);
-		if (!pc)
-			return;
-
-		SCR_PlayerXPHandlerComponent compXP = SCR_PlayerXPHandlerComponent.Cast(pc.FindComponent(SCR_PlayerXPHandlerComponent));
-		if (!compXP)
-			return;
-
-		compXP.MedicalAssistanceReward();
+		AwardXP(playerId, SCR_EXPRewards.MEDICAL_ASSISTANCE);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -429,20 +411,16 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 		if (targetPlayerId == userPlayerId)
 			return;
 
-		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(userPlayerId);
-		if (!pc)
-			return;
-
-		SCR_PlayerXPHandlerComponent compXP = SCR_PlayerXPHandlerComponent.Cast(pc.FindComponent(SCR_PlayerXPHandlerComponent));
-		if (!compXP)
-			return;
-
-		compXP.MedicalAssistanceReward();
+		AwardXP(userPlayerId, SCR_EXPRewards.MEDICAL_ASSISTANCE);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void OnBaseSeized(SCR_CampaignMilitaryBaseComponent baseComponent)
 	{
+		SCR_SeizeXpRewardInfo seizeXPRewardInfo = SCR_SeizeXpRewardInfo.Cast(GetXpRewardInfo(SCR_EXPRewards.BASE_SEIZED));
+		if (!seizeXPRewardInfo)
+			return;
+
 		SCR_ECampaignBaseType baseType = baseComponent.GetType();
 		SCR_ECampaignSeizingBaseType seizingBaseType;
 
@@ -453,7 +431,7 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 		else if (baseType == SCR_ECampaignBaseType.BASE)
 			seizingBaseType = SCR_ECampaignSeizingBaseType.FOB;
 
-		int xpReward = m_mSeizeXPRewardConfig.GetSeizeCompletionXpReward(seizingBaseType);
+		int xpReward = seizeXPRewardInfo.GetSeizeCompletionXpReward(seizingBaseType);
 
 		int radius;
 		vector baseOrigin = baseComponent.GetOwner().GetOrigin();
@@ -591,6 +569,8 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 		if (!fm)
 			return;
 
+		SCR_RankContainer ranks = fm.GetFactionRanks(playerId);
+
 		// Check for cooldown on the penalty
 		float curTime = GetGame().GetWorld().GetWorldTime();
 		float penaltyTimestamp = compXPPlayer.GetSuicidePenaltyTimestamp();
@@ -601,8 +581,8 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 		// Don't make player renegade just by suiciding
 		int penalty = GetXPRewardAmount(SCR_EXPRewards.SUICIDE);
 		int playerXPWithPenalty = compXPPlayer.GetPlayerXP() + penalty;
-		SCR_ECharacterRank newRank = fm.GetRankByXP(playerXPWithPenalty);
-		if (fm.IsRankRenegade(newRank))
+		SCR_ECharacterRank newRank = ranks.GetRankByXP(playerXPWithPenalty);
+		if (ranks.IsRankRenegade(newRank))
 			return;
 
 		AwardXP(pc.GetPlayerId(), SCR_EXPRewards.SUICIDE);
@@ -907,6 +887,9 @@ enum SCR_EXPRewards
 	COMMANDER_TASK_COMPLETED,
 	RECON_TASK_COMPLETED,
 	HOLD_TASK_COMPLETED,
+	FIRE_SUPPORT_TASK_COMPLETED,
+	PICKUP_TASK_COMPLETED,
+	CLEAR_TASK_COMPLETED,
 
 	STARTING_RANK,
 }

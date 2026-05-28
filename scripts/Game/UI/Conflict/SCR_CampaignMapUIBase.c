@@ -13,8 +13,22 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	[Attribute("OpenButton")]
 	protected string m_sOpenButtonName;
 
+	[Attribute("60", params: "0 inf 1", desc: "How many seconds between updates of next shipment text. If set to 0, the text will not be updated at all.")]
+	protected float m_fNextShipmentTextUpdatePeriod;
+
+	[Attribute("NextShipmentWrapper")]
+	protected string m_sNextShipmentWrapperName;
+
+	[Attribute("NextShipmentLabel")]
+	protected string m_sNextShipmentLabelName;
+
+	[Attribute("NextShipmentText")]
+	protected string m_sNextShipmentTextName;
+
 	protected static const float OPACITY_DISABLED = 0.5;
 	protected static const float OPACITY_UNSELECTED = 0.9;
+
+	protected static const LocalizedString NEXT_SHIPMENT_ETA = "#AR-FactionCommander_LogisticUIBaseNextShipmentETA";
 
 	/*
 		note(koudelkaluk): base name and service container offsets
@@ -61,6 +75,10 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	protected Widget m_wRallyPointIconBottom;
 	protected TextWidget m_wRallyPointText;
 	protected LocalizedString m_sRallyPointText = "#AR-RallyPoint_Name";
+
+	protected Widget m_wNextSupplyShipmentWrapper;
+	protected TextWidget m_wNextSupplyShipmentText;
+	protected TextWidget m_wNextSupplyShipmentLabel;
 
 	protected int m_iBaseSize = 80; 	// Maximum base icon size - it needs to be divisible by 4, otherwise the texture will look blurred	
 	protected int m_iDefBaseSize = 46;	// Default base size
@@ -211,11 +229,16 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			m_Base.GetMapDescriptor().OnIconHovered(true);
 
 			bool isSupportedBaseType = m_Base.GetType() == SCR_ECampaignBaseType.BASE || m_Base.GetType() == SCR_ECampaignBaseType.SOURCE_BASE;
-			if (m_wServices && isSupportedBaseType && m_Base.IsHQRadioTrafficPossible(SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction())))
+			bool isInRadioRange = m_Base.IsHQRadioTrafficPossible(SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction()));
+			if (m_wServices && isSupportedBaseType && isInRadioRange)
 			{
 				m_wServices.SetVisible(!m_mServices.IsEmpty());
 				m_wServices.SetEnabled(!m_mServices.IsEmpty());
 			}
+
+			bool isLocalPlayerFactionOwned = m_Base.GetFaction() == SCR_FactionManager.SGetLocalPlayerFaction();
+			bool shouldDisplayShipmentInterval = m_Base.GetSuppliesIncome() > 0 && (!SCR_GameModeCampaign.GetInstance().GetSuppliesAutoRegenerationEnabled() || m_Base.GetType() == SCR_ECampaignBaseType.SOURCE_BASE);
+			SetNextShipmentTextVisible(isSupportedBaseType && isInRadioRange && isLocalPlayerFactionOwned && shouldDisplayShipmentInterval);
 		}
 		else if (m_MobileAssembly)
 		{
@@ -223,6 +246,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			
 			if (mapDesc)
 				mapDesc.OnIconHovered(true);
+			
+			SetNextShipmentTextVisible(false);
 		}
 		
 		if (m_wInfoText)
@@ -275,6 +300,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		}
 
 		m_wInfoText.SetVisible(false);
+
+		GetGame().GetCallqueue().Remove(SetNextShipmentText);
 
 		if (!m_bCanRespawn && m_bIsRespawnMenu)
 			return false;
@@ -463,6 +490,10 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		if (m_wRallyPointText)
 			m_wRallyPointText.SetTextFormat("(%1)", m_sRallyPointText);
 
+		m_wNextSupplyShipmentWrapper = w.FindAnyWidget(m_sNextShipmentWrapperName);
+		m_wNextSupplyShipmentText = TextWidget.Cast(w.FindAnyWidget(m_sNextShipmentTextName));
+		m_wNextSupplyShipmentLabel = TextWidget.Cast(w.FindAnyWidget(m_sNextShipmentLabelName));
+
 		m_wLocalTask = ImageWidget.Cast(w.FindAnyWidget("LocalTask"));
 
 		SCR_GameModeCampaign gameMode = SCR_GameModeCampaign.GetInstance();
@@ -473,6 +504,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		}
 
 		SCR_AIGroup.GetOnGroupRallyPointChanged().Insert(OnGroupRallyPointChanged);
+		SCR_AIGroup.GetOnPlayerAdded().Insert(OnPlayerAddedToGroup);
 
 		m_bIsRespawnMenu = SCR_DeployMenuMain.GetDeployMenu() != null;
 		m_bIsEditor = SCR_EditorManagerEntity.IsOpenedInstance(false);
@@ -514,7 +546,9 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		}
 
 		SCR_AIGroup.GetOnGroupRallyPointChanged().Remove(OnGroupRallyPointChanged);
+		SCR_AIGroup.GetOnPlayerAdded().Remove(OnPlayerAddedToGroup);
 		SCR_MapEntity.GetOnMapClose().Remove(OnMapCloseInvoker);
+		GetGame().GetCallqueue().Remove(SetNextShipmentText);
 
 		if (m_ResourceComponent)
 			m_ResourceComponent.TEMP_GetOnInteractorReplicated().Remove(UpdateIconAndText);
@@ -927,7 +961,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		if (!m_ResourceConsumer)
 			return;
 		
-		m_ResourceInventoryPlayerComponentRplId = Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
+		m_ResourceInventoryPlayerComponentRplId = Replication.FindItemId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
 		m_ResourceSubscriptionHandleConsumer = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandle(m_ResourceConsumer, m_ResourceInventoryPlayerComponentRplId);
 		
 		m_ResourceComponent.TEMP_GetOnInteractorReplicated().Insert(UpdateIconAndText);
@@ -971,6 +1005,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 
 		if (!owner)
 			return;
+		
+		SetRallyPointVisibility();
 				
 		m_ResourceComponent = SCR_ResourceComponent.FindResourceComponent(owner);
 		
@@ -982,7 +1018,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		if (!m_ResourceConsumer)
 			return;
 		
-		m_ResourceInventoryPlayerComponentRplId = Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
+		m_ResourceInventoryPlayerComponentRplId = Replication.FindItemId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
 		m_ResourceSubscriptionHandleConsumer = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandle(m_ResourceConsumer, m_ResourceInventoryPlayerComponentRplId);	
 	
 		m_ResourceComponent.TEMP_GetOnInteractorReplicated().Insert(SetIconInfoText);
@@ -1353,6 +1389,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			case "SourceBase":
 			{
 				TStringArray highlightSplit = new TStringArray;
+				spawnPoint = m_Base.GetSpawnPoint();
 				highlight.Split("_", highlightSplit, true);
 				if (highlightSplit.Count() >= 2)
 					highlight = string.Format("%1_%2", highlightSplit.Get(0), highlightSplit.Get(1));
@@ -1423,6 +1460,38 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected void SetNextShipmentTextVisible(bool visible)
+	{
+		if (!m_wNextSupplyShipmentWrapper)
+			return;
+
+		if (visible && m_fNextShipmentTextUpdatePeriod > 0)
+		{
+			m_wNextSupplyShipmentWrapper.SetVisible(true);
+			SetNextShipmentText();
+			GetGame().GetCallqueue().CallLater(SetNextShipmentText, m_fNextShipmentTextUpdatePeriod * 1000, true);
+		}
+		else
+		{
+			m_wNextSupplyShipmentWrapper.SetVisible(false);
+			GetGame().GetCallqueue().Remove(SetNextShipmentText);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetNextShipmentText()
+	{
+		if (!m_wNextSupplyShipmentText || !m_Base)
+			return;
+
+		ChimeraWorld world = GetGame().GetWorld();
+		if (!world)
+			return;
+
+		m_wNextSupplyShipmentText.SetTextFormat(NEXT_SHIPMENT_ETA, Math.Ceil(m_Base.GetSuppliesArrivalTime().DiffSeconds(world.GetServerTimestamp()) / 60));
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnGroupRallyPointChanged(SCR_AIGroup group)
 	{
 		int playerId = SCR_PlayerController.GetLocalPlayerId();
@@ -1433,6 +1502,15 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 
 		SCR_AIGroup playerGroup = groupsManager.GetPlayerGroup(playerId);
 		if (!playerGroup || playerGroup != group)
+			return;
+
+		SetRallyPointVisibility(group);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayerAddedToGroup(SCR_AIGroup group, int playerId)
+	{
+		if (playerId != SCR_PlayerController.GetLocalPlayerId())
 			return;
 
 		SetRallyPointVisibility(group);
@@ -1486,7 +1564,10 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			m_wRallyPointIconBottom.SetVisible(visible);
 
 		if (m_wRallyPointIconBalancer)
-			m_wRallyPointIconBalancer.SetVisible(visible);
+		{
+			bool hasCallsign = m_wCallsignName && m_wCallsignName.GetText() != string.Empty;
+			m_wRallyPointIconBalancer.SetVisible(visible && hasCallsign);
+		}
 
 		if (m_wRallyPointText)
 			m_wRallyPointText.SetVisible(visible);

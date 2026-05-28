@@ -90,7 +90,7 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 		m_iIndex = index;
 		m_bIsCurrent = isCurrent;
 		m_PrevWaypoint = prevWaypoint;
-		m_PrevWaypointId = Replication.FindId(prevWaypoint);
+		m_PrevWaypointId = Replication.FindItemId(prevWaypoint);
 		Replication.BumpMe();
 	}
 
@@ -164,7 +164,7 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 		{
 			AttachTo(parentEntity);
 
-			m_AttachedToId = Replication.FindId(parentEntity);
+			m_AttachedToId = Replication.FindItemId(parentEntity);
 			Replication.BumpMe();
 			
 			super.OnParentEntityChanged(parentEntityPrev, parentEntityPrev, changedByUser); // Needed to register
@@ -189,10 +189,10 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void SetTransform(vector transform[4], bool changedByUser = false)
+	override bool SetTransform(vector transform[4], bool changedByUser = false)
 	{
 		DetachFromTarget();
-		super.SetTransform(transform, changedByUser);
+		return super.SetTransform(transform, changedByUser);
 	}
 
 	//------------------------------------------------------------------------------------------------

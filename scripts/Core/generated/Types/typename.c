@@ -11,10 +11,16 @@ Do not modify, this script is generated
 
 sealed class typename
 {
+	/** \name Constants
+	 * Populated by the engine.
+	 */
+	///@{
+
+	static const typename Empty;
+	///@}
+
 	private void typename();
 	private void ~typename();
-
-	const static typename Empty;
 
 	//!Returns type name of variable as string
 	proto external string ToString();

@@ -164,7 +164,7 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 	protected void UpdateNames()
 	{
 		m_Widgets.m_wAddonName.SetText(m_Item.GetName());
-		m_Widgets.m_wAddonAuthor.SetText(WidgetManager.Translate("#AR-Workshop_AddonAuthorPrefix", m_Item.GetAuthorName()));
+		m_Widgets.m_wAddonAuthor.SetText(m_Item.GetAuthorName());
 	}
 
 	//------------------------------------------------------------------------------------------------

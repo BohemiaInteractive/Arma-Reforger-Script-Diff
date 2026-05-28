@@ -9,14 +9,12 @@ Do not modify, this script is generated
 \{
 */
 
-class VehicleWheeledSimulation_SA_BClass: VehicleBaseSimulationClass
-{
-}
-
 class VehicleWheeledSimulation_SA_B: VehicleBaseSimulation
 {
-	//! Returns current vehicle speed in km/h (kilometers per hour).
-	proto external float GetSpeedKmh();
+	/*!
+	Forcibly enables simulation of vehicle, only meant for cinematics, not to be used in any game logic!
+	*/
+	proto external void ForceEnableSimulation();
 	//! Returns current steering input in range < -1, 1 >
 	proto external float GetSteering();
 	//! Sets steering input.
@@ -94,6 +92,8 @@ class VehicleWheeledSimulation_SA_B: VehicleBaseSimulation
 	proto external int WheelCount();
 	//! Returns stored index of the wheel based on its name
 	proto external int WheelGetIndex(string name);
+	//! Returns name of the wheel based on its index
+	proto external string WheelGetName(int wheelIdx);
 	/*!
 	Get the wheel position based on suspension.
 	\param wheelIdx Index of the wheel
@@ -101,8 +101,6 @@ class VehicleWheeledSimulation_SA_B: VehicleBaseSimulation
 	\return Returns wheel position in local space.
 	*/
 	proto external vector WheelGetPosition(int wheelIdx, float displacement = 0.0);
-	//! Returns name of the wheel based on its index
-	proto external string WheelGetName(int wheelIdx);
 	//! Returns true if wheel has contact with ground or other object
 	proto external bool WheelHasContact(int wheelIdx);
 	//! Returns wheel contact material

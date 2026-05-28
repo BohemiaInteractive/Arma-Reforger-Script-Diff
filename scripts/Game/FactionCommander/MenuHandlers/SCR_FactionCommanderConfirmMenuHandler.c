@@ -40,6 +40,6 @@ class SCR_FactionCommanderConfirmMenuHandler : SCR_FactionCommanderBaseTaskMenuH
 		if (!factionCommanderPlayerComponent)
 			return;
 
-		factionCommanderPlayerComponent.FinishTask(playerId, task.GetTaskID());
+		factionCommanderPlayerComponent.FinishTask(task.GetTaskID());
 	}
 }

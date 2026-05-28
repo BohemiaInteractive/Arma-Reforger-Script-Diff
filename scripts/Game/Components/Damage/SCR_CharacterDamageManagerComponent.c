@@ -34,7 +34,11 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	protected float m_fMinImpulse;
 	protected float m_fWaterFallDamageMultiplier = 0.33;
 	protected int m_fMinWaterFallDamageVelocity = 10;
-
+	
+	// Fall damage
+	protected float m_fVehicleFallTriggerVelocity = -2.0;
+	protected float m_fVehicleFallDamage = 200.0;
+	
 	// Static array for all limbs
 	static ref array<ECharacterHitZoneGroup> LIMB_GROUPS;
 	static const ref array<ECharacterHitZoneGroup> EXTREMITY_LIMB_GROUPS = {ECharacterHitZoneGroup.LEFTARM, ECharacterHitZoneGroup.RIGHTARM, ECharacterHitZoneGroup.LEFTLEG, ECharacterHitZoneGroup.RIGHTLEG};
@@ -103,6 +107,27 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	float GetPoisonBuildupFactor()
 	{
 		return m_fPoisonBuildupFactor;
+	}
+	
+	
+	bool IsFallingVehicle(IEntity owner, IEntity other, Contact contact)
+	{
+		// Is it falling?
+		if (contact.VelocityBefore2[1] > m_fVehicleFallTriggerVelocity)
+			return false;
+		
+		// Is it a vehicle
+		if (!Vehicle.Cast(other))
+			return false;
+			
+		ChimeraCharacter character = ChimeraCharacter.Cast(owner);
+		if (!character)
+			return false;
+		
+		// Is the contact above the character?
+		vector characterPosition = character.AimingPosition();
+		vector impactPosition = contact.Position;
+		return impactPosition[1] > characterPosition[1];	
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------
@@ -387,6 +412,10 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	//! Hijack collisiondamage in case it's applied to defaultHZ, since that means it's falldamage.
 	override bool HijackDamageHandling(notnull BaseDamageContext damageContext)
 	{
+		const SCR_HitZone hitZone = SCR_HitZone.Cast(damageContext.struckHitZone);
+		if (hitZone && !DotDamageEffect.Cast(damageContext.damageEffect))
+			hitZone.ApplyDamagePassRules(damageContext);
+
 		// Handle falldamage. Falldamage is applied to defaultHZ, so it's propegated down to physical hitZones manually, then back up to the health HZ like normal damage.
 		if (damageContext.damageType == EDamageType.COLLISION && damageContext.struckHitZone == GetDefaultHitZone())
 		{
@@ -925,7 +954,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 			return;
 		
 		array<HitZone> groupHitZones = {};
-		GetHitZonesOfGroup(characterHitZone.GetHitZoneGroup(), groupHitZones);
+		GetHitZonesOfGroupFromOwner(characterHitZone.GetHitZoneGroup(), groupHitZones);
 		float bleedingRate;
 			
 		foreach (HitZone groupHitZone : groupHitZones)
@@ -1035,7 +1064,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 
 		array<ref SCR_PersistentDamageEffect> effects = {};
 		array<HitZone> hitZones = {};
-		GetHitZonesOfGroup(charHZGroup, hitZones);
+		GetHitZonesOfGroupFromOwner(charHZGroup, hitZones);
 		
 		foreach (HitZone hitZone : hitZones)
 		{
@@ -1127,7 +1156,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 				return charHitZone.GetHitZoneGroup();		
 		}
 				
-		return null;
+		return 0;
 	}	
 	
 	//-----------------------------------------------------------------------------------------------------------
@@ -1145,7 +1174,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 				return charHitZone.GetBodyPartToHeal();		
 		}
 				
-		return null;
+		return 0;
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------
@@ -1194,7 +1223,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	{
 		float totalGroupDOT;
 		array<HitZone> groupHitZones = {};
-		GetHitZonesOfGroup(hitZoneGroup, groupHitZones);
+		GetHitZonesOfGroupFromOwner(hitZoneGroup, groupHitZones);
 		DotDamageEffect dotEffect;
 		
 		array<ref PersistentDamageEffect> effects = {};
@@ -1432,7 +1461,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	ECharacterHitZoneGroup GetCharMostDOTHitzoneGroup(EDamageType damageType, bool onlyExtremities = false, bool ignoreTQdHitZones = false, bool ignoreIfBeingTreated = false)
 	{
 		if (!m_aBleedingHitZones)
-			return null;
+			return 0;
 
 		array<float> DOTValues = {};
 		typename groupEnum = ECharacterHitZoneGroup;
@@ -1662,8 +1691,8 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	//------------------------------------------------------------------------------------------------
 	//! Filter out any contacts under a reasonable speed for damage
 	override bool FilterContact(IEntity owner, IEntity other, Contact contact)
-	{
-		if (Math.AbsFloat(contact.GetRelativeNormalVelocityBefore()) <= 3)
+	{			
+		if (!IsFallingVehicle(owner, other, contact) && (Math.AbsFloat(contact.GetRelativeNormalVelocityBefore()) <= 3))
 			return false;
 
 		// Do not recompute collisiondamage within the impulseDelay if it's lower than the highest one thus far
@@ -1743,6 +1772,12 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	{		
 		float relativeNormalVelocityBefore = Math.AbsFloat(contact.GetRelativeNormalVelocityBefore());
 
+		if (IsFallingVehicle(owner, other, contact))
+		{
+			ApplyCollisionDamage(other, contact.Position, m_fVehicleFallDamage);
+			m_fHighestContact = 0.0;
+			return;
+		}
 		CalculateCollisionDamage(owner, other, contact.Position, relativeNormalVelocityBefore);
 	}
 
@@ -1751,7 +1786,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	protected void CalculateCollisionDamage(IEntity owner, IEntity other, vector collisionPosition, float highestCachedImpulse = 0, bool instantUnconsciousness = true)
 	{
 		HitZone defaultHitZone = GetDefaultHitZone();
-		if (!defaultHitZone || defaultHitZone.GetDamageState() == EDamageState.DESTROYED)
+		if (defaultHitZone.GetDamageState() == EDamageState.DESTROYED)
 			return;
 
 		if (instantUnconsciousness)
@@ -1786,7 +1821,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	override void OnHandleFallDamage(EFallDamageType fallDamageType, vector velocityVector)
 	{
 		HitZone defaultHitZone = GetDefaultHitZone();
-		if (!defaultHitZone || defaultHitZone.GetDamageState() == EDamageState.DESTROYED)
+		if (defaultHitZone.GetDamageState() == EDamageState.DESTROYED)
 			return;
 
 		DamageManagerComponentClass prefabData = DamageManagerComponentClass.Cast(GetComponentData(GetOwner()));
@@ -1809,15 +1844,14 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	void HandleAnimatedFallDamage(float damage)
 	{
 		array<HitZone> targetHitZones = {};
-		GetHitZonesOfGroup(ECharacterHitZoneGroup.LEFTLEG, targetHitZones, true);
-		GetHitZonesOfGroup(ECharacterHitZoneGroup.RIGHTLEG, targetHitZones, false);
+		GetHitZonesOfGroupsFromOwner({ECharacterHitZoneGroup.LEFTLEG, ECharacterHitZoneGroup.RIGHTLEG}, targetHitZones);
 		
 		if (targetHitZones.IsEmpty())
 			return;
 		
 		const float overDamageCutOff = 50;
 		if (damage > overDamageCutOff)
-			GetHitZonesOfGroup(ECharacterHitZoneGroup.LOWERTORSO, targetHitZones, false);
+			GetHitZonesOfGroupFromOwner(ECharacterHitZoneGroup.LOWERTORSO, targetHitZones, false);
 		
 		damage *= 2;
 		vector hitPosDirNorm[3];
@@ -1879,7 +1913,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 			return;
 
 		HitZone defaultHitZone = GetDefaultHitZone();
-		if (!defaultHitZone || defaultHitZone.GetDamageState() == EDamageState.DESTROYED)
+		if (defaultHitZone.GetDamageState() == EDamageState.DESTROYED)
 			return;
 
 		array<HitZone> characterHitZones = {};
@@ -2082,12 +2116,8 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	}
 
 	#ifdef ENABLE_DIAG
-	//-----------------------------------------------------------------------------------------------------------
-	override void OnDelete(IEntity owner)
-	{		
-		super.OnDelete(owner);
-	}
 
+	//------------------------------------------------------------------------------------------------
 	override void DiagOnlyIfPossessedByPlayerController(notnull IEntity owner)
 	{
 		ProcessDebug(owner);

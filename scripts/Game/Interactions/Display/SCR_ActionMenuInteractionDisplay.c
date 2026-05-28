@@ -761,7 +761,7 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 			if (lastContext.ShouldDisplayAtReferencePoint())
 			{
 				if (m_InteractionHandlerComponent)
-					position = m_InteractionHandlerComponent.GetLastReferencePoint(timeSlice);//GetGame().GetWorld().GetTimestamp()); // Interaction reference point
+					position = m_InteractionHandlerComponent.UpdateLastReferencePoint(timeSlice);//GetGame().GetWorld().GetTimestamp()); // Interaction reference point
 			}
 			SetPosition(position);
 		}

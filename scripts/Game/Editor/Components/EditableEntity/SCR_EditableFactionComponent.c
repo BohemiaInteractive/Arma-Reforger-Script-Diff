@@ -237,7 +237,7 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		//Notification no spawns
 		if (spawnPointCount == 0)
 		{
-			int thisRplId = Replication.FindId(this);
+			int thisRplId = Replication.FindItemId(this);
 			SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.EDITOR_FACTION_NO_SPAWNS, thisRplId);
 		}
 		

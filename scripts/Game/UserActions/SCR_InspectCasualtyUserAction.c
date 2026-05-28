@@ -16,9 +16,6 @@ class SCR_InspectCasualtyUserAction : ScriptedUserAction
 			return false;
 		
 		HitZone hz = damageMan.GetDefaultHitZone();
-		if (!hz)
-			return false;
-
 		if (hz.GetDamageState() == EDamageState.UNDAMAGED)
 		{		
 			SCR_CharacterBloodHitZone bloodHZ = damageMan.GetBloodHitZone();

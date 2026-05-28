@@ -31,7 +31,7 @@ class SCR_LineGeneratorBaseEntity : SCR_GeneratorBaseEntity
 
 #ifdef WORKBENCH
 	protected ref SCR_ShapeNextPointHelper m_ShapeNextPointHelper;
-	protected ref SCR_DebugShapeManager m_DbgShpMgr;
+	protected ref SCR_DebugShapeManager m_OffsetDebugShapeManager;
 	protected ref array<Shape> m_aOffsetShapeShapes = {};
 	protected bool m_bIsSelectedAlone;
 	protected bool m_bForceOffsetShapeShapesRefresh;
@@ -61,7 +61,7 @@ class SCR_LineGeneratorBaseEntity : SCR_GeneratorBaseEntity
 		array<int> anchorIndices = {};
 		if (!SCR_ParallelShapeHelper.GetAnchorsAndTesselatedPointsFromShape(shapeEntity, m_vShapeOffset, m_bYOffsetInShapeSpace, offsetAnchorPoints, offsetTesselatedPoints, anchorIndices))
 		{
-			PrintFormat("[SCR_LineGeneratorBaseEntity.ResetShapeNextPointHelper] error getting shape points from shape with %1 points at position %2", shapeEntity.GetPointCount(), shapeEntity.CoordToParent(shapeEntity.GetOrigin()), level: LogLevel.WARNING);
+			PrintFormat("[SCR_LineGeneratorBaseEntity.ResetShapeNextPointHelper] error getting shape points from shape with %1 points - %2", shapeEntity.GetPointCount(), Debug.GetEntityLinkString(shapeEntity), level: LogLevel.WARNING);
 			return;
 		}
 
@@ -102,9 +102,9 @@ class SCR_LineGeneratorBaseEntity : SCR_GeneratorBaseEntity
 		}
 
 		if (m_vShapeOffset != vector.Zero)
-			m_DbgShpMgr = new SCR_DebugShapeManager();
+			m_OffsetDebugShapeManager = new SCR_DebugShapeManager();
 		else
-			m_DbgShpMgr = null;
+			m_OffsetDebugShapeManager = null;
 
 		if (m_fSplineSafetyDistanceRatio != 0 && (m_vShapeOffset[0] != 0 || m_vShapeOffset[2] != 0) && SplineShapeEntity.Cast(shapeEntity) != null) // isSpline
 		{
@@ -142,8 +142,8 @@ class SCR_LineGeneratorBaseEntity : SCR_GeneratorBaseEntity
 						continue;
 					}
 
-					if (m_DbgShpMgr)
-						m_DbgShpMgr.AddArrow(shapeEntity.CoordToParent(offsetTesselatedPoints[i] + 2 * vector.Up), shapeEntity.CoordToParent(offsetTesselatedPoints[i]));
+					if (m_OffsetDebugShapeManager)
+						m_OffsetDebugShapeManager.AddArrow(shapeEntity.CoordToParent(offsetTesselatedPoints[i] + 2 * vector.Up), shapeEntity.CoordToParent(offsetTesselatedPoints[i]));
 
 					offsetTesselatedPoints.RemoveOrdered(i);
 				}
@@ -151,7 +151,7 @@ class SCR_LineGeneratorBaseEntity : SCR_GeneratorBaseEntity
 
 			if (anchorPointRefusal)
 			{
-				PrintFormat("Cannot remove offset anchor points near %1 shape; only intermediate spline points can be removed", shapeEntity.GetOrigin(), level: LogLevel.NORMAL);
+				PrintFormat("Cannot remove offset anchor points near %1 shape; only intermediate spline points can be removed", Debug.GetEntityLinkString(shapeEntity), level: LogLevel.NORMAL);
 				Print("Solution: make this curve with an anchor point on each side instead of one at the curve's apex", LogLevel.NORMAL);
 			}
 		}
@@ -215,7 +215,7 @@ class SCR_LineGeneratorBaseEntity : SCR_GeneratorBaseEntity
 	{
 		super._WB_AfterWorldUpdate(timeSlice);
 
-		if (!m_Source || !m_DbgShpMgr)
+		if (!m_Source || !m_OffsetDebugShapeManager)
 			return;
 
 		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
@@ -233,7 +233,7 @@ class SCR_LineGeneratorBaseEntity : SCR_GeneratorBaseEntity
 		foreach (Shape offsetShapeShape : m_aOffsetShapeShapes)
 		{
 			if (offsetShapeShape)
-				m_DbgShpMgr.Remove(offsetShapeShape);
+				m_OffsetDebugShapeManager.Remove(offsetShapeShape);
 		}
 
 		if (!m_bIsSelectedAlone || m_vShapeOffset == vector.Zero || !m_ShapeNextPointHelper || !m_ParentShapeSource)
@@ -250,7 +250,7 @@ class SCR_LineGeneratorBaseEntity : SCR_GeneratorBaseEntity
 		{
 			if (i != 0)
 				m_aOffsetShapeShapes.Insert(
-					m_DbgShpMgr.AddLine(
+					m_OffsetDebugShapeManager.AddLine(
 						shapeEntity.CoordToParent(prevPoint),
 						shapeEntity.CoordToParent(point),
 						Color.ORANGE));

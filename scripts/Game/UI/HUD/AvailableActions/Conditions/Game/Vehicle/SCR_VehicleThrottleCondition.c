@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 //! Returns true if vehicle's throttle is over specified threshold
 [BaseContainerProps()]
 class SCR_VehicleThrottleCondition : SCR_AvailableActionCondition
@@ -9,21 +8,13 @@ class SCR_VehicleThrottleCondition : SCR_AvailableActionCondition
 	//------------------------------------------------------------------------------------------------
 	//! Returns true when current gear matches the condition
 	//! Returns opposite if m_bNegateCondition is enabled
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-
 		CarControllerComponent controller = CarControllerComponent.Cast(data.GetCurrentVehicleController());
 		if (!controller)
-			return false;
+			return GetReturnResult(false);
 
 		VehicleWheeledSimulation simulation = controller.GetSimulation();
-		if (!simulation)
-			return false;
-
-		bool result = simulation.GetThrottle() >= m_fMinimumThrottle;
-
-		return GetReturnResult(result);
+		return GetReturnResult(simulation && simulation.GetThrottle() >= m_fMinimumThrottle);
 	}
-};
+}

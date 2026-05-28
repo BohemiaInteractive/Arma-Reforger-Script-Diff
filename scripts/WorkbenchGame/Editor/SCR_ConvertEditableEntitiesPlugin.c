@@ -1,6 +1,6 @@
 /*
 #ifdef WORKBENCH
-[WorkbenchPluginAttribute(name: "Convert to/from Editable Entities...", category: "In-game Editor", shortcut: "Ctrl+Shift+E", wbModules: { "WorldEditor" })]
+[WorkbenchPluginAttribute(name: "Convert to/from Editable Entities...", category: SCR_PluginCategory.EDITOR, shortcut: "Ctrl+Shift+E", wbModules: { "WorldEditor" })]
 class SCR_ConvertEditableEntitiesPlugin : PrefabEditingPluginBase
 {
 	[Attribute(defvalue: "{90B4D95CF3610F3D}Configs/Workbench/EditablePrefabs/EditablePrefabsConfig.conf", desc: "", params: "conf")]
@@ -49,7 +49,7 @@ class SCR_ConvertEditableEntitiesPlugin : PrefabEditingPluginBase
 		return false;
 	}
 }
-[WorkbenchPluginAttribute(name: "Convert to/from Editable Entities...", category: "In-game Editor", shortcut: "Ctrl+Shift+E", wbModules: { "ResourceManager" })]
+[WorkbenchPluginAttribute(name: "Convert to/from Editable Entities...", category: SCR_PluginCategory.EDITOR, shortcut: "Ctrl+Shift+E", wbModules: { "ResourceManager" })]
 class SCR_ConvertEditableEntitiesPluginResourceManager : SCR_ConvertEditableEntitiesPlugin
 {
 	//------------------------------------------------------------------------------------------------

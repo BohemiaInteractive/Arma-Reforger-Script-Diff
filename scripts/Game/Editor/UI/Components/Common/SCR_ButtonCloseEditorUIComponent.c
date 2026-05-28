@@ -15,11 +15,22 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 	[Attribute("Toolbar_CaptureButton")]
 	protected string m_sButtonCapture;
 	
+	[Attribute("Text0")]
+	protected string m_sButtonPlayerTextName;
+	
+	[Attribute()]
+	protected string m_sButtonPlayerPlayCharacterText;
+	
+	[Attribute()]
+	protected string m_sButtonPlayerBackToMapText;
+	
 	protected Widget m_ButtonClose;
 	protected Widget m_ButtonPlayer;
 	protected Widget m_ButtonRespawnMenu;
 	protected Widget m_ButtonRespawnMenuDisabled;
 	protected Widget m_wButtonCapture;
+	
+	protected TextWidget m_wButtonPlayerText;
 	
 	//---- REFACTOR NOTE START: States could be enums
 	
@@ -72,6 +83,15 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 		return BUTTON_CLOSE;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void SetPlayerButtonText(string text)
+	{
+		if (!m_wButtonPlayerText)
+			return;
+
+		m_wButtonPlayerText.SetText(text);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected void Refresh()
 	{
@@ -129,6 +149,9 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 		m_ButtonClose = w.FindAnyWidget(m_sButtonCloseName);
 		m_wButtonCapture = w.FindAnyWidget(m_sButtonCapture);
 		
+		if (m_ButtonPlayer)
+			m_wButtonPlayerText = TextWidget.Cast(m_ButtonPlayer.FindAnyWidget(m_sButtonPlayerTextName));
+
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode)
 		{
@@ -138,6 +161,12 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 		}
 		
 		SCR_SpawnPoint.Event_OnSpawnPointCountChanged.Insert(Refresh);
+
+		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
+		if (mapEntity && mapEntity.IsOpen())
+			SetPlayerButtonText(m_sButtonPlayerBackToMapText);
+		else
+			SetPlayerButtonText(m_sButtonPlayerPlayCharacterText);
 		
 		Refresh();
 	}

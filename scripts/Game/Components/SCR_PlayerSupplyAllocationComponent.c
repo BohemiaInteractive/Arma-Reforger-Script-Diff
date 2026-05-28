@@ -37,6 +37,7 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 			{
 				gameMode.GetOnPlayerConnected().Insert(OnPlayerConnected);
 				gameMode.GetOnPlayerKilled().Insert(OnPlayerKilled);
+				gameMode.GetOnPlayerDeleted().Insert(OnPlayerDeleted);
 				gameMode.GetOnPlayerDisconnected().Insert(OnPlayerDisconnected);
 			}
 
@@ -175,6 +176,15 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void SetSupplyAllocationOnReconnect(int amount)
+	{
+		if (!m_PlayerController.GetMainEntity())
+			return;
+
+		AddPlayerAvailableAllocatedSupplies(amount - m_iPlayerAvailableAllocatedSupplies);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! If player's Available Allocated Supplies are below the threshold value it gets replenished to threshold value
 	protected void ReplenishAvailableAllocatedSupplies()
 	{
@@ -282,20 +292,35 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Reset Available Allocated Supplies value to value of Military Supply Allocation
-	//! Stops Available Allocated Supplies replenishment timer
-	//! \param[in] investigatorContextData
 	protected void OnPlayerKilled(SCR_InstigatorContextData investigatorContextData)
 	{
-		IEntity victim = investigatorContextData.GetVictimEntity();
-		if (!m_bIsEnabled || m_PlayerController.GetMainEntity() != victim)
+		const IEntity victim = investigatorContextData.GetVictimEntity();
+		if (m_PlayerController.GetMainEntity() == victim)
+			OnPlayerLost();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayerDeleted(int playerId, IEntity player)
+	{
+		if (m_PlayerController.GetMainEntity() == player)
+			OnPlayerLost();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Reset Available Allocated Supplies value to value of Military Supply Allocation
+	//! Stops Available Allocated Supplies replenishment timer
+	protected void OnPlayerLost()
+	{
+		if (!m_bIsEnabled)
 			return;
 
-		SCR_CharacterRankComponent rankComp = SCR_CharacterRankComponent.Cast(victim.FindComponent(SCR_CharacterRankComponent));
-		if (!rankComp)
-			return;
-
-		rankComp.s_OnRankChanged.Remove(OnRankChanged);
+		const IEntity player = m_PlayerController.GetMainEntity();
+		if (player)
+		{
+			SCR_CharacterRankComponent rankComp = SCR_CharacterRankComponent.Cast(player.FindComponent(SCR_CharacterRankComponent));
+			if (rankComp)
+				rankComp.s_OnRankChanged.Remove(OnRankChanged);
+		}
 
 		ClearEventMask(GetOwner(), EntityEvent.FRAME);
 		m_fAvailableAllocatedSuppliesReplenishmentTimer = -1;
@@ -334,7 +359,8 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 			if (!factionManager)
 				return;
 
-			playerRank = factionManager.GetRankByXP(playerXPHandlerComponent.GetPlayerXP());
+			SCR_RankContainer ranks = factionManager.GetFactionRanks(m_PlayerController.GetPlayerId());
+			playerRank = ranks.GetRankByXP(playerXPHandlerComponent.GetPlayerXP());
 		}
 
 		SetPlayerMilitarySupplyAllocation(m_MilitarySupplyAllocationConfig.GetMilitarySupplyAllocationValueAtRank(playerRank));
@@ -366,6 +392,13 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 
 		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(resourcesOwner);
 		if (!arsenalComponent || !arsenalComponent.IsArsenalUsingSupplies())
+			return;
+
+		SCR_ChimeraCharacter buyer = SCR_ChimeraCharacter.Cast(playerController.GetControlledEntity());
+		if (!buyer)
+			return;
+
+		if (arsenalComponent.GetAssignedFaction() != buyer.GetFaction())
 			return;
 
 		SCR_ResourceConsumer consumer = resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
@@ -415,6 +448,7 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 			{
 				gameMode.GetOnPlayerConnected().Insert(OnPlayerConnected);
 				gameMode.GetOnPlayerKilled().Insert(OnPlayerKilled);
+				gameMode.GetOnPlayerDeleted().Insert(OnPlayerDeleted);
 				gameMode.GetOnPlayerDisconnected().Insert(OnPlayerDisconnected);
 			}
 
@@ -443,6 +477,7 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 			{
 				gameMode.GetOnPlayerConnected().Remove(OnPlayerConnected);
 				gameMode.GetOnPlayerKilled().Remove(OnPlayerKilled);
+				gameMode.GetOnPlayerDeleted().Remove(OnPlayerDeleted);
 				gameMode.GetOnPlayerDisconnected().Remove(OnPlayerDisconnected);
 			}
 
@@ -467,7 +502,7 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 		if (m_fAvailableAllocatedSuppliesReplenishmentTimer < 0)
 			ReplenishAvailableAllocatedSupplies();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected override void OnDelete(IEntity owner)
 	{
@@ -476,6 +511,7 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 		{
 			gameMode.GetOnPlayerConnected().Remove(OnPlayerConnected);
 			gameMode.GetOnPlayerKilled().Remove(OnPlayerKilled);
+			gameMode.GetOnPlayerDeleted().Remove(OnPlayerDeleted);
 			gameMode.GetOnPlayerDisconnected().Remove(OnPlayerDisconnected);
 		}
 
@@ -520,7 +556,7 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 		DbgUI.Text(string.Format("Player ID: %1", m_PlayerController.GetPlayerId()));
 		DbgUI.Text(string.Format("Available allocated supplies: %1 / %2", GetPlayerAvailableAllocatedSupplies(), GetPlayerMilitarySupplyAllocation()));
 
-		DbgUI.Text(string.Format("Replenishment timer: %1s",  Math.Round(GetAvailableAllocatedSuppliesReplenishmentTimer())));
+		DbgUI.Text(string.Format("Replenishment timer: %1s", Math.Round(GetAvailableAllocatedSuppliesReplenishmentTimer())));
 		DbgUI.Spacer(8);
 		DbgUI.End();
 	}

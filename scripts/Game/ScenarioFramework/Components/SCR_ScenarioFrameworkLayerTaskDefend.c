@@ -251,7 +251,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	//! \param[in] includeChildren Restores default settings, optionally including children entities.
 	//! \param[in] reinitAfterRestoration Resets object state after restoration, optionally reinitializing it afterwards.
 	//! \param[in] affectRandomization Affects randomization parameters during restoration process.
-	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true, bool deleteSpawnedEntities = true)
 	{
 		m_CharacterTriggerEntity = null;
 		m_fTempCountdown = m_fDefendTime;
@@ -266,7 +266,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 		
 		m_aAttackerLayer.Clear();
 		
-		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization, deleteSpawnedEntities);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -351,11 +351,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 		m_fTempTimeSlice = 0;
 		m_fTempCountdown--;
 		
-		int taskID = -1;
-		if (m_Task)
-			taskID = m_Task.GetTaskID();
-		
-		Rpc(RpcDo_UpdateHUD, m_fTempCountdown, taskID);
+		Rpc(RpcDo_UpdateHUD, m_fTempCountdown);
 		
 		if (!m_wRoot)
 			return;
@@ -389,9 +385,8 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	
 	//! Updates HUD with countdown or delayed evaluation text based on task state, displays countdown or title, hides or
 	//! \param[in] countdown Countdown displays remaining time for active task in HUD.
-	//! \param[in] taskID represents the identifier for the current task in the scenario, used for updating HUD based on its state.
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	void RpcDo_UpdateHUD(float countdown, int taskID)
+	void RpcDo_UpdateHUD(float countdown)
 	{
 		m_fTempCountdown = countdown;
 		

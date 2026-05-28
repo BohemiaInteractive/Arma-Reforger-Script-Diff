@@ -13,9 +13,6 @@ typedef func MapItemInvoker;
 void ScriptInvokerFloat2Bool(float f1, float f2, bool b1);
 typedef func ScriptInvokerFloat2Bool;
 
-
-//------------------------------------------------------------------------------------------------
-//! Map entity
 [EntityEditorProps(category: "GameScripted/Map", description: "Map entity, handles displaying of map etc", sizeMin: "-5 -5 -5", sizeMax: "5 5 5", color: "255 255 200 0", dynamicBox: true)]
 class SCR_MapEntity: MapEntity
 {				
@@ -41,7 +38,7 @@ class SCR_MapEntity: MapEntity
 	protected static SCR_MapEntity s_MapInstance;			// map entity instance
 	
 	protected MapItem m_HoveredMapItem;						// currently hovered map item
-		
+
 	// zoom
 	protected bool m_bIsZoomInterp;		// is currently zoom animating
 	protected float m_fZoomPPU = 1;		// current zoom PixelPerUnit value
@@ -70,6 +67,7 @@ class SCR_MapEntity: MapEntity
 	// invokers
 	protected static ref ScriptInvokerBase<MapConfigurationInvoker> s_OnMapInit = new ScriptInvokerBase<MapConfigurationInvoker>();	// map init, called straight after opening the map
 	protected static ref ScriptInvokerBase<MapConfigurationInvoker> s_OnMapOpen = new ScriptInvokerBase<MapConfigurationInvoker>();	// map open, called after map is properly initialized
+	protected static ref ScriptInvokerBase<MapConfigurationInvoker> s_OnMapOpenComplete = new ScriptInvokerBase<MapConfigurationInvoker>(); //map fully opened, called after the OnMapOpen invoker, after everything has been set up
 	protected static ref ScriptInvokerBase<MapConfigurationInvoker> s_OnMapClose = new ScriptInvokerBase<MapConfigurationInvoker>();// map close
 	protected static ref ScriptInvokerBase<ScriptInvokerFloat2Bool> s_OnMapPan 	= new ScriptInvokerBase<ScriptInvokerFloat2Bool>;	// map pan, passes UNSCALED x & y
 	protected static ref ScriptInvokerFloat2 s_OnMapPanEnd 						= new ScriptInvokerFloat2();						// map pan interpolated end
@@ -88,6 +86,8 @@ class SCR_MapEntity: MapEntity
 	static ScriptInvokerBase<MapConfigurationInvoker> GetOnMapInit() { return s_OnMapInit; }
 	//! Get on map open invoker
 	static ScriptInvokerBase<MapConfigurationInvoker> GetOnMapOpen() { return s_OnMapOpen; }
+	//! Get on map open complete invoker
+	static ScriptInvokerBase<MapConfigurationInvoker> GetOnMapOpenComplete() { return s_OnMapOpenComplete; }
 	//! Get on map close invoker
 	static ScriptInvokerBase<MapConfigurationInvoker> GetOnMapClose() { return s_OnMapClose; }
 	//! Get on map pan invoker
@@ -357,16 +357,20 @@ class SCR_MapEntity: MapEntity
 		ActivateOtherComponents(config.OtherComponents);
 		
 		m_bDoReload = false;
-		
+
 		if (s_OnMapOpen)
 			s_OnMapOpen.Invoke(config);
 
 		if (config.MapEntityMode == EMapEntityMode.FULLSCREEN)
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_HUD_MAP_OPEN);
 		
+		//calling methods that are dependent on setup done by methods called by the OnMapOpen invoker
+		if (s_OnMapOpenComplete)
+			s_OnMapOpenComplete.Invoke(config);
+
 		EnableVisualisation(true);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Map close event
 	protected void OnMapClose()
@@ -443,12 +447,14 @@ class SCR_MapEntity: MapEntity
 			ZoomSmooth(m_fZoomPPU, reinitZoom: true);
 		}
 		else
+		{
 			m_bDoUpdate = true;
+		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Game event
-	protected void OnWindowResized(int width, int heigth, bool windowed)
+	protected void OnWindowResized(int width, int height, bool windowed)
 	{
 		OnUserSettingsChanged();
 	}
@@ -537,7 +543,6 @@ class SCR_MapEntity: MapEntity
 		}
 		
 		configObject.DescriptorVisibilityConfig = descriptorViewCfg;
-		
 		
 		SCR_MapDescriptorDefaults descriptorDefaults = mapCfg.m_DescriptorDefaultsConfig;
 		if (!descriptorDefaults)
@@ -721,7 +726,7 @@ class SCR_MapEntity: MapEntity
 	//! \param y is vertical screen UNSCALED coordinate
 	//! \param center determines whether the map should center to the supplied coordinates
 	//! \param IsPanEnd determines whether this is also the end of panning operation, resetting the start pos for drag pannning
-	void SetPan(float x, float y, bool isPanEnd = true, bool center = true)
+	void SetPan(float x, float y, bool isPanEnd = true, bool center = true, bool updatingPan = false)
 	{	
 		if (m_iDelayCounter > 0)
 		{
@@ -734,6 +739,18 @@ class SCR_MapEntity: MapEntity
 		// test bounds
 		if (!FitPanBounds(x, y, center))
 			adjustedPan = true;
+
+		if (m_bIsPanInterp && !updatingPan)
+		{
+			float diffX = x - m_iPanX;
+			float diffY = y - m_iPanY;
+
+			m_aStartPan[0] = m_aStartPan[0] - diffX;
+			m_aStartPan[1] = m_aStartPan[1] - diffY;
+
+			m_aTargetPan[0] = m_aTargetPan[0] - diffX;
+			m_aTargetPan[1] = m_aTargetPan[1] - diffY;
+		}
 		
 		// save current pan
 		m_iPanX = x;
@@ -836,10 +853,9 @@ class SCR_MapEntity: MapEntity
 		item.Select(true);
 		item.SetHighlighted(true);
 		
-
 		s_OnSelectionChanged.Invoke(item);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Set hover mode to target MapItem
 	//! \param MapItem is the target 
@@ -1342,14 +1358,15 @@ class SCR_MapEntity: MapEntity
 		{
 			component.SetActive(false, true);
 		}
+		
 		m_aActiveComponents.Clear();
 		
 		foreach (SCR_MapModuleBase module : m_aActiveModules )
 		{
 			module.SetActive(false, true);
 		}
-		m_aActiveModules.Clear();
-				
+		
+		m_aActiveModules.Clear();	
 		m_bIsDebugMode = false;
 	}
 	
@@ -1383,14 +1400,14 @@ class SCR_MapEntity: MapEntity
 		if (m_fPanSlice <= 0)
 		{
 			m_bIsPanInterp = false;
-			SetPan(m_aTargetPan[0], m_aTargetPan[1]);
+			SetPan(m_aTargetPan[0], m_aTargetPan[1], true, true, true);
 			s_OnMapPanEnd.Invoke(m_aTargetPan[0],  m_aTargetPan[1]);
 		}
 		else
 		{
 			int panX = Math.Lerp(m_aStartPan[0], m_aTargetPan[0], 1 - m_fPanSlice);
 			int panY = Math.Lerp(m_aStartPan[1], m_aTargetPan[1], 1 - m_fPanSlice);
-			SetPan(panX, panY, false);
+			SetPan(panX, panY, false, true, true);
 		}
 	}
 	
@@ -1506,7 +1523,6 @@ class SCR_MapEntity: MapEntity
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
-
 		vector size = Size();
 		m_iMapSizeX = size[0];
 		m_iMapSizeY = size[2];
@@ -1551,6 +1567,7 @@ class SCR_MapEntity: MapEntity
 		
 		s_OnMapInit.Clear();
 		s_OnMapOpen.Clear();
+		s_OnMapOpenComplete.Clear();
 		s_OnMapClose.Clear();
 		s_OnMapPan.Clear();
 		s_OnMapPanEnd.Clear();

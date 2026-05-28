@@ -204,21 +204,21 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnOverrideSaveEntry(notnull SCR_SaveLoadEntryComponent entryComponent)
 	{
-		m_wSelectedWidget = m_mComponentEntries.GetKeyByValue(entryComponent);
+		m_wSelectedWidget = SCR_MapHelper<Widget, SCR_SaveLoadEntryComponent>.GetKeyByValue(m_mComponentEntries, entryComponent);
 		OnConfirm(null, string.Empty);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnLoadSaveEntry(notnull SCR_SaveLoadEntryComponent entryComponent)
 	{
-		m_wSelectedWidget = m_mComponentEntries.GetKeyByValue(entryComponent);
+		m_wSelectedWidget = SCR_MapHelper<Widget, SCR_SaveLoadEntryComponent>.GetKeyByValue(m_mComponentEntries, entryComponent);
 		OnConfirm(null, string.Empty);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnDeleteSaveEntry(notnull SCR_SaveLoadEntryComponent entryComponent)
 	{
-		m_wSelectedWidget = m_mComponentEntries.GetKeyByValue(entryComponent);
+		m_wSelectedWidget = SCR_MapHelper<Widget, SCR_SaveLoadEntryComponent>.GetKeyByValue(m_mComponentEntries, entryComponent);
 		OnDelete(null, string.Empty);
 	}
 	
@@ -250,7 +250,7 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 		if (entryComponent)
 			fileName = entryComponent.GetFileName();
 		
-		string customName = "";//GetGame().GetSaveManager().GetCustomName(fileName);
+		const string customName; // GetGame().GetSaveManager().GetCustomName(fileName);
 		m_Widgets.m_SaveNameInputComponent0.SetValue(customName);
 
 		m_wSelectedWidget = w;

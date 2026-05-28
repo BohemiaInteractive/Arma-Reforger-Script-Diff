@@ -53,7 +53,7 @@ enum RplGroup
 /*!
 Property annotation attribute. Use to enable property replication on Entities and components.
 */
-class RplProp
+class RplProp: UniqueAttribute
 {
 	RplGroup     m_Group;
 	RplCondition m_Condition;
@@ -85,7 +85,7 @@ class RplProp
 RPC annotation attribute. Use to mark method as RPC method.
 Remote call is executed via Rpc(Method, Arg1, Arg2, ...).
 */
-class RplRpc
+class RplRpc: UniqueAttribute
 {
 	RplChannel	 m_Channel;
 	RplRcver		 m_Rcver;
@@ -115,11 +115,11 @@ class OnRpl
 {
 }
 
-class RplBeforeInjected
+class RplBeforeInjected: UniqueAttribute
 {
 }
 
-class RplBeforeExtracted
+class RplBeforeExtracted: UniqueAttribute
 {
 }
 

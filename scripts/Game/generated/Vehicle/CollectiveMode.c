@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-enum CollectiveMode
+sealed enum CollectiveMode
 {
 	LocalYOffsetAuto,
 	LocalYOffsetManual,

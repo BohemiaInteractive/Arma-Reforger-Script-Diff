@@ -40,6 +40,6 @@ class SCR_FactionCommanderBaseCancelRequestMenuHandler : SCR_FactionCommanderBas
 		if (!task)
 			return;
 
-		factionCommanderPlayerComponent.CancelTask(playerId, task.GetTaskID());
+		factionCommanderPlayerComponent.CancelTask(task.GetTaskID());
 	}
 }

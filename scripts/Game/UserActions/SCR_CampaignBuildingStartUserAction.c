@@ -28,7 +28,7 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 		m_DamageManager = DamageManagerComponent.Cast(GetOwner().FindComponent(DamageManagerComponent));
 
 		if (GetGame().GetPlayerController())
-			m_ResourceInventoryPlayerComponentRplId = Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
+			m_ResourceInventoryPlayerComponentRplId = Replication.FindItemId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
 
 		if (m_ProviderComponent && m_ProviderComponent.ObstrucViewWhenEnemyInRange())
 			m_bAccessCanBeBlocked = true;
@@ -45,7 +45,7 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity)
 	{
 		int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(pUserEntity);
-		m_ProviderComponent.RequestBuildingMode(playerID, true);
+		m_ProviderComponent.RequestEnterBuildingMode(playerID, true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -63,7 +63,7 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 			string rankName;
 			SCR_Faction faction = SCR_Faction.Cast(factionAffiliationComp.GetAffiliatedFaction());
 			if (faction)
-				rankName = faction.GetRankName(m_ProviderComponent.GetAccessRank());
+				rankName = faction.GetRanks().GetRankName(m_ProviderComponent.GetAccessRank());
 
 			SetCannotPerformReason(rankName);
 			return false;
@@ -186,7 +186,7 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 			return false;
 
 		if (!m_ResourceInventoryPlayerComponentRplId || !m_ResourceInventoryPlayerComponentRplId.IsValid())
-			m_ResourceInventoryPlayerComponentRplId = Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
+			m_ResourceInventoryPlayerComponentRplId = Replication.FindItemId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
 
 		if (m_ResourceSubscriptionHandleConsumer)
 			m_ResourceSubscriptionHandleConsumer.Poke();

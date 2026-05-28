@@ -91,7 +91,7 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 	protected void OnCustomMenuItemChanged(string widgetName)
 	{
 		OnMenuItemChanged(new SCR_SettingsBindingBase("", "", widgetName));
-		SCR_AnalyticsApplication.GetInstance().ChangeSetting("Video", widgetName);
+		//SCR_AnalyticsApplication.GetInstance().ChangeSetting("Video", widgetName);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -259,7 +259,7 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 
 		m_bLoadingSettings = false;
 		
-		SCR_AnalyticsApplication.GetInstance().SetQualityPresetSetting(itemIndex);
+		//SCR_AnalyticsApplication.GetInstance().SetQualityPresetSetting(itemIndex);
 	}
 
 	//------------------------------------------------------------------------------------------------

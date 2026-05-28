@@ -2,15 +2,14 @@
 class SCR_ConditionCheckUIEntry
 {
 	[Attribute()]
-	protected string m_sConditionCheckTypename;
-
-	[Attribute()]
 	protected ref SCR_UIInfo m_FailedConditionUIInfo;
 
+	protected int m_iConditionType = -1;
+
 	//------------------------------------------------------------------------------------------------
-	string GetConditionCheckTypename()
+	int GetConditionType()
 	{
-		return m_sConditionCheckTypename;
+		return m_iConditionType;
 	}
 
 	//------------------------------------------------------------------------------------------------

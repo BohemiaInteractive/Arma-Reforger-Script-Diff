@@ -4,19 +4,13 @@
 class SCR_VehicleHasAnyGroundContactCondition : SCR_AvailableActionCondition
 {
 	//------------------------------------------------------------------------------------------------
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-
-		VehicleBaseSimulation simulation;
 		VehicleControllerComponent controller = VehicleControllerComponent.Cast(data.GetCurrentVehicleController());
-		if (controller)
-			simulation = controller.GetBaseSimulation();
+		if (!controller)
+			return GetReturnResult(false);
 
-		if (!simulation)
-			return false;
-
-		return GetReturnResult(simulation.HasAnyGroundContact());
+		VehicleBaseSimulation simulation = controller.GetBaseSimulation();
+		return GetReturnResult(simulation && simulation.HasAnyGroundContact());
 	}
 }

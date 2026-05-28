@@ -16,7 +16,7 @@ class SCR_AudioSourceConfiguration
 	[Attribute("", UIWidgets.EditBox, desc: "Sound event name")]
 	string m_sSoundEventName;
 	
-	[Attribute(defvalue:"0 0 0", desc: "Sound offset towards entity origin")]
+	[Attribute(defvalue:"0 0 0", desc: "Sound offset towards entity origin", params: "inf inf purpose=coords space=entity")]
 	vector m_vOffset;
 		
 	[Attribute("1", UIWidgets.Flags, enums: ParamEnumArray.FromEnum(EAudioSourceConfigurationFlag))]

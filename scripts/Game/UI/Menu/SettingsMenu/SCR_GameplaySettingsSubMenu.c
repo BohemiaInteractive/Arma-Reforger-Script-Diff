@@ -47,7 +47,6 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bLogitechSupport" , "LogitechLED" ));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bStickyGadgets", "StickyGadgets"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bAutoEquipNextPlaceableItem", "AutomaticEquipmentOfPlaceables"));
-		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bShowRadioProtocolText", "RadioProtocolSubtitles"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bMouseControlAircraft", "MouseControlAircraft"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bGamepadFreelookInAircraft", "GamepadFreelookInAircraft"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_eDrivingAssistance", "DrivingAssistance"));
@@ -80,6 +79,8 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_eGyroDirectionYaw", "GyroDirectionYaw"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_eGyroDirectionPitch", "GyroDirectionPitch"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_eGyroDirectionRoll", "GyroDirectionRoll"));
+		
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_fRumbleIntensity", "RumbleIntensity"));
 
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GyroAimingSpace", "GyroAimingSpace", "GyroSettings"));
 
@@ -202,7 +203,7 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		
 		GetGame().UserSettingsChanged();
 		
-		SCR_AnalyticsApplication.GetInstance().ChangeSetting(m_sUserInterfaceSettings, settingName);
+		//SCR_AnalyticsApplication.GetInstance().ChangeSetting(m_sUserInterfaceSettings, settingName);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -221,6 +222,6 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		
 		m_OnLanguageChanged.Invoke(this);
 		
-		SCR_AnalyticsApplication.GetInstance().ChangeSetting(m_sUserInterfaceSettings, settingName);
+		//SCR_AnalyticsApplication.GetInstance().ChangeSetting(m_sUserInterfaceSettings, settingName);
 	}
 }

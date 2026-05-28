@@ -5,31 +5,19 @@ class SCR_EditorOpenedActionCondition: SCR_AvailableActionCondition
 	[Attribute()]
 	protected bool m_ModeMustNotBeLimited;
 	
-	override bool IsAvailable(SCR_AvailableActionsConditionData data)
+	//------------------------------------------------------------------------------------------------
+	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		if (!data)
-			return false;
-		
 		//Editor not open
-		if (!SCR_EditorManagerEntity.IsOpenedInstance())
+		SCR_EditorManagerEntity editorMgr = data.GetEditorManager();
+		if (!editorMgr || !editorMgr.IsOpened())
 			return GetReturnResult(false);
 		
 		//Editor is open and mode limted not important
 		if (!m_ModeMustNotBeLimited)
 			return GetReturnResult(true);
-		
-		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
-		
-		if (!editorManager)
-			return false;
-		
-		SCR_EditorModeEntity mode = editorManager.GetCurrentModeEntity();
-		if (!mode)
-			return false;
-		
-		if (!mode.IsLimited())
-			return GetReturnResult(true);
-		else 
-			return GetReturnResult(false);
+
+		SCR_EditorModeEntity mode = data.GetEditorModeEntity();
+		return GetReturnResult(mode && !mode.IsLimited());
 	}
-};
+}

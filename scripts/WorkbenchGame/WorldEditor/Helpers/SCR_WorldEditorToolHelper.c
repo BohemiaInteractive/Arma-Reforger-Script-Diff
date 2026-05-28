@@ -2,7 +2,8 @@
 class SCR_WorldEditorToolHelper
 {
 	protected static ref array<IEntity> s_aTempEntities;
-	protected static const string TERRAIN_ENTITY_CLASSNAME = "GenericTerrainEntity";
+
+	protected static const string WEB_PREFIX = "https://enfusionengine.com/api/redirect?to=";
 
 	//------------------------------------------------------------------------------------------------
 	//! Get the ResourceManager object
@@ -68,6 +69,91 @@ class SCR_WorldEditorToolHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Get a World Editor link in Enfusion protocol format (enfusion://) using current camera's position/angles
+	//! \param[in] useWebPrefix use enfusionengine.com prefix or not
+	//! \return Enfusion protocol World Editor link or empty on
+	static string GetCurrentWorldEditorLink(bool useWebPrefix = false)
+	{
+		WorldEditorAPI worldEditorAPI = GetWorldEditorAPI();
+		if (!worldEditorAPI)
+			return string.Empty;
+
+		BaseWorld world = worldEditorAPI.GetWorld();
+		if (!world)
+			return string.Empty;
+
+		vector transform[4];
+		world.GetCurrentCamera(transform);
+
+		return SCR_WorldEditorToolHelper.GetCurrentWorldEditorLink(transform[3], Math3D.MatrixToAngles(transform), useWebPrefix);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get a World Editor link in Enfusion protocol format (enfusion://)\n
+	//! position and camera are ignored if both are 0 0 0
+	//! \param[in] position camera position
+	//! \param[in] angles camera angles (pitch yaw roll) (NOT direction!)
+	//! \param[in] useWebPrefix use enfusionengine.com prefix or not
+	//! \return Enfusion protocol World Editor link or empty on error/no world loaded
+	static string GetCurrentWorldEditorLink(vector position, vector angles, bool useWebPrefix = false)
+	{
+		WorldEditorAPI worldEditorAPI = GetWorldEditorAPI();
+		if (!worldEditorAPI)
+			return string.Empty;
+
+		string fullLink;
+		worldEditorAPI.GetWorldPath(fullLink);
+
+		if (fullLink.IsEmpty())
+			return string.Empty;
+
+		string worldPath = fullLink;
+		if (worldPath[0] == "$")
+			worldPath = "~" + worldPath.Substring(1, worldPath.Length() - 1);
+		else
+		if (worldPath[0] != "~")
+		{
+			// if we don't have an exact path (should not happen),
+			// fallback to the original solution:
+
+			// we want to substring only /worlds/(...)
+			// to prevent exposing local folders, etc.
+			string fullLinkLC = fullLink;
+			fullLinkLC.ToLower();
+
+			int begin = fullLinkLC.IndexOf("worlds\\");
+			if (begin == -1)
+				begin = fullLinkLC.IndexOf("worlds/");
+
+			if (begin == -1)
+				return string.Empty;
+
+			worldPath = fullLink.Substring(begin, fullLink.Length() - begin);
+		}
+
+		// Have consistent link
+		worldPath.Replace("\\", "/");
+
+		if (position == vector.Zero && angles == vector.Zero)
+			return "enfusion://WorldEditor/" + worldPath;
+
+		string result = string.Format(
+			"enfusion://WorldEditor/%1;%2,%3,%4;%5,%6,%7",
+			worldPath,
+			position[0],
+			position[1],
+			position[2],
+			angles[1],
+			angles[0],
+			angles[2]);
+
+		if (useWebPrefix)
+			return WEB_PREFIX + result;
+		else
+			return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! \return the currently loaded world's name, or "Unknown" if empty
 	static string GetWorldName()
 	{
@@ -84,7 +170,7 @@ class SCR_WorldEditorToolHelper
 	{
 		WorldEditorAPI worldEditorAPI = GetWorldEditorAPI();
 		if (!worldEditorAPI)
-			return "";
+			return string.Empty;
 
 		string result;
 		worldEditorAPI.GetWorldPath(result);
@@ -92,16 +178,36 @@ class SCR_WorldEditorToolHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return true if a world is loaded, false otherwise
+	//! \return true if a world is loaded, false otherwise - false if in Prefab Edit mode too
 	static bool IsWorldLoaded()
 	{
-		WorldEditorAPI worldEditorAPI = GetWorldEditorAPI();
+		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
+		if (!worldEditor)
+			return false;
+
+		if (worldEditor.IsPrefabEditMode())
+			return false;
+
+		WorldEditorAPI worldEditorAPI = worldEditor.GetApi();
 		if (!worldEditorAPI)
 			return false;
 
 		string worldPath;
 		worldEditorAPI.GetWorldPath(worldPath);
 		return worldPath && worldEditorAPI.GetWorld() != null; // !.IsEmpty()
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return true if terrain has been generated, false if not or no terrain entity is present
+	static bool HasTerrainMesh()
+	{
+		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
+		if (!worldEditor)
+			return false;
+
+		vector min, max;
+		worldEditor.GetTerrainBounds(min, max);
+		return max != vector.Zero || min != vector.Zero;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -123,7 +229,7 @@ class SCR_WorldEditorToolHelper
 		for (int i, entitiesCount = worldEditorAPI.GetEditorEntityCount(); i < entitiesCount; ++i)
 		{
 			entitySource = worldEditorAPI.GetEditorEntity(i);
-			if (entitySource && entitySource.GetClassName() == TERRAIN_ENTITY_CLASSNAME)
+			if (entitySource && entitySource.GetClassName().ToType() && entitySource.GetClassName().ToType().IsInherited(GenericTerrainEntity))
 				return entitySource;
 		}
 
@@ -131,17 +237,326 @@ class SCR_WorldEditorToolHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return terrain's absolute dimensions (using terrain bounds)
 	static vector GetTerrainDimensions()
+	{
+		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
+		vector min, max;
+		worldEditor.GetTerrainBounds(min, max);
+		return max - min;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] minY
+	//! \param[out] maxY
+	static void GetTerrainMinMaxY(out float minY, out float maxY)
+	{
+		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
+		vector min, max;
+		worldEditor.GetTerrainBounds(min, max);
+
+		minY = min[1];
+		maxY = max[1];
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] min
+	//! \param[out] max
+	//! \return true on success, false otherwise (e.g no terrain)
+	static bool GetTerrainMinMaxElevationPositions(out vector min, out vector max)
+	{
+		WorldEditorAPI worldEditorAPI = GetWorldEditorAPI();
+		if (!HasTerrainMesh())
+			return false;
+
+		float minY, maxY;
+		GetTerrainMinMaxY(minY, maxY);
+
+		vector terrainPosition = GetTerrainPosition();
+		float minX = terrainPosition[0];
+		float minZ = terrainPosition[2];
+
+		vector terrainDimensions = GetTerrainDimensions();
+		float maxX = minX + terrainDimensions[0];
+		float maxZ = minZ + terrainDimensions[2];
+
+		float step = worldEditorAPI.GetTerrainUnitScale();
+
+		bool hasMinY, hasMaxY;
+
+		float y;
+		for (float z = minZ, limitZ = maxZ; z <= limitZ; z += step)
+		{
+			for (float x = minX, limitX = maxX; x <= limitX; x += step)
+			{
+				if (!worldEditorAPI.TryGetTerrainSurfaceY(x, z, y))
+					continue;
+
+				if (!hasMaxY && y == maxY)
+				{
+					max = { x, y, z };
+					hasMaxY = true;
+				}
+				else
+				if (!hasMinY && y == minY)
+				{
+					min = { x, y, z };
+					hasMinY = true;
+				}
+
+				if (hasMinY && hasMaxY)
+					return true;
+			}
+		}
+
+		return hasMinY && hasMaxY;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get current terrain's land area (Y >= ocean level) in square metres, or -1 if no terrain is loaded or on wrong terrain index
+	//! \param[in] terrainIndex 0 or above
+	//! \return the land area in m² (multiply by 0.000001 to convert to km²)
+	static float GetTerrainLandArea(int terrainIndex = 0)
+	{
+		if (terrainIndex < 0)
+			return -1;
+
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
+
+		BaseWorld world = worldEditorAPI.GetWorld();
+		if (!world)
+			return -1;
+
+		const float cellSideSize = worldEditorAPI.GetTerrainUnitScale(terrainIndex);
+		if (cellSideSize <= 0)
+			return -1; // wrong terrain index or no terrain loaded
+
+		const float cellSideSizeSq = cellSideSize * cellSideSize;
+
+		if (!world.IsOcean()) // no ocean = everything is land
+		{
+			return cellSideSizeSq
+				* (worldEditorAPI.GetTerrainResolutionX(terrainIndex) - 1)
+				* (worldEditorAPI.GetTerrainResolutionY(terrainIndex) - 1);
+		}
+
+		const float oceanLevel = worldEditorAPI.GetWorld().GetOceanBaseHeight();
+		if (oceanLevel == -float.MAX) // just some safety, most likely not needed
+		{
+			return cellSideSizeSq
+				* (worldEditorAPI.GetTerrainResolutionX(terrainIndex) - 1)
+				* (worldEditorAPI.GetTerrainResolutionY(terrainIndex) - 1);
+		}
+
+		const int tileXCount = worldEditorAPI.GetTerrainTilesX(terrainIndex);
+		const int tileYCount = worldEditorAPI.GetTerrainTilesY(terrainIndex);
+
+		const int tileSideSizeX = (worldEditorAPI.GetTerrainResolutionX(terrainIndex) - 1) / tileXCount;
+		const int tileSideSizeY = (worldEditorAPI.GetTerrainResolutionY(terrainIndex) - 1) / tileYCount;
+
+		const int tileArea = tileSideSizeX * tileSideSizeY;
+		const int tileValuesCount = (tileSideSizeX + 1) * (tileSideSizeY + 1); // +1 - e.g 32×32 cells = 33×33 vertices
+		array<float> tileYs = {};
+		tileYs.Resize(tileValuesCount);
+
+		float result;
+
+		int bottomLeftIndex, bottomRightIndex;
+		float topLeftY, bottomLeftY, topRightY, bottomRightY;
+		bool aboveZeroTL, aboveZeroTR, aboveZeroBL, aboveZeroBR;
+		bool tileHasAboveZeroArea, tileHasBelowZeroArea;
+		for (int tileY; tileY < tileYCount; ++tileY)
+		{
+			for (int tileX; tileX < tileXCount; ++tileX)
+			{
+				if (!worldEditorAPI.GetTerrainSurfaceTile(terrainIndex, tileX, tileY, tileYs))
+				{
+					PrintFormat("Invalid tile %1:%2", tileX, tileY, level: LogLevel.ERROR);
+					return -1;
+				}
+
+				tileHasAboveZeroArea = false;
+				tileHasBelowZeroArea = false;
+				foreach (float yValue : tileYs)
+				{
+					if (yValue >= oceanLevel)
+					{
+						tileHasAboveZeroArea = true;
+						if (tileHasBelowZeroArea)
+							break;
+					}
+					else
+					{
+						tileHasBelowZeroArea = true;
+						if (tileHasAboveZeroArea)
+							break;
+					}
+				}
+
+				if (!tileHasAboveZeroArea) // full underwater
+					continue;
+
+				if (!tileHasBelowZeroArea) // full above water
+				{
+					result += tileArea * cellSideSizeSq;
+					continue;
+				}
+
+				float tileSurface; // intermediate variable needed for big terrains (e.g Balta) due to float precision
+				for (int tileValueY = 1; tileValueY <= tileSideSizeY; ++tileValueY)
+				{
+					for (int tileValueX = 1; tileValueX <= tileSideSizeX; ++tileValueX)
+					{
+						if (tileValueX == 1)
+						{
+							bottomLeftIndex = tileValueX - 1 + tileSideSizeY * (tileValueY - 1);
+							topLeftY = tileYs[bottomLeftIndex + tileSideSizeY];
+							bottomLeftY = tileYs[bottomLeftIndex];
+						}
+						else
+						{
+							bottomLeftIndex = bottomRightIndex;
+							topLeftY = topRightY;
+							bottomLeftY = bottomRightY;
+						}
+
+						bottomRightIndex = bottomLeftIndex + 1;
+						topRightY = tileYs[bottomLeftIndex + tileSideSizeY + 1];
+						bottomRightY = tileYs[bottomRightIndex];
+
+						aboveZeroTL = topLeftY >= 0;
+						aboveZeroTR = topRightY >= 0;
+						aboveZeroBL = bottomLeftY >= 0;
+						aboveZeroBR = bottomRightY >= 0;
+						if (aboveZeroTL == aboveZeroTR && aboveZeroTL == aboveZeroBL && aboveZeroTL == aboveZeroBR) // everything equal
+						{
+							if (aboveZeroTL) // all points are >= 0
+								tileSurface += 1; // one full cell
+
+							continue;
+						}
+
+						// top-right triangle
+						if (aboveZeroTL == aboveZeroTR && aboveZeroTL == aboveZeroBR)
+						{
+							if (aboveZeroTL)
+								tileSurface += 0.5;
+						}
+						else
+						{
+							tileSurface += GetTriangle2DAreaAboveOceanLevel(topLeftY, topRightY, bottomRightY, oceanLevel);
+						}
+
+						// bottom-left triangle
+						if (aboveZeroTL == aboveZeroBL && aboveZeroTL == aboveZeroBR)
+						{
+							if (aboveZeroTL)
+								tileSurface += 0.5;
+						}
+						else
+						{
+							tileSurface += GetTriangle2DAreaAboveOceanLevel(topLeftY, bottomLeftY, bottomRightY, oceanLevel);
+						}
+					}
+				}
+
+				result += tileSurface * cellSideSizeSq;
+			}
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get the above-ocean 2D area of a triangle
+	//! \param[in] a y value at pos 0,0
+	//! \param[in] b y value at pos 0,1
+	//! \param[in] c y value at pos 1,1
+	//! \param[in] oceanLevel
+	//! \return triangle surface above zero in range 0..0.5 (given it is a half-cell triangle)
+	protected static float GetTriangle2DAreaAboveOceanLevel(float a, float b, float c, float oceanLevel = 0)
+	{
+		array<float> heights = { a - oceanLevel, b - oceanLevel, c - oceanLevel };
+		heights.Sort();
+
+		if (heights[2] < 0)
+			return 0;
+
+		const float area = 0.5;
+
+		// all above zero
+		if (heights[0] >= 0)
+			return area;
+
+		// only heights[2] is above zero → small positive triangle near heights[2]
+		if (heights[1] < 0)
+		{
+			float r1 = heights[2] / (heights[2] - heights[0]);
+			float r2 = heights[2] / (heights[2] - heights[1]);
+			return area * r1 * r2 * heights[2] / 3;
+		}
+
+		// heights[0] < 0, heights[1] >= 0, heights[2] > 0 → cut away negative triangle near heights[0]
+		float s1 = -heights[0] / (heights[1] - heights[0]);
+		float s2 = -heights[0] / (heights[2] - heights[0]);
+		float negSubArea = area * s1 * s2;
+		// negative sub-triangle has heights (heights[0], 0, 0), volume = negSubArea * heights[0] / 3
+		// total = full volume - negative sub volume
+		return area * (heights[0] + heights[1] + heights[2]) / 3 - negSubArea * heights[0] / 3;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	static vector GetTerrainPosition()
+	{
+		IEntitySource terrainEntitySource = GetTerrainEntitySource();
+		if (!terrainEntitySource)
+			return vector.Zero;
+
+		vector result;
+		terrainEntitySource.Get("coords", result);
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	static IEntitySource GetTimeAndWeatherManagerEntitySource()
+	{
+		WorldEditor worldEditor = GetWorldEditor();
+		if (!worldEditor)
+			return null;
+
+		if (worldEditor.IsPrefabEditMode())
+			return null;
+
+		WorldEditorAPI worldEditorAPI = worldEditor.GetApi();
+		if (worldEditorAPI.GetEditorEntityCount() < 2) // world and Entity
+			return null;
+
+		IEntitySource entitySource;
+		for (int i, entitiesCount = worldEditorAPI.GetEditorEntityCount(); i < entitiesCount; ++i)
+		{
+			entitySource = worldEditorAPI.GetEditorEntity(i);
+			if (entitySource && entitySource.GetClassName().ToType() && entitySource.GetClassName().ToType().IsInherited(TimeAndWeatherManagerEntity))
+				return entitySource;
+		}
+
+		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] direction
+	//! \return
+	static vector GetWorldEditorCameraPosition(out vector direction = vector.Zero)
 	{
 		WorldEditorAPI worldEditorAPI = GetWorldEditorAPI();
 		if (!worldEditorAPI)
 			return vector.Zero;
 
-		float terrainUnitScale = worldEditorAPI.GetTerrainUnitScale();
-		float terrainX = terrainUnitScale * worldEditorAPI.GetTerrainResolutionX();
-		float terrainZ = terrainX;
-		return { terrainX, 0, terrainZ };
+		vector result, traceEnd;
+		worldEditorAPI.TraceWorldPos(0, 0, 0, result, traceEnd, direction);
+
+		return result;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -273,7 +688,7 @@ class SCR_WorldEditorToolHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Get all ResourceName that are selected in the Resource Browser
+	//! Get all ResourceName that are selected in the World Editor's Resource Browser
 	//! \param[in] recursive true to get a selected directory's files, false to stop at the directory
 	//! \return array of ResourceName of selected resources or null on error (e.g World Editor is not available)
 	static array<ResourceName> GetSelectedResources(bool recursive = true)

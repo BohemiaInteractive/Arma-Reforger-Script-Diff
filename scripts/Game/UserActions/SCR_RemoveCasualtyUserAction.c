@@ -35,6 +35,13 @@ class SCR_RemoveCasualtyUserAction : SCR_CompartmentUserAction
 			casualtyCompartmentAccess.KickFromVehicle(doorIdx);
 		}
 
+		if (compartment.IsPiloting())	// even a dead driver applies brakes to the car using the engine, so when we remove the driver from the compartment
+		{								// we pull the handbrake to make it less confusing during gameplay
+			CarControllerComponent car = CarControllerComponent.Cast(compartment.GetController());
+			if(car)
+				car.SetPersistentHandBrake(true)
+		}
+
 		super.PerformAction(pOwnerEntity, pUserEntity);
 	}
 

@@ -63,19 +63,21 @@ class SCR_EditableEffectsModuleComponent: SCR_EditableSystemComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void SetTransform(vector transform[4], bool changedByUser = false)
+	override bool SetTransform(vector transform[4], bool changedByUser = false)
 	{
-		super.SetTransform(transform, changedByUser);
+		if (!super.SetTransform(transform, changedByUser))
+			return false;
 		
 		if (!IsServer() || !m_Owner)
-			return;
+			return false;
 		
 		SCR_EffectsModuleComponent effectModuleComponent = SCR_EffectsModuleComponent.Cast(m_Owner.FindComponent(SCR_EffectsModuleComponent));
 		if (!effectModuleComponent)
-			return;
+			return false;
 		
 		//~ Snaps non-editable children to terrain again if need be
 		effectModuleComponent.OnTransformChanged();
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------

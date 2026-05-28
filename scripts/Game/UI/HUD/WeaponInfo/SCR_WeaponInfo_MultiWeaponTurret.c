@@ -157,12 +157,12 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 	{
 		m_eWeaponStateEvent |= EWeaponFeature.FIREMODE;
 		
-		string req;
-		ref array<int> groupIds = m_DataHolder.m_FireModeManager.GetCurrentWeaponGroup(req).m_aWeaponsGroupIds;
+		array<int> weaponIds = {};
+		m_DataHolder.m_FireModeManager.GetCurrentWeaponIndices(weaponIds);
 		
 		foreach (WeaponSlotComponent key, SCR_SingleMagazineWidgetComponent_Base slot : m_DataHolder.m_mWeaponMags)
 		{
-			if (groupIds.Contains(key.GetWeaponSlotIndex()))
+			if (weaponIds.Contains(key.GetWeaponSlotIndex()))
 				slot.SetSelected(true);
 			else
 				slot.SetSelected(false);
@@ -302,9 +302,10 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 			return;
 		
 		bool isSelected;
-		string groupName;
-		SCR_WeaponGroup currentGroup = m_DataHolder.m_FireModeManager.GetCurrentWeaponGroup(groupName);
-		if (currentGroup.m_aWeaponsGroupIds.Contains(slotComp.GetWeaponSlotIndex()))
+		
+		array<int> weaponIds = {};
+		m_DataHolder.m_FireModeManager.GetCurrentWeaponIndices(weaponIds);
+		if (weaponIds.Contains(slotComp.GetWeaponSlotIndex()))
 			isSelected = true;
 		
 		magWidgetComp.Init(NULL, SIZE_MAGAZINES, null, isSelected);
@@ -339,9 +340,9 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 			return;
 		
 		bool isSelected;
-		string groupName;
-		SCR_WeaponGroup currentGroup = m_DataHolder.m_FireModeManager.GetCurrentWeaponGroup(groupName);
-		if (currentGroup.m_aWeaponsGroupIds.Contains(slotComp.GetWeaponSlotIndex()))
+		array<int> weaponIds = {};
+		m_DataHolder.m_FireModeManager.GetCurrentWeaponIndices(weaponIds);
+		if (weaponIds.Contains(slotComp.GetWeaponSlotIndex()))
 			isSelected = true;
 		
 		magWidgetComp.Init(weapon, SIZE_MAGAZINES, wInfo.m_MagIndicator, isSelected);
@@ -493,10 +494,10 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 		
 		foreach (WeaponSlotComponent slot : m_DataHolder.m_aWeaponslots)
 		{
-			string groupName;
-			currentGroup = m_DataHolder.m_FireModeManager.GetCurrentWeaponGroup(groupName);
+			array<int> weaponIds = {};
+			m_DataHolder.m_FireModeManager.GetCurrentWeaponIndices(weaponIds);
 			
-			if (currentGroup.m_aWeaponsGroupIds.Contains(slot.GetWeaponSlotIndex()))
+			if (weaponIds.Contains(slot.GetWeaponSlotIndex()))
 			{
 				muz = SCR_RocketEjectorMuzzleComponent.Cast(slot.GetCurrentMuzzle());
 				if (!muz) 
@@ -710,6 +711,8 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 		
 		foreach (WeaponSlotComponent weaponSlot : m_DataHolder.m_aWeaponslots)
 		{
+			if (!weaponSlot)
+				continue;
 			storageInfo = weaponSlot.GetSlotInfo();
 			if (!storageInfo)
 				continue;
@@ -725,6 +728,8 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 		
 		foreach (WeaponSlotComponent weaponSlot : m_DataHolder.m_aWeaponslots)
 		{
+			if (!weaponSlot)
+				continue;
 			storageInfo = weaponSlot.GetSlotInfo();
 			if (!storageInfo)
 				continue;

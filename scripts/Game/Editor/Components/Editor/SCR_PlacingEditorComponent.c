@@ -125,6 +125,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	protected SCR_PreviewEntityEditorComponent m_PreviewManager;
 	protected SCR_BudgetEditorComponent m_BudgetManager;
 	protected SCR_EditableEntityCore m_editableEntityCore;
+	protected int m_iActionInfo;
 	
 	private SCR_SiteSlotEntity m_Slot;
 	private int m_iEntityIndex;
@@ -161,6 +162,9 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	//so instead we have this single static variable. Welp.
 	static SCR_PlacingEditorComponent serverPlacingEditorComponent;
 	static bool m_accumulatedBudgetChangesClearQueued = false;
+
+	//! the height above the terrain [m], that is a margin of error when player is trying to spawn something while not having permision to adjust the vertical position
+	protected const float MAX_HEIGHT_ABOVE_TERRAIN = 2;
 	
 	bool IsThereEnoughBudgetToSpawnVehicleOccupants(array<ResourceName> resources)
 	{
@@ -206,33 +210,53 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		
 		return prefabData.GetPrefabID(prefab);
 	}
-	
-	/*!
-	Create entity exactly where the preview entity is.
-	The entity is created from a prefab defined by SetSelectedPrefab().
-	\param unselectPrefab True to unselect prefab after placing the entity
-	\param canBePlayer True if the entity should be spawned as player
-	\return True if the request was sent
-	*/
-	bool CreateEntity(bool unselectPrefab = true, bool canBePlayer = false, SCR_EditableEntityComponent holder = null)
+
+	//------------------------------------------------------------------------------------------------
+	//! Create entity exactly where the preview entity is. The entity is created from a prefab defined by SetSelectedPrefab().
+	//! \param[in] unselectPrefab True to unselect prefab after placing the entity
+	//! \param[in] canBePlayer True if the entity should be spawned as player
+	//! \param[in] holder Entity to which the spawned entity will be attached (used in waypoints and tasks)
+	//! \param[in] sourceAction which requested this prefab creation
+	//! \return true if the request was sent
+	bool CreateEntity(bool unselectPrefab = true, bool canBePlayer = false, SCR_EditableEntityComponent holder = null, SCR_BaseEditorAction sourceAction = null)
 	{
-		//--- Check if placing is allowed. If not, prevent the operation and send a notification to player.
-		ENotification notification = -1;
-		if (!CanCreateEntity(notification))
-		{
-			if (notification != -1)
-				SendNotification(notification);
+		SCR_PlacingEditorComponentClass prefabData = SCR_PlacingEditorComponentClass.Cast(GetEditorComponentData());
+		if (!prefabData || !m_SelectedPrefab)
 			return false;
+		
+		//--- Create packet
+		SCR_EditorPreviewParams params;
+		if (m_InstantPlacingParam)
+		{
+			params = m_InstantPlacingParam;
+		}
+		else
+		{
+			SCR_EditableEntityComponent parent;
+			SCR_LayersEditorComponent layersManager = SCR_LayersEditorComponent.Cast(GetInstance(SCR_LayersEditorComponent));
+			if (layersManager)
+				parent = layersManager.GetCurrentLayer();
+			
+			params = SCR_EditorPreviewParams.CreateParamsFromPreview(m_PreviewManager, parent, true);
 		}
 		
-		SCR_PlacingEditorComponentClass prefabData = SCR_PlacingEditorComponentClass.Cast(GetEditorComponentData());
-		if (!prefabData || !m_SelectedPrefab) return false;
-		
-		if (!m_PreviewManager.IsChange() && !m_InstantPlacingParam)
-		{
-			SendNotification(ENotification.EDITOR_TRANSFORMING_INCORRECT_POSITION);
-			//SetSelectedPrefab(ResourceName.Empty, true);
+		if (!params)
 			return false;
+
+		//--- Save placing flags
+		params.m_PlacingFlags = m_PlacingFlags;
+
+		if (sourceAction)
+		{
+			params.m_iActionInfo = params.PackActionInfo(sourceAction, m_Owner);
+			if (params.m_iActionInfo < 0)
+				return false;
+
+			SetPlacingFlag(EEditorPlacingFlags.PLACING_ACTION, true);
+		}
+		else if (m_PlacingFlags & EEditorPlacingFlags.PLACING_ACTION)
+		{
+			params.m_iActionInfo = m_iActionInfo;
 		}
 		
 		int prefabID = prefabData.GetPrefabID(m_SelectedPrefab);
@@ -242,9 +266,23 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			SetSelectedPrefab(ResourceName.Empty, true);
 			return false;
 		}
+
+		//--- Check if placing is allowed. If not, prevent the operation and send a notification to player.
+		ENotification notification = -1;
+		if (!CanCreateEntity(notification, params: params, prefabID: prefabID))
+		{
+			if (notification != -1)
+				SendNotification(notification);
+
+			return false;
+		}
 		
-		//--- If the entity can be spawned as player, get player ID
-		int playerID = GetManager().GetPlayerID();
+		if (!m_InstantPlacingParam && !m_PreviewManager.IsChange())
+		{
+			SendNotification(ENotification.EDITOR_TRANSFORMING_INCORRECT_POSITION);
+			//SetSelectedPrefab(ResourceName.Empty, true);
+			return false;
+		}
 
 		if (!canBePlayer)
 			canBePlayer = HasPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER);
@@ -280,28 +318,6 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 				SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_BUDGET_MAX_FOR_VEHICLE_OCCUPANTS);				
 		}
 		
-		//--- Create packet
-		SCR_EditorPreviewParams params;
-		if (m_InstantPlacingParam)
-		{
-			params = m_InstantPlacingParam;
-		}
-		else
-		{
-			SCR_EditableEntityComponent parent;
-			SCR_LayersEditorComponent layersManager = SCR_LayersEditorComponent.Cast(GetInstance(SCR_LayersEditorComponent));
-			if (layersManager)
-				parent = layersManager.GetCurrentLayer();
-			
-			params = SCR_EditorPreviewParams.CreateParamsFromPreview(m_PreviewManager, parent, true);
-		}
-		
-		if (!params)
-			return false;
-		
-		//--- Save placing flags
-		params.m_PlacingFlags = m_PlacingFlags;
-		
 		//--- Copy the preview, it will remain visible until callback from server is received
 		int simulatedDelay = DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_NETWORK_DELAY) * 100;
 		m_iEntityIndex++;
@@ -314,23 +330,24 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			recipientIds = {};
 			foreach (SCR_EditableEntityComponent entity: m_Recipients)
 			{
-				RplId id = Replication.FindId(entity);
+				RplId id = Replication.FindItemId(entity);
 				if (id.IsValid())
 					recipientIds.Insert(id);
 			}
 		}
 		
-		RplId holderId = null;
+		RplId holderId = RplId.Invalid();
 		if (holder)
 		{
-			holderId = Replication.FindId(holder);
-			if (!holderId.IsValid())
-				holderId = null;
+			holderId = Replication.FindItemId(holder);
 		}
 		
 		//--- Send request to server
 		m_StatesManager.SetIsWaiting(true);
 		Event_OnRequestEntity.Invoke(prefabID, params.m_vTransform, null);
+		
+		//--- If the entity can be spawned as player, get player ID
+		int playerID = GetManager().GetPlayerID();
 		
 		if (simulatedDelay > 0 && !Replication.IsRunning())
 			GetGame().GetCallqueue().CallLater(CreateEntityServer, simulatedDelay, false, params, prefabID, playerID, m_iEntityIndex, !unselectPrefab, recipientIds, canBePlayer, holderId);
@@ -349,17 +366,18 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		
 		return true;
 	}
-	/*!
-	Create entity with custom params.
-	\param prefab Entity prefab
-	\param param Preview param
-	\param unselectPrefab True to unselect prefab after placing the entity
-	\param canBePlayer True if the entity should be spawned as player
-	\param recipients Array of entities for whom new entities will be created (e.g., waypoints for groups)
-	\param[in] holder Entity to which the spawned entity will be attached (used in waypoints and tasks)
-	\return True if the request was sent
-	*/
-	bool CreateEntity(ResourceName prefab, SCR_EditorPreviewParams param, bool unselectPrefab = true, bool canBePlayer = false, set<SCR_EditableEntityComponent> recipients = null, SCR_EditableEntityComponent holder = null)
+
+	//------------------------------------------------------------------------------------------------
+	//! Create entity with custom params.
+	//! \param[in] prefab Entity prefab
+	//! \param[in] param Preview param
+	//! \param[in] unselectPrefab True to unselect prefab after placing the entity
+	//! \param[in] canBePlayer True if the entity should be spawned as player
+	//! \param[in] recipients Array of entities for whom new entities will be created (e.g., waypoints for groups)
+	//! \param[in] holder Entity to which the spawned entity will be attached (used in waypoints and tasks)
+	//! \param[in] sourceAction which requested this prefab creation
+	//! \return true if the request was sent
+	bool CreateEntity(ResourceName prefab, SCR_EditorPreviewParams param, bool unselectPrefab = true, bool canBePlayer = false, set<SCR_EditableEntityComponent> recipients = null, SCR_EditableEntityComponent holder = null, SCR_BaseEditorAction sourceAction = null)
 	{
 		if (m_bBlockPlacing)
 			return false;
@@ -367,21 +385,35 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		m_SelectedPrefab = prefab;
 		m_Recipients = recipients;
 		SetInstantPlacing(param);
-		return CreateEntity(unselectPrefab, canBePlayer, holder);
+		return CreateEntity(unselectPrefab, canBePlayer, holder, sourceAction);
 	}
-	
+
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void CreateEntityServer(SCR_EditorPreviewParams params, RplId prefabID, int playerID, int entityIndex, bool isQueue, array<RplId> recipientIds, bool canBePlayer, RplId holderId)
 	{
+		array<RplId> entityIds = {};
 		if (m_bBlockPlacing)
+		{
+			Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, false, false, RplId.Invalid(), 0);
 			return;
+		}
+
+		PlayerManager playerMgr = GetGame().GetPlayerManager();
+		if (!m_Manager || m_Manager.GetPlayerID() != playerID)
+		{
+			int ownerId = -1;
+			if (m_Manager)
+				ownerId = m_Manager.GetPlayerID();
+
+			PrintFormat("WARNING: Editor %1: Editor that belongs to player %2 was trying to spawn prefab while providing different player id (%3)!", GetEditorModeLogInfo(), SCR_PlayerIdentityUtils.GetPlayerLogInfo(playerID), playerMgr.GetPlayerName(playerID) + " (playerID = " + playerID + ")", level: LogLevel.WARNING);
+			return; // that should not happen as it would mean that either someone made a mistake in the code or someone was tinkering with this RPC call
+		}
 
 		SCR_PlacingEditorComponentClass prefabData = SCR_PlacingEditorComponentClass.Cast(GetEditorComponentData());
-		if (RplSession.Mode() == RplMode.Client || !prefabData) return;
+		if (RplSession.Mode() == RplMode.Client || !prefabData)
+			return;
 		
-		array<RplId> entityIds = {};
-		
-		if (!CanCreateEntity() || !params.Deserialize())
+		if (!params.Deserialize() || !CanCreateEntity(params: params))
 		{
 			Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, false, false, RplId.Invalid(), 0);
 			return;
@@ -391,7 +423,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		ResourceName prefab = prefabData.GetPrefab(prefabID);
 		if (prefab.IsEmpty())
 		{
-			Print("Cannot create entity, prefab not defined!", LogLevel.ERROR);
+			PrintFormat("INFO: Editor %1: Cannot create entity, prefab not defined!", GetEditorModeLogInfo(), level: LogLevel.ERROR);
 			Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, false, false, RplId.Invalid(), 0);
 			return;
 		}
@@ -400,24 +432,27 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		prefab = SCR_EditableEntityComponentClass.GetRandomVariant(prefab);
 		
 		Resource prefabResource = Resource.Load(prefab);
-		if (!prefabResource || !prefabResource.IsValid())
+		if (!prefabResource.IsValid())
 		{
-			Print(string.Format("Cannot create entity, error when loading prefab '%1'!", prefab), LogLevel.ERROR);
+			PrintFormat("INFO: Editor %1: Cannot create entity, error when loading prefab '%2'! Editor owned by player with ID = %3", GetEditorModeLogInfo(), prefab, playerID, level: LogLevel.ERROR);
 			Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, false, false, RplId.Invalid(), 0);
 			return;
 		}
+
 		IEntityComponentSource editableEntitySource = SCR_EditableEntityComponentClass.GetEditableEntitySource(prefabResource);
 		if (!editableEntitySource)
 		{
-			Print(string.Format("Cannot create entity, prefab '%1' does not contain SCR_EditableEntityComponent!", prefab), LogLevel.ERROR);
+			PrintFormat("INFO: Editor %1: Cannot create entity, prefab '%2' does not contain SCR_EditableEntityComponent! Editor owned by player with ID = %3", GetEditorModeLogInfo(), prefab, playerID, level: LogLevel.ERROR);
 			Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, false, false, RplId.Invalid(), 0);
 			return;
 		}
 		
 		EEditableEntityBudget blockingBudget;
-		if (!CanPlaceEntityServer(editableEntitySource, blockingBudget, false, false))
+		if (!CanPlaceEntityServer(editableEntitySource, blockingBudget, false, false, prefabID, playerID, params))
 		{
-			Print(string.Format("Entity budget exceeded for player!"), LogLevel.ERROR);
+			if (blockingBudget > -1)
+				PrintFormat("INFO: Editor %1: Entity budget exceeded for player! Editor owned by player with ID = %2", GetEditorModeLogInfo(), playerID, level: LogLevel.ERROR);
+
 			Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, false, false, RplId.Invalid(), 0);
 			return;
 		}
@@ -429,7 +464,10 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			bool canSpawn = IsThereEnoughBudgetToSpawn(editableEntitySource);
 		
 			if(!canSpawn)
+			{
+				Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, false, false, RplId.Invalid(), 0);
 				return;
+			}
 		}
 
 		OnBeforeEntityCreatedServer(prefab);
@@ -477,10 +515,10 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 				entity.SetAuthor(playerID);
 				
 				entities.Insert(entity);
-				entityIds.Insert(Replication.FindId(entity));
+				entityIds.Insert(Replication.FindItemId(entity));
 			}
 			hasRecipients = true;
-			currentLayerID = Replication.FindId(recipients[0].GetParentEntity());
+			currentLayerID = Replication.FindItemId(recipients[0].GetParentEntity());
 		}
 		else
 		{
@@ -490,10 +528,12 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			entity.SetAuthor(playerID);
 			
 			entities.Insert(entity);
-			entityIds.Insert(Replication.FindId(entity));
-			currentLayerID = Replication.FindId(params.m_CurrentLayer);
+			entityIds.Insert(Replication.FindItemId(entity));
+			currentLayerID = Replication.FindItemId(params.m_CurrentLayer);
 		}
-		
+
+		PrintFormat("INFO: Editor %1: Player %2 spawned %3 prefab at %4", GetEditorModeLogInfo(), SCR_PlayerIdentityUtils.GetPlayerLogInfo(playerID), FilePath.StripPath(prefab), entity.GetOwner().GetOrigin(), level: LogLevel.NORMAL);
+
 		//++ Attach if there is an attacher
 		if (holderId)
 		{
@@ -513,7 +553,19 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, isQueue, hasRecipients, currentLayerID, 0);
 		Event_OnPlaceEntityServer.Invoke(prefabID, entity, playerID);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Fetches the name of the mode that this editor represents
+	//! \return name of the enum used as the mode of this editor
+	protected string GetEditorModeLogInfo()
+	{
+		SCR_EditorModeEntity modeEnt = SCR_EditorModeEntity.Cast(GetOwner());
+		if (!modeEnt)
+			return string.Empty;
+
+		return typename.EnumToString(EEditorMode, modeEnt.GetModeType());
+	}
+
 	bool IsThereEnoughBudgetToSpawn(IEntityComponentSource entitySource)
 	{
 		if(!entitySource)
@@ -671,17 +723,102 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		SCR_PlacingEditorComponentClass prefabData = SCR_PlacingEditorComponentClass.Cast(GetEditorComponentData());
 		if (prefabData) SCR_BaseEditorEffect.Activate(prefabData.GetEffectsPlaceConfirm(), this, pos, entities);
 	}
-	/*!
-	Check if the entity can be created.
-	Evaluated both on client an on server (notification is used only on client though)
-	To be overridden by inherited classes.
-	\param[out] outNotification Notification to be sent when attempting to place the entity
-	\return True to allow placing, false to prevent it
-	*/
-	bool CanCreateEntity(out ENotification outNotification = -1, inout SCR_EPreviewState previewStateToShow = SCR_EPreviewState.PLACEABLE)
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks if the prefab can be spawned
+	//! Evaluated both on client an on server (notification is used only on client though)
+	//! To be overridden by inherited classes.
+	//! \param[out] outNotification id of the notification that will be used locally
+	//! \param[in,out] previewStateToShow state of the preview
+	//! \param[in] params which are going to be used for spawning the prefab
+	//! \param[in] prefabID id of the prefab that is going to be spawned. Since only client has the necessary data to validate the prefabID, server always uses default value here
+	//! \return true to allow placing, otherwise false
+	bool CanCreateEntity(out ENotification outNotification = -1, inout SCR_EPreviewState previewStateToShow = SCR_EPreviewState.PLACEABLE, SCR_EditorPreviewParams params = null, int prefabID = -1)
 	{
-		return !m_bBlockPlacing;
+		if (m_bBlockPlacing)
+			return false;
+
+		if (!params)
+			return true;
+
+		vector mat[4];
+		params.GetWorldTransform(mat);
+		if (!SCR_Global.IsPositionWithinTerrainBounds(mat[3]))
+		{
+			previewStateToShow = SCR_EPreviewState.BLOCKED;
+			outNotification = ENotification.EDITOR_TRANSFORMING_INCORRECT_POSITION;
+			return false; // dont allow for spawning of objects outside of the terrain
+		}
+
+		if (m_PreviewManager && !m_PreviewManager.GetCanAdjustVerticalPosition())
+		{
+			float x = mat[3][0];
+			float y = mat[3][1];
+			float z = mat[3][2];
+			float surfaceY = GetGame().GetWorld().GetSurfaceY(x, z);
+
+			switch (m_PreviewManager.GetVerticalMode())
+			{
+				case EEditorTransformVertical.TERRAIN:
+					if (!float.AlmostEqual(surfaceY, y, MAX_HEIGHT_ABOVE_TERRAIN))
+					{
+						previewStateToShow = SCR_EPreviewState.BLOCKED;
+						outNotification = ENotification.EDITOR_TRANSFORMING_INCORRECT_POSITION;
+						return false; // dont allow for placing mid air
+					}
+
+					break;
+
+				case EEditorTransformVertical.GEOMETRY:
+					TraceParam param = new TraceParam();
+					param.Start = mat[3] + vector.Up * 0.5; // to avoid missing the entity on which it is placed when trace would start inside the collider
+					param.End = param.Start - vector.Up * MAX_HEIGHT_ABOVE_TERRAIN;
+					param.Flags = TraceFlags.ENTS | TraceFlags.WORLD | TraceFlags.OCEAN;
+					param.Exclude = m_PreviewManager.GetPreviewEntity();
+					float distPercentage = GetGame().GetWorld().TraceMove(param);
+					if (distPercentage == 1 && param.TraceEnt == null)
+					{
+						previewStateToShow = SCR_EPreviewState.BLOCKED;
+						outNotification = ENotification.EDITOR_TRANSFORMING_INCORRECT_POSITION;
+						return false; // dont allow for placing mid air
+					}
+
+					break;
+			}
+		}
+
+		// only client has proper data setup for validating if this prefab is available, thus server uses default attribute value for prefabID
+		if (prefabID < 0)
+			return true;
+
+		if (params.m_PlacingFlags & EEditorPlacingFlags.PLACING_ACTION)
+			return IsActionValid(prefabID, params);
+
+		SCR_ContentBrowserEditorComponent editorBrowser = SCR_ContentBrowserEditorComponent.Cast(m_Owner.FindComponent(SCR_ContentBrowserEditorComponent));
+		if (!editorBrowser)
+			return false;
+
+		return editorBrowser.IsPrefabIDAvailable(prefabID);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks if the requested prefab matches the action content
+	//! \param[in] prefabID from the content browser
+	//! \param[in] params which contain the information about the spawned entity
+	//! \return true to allow placing, otherwise false
+	bool IsActionValid(int prefabID, notnull SCR_EditorPreviewParams params)
+	{
+		SCR_ContentBrowserEditorComponent editorBrowser = SCR_ContentBrowserEditorComponent.Cast(m_Owner.FindComponent(SCR_ContentBrowserEditorComponent));
+		if (!editorBrowser)
+			return false;
+
+		SCR_BaseCommandAction action = SCR_BaseCommandAction.Cast(params.GetSourceAction(m_Owner));
+		if (!action)
+			return false;
+
+		return action.GetCommandPrefab() == editorBrowser.GetResourceNamePrefabID(prefabID);
+	}
+
 	/*!
 	Function called right before entities are created on server.
 	To be overloaded by inherited classes.
@@ -778,8 +915,26 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			{
 				SCR_PossessSpawnData spawnData = SCR_PossessSpawnData.FromEntity(owner);
 				spawnData.SetSkipPreload(true);
-				if (!respawnComponent.RequestSpawn(spawnData))
+				if (respawnComponent.RequestSpawn(spawnData))
+				{
+					const Faction playerFaction = SCR_FactionManager.SGetPlayerFaction(playerID);
+					const Faction entityFaction = SCR_FactionManager.SGetFaction(owner);
+					if (!playerFaction || playerFaction != entityFaction)
+					{
+						// Assign player faction not set yet or has changed in GM
+						UpdatePlayerFactionFromEditableEntity(entityFaction,playerID)
+					}
+					else
+					{
+						// Rejoin group on secondary character entity spawn after deletion
+						SCR_PlayerControllerGroupComponent playerContGroupComp = SCR_PlayerControllerGroupComponent.GetPlayerControllerComponent(playerID);
+						playerContGroupComp.CreateAndJoinGroup(playerFaction);
+					}
+				}
+				else
+				{
 					Print(string.Format("@\"%1\" control cannot be given to playerID=%2, error in RequestSpawn!", prefabResource.GetResource().GetResourceName().GetPath(), playerID), LogLevel.ERROR);
+				}
 			}
 		}
 		
@@ -868,6 +1023,24 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		
 		return entity;
 	}
+	//------------------------------------------------------------------------------------------------
+	//! helper function to avoid nesting
+	protected static void UpdatePlayerFactionFromEditableEntity(Faction editableEntityFaction, int playerID)
+	{
+		if (!editableEntityFaction)
+			return;
+		
+		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerID);
+		if (!playerController)	
+			return;
+		
+		SCR_PlayerFactionAffiliationComponent playerFactionAff = SCR_PlayerFactionAffiliationComponent.Cast(playerController.FindComponent(SCR_PlayerFactionAffiliationComponent));
+		if (!playerFactionAff)
+			return;
+		
+		playerFactionAff.SetFaction_S(editableEntityFaction);
+	}
+	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Callback reacting to all delayed spawned entities being created
@@ -915,8 +1088,17 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		}
 		return 0;
 	}
-	
-	protected bool CanPlaceEntityServer(IEntityComponentSource editableEntitySource, out EEditableEntityBudget blockingBudget, bool updatePreview, bool showNotification)
+
+	//------------------------------------------------------------------------------------------------
+	//! Server side validation that checks if provided entity should be possible to spawn
+	//! \param[in] editableEntitySource of the prefab which is going to be spawned
+	//! \param[out] blockingBudget
+	//! \param[in] updatePreview
+	//! \param[in] showNotification
+	//! \param[in] playerID of the user who requested this prefab to be spawned
+	//! \param[in] params which were used to define how this prefab should be spawned
+	//! \return true to allow spawning, otherwise false
+	protected bool CanPlaceEntityServer(IEntityComponentSource editableEntitySource, out EEditableEntityBudget blockingBudget, bool updatePreview, bool showNotification, int prefabID = -1, int playerID = -1, SCR_EditorPreviewParams params = null)
 	{
 		if (!m_BudgetManager)
 		{
@@ -924,8 +1106,12 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			if (!m_BudgetManager)
 				return true;
 		}
-		
-		return m_BudgetManager.CanPlaceEntitySource(editableEntitySource, blockingBudget, HasPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER), updatePreview, showNotification);
+
+		bool validAction = true;
+		if (prefabID >= 0 && params && params.m_PlacingFlags & EEditorPlacingFlags.PLACING_ACTION)
+			validAction = IsActionValid(prefabID, params);
+
+		return validAction && m_BudgetManager.CanPlaceEntitySource(editableEntitySource, blockingBudget, HasPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER), updatePreview, showNotification);
 	}
 	
  	protected bool CanSelectEntityPrefab(ResourceName prefab, out EEditableEntityBudget blockingBudget, bool updatePreview = true, bool showBudgetMaxNotification = true)
@@ -995,19 +1181,20 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	\param prefab Prefab. Must be registered!
 	\return true when prefab can be selected (fits budget + prefab data available)
 	*/
-	bool SetSelectedPrefab(ResourceName prefab = "", bool onConfirm = false, bool showBudgetMaxNotification = true, set<SCR_EditableEntityComponent> recipients = null)
+	bool SetSelectedPrefab(ResourceName prefab = "", bool onConfirm = false, bool showBudgetMaxNotification = true, set<SCR_EditableEntityComponent> recipients = null, SCR_BaseEditorAction sourceAction = null)
 	{
 		if (prefab == m_SelectedPrefab) return true;
 
 		//--- Check if entity is within budget
 		EEditableEntityBudget blockingBudget;
-		if (!prefab.IsEmpty() && !CanSelectEntityPrefab(prefab, blockingBudget, showBudgetMaxNotification))
+		bool isPrefabEmpty = prefab.IsEmpty();
+		if (!isPrefabEmpty && !CanSelectEntityPrefab(prefab, blockingBudget, showBudgetMaxNotification))
 		{
 			return false;
 		}
 		
 		//--- Place instantly
-		if (m_InstantPlacingParam && !prefab.IsEmpty())
+		if (m_InstantPlacingParam && !isPrefabEmpty)
 		{
 			//--- This will prevent m_StatesManager.SetIsWaiting(false) from failing in CreateEntityOwner()
 			m_StatesManager.SetSafeDialog(true);
@@ -1017,37 +1204,28 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			return true;
 		}
 		
-		//--- Check if the prefab is registered
+		//--- Check if the prefab is registered	
 		SCR_PlacingEditorComponentClass prefabData = SCR_PlacingEditorComponentClass.Cast(GetEditorComponentData());
-		if (!prefab.IsEmpty() && prefabData.GetPrefabID(prefab) == -1)
+		if (!isPrefabEmpty && prefabData.GetPrefabID(prefab) == -1)
 		{
 			Print(string.Format("Cannot initiate placing of prefab @\"%1\", it's not registered in placeable entities!", prefab), LogLevel.WARNING);
 			return false;
 		}
 		
-		if (prefab.IsEmpty() || HasPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER))
+		if (isPrefabEmpty || HasPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER))
 		{
 			m_BudgetManager.ResetPreviewCost();
 		}
 		
-		if (m_StatesManager)
-		{
-			if (prefab)
-			{
-				if (!m_StatesManager.SetState(EEditorState.PLACING)) return false; //--- Exit when cannot set placing state
-			}
-			else
-			{
-				m_StatesManager.UnsetState(EEditorState.PLACING);
-			}
-		}
+		if (m_StatesManager && isPrefabEmpty)
+			m_StatesManager.UnsetState(EEditorState.PLACING);
 		
 		//--- Track if recipients are deleted (stop placing when no recipient remains)
-		if (prefab && recipients)
+		if (!isPrefabEmpty && recipients)
 		{
 			m_editableEntityCore.Event_OnEntityUnregistered.Insert(OnEntityUnregistered);
 		}
-		else if (!prefab && m_Recipients)
+		else if (isPrefabEmpty && m_Recipients)
 		{
 			m_editableEntityCore.Event_OnEntityUnregistered.Remove(OnEntityUnregistered);
 		}
@@ -1064,6 +1242,13 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		
 		if (previewEntity)
 		{
+			if (m_StatesManager && !m_StatesManager.SetState(EEditorState.PLACING)) 
+			{
+				m_PreviewManager.DeletePreview();
+				return false; //--- Exit when cannot set placing state
+			}
+				
+			
 			//--- Teleport camera to fixed position
 			if (m_PreviewManager.IsFixedPosition())
 			{
@@ -1080,7 +1265,16 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		{
 			SetPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER, false);
 		}
-		
+
+		m_iActionInfo = -1;
+		m_PlacingFlags &= ~EEditorPlacingFlags.PLACING_ACTION;
+		if (sourceAction)
+		{
+			m_iActionInfo = SCR_EditorPreviewParams.PackActionInfo(sourceAction, m_Owner);
+			if (m_iActionInfo >= 0)
+				SetPlacingFlag(EEditorPlacingFlags.PLACING_ACTION, true);
+		}
+
 		//--- Call event handlers
 		Event_OnSelectedPrefabChange.Invoke(prefab, prefabPrev);
 		
@@ -1353,7 +1547,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			array<RplId> recipientIds = {};
 			foreach (SCR_EditableGroupComponent entity: selectedGroups)
 			{
-				RplId id = Replication.FindId(entity);
+				RplId id = Replication.FindItemId(entity);
 				if (id.IsValid())
 					recipientIds.Insert(id);
 			}

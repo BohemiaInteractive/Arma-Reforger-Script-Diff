@@ -3,19 +3,6 @@ class SCR_ParallelShapeHelper // should be named SCR_OffsetShapeHelper
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] shapeEntity
 	//! \param[in] offset
-	//! \param[out] offsetAnchorPoints
-	//! \param[out] offsetTesselatedPoints
-	//! \param[out] offsetAnchorIndices not created/filled if not provided
-	//! \return true on success, false on failure (e.g not enough points, etc)
-	[Obsolete("This method taking a float offset is replaced with the vector one")] // obsolete since 2024-09-30
-	static bool GetAnchorsAndTesselatedPointsFromShape(notnull ShapeEntity shapeEntity, float offset, out notnull array<vector> offsetAnchorPoints, out notnull array<vector> offsetTesselatedPoints, out array<int> offsetAnchorIndices = null)
-	{
-		return GetAnchorsAndTesselatedPointsFromShape(shapeEntity, (vector){ offset, 0, 0 }, true, offsetAnchorPoints, offsetTesselatedPoints, offsetAnchorIndices);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] shapeEntity
-	//! \param[in] offset
 	//! \param[in] yOffsetInShapeSpace offset Y in shape's up vector, otherwise in point's up vector
 	//! \param[out] offsetAnchorPoints
 	//! \param[out] offsetTesselatedPoints
@@ -96,6 +83,19 @@ class SCR_ParallelShapeHelper // should be named SCR_OffsetShapeHelper
 			offsetAnchorIndices.Copy(anchorIndices);
 
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] shapeEntity
+	//! \param[in] xOffset
+	//! \param[out] offsetAnchorPoints
+	//! \param[out] offsetTesselatedPoints
+	//! \param[out] offsetAnchorIndices not created/filled if not provided
+	//! \return true on success, false on failure (e.g not enough points, etc)
+	[Obsolete("This method taking a float offset is replaced with the vector one")] // obsolete since 2024-09-30
+	static bool GetAnchorsAndTesselatedPointsFromShape(notnull ShapeEntity shapeEntity, float xOffset, out notnull array<vector> offsetAnchorPoints, out notnull array<vector> offsetTesselatedPoints, out array<int> offsetAnchorIndices = null)
+	{
+		return GetAnchorsAndTesselatedPointsFromShape(shapeEntity, (vector){ xOffset, 0, 0 }, true, offsetAnchorPoints, offsetTesselatedPoints, offsetAnchorIndices);
 	}
 
 	//------------------------------------------------------------------------------------------------

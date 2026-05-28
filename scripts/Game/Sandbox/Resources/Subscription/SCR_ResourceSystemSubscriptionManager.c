@@ -266,7 +266,7 @@ class SCR_ResourceSystemSubscriptionManager
 		if (!ownerRplId.IsValid())
 			return null;
 		
-		RplId resourceComponentRplId = Replication.FindId(interactor.GetComponent());
+		RplId resourceComponentRplId = Replication.FindItemId(interactor.GetComponent());
 		
 		if (!resourceComponentRplId.IsValid())
 			return null;
@@ -342,7 +342,7 @@ class SCR_ResourceSystemSubscriptionManager
 		if (!ownerRplId.IsValid())
 			return null;
 		
-		RplId resourceComponentRplId = Replication.FindId(interactor.GetComponent());
+		RplId resourceComponentRplId = Replication.FindItemId(interactor.GetComponent());
 		
 		if (!resourceComponentRplId.IsValid())
 			return null;

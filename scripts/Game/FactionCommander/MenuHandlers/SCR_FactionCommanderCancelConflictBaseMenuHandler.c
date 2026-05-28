@@ -24,6 +24,6 @@ class SCR_FactionCommanderCancelConflictBaseMenuHandler : SCR_FactionCommanderCo
 		if (!task)
 			return;
 
-		factionCommanderPlayerComponent.CancelTask(playerId, task.GetTaskID());
+		factionCommanderPlayerComponent.CancelTask(task.GetTaskID());
 	}
 }

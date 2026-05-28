@@ -39,18 +39,6 @@ class SCR_ResupplyTaskSolver : SCR_TaskSolverBase
 	void SetResupplyTaskSolverEntry(SCR_ResupplyTaskSolverEntry entry)
 	{
 		m_ResupplyTaskSolverEntry = entry;
-		if (!m_ResupplyTaskSolverEntry)
-			return;
-
-		array<ref SCR_ConditionCheckUIEntry> conditionCheckUIEntries = m_ResupplyTaskSolverEntry.GetConditionCheckUIEntries();
-		foreach (SCR_ConditionCheckUIEntry uiEntry : conditionCheckUIEntries)
-		{
-			SCR_VehicleConditionCheck vehicleCheck = m_VehicleConditionManager.GetCheck(uiEntry.GetConditionCheckTypename().ToType());
-			if (!vehicleCheck)
-				continue;
-
-			vehicleCheck.SetFailedConditionUIInfo(uiEntry.GetFailedConditionUIInfo());
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -208,6 +196,9 @@ class SCR_ResupplyTaskSolver : SCR_TaskSolverBase
 	{
 		if (m_eResupplySolverState == SCR_EResupplyTaskSolverState.INACTIVE)
 			return;
+
+		if (!m_SourceBase)
+			FailResupplyTaskSolving(SCR_EResupplyTaskSolverErrorState.DEFAULT);
 
 		if (!m_VehicleConditionManager.IsVehicleUsable(m_Vehicle))
 			FailResupplyTaskSolving(SCR_EResupplyTaskSolverErrorState.VEHICLE_NOT_OPERABLE);
@@ -657,6 +648,7 @@ class SCR_ResupplyTaskSolver : SCR_TaskSolverBase
 	void SCR_ResupplyTaskSolver()
 	{
 		m_VehicleConditionManager = new SCR_VehicleConditionManager();
+		m_VehicleConditionManager.AddCheck(new SCR_VehicleConditionCheck());
 		m_VehicleConditionManager.AddCheck(new SCR_VehicleOperabilityCheck());
 		m_VehicleConditionManager.AddCheck(new SCR_VehiclePilotVacancyCheck());
 

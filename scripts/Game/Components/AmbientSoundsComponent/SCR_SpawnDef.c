@@ -1,11 +1,3 @@
-enum EEnvironmentType
-{
-	MEADOW,
-	FOREST,
-	HOUSES,
-	SEA
-}
-
 [BaseContainerProps(configRoot: true)]
 class SCR_SpawnDef
 {				
@@ -19,23 +11,14 @@ class SCR_SpawnDef
 	int m_iPlayDistMax;
 	
 	[Attribute("100", UIWidgets.Slider, "", "0 500 1")]
-	int m_iMeadowDensityMax;
-	
-	[Attribute("100", UIWidgets.Slider, "", "0 500 1")]
-	int m_iForestDensityMax;
-	
-	[Attribute("100", UIWidgets.Slider, "", "0 500 1")]
-	int m_iHousesDensityMax;
-	
-	[Attribute("100", UIWidgets.Slider, "", "0 500 1")]
-	int m_iSeaDensityMax;
-	
+	int m_iDensity;
+		
 	[Attribute("1", UIWidgets.ComboBox, "", "", ParamEnumArray.FromEnum(EWindCurve))]
 	EWindCurve m_eWindModifier;
 	
-	[Attribute("0 0 1 1", UIWidgets.GraphDialog, "",  params: "1 1 0 0")]
+	[Attribute(uiwidget: UIWidgets.CurveDialog, desc: "", params:"type=Linear, ends=OpenFlat, default=1, paramRange=0 1 fixed, valueRange=0 1 fixed")]
 	ref Curve m_TimeModifier;
 		
-	[Attribute("0 0 1 1", UIWidgets.GraphDialog, "",  params: "1 1 0 0")]
+	[Attribute(uiwidget: UIWidgets.CurveDialog, desc: "", params:"type=Linear, ends=OpenFlat, default=1, paramRange=0 1 fixed, valueRange=0 1 fixed")]
 	ref Curve m_RainModifier;
 }

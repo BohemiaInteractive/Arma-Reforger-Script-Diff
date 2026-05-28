@@ -21,6 +21,7 @@ class LocalizationEditorPlugin: WorkbenchPlugin
 	event bool IsReadOnly(BaseContainer item, bool isImporting);
 	//! Called for each item during building runtime table, expected column name to export for given language.
 	event string GetExportColumn(BaseContainer item, string languageCode);
+	event void OnStringTableItemContextMenu();
 }
 
 /*!

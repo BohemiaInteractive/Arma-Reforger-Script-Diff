@@ -1,5 +1,5 @@
 #ifdef WORKBENCH
-[WorkbenchPluginAttribute(name: "Update All Editable Prefabs", category: "In-game Editor", wbModules: { "WorldEditor", "ResourceManager" }, awesomeFontCode: 0xF1B3)]
+[WorkbenchPluginAttribute(name: "Update All Editable Prefabs", category: SCR_PluginCategory.EDITOR, wbModules: { "WorldEditor", "ResourceManager" }, awesomeFontCode: 0xF1B3)]
 class SCR_UpdateAllEditablePrefabsPlugin : WorkbenchPlugin
 {
 	[Attribute(defvalue: "{90B4D95CF3610F3D}Configs/Workbench/EditablePrefabs/EditablePrefabsConfig.conf", desc: "", params: "conf")]

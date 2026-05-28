@@ -80,6 +80,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	private int m_iHeightIndicatorColor;
 	private bool m_bPreviewDisabled;
 	protected bool m_bCanMoveInRoot;
+	protected bool m_bCanAdjustVerticalPosition;
 	
 	protected SCR_LayersEditorComponent m_LayerManager;
 	protected SCR_StatesEditorComponent m_StateManager;
@@ -108,6 +109,12 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	
 	protected const float VERTICAL_TRACE_OFFSET = 0.01; //--- Vertical offset of trace start to make sure it does not start inside geometry.
 	
+	//------------------------------------------------------------------------------------------------
+	bool GetCanAdjustVerticalPosition()
+	{
+		return m_bCanAdjustVerticalPosition;
+	}
+
 	/*!
 	Set transformation of the preview entity.
 	When editing is confirmed, real entities are moved to where the preview is.
@@ -1121,7 +1128,10 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		GenericWorldEntity worldEntity = game.GetWorldEntity();
 		if (!worldEntity) 
 			return;
-		
+
+		// only this context has input that allows for adjusting vertical position
+		m_bCanAdjustVerticalPosition = m_sActionContext == "EditorPreviewContext"; 
+
 		m_bHasTerrain = worldEntity.GetTerrain(0, 0) != null;
 		
 		m_fPreviewTranslationInertia = 1 / Math.Max(m_fPreviewTranslationInertia, 0.001);

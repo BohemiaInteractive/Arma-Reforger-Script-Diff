@@ -22,6 +22,14 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \return
+	protected override void OnPostInit(IEntity owner)
+	{
+		Math3D.MatrixIdentity4(m_vMat);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	RplId GetParentRplId()
 	{
 		return m_ParentRplId;

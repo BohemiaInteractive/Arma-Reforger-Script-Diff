@@ -15,13 +15,13 @@ class SCR_Tutorial_Navigation_END : SCR_BaseTutorialStage
 		PlayNarrativeCharacterStage("VEHICLEMAINTENANCE_Instructor", 2);
 		GetGame().GetCallqueue().CallLater(PlayNarrativeCharacterStage, 3000, false, "VEHICLEMAINTENANCE_Instructor", 3);
 		
-		int finalTimeMS = Math.Floor(GetGame().GetWorld().GetWorldTime() - m_TutorialComponent.GetSavedTime());
+		int finalTime = Math.Floor(m_TutorialComponent.GetTimeElapsed());
 		
 		int msg;
 
-		if (finalTimeMS < 140000)
+		if (finalTime < 140)
 			msg = 4;
-		else if (finalTimeMS < 200000)
+		else if (finalTime < 200)
 			msg = 5;
 		else
 			msg = 6;

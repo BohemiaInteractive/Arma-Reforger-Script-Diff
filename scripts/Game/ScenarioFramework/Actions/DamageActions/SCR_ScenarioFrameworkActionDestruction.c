@@ -20,7 +20,7 @@ class SCR_ScenarioFrameworkActionDestruction : SCR_ScenarioFrameworkActionBase
 
 		if (m_bRadiusDestruction)
 		{
-			GetGame().GetWorld().QueryEntitiesBySphere(object.GetOrigin(), m_fDestructionRadius, QueryEntity);
+			GetGame().GetWorld().QueryEntitiesBySphere(object.GetOrigin(), m_fDestructionRadius, QueryEntity, QueryEntitiesFilter);
 		}
 		else
 		{
@@ -34,7 +34,8 @@ class SCR_ScenarioFrameworkActionDestruction : SCR_ScenarioFrameworkActionBase
 		
 		foreach (SCR_DestructibleBuildingComponent building : m_aBuildingComponents)
 		{
-			building.GoToDestroyedStateLoad();
+			if (building)
+				building.GoToDestroyedStateLoad();
 		}
 	}
 	
@@ -50,5 +51,14 @@ class SCR_ScenarioFrameworkActionDestruction : SCR_ScenarioFrameworkActionBase
 		
 		m_aBuildingComponents.Insert(destruction);
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool QueryEntitiesFilter(IEntity e)
+	{
+		if (SCR_DestructibleBuildingEntity.Cast(e))
+			return true;
+
+		return false;
 	}
 }

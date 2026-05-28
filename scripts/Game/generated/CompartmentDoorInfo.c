@@ -12,6 +12,7 @@ class CompartmentDoorInfo: BaseCompartmentDoor
 	proto external PointInfo GetAIEntryPointInfo();
 	proto external PointInfo GetAIJumpPointInfo();
 	proto external PointInfo GetExitPointInfo();
+	proto external PointInfo GetExitTeleportPointInfo();
 	proto external bool HasExitPointInfoDefined();
 	proto external ECharacterStanceChange GetStanceChangeOnExit();
 }

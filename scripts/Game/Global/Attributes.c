@@ -254,7 +254,11 @@ class SCR_BaseContainerResourceTitleField : BaseContainerCustomTitle
 		if (!source.Get(m_sPropertyName, resourceName))
 			return false;
 
-		title = string.Format(m_sFormat, FilePath.StripPath(resourceName));
+		string fileName = FilePath.StripPath(resourceName);
+		if (!fileName)
+			return false;
+
+		title = string.Format(m_sFormat, fileName);
 		return true;
 	}
 };

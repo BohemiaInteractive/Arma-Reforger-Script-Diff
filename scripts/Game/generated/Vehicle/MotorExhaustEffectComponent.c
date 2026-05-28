@@ -43,7 +43,6 @@ class MotorExhaustEffectComponent: BaseEffectComponent
 	\param owner Entity this component is attached to.
 	*/
 	event void OnInit(IEntity owner);
-	event void OnDelete(IEntity owner);
 }
 
 /*!
