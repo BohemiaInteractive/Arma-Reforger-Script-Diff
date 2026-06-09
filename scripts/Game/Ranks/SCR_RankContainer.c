@@ -191,6 +191,23 @@ class SCR_RankContainer
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] rankIdentifier
+	//! \param[in] fetchNext true will try to find higher rank if there is no rank for provided rank identifier. False will look for lower rank
+	SCR_RankInfo GetRankByID(SCR_ECharacterRank rankIdentifier, bool fetchNext)
+	{
+		foreach (SCR_RankInfo rank : m_aRanks)
+		{
+			if (rank.GetRankID() == rankIdentifier)
+				return rank;
+		}
+
+		if (fetchNext)
+			return GetRankByID(GetNextRank(rankIdentifier));
+
+		return GetRankByID(GetPreviousRank(rankIdentifier));
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! \param rankID
 	//! \return
 	string GetRankName(SCR_ECharacterRank rankID)

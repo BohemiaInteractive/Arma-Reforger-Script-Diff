@@ -98,6 +98,7 @@ class SCR_MapCampaignUI : SCR_MapUIElementContainer
 			handler.InitBase(base);
 			m_mIcons.Set(w, handler);
 			base.SetBaseUI(handler);
+			base.UpdateCaptureUI();
 
 			FrameSlot.SetSizeToContent(w, true);
 			FrameSlot.SetAlignment(w, 0.5, 0.5);

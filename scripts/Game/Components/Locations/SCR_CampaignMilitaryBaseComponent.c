@@ -125,6 +125,9 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	protected bool m_bLocalPlayerPresent;
 	protected bool m_bWasHQSet;
 
+	[RplProp()]
+	protected SCR_EBaseCaptureState m_eCaptureState;
+
 	protected SCR_CampaignMilitaryBaseMapDescriptorComponent m_MapDescriptor;
 
 	protected SCR_SpawnPoint m_SpawnPoint;
@@ -614,6 +617,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		{
 			seizingComponent.GetOnCaptureStart().Insert(OnCaptureStart);
 			seizingComponent.GetOnCaptureInterrupt().Insert(EndCapture);
+			seizingComponent.GetOnCaptureStateChanged().Insert(CaptureStateChanged);
 		}
 
 		bool isSupportedBaseType = m_eType == SCR_ECampaignBaseType.BASE || m_eType == SCR_ECampaignBaseType.SOURCE_BASE;
@@ -961,6 +965,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		{
 			seizingComponent.GetOnCaptureStart().Remove(OnCaptureStart);
 			seizingComponent.GetOnCaptureInterrupt().Remove(EndCapture);
+			seizingComponent.GetOnCaptureStateChanged().Remove(CaptureStateChanged);
 		}
 	}
 
@@ -1258,7 +1263,6 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 		if (!m_CapturingFaction)
 			return;
-
 		m_CapturingFaction = null;
 		m_sCapturingFaction = FactionKey.Empty;
 
@@ -1268,6 +1272,33 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 		if (m_OnBaseAttackEnd)
 			m_OnBaseAttackEnd.Invoke(this);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void CaptureStateChanged(SCR_EBaseCaptureState state)
+	{
+		m_eCaptureState = state;
+
+		Replication.BumpMe();
+
+		// Spawning ability is impacted by the capture state so we must update accordingly
+		HandleSpawnPointFaction();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! If the base is being captured or contested and the map is open, update the UI to show the background image indicating this state
+	void UpdateCaptureUI()
+	{
+		if (!m_UIElement)
+			return;
+
+		m_UIElement.SetCaptureWarning(m_eCaptureState == SCR_EBaseCaptureState.CONTESTED || m_eCaptureState == SCR_EBaseCaptureState.CAPTURING);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_EBaseCaptureState GetCaptureState()
+	{
+		return m_eCaptureState;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1379,7 +1410,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 			finalKey = FactionKey.Empty;
 
 		ChimeraWorld world = GetOwner().GetWorld();
-		if (world.GetServerTimestamp().Less(m_fRespawnAvailableSince) && !m_bIsHQ)
+		if (!m_bIsHQ && (m_eCaptureState != SCR_EBaseCaptureState.NONE || world.GetServerTimestamp().Less(m_fRespawnAvailableSince)))
 			finalKey = FactionKey.Empty;
 
 		if (finalKey == currentKey)
@@ -1400,7 +1431,14 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	{
 		super.OnCapturingFactionChanged();
 
-		m_CapturingFaction = SCR_CampaignFactionManager.Cast(GetGame().GetFactionManager()).GetCampaignFactionByIndex(m_iCapturingFaction);
+		SCR_CampaignFactionManager factionmanager = SCR_CampaignFactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionmanager)
+			return;
+		
+		if (m_iCapturingFaction > -1)
+			m_CapturingFaction = factionmanager.GetCampaignFactionByIndex(m_iCapturingFaction);
+		else
+			m_CapturingFaction = factionmanager.GetCampaignFactionByKey(m_sCapturingFaction);
 
 		if (!IsProxy())
 		{
@@ -2815,6 +2853,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		{
 			seizingComponent.GetOnCaptureStart().Remove(OnCaptureStart);
 			seizingComponent.GetOnCaptureInterrupt().Remove(EndCapture);
+			seizingComponent.GetOnCaptureStateChanged().Remove(CaptureStateChanged);
 		}
 
 		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();

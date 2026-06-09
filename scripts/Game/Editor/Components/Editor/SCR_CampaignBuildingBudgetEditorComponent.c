@@ -560,52 +560,27 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 				}
 
 				case EEditableEntityBudget.RANK_PRIVATE:
-				{
-					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_TOO_LOW, SCR_PlayerController.GetLocalPlayerId(), SCR_ECharacterRank.PRIVATE);
-					break;
-				}
-				
 				case EEditableEntityBudget.RANK_CORPORAL:
-				{
-					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_TOO_LOW, SCR_PlayerController.GetLocalPlayerId(), SCR_ECharacterRank.CORPORAL);
-					break;
-				}
-
 				case EEditableEntityBudget.RANK_SERGEANT:
-				{
-					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_TOO_LOW, SCR_PlayerController.GetLocalPlayerId(), SCR_ECharacterRank.SERGEANT);
-					break;
-				}
-				
 				case EEditableEntityBudget.RANK_LIEUTENANT:
-				{
-					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_TOO_LOW, SCR_PlayerController.GetLocalPlayerId(), SCR_ECharacterRank.LIEUTENANT);
-					break;
-				}
-				
 				case EEditableEntityBudget.RANK_CAPTAIN:
-				{
-					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_TOO_LOW, SCR_PlayerController.GetLocalPlayerId(), SCR_ECharacterRank.CAPTAIN);
-					break;
-				}
-				
 				case EEditableEntityBudget.RANK_MAJOR:
-				{
-					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_TOO_LOW, SCR_PlayerController.GetLocalPlayerId(), SCR_ECharacterRank.MAJOR);
-					break;
-				}
-				
 				case EEditableEntityBudget.RANK_COLONEL:
-				{
-					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_TOO_LOW, SCR_PlayerController.GetLocalPlayerId(), SCR_ECharacterRank.COLONEL);
-					break;
-				}
-				
 				case EEditableEntityBudget.RANK_GENERAL:
-				{
-					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_TOO_LOW, SCR_PlayerController.GetLocalPlayerId(), SCR_ECharacterRank.GENERAL);
+					string rankName = typename.EnumToString(EEditableEntityBudget, blockingBudget);
+					rankName.Replace("RANK_", string.Empty);
+					SCR_ECharacterRank requiredRank = typename.StringToEnum(SCR_ECharacterRank, rankName);
+					SCR_Faction localFaction = SCR_Faction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
+					if (!localFaction)
+						return;
+
+					SCR_RankInfo rank = localFaction.GetRanks().GetRankByID(requiredRank, true);
+					if (!rank)
+						return;
+
+					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_TOO_LOW, SCR_PlayerController.GetLocalPlayerId(), rank.GetRankID());
 					break;
-				}
+
 
 				case EEditableEntityBudget.ESTABLISH_BASE:
 				{

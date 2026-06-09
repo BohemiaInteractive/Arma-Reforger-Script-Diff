@@ -35,6 +35,7 @@ class SCR_ContentDetailsPanelBaseWidgets
 	ImageWidget m_wNameImg;
 	TextWidget m_wNameText;
 	TextWidget m_wAuthorNameText;
+	HorizontalLayoutWidget m_wCrossplayHorizontalLayout;
 	TextWidget m_wDescriptionText;
 	OverlayWidget m_wAdditionalInfo;
 
@@ -72,6 +73,7 @@ class SCR_ContentDetailsPanelBaseWidgets
 		m_wNameImg = ImageWidget.Cast(root.FindWidget("Bottom.m_MainArea.Offset.HeaderSize.HeaderHorizontalLayout.m_NameImg"));
 		m_wNameText = TextWidget.Cast(root.FindWidget("Bottom.m_MainArea.Offset.HeaderSize.HeaderHorizontalLayout.m_NameText"));
 		m_wAuthorNameText = TextWidget.Cast(root.FindWidget("Bottom.m_MainArea.Offset.AuthorSize.m_AuthorNameText"));
+		m_wCrossplayHorizontalLayout = HorizontalLayoutWidget.Cast(root.FindWidget("Bottom.m_MainArea.Offset.m_CrossplayHorizontalLayout"));
 		m_wDescriptionText = TextWidget.Cast(root.FindWidget("Bottom.m_MainArea.Offset.m_DescriptionText"));
 		m_wAdditionalInfo = OverlayWidget.Cast(root.FindWidget("Bottom.m_MainArea.Offset.m_AdditionalInfo"));
 

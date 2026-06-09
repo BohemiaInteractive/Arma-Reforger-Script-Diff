@@ -25,6 +25,8 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	protected ref TimeContainer m_SpawnTime;
 
 	protected ref SCR_CampaignHintStorage m_HintsConfig;
+	
+	protected SCR_EPopUpState m_EPopUpState;
 
 	protected ref array<int> m_aShownHints = {};
 	protected ref array<int> m_aHintQueue = {};
@@ -35,6 +37,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	protected bool m_bIsConscious;
 	protected bool m_bWasNight;
 	protected bool m_bCohesionHintWasShown;
+	protected bool m_bIsPlayerCapturing;
 
 	protected float m_fNextAllowedHintTimestamp;
 
@@ -49,6 +52,13 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	protected static const int FEATURE_HINT_DELAY = 120000;
 	protected static const int NIGHT_HINT_DELAY_MS = 10000;
 	protected static const int COHESION_HINT_DELAY_MS = 20000;
+	
+	static const string POPUP_HELP_CONTEST = "#AR-Campaign_Popup_HelpContest";
+	static const string POPUP_SEIZING_CONTESTED = "#AR-Campaign_SeizingContested-UC";
+	static const string POPUP_HELP_CAPTURE = "#AR-Campaign_Popup_HelpCapture";
+	static const string POPUP_SEIZING_FRIENDLY = "#AR-Campaign_SeizingFriendly-UC";
+	static const string POPUP_STOP_CAPTURE = "#AR-Campaign_Popup_StopCapture";
+	static const string POPUP_SEIZING_ENEMY = "#AR-Campaign_SeizingEnemy-UC";
 
 	//------------------------------------------------------------------------------------------------
 	//! \return
@@ -506,6 +516,12 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	SCR_EPopUpState GetCurrentPopUpState()
+	{
+		return m_EPopUpState;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void RefreshCurrentPopupMessage()
 	{
 		SCR_PopUpNotification popup = SCR_PopUpNotification.GetInstance();
@@ -515,122 +531,166 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 		if (currentMsg && currentMsg.m_iPriority > SCR_ECampaignSeizingMessagePrio.SEIZING_ENEMY)
 			return;
 
-		// hide current seizing popup if is there any popup with higher priority
-		if (currentMsg && (currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_YOU || currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_ENEMY))
+		// Determine what kind of pop up should show
+		m_EPopUpState = GetPopUpState();
+		
+		// Execute the logic to display the pop up
+		HandlePopUpState(m_EPopUpState, popup, currentMsg);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected SCR_EPopUpState GetPopUpState()
+	{
+		// Player has to be alive and inside a base
+		if (!m_BaseWithPlayer || !IsLocalPlayerAlive())
+			return SCR_EPopUpState.NONE;
+
+		SCR_EBaseCaptureState capturestate = m_BaseWithPlayer.GetCaptureState();
+
+		if (capturestate == SCR_EBaseCaptureState.NONE)
+			return SCR_EPopUpState.NONE;
+		
+		m_bIsPlayerCapturing = IsPlayerCapturing();
+
+		if (capturestate == SCR_EBaseCaptureState.CONTESTED)
 		{
-			if (!IsLocalPlayerAlive() || popup.IsPresentPopupWithHigherPriority(SCR_ECampaignSeizingMessagePrio.SEIZING_ENEMY))
-			{
-				popup.HideCurrentMsg();
-				return;
-			}
+			SCR_CampaignSeizingComponent seizingComp = SCR_CampaignSeizingComponent.Cast(m_BaseWithPlayer.GetOwner().FindComponent(SCR_CampaignSeizingComponent));
+			if (!seizingComp)
+				return SCR_EPopUpState.NONE;
+			
+			if (seizingComp.GetContestingFactionsCount() > 1 || !m_bIsPlayerCapturing)
+				return SCR_EPopUpState.CONTESTED;
+			
+			return SCR_EPopUpState.NONE;
 		}
 
-		if (!IsLocalPlayerAlive())
+		if (capturestate == SCR_EBaseCaptureState.CAPTURING)
+		{
+			// If relay tower is being reconfigured, calculate the capture duration
+			if (m_BaseWithPlayer.GetType() == SCR_ECampaignBaseType.RELAY)
+				m_fBaseWithPlayerCaptureEnd = m_fBaseWithPlayerCaptureStart.PlusSeconds(SCR_CampaignMilitaryBaseComponent.RADIO_RECONFIGURATION_DURATION);
+
+			// If capture timers are invalid, hide seizing popup
+			if (m_fBaseWithPlayerCaptureStart == 0 || m_fBaseWithPlayerCaptureEnd == 0)
+				return SCR_EPopUpState.NONE;
+
+			SCR_CampaignFaction capturingFaction = SCR_CampaignFaction.Cast(m_BaseWithPlayer.GetCapturingFaction());
+
+			//Determine who the base is being captured by
+			bool isPlayerFaction = capturingFaction == SCR_FactionManager.SGetLocalPlayerFaction();
+
+			if (isPlayerFaction)
+			{
+				if (m_BaseWithPlayer.GetReconfiguredByID() == SCR_PlayerController.GetLocalPlayerId())
+					return SCR_EPopUpState.NONE;
+				
+				return SCR_EPopUpState.FRIENDLY_CAPTURE;
+			}
+
+			return SCR_EPopUpState.ENEMY_CAPTURE;
+		}
+
+		return SCR_EPopUpState.NONE;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void HandlePopUpState(SCR_EPopUpState state, notnull SCR_PopUpNotification popup, SCR_PopupMessage currentMsg)
+	{
+		string subTitle;
+
+		switch (state)
+		{
+			case SCR_EPopUpState.NONE:
+			{
+				if (currentMsg && (currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_YOU || currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_ENEMY || currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.CONTESTING))
+					popup.HideCurrentMsg();
+
+				break;
+			}
+
+			case SCR_EPopUpState.CONTESTED:
+			{
+				if (currentMsg && (currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_ENEMY || currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_YOU))
+					popup.HideCurrentMsg();
+				
+				if (!m_bIsPlayerCapturing)
+				 subTitle = POPUP_HELP_CONTEST;
+
+				SetPopup(popup, currentMsg, POPUP_SEIZING_CONTESTED, subTitle, SCR_ECampaignSeizingMessagePrio.CONTESTING);
+
+				break;
+			}
+
+			case SCR_EPopUpState.FRIENDLY_CAPTURE:
+			{
+				if (currentMsg && (currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_ENEMY || currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.CONTESTING))
+					popup.HideCurrentMsg();
+
+				if (!m_bIsPlayerCapturing)
+					subTitle = POPUP_HELP_CAPTURE;
+
+				SetPopup(popup, currentMsg, POPUP_SEIZING_FRIENDLY, subTitle, SCR_ECampaignSeizingMessagePrio.SEIZING_YOU, m_bIsPlayerCapturing);
+
+				break;
+			}
+
+			case SCR_EPopUpState.ENEMY_CAPTURE:
+			{
+				if (currentMsg && (currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_YOU || currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.CONTESTING))
+					popup.HideCurrentMsg();
+
+				if (!m_bIsPlayerCapturing)
+					subTitle = POPUP_STOP_CAPTURE;
+
+				SetPopup(popup, currentMsg, POPUP_SEIZING_ENEMY, subTitle, SCR_ECampaignSeizingMessagePrio.SEIZING_ENEMY, m_bIsPlayerCapturing);
+
+				break;
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetPopup(SCR_PopUpNotification popup, SCR_PopupMessage currentMsg, string title, string subtitle, int priority, bool useProgressBar = false)
+	{
+		bool needsUpdate = !currentMsg || currentMsg.m_iPriority != priority || currentMsg.m_sText != title || currentMsg.m_sSubtitle != subtitle;
+
+		if (!needsUpdate)
 			return;
 
-		// Player is not currently in any base, hide any relevant displayed popups
-		if (!m_BaseWithPlayer)
-		{
-			if (currentMsg && (currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_YOU || currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_ENEMY))
-				popup.HideCurrentMsg();
-		}
+		if (useProgressBar)
+			popup.PopupMsg(title, -1, prio: priority, progressStart: m_fBaseWithPlayerCaptureStart, progressEnd: m_fBaseWithPlayerCaptureEnd, category: SCR_EPopupMsgFilter.TUTORIAL);
 		else
-		{
-			SCR_CampaignFaction baseWithPlayerCapturingFaction = SCR_CampaignFaction.Cast(m_BaseWithPlayer.GetCapturingFaction());
+			popup.PopupMsg(title, -1, subtitle, prio: priority, category: SCR_EPopupMsgFilter.TUTORIAL);
+	}
 
-			if (!baseWithPlayerCapturingFaction)
-			{
-				// Player's base is currently not being seized by anyone, hide any relevant displayed popups
-				if (currentMsg && (currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_YOU || currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_ENEMY))
-					popup.HideCurrentMsg();
-			}
-			else
-			{
-				// If relay tower is being reconfigured, calculate the capture duration
-				if (m_BaseWithPlayer.GetType() == SCR_ECampaignBaseType.RELAY)
-					m_fBaseWithPlayerCaptureEnd = m_fBaseWithPlayerCaptureStart.PlusSeconds(SCR_CampaignMilitaryBaseComponent.RADIO_RECONFIGURATION_DURATION);
+	//------------------------------------------------------------------------------------------------
+	protected bool IsPlayerCapturing()
+	{
+		SCR_CampaignSeizingComponent seizingComp = SCR_CampaignSeizingComponent.Cast(m_BaseWithPlayer.GetOwner().FindComponent(SCR_CampaignSeizingComponent));
+		if (!seizingComp)
+			return false;
 
-				// If capture timers are invalid, hide seizing popup
-				if (m_fBaseWithPlayerCaptureStart == 0 || m_fBaseWithPlayerCaptureEnd == 0 && currentMsg && (currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_YOU || currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_ENEMY))
-				{
-					popup.HideCurrentMsg();
-				}
-				else
-				{
-					if (baseWithPlayerCapturingFaction == SCR_FactionManager.SGetLocalPlayerFaction())
-					{
-						// Friendlies are seizing player's base
-						if (currentMsg && currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_ENEMY)
-							popup.HideCurrentMsg();
+		ChimeraCharacter player = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+		if (!player)
+			return false;
 
-						if (m_BaseWithPlayer.GetReconfiguredByID() != SCR_PlayerController.GetLocalPlayerId())
-						{
-							bool isPlayerCapturing;
-							SCR_CampaignSeizingComponent seizingComp = SCR_CampaignSeizingComponent.Cast(m_BaseWithPlayer.GetOwner().FindComponent(SCR_CampaignSeizingComponent));
+		CharacterControllerComponent charController = player.GetCharacterController();
 
-							if (seizingComp)
-							{
-								ChimeraCharacter player = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+		if (!charController || charController.GetLifeState() == ECharacterLifeState.DEAD)
+			return false;
 
-								if (player)
-								{
-									CharacterControllerComponent charController = player.GetCharacterController();
+		vector playerPos = player.GetOrigin();
 
-									if (charController && charController.GetLifeState() != ECharacterLifeState.DEAD)
-									{
-										vector playerPos = player.GetOrigin();
+		// Triggers calculate entity presence by bounding boxes
+		// We need to calculate the player's bbox radius to match the distance to the trigger
+		vector boundsMin, boundsMax;
+		player.GetWorldBounds(boundsMin, boundsMax);
+		float distanceDiff = vector.DistanceXZ(boundsMin, boundsMax) * 0.5;
 
-										// Triggers calculate entity presence by bounding boxes
-										// We need to calculate the player's bbox radius to match the distance to the trigger
-										vector boundsMin, boundsMax;
-										player.GetWorldBounds(boundsMin, boundsMax);
-										float distanceDiff = vector.DistanceXZ(boundsMin, boundsMax) / 2;
-
-										if (!player.IsInVehicle() || SCR_TerrainHelper.GetHeightAboveTerrain(playerPos) <= seizingComp.GetMaximumAltitude())
-											isPlayerCapturing = vector.DistanceXZ(playerPos, m_BaseWithPlayer.GetOwner().GetOrigin()) <= (seizingComp.GetRadius() + distanceDiff);
-									}
-								}
-							}
-
-							string text;
-							bool update;
-
-							if (isPlayerCapturing)
-							{
-								if (!currentMsg || currentMsg.m_sText != "#AR-Campaign_SeizingPlayer-UC")
-									update = true;
-
-								text = "#AR-Campaign_SeizingPlayer-UC";
-							}
-							else
-							{
-								if (!currentMsg || currentMsg.m_sText != "#AR-Campaign_SeizingFriendly-UC")
-									update = true;
-
-								text = "#AR-Campaign_SeizingFriendly-UC";
-							}
-
-							if (!currentMsg || currentMsg.m_iPriority != SCR_ECampaignSeizingMessagePrio.SEIZING_YOU || update)
-							{
-								if (isPlayerCapturing)
-									popup.PopupMsg(text, -1, prio: SCR_ECampaignSeizingMessagePrio.SEIZING_YOU, progressStart: m_fBaseWithPlayerCaptureStart, progressEnd: m_fBaseWithPlayerCaptureEnd, category: SCR_EPopupMsgFilter.TUTORIAL);
-								else
-									popup.PopupMsg(text, -1, "#AR-Campaign_Popup_HelpCapture", prio: SCR_ECampaignSeizingMessagePrio.SEIZING_YOU, category: SCR_EPopupMsgFilter.TUTORIAL);
-							}
-						}
-					}
-					else
-					{
-						// Enemies are seizing player's base
-						if (currentMsg && currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_YOU)
-							popup.HideCurrentMsg();
-
-						if (!currentMsg || currentMsg.m_iPriority != SCR_ECampaignSeizingMessagePrio.SEIZING_ENEMY)
-							popup.PopupMsg("#AR-Campaign_SeizingEnemy-UC", -1, prio: SCR_ECampaignSeizingMessagePrio.SEIZING_ENEMY, progressStart: m_fBaseWithPlayerCaptureStart, progressEnd: m_fBaseWithPlayerCaptureEnd, category: SCR_EPopupMsgFilter.TUTORIAL);
-					}
-				}
-			}
-		}
+		if (!player.IsInVehicle() || SCR_TerrainHelper.GetHeightAboveTerrain(playerPos) <= seizingComp.GetMaximumAltitude())
+			return vector.DistanceXZ(playerPos, m_BaseWithPlayer.GetOwner().GetOrigin()) <= (seizingComp.GetRadius() + distanceDiff);
+		else
+			return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -719,7 +779,6 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 					break;
 			}
 		}
-
 
 		if (!m_aShownHints.Contains(EHint.CONFLICT_SERVICE_DEPOTS))
 			GetGame().GetCallqueue().CallLater(ShowHint, AFTER_RESPAWN_HINT_DELAY_MS, false, EHint.CONFLICT_SERVICE_DEPOTS, false, false);
@@ -2329,6 +2388,7 @@ enum SCR_ECampaignPopupPriority
 enum SCR_ECampaignSeizingMessagePrio
 {
 	NONE,
+	CONTESTING = 997,
 	SEIZING_YOU = 998,
 	SEIZING_ENEMY = 999
 }

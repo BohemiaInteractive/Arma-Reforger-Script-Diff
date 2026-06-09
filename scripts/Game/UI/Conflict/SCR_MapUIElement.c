@@ -89,7 +89,6 @@ class SCR_MapUIElement : SCR_ScriptedWidgetComponent
 		return m_bVisible;
 	}
 
-
 	//------------------------------------------------------------------------------
 	void ShowName(bool visible)
 	{
@@ -107,7 +106,6 @@ class SCR_MapUIElement : SCR_ScriptedWidgetComponent
 		return m_wRoot;
 	}
 
-
 	// //------------------------------------------------------------------------------
 	// override bool OnMouseEnter(Widget w, int x, int y)
 	// {
@@ -122,7 +120,7 @@ class SCR_MapUIElement : SCR_ScriptedWidgetComponent
 	// 	return false;
 	// }
 
-	// ------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
 		if (m_bVisible)
@@ -131,12 +129,12 @@ class SCR_MapUIElement : SCR_ScriptedWidgetComponent
 		return false;
 	}
 
-	// ------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------
 	void SelectIcon(bool invoke = true)
 	{
 	}
 
-	// ------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------
 	void Select(bool select = true)
 	{
 		s_SelectedElement = this;
@@ -152,6 +150,7 @@ class SCR_MapUIElement : SCR_ScriptedWidgetComponent
 		{
 			AnimCollapse();
 		}
+		
 		if (m_wGradient)
 			m_wGradient.SetVisible(select);
 	}

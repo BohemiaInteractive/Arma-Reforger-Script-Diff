@@ -21,9 +21,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	protected int m_iUISelectedGroupID = -1;
 	protected int m_iPreviousGroupID = -1;
 	protected string m_sGroupInviteFromPlayerName; //Player name is saved to get the name of the one who invited even if that player left the server	
-	
+
 	protected static const ref Color DEFAULT_COLOR = new Color(0, 0, 0, 0.4);
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] playerID
 	//! \return
@@ -512,7 +512,15 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 				m_OnInviteCancelled.Invoke();
 		}
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Resets the Group ID and Selected Group ID of the player, currently only called after the player has switched factions
+	void ResetGroupIDs_S()
+	{
+		RPC_DoResetGroupIDs();
+		Rpc(RPC_DoResetGroupIDs);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] playerID
@@ -700,7 +708,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		array<SCR_EGroupRole> availableGroupRoles = groupsManager.GetAvailableGroupRoles(faction, playerId);
 		if (!availableGroupRoles || !availableGroupRoles.Contains(groupRole))
 		{
-			Print("Group role is not available", level: LogLevel.WARNING);
+			PrintFormat("Group role %1 is not available", typename.EnumToString(SCR_EGroupRole, groupRole), level: LogLevel.WARNING);
 			return;
 		}
 
@@ -823,7 +831,15 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	{
 		Rpc(RPC_AskJoinGroup, groupID);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	void RPC_DoResetGroupIDs()
+	{
+		m_iUISelectedGroupID = -1;
+		m_iGroupID = -1;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] groupID
@@ -874,6 +890,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		{
 			m_iPreviousGroupID = m_iGroupID;
 			m_iGroupID = groupIDAfter;
+			m_iUISelectedGroupID = m_iGroupID;
 			Rpc(RPC_DoChangeGroupID, groupIDAfter);
 		}
 	}
@@ -1791,7 +1808,8 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] faction
-	void CreateAndJoinGroup(Faction faction)
+	//! \param[in] usePredefinedData Use data from the premade groups if neccesary
+	void CreateAndJoinGroup(Faction faction, bool usePredefinedData = false)
 	{
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupsManager)
@@ -1799,8 +1817,28 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		
 		SCR_AIGroup group = groupsManager.GetFirstNotFullForFaction(faction, null, true);
 		if (group)
+		{
 			RequestJoinGroup(group.GetGroupID());
+		}
 		else
-			RequestCreateGroup(); //requestCreateGroup automatically puts player to the newly created group
+		{
+			if (!usePredefinedData)
+			{
+				RequestCreateGroup(); //requestCreateGroup automatically puts player to the newly created group, if faction can only create predefined groups will get rejected automatically
+				return;
+			}
+
+			SCR_Faction scrFaction = SCR_Faction.Cast(faction);
+			if (!scrFaction)
+				return;
+
+			if (scrFaction.GetCanCreateOnlyPredefinedGroups())
+			{
+				RequestCreateGroupWithData(scrFaction.GetDefaultGroupRoleForNewGroup(), false, string.Empty, string.Empty, true, true);
+				return;
+			}
+
+			RequestCreateGroup();
+		}
 	}
 }

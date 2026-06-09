@@ -1317,6 +1317,12 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		}
 
 		SCR_CampaignClientData clientData = GetClientData(playerId, true);
+		if (!clientData)
+		{
+			Print("Client data is null, this should only be happening in a dev environment.", LogLevel.WARNING);
+			return;
+		}
+
 		float respawnPenalty = clientData.GetRespawnPenalty();
 		float lastSuicideTimestamp = clientData.GetLastSuicideTimestamp();
 		float curTime = GetGame().GetWorld().GetWorldTime();
@@ -1506,10 +1512,18 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	protected void OnLocalPlayerFactionAssigned(SCR_PlayerFactionAffiliationComponent component, Faction previous, Faction current)
 	{
 		const SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(current);
-		m_BaseManager.SetLocalPlayerFaction(faction);
+		if (faction)
+		{
+			m_BaseManager.SetLocalPlayerFaction(faction);
+
+			if (m_OnFactionAssignedLocalPlayer)
+				m_OnFactionAssignedLocalPlayer.Invoke(faction);
+
+			return;
+		}
 
 		if (m_OnFactionAssignedLocalPlayer)
-			m_OnFactionAssignedLocalPlayer.Invoke(faction);
+			m_OnFactionAssignedLocalPlayer.Invoke(current);
 	}
 
 	//------------------------------------------------------------------------------------------------

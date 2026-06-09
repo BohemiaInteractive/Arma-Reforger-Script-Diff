@@ -10,7 +10,7 @@ class SCR_ServerFullDialogContentWidgets
 	SCR_ButtonComponent m_IPAddressButtonComponent;
 
 	ImageWidget m_wDetailIcon_PasswordProtected;
-	ImageWidget m_wDetailIcon_CrossPlatform;
+	HorizontalLayoutWidget m_wDetailIcon_CrossPlatform;
 	ImageWidget m_wDetailIcon_Modded;
 	RichTextWidget m_wDiscordText;
 
@@ -38,7 +38,7 @@ class SCR_ServerFullDialogContentWidgets
 		m_IPAddressButtonComponent = SCR_ButtonComponent.Cast(m_wIPAddressButton.FindHandler(SCR_ButtonComponent));
 
 		m_wDetailIcon_PasswordProtected = ImageWidget.Cast(root.FindWidget("MessagesWrapper.MessagesFirstLine.DetailIconsLayout.m_wDetailIcon_PasswordProtected"));
-		m_wDetailIcon_CrossPlatform = ImageWidget.Cast(root.FindWidget("MessagesWrapper.MessagesFirstLine.DetailIconsLayout.m_wDetailIcon_CrossPlatform"));
+		m_wDetailIcon_CrossPlatform = HorizontalLayoutWidget.Cast(root.FindWidget("MessagesWrapper.MessagesFirstLine.DetailIconsLayout.DetailIcon_CrossPlatform"));
 		m_wDetailIcon_Modded = ImageWidget.Cast(root.FindWidget("MessagesWrapper.MessagesFirstLine.DetailIconsLayout.m_wDetailIcon_Modded"));
 		m_wDiscordText = RichTextWidget.Cast(root.FindWidget("MessagesWrapper.MessagesSecondLine.DiscordLayout.m_wDiscordText"));
 

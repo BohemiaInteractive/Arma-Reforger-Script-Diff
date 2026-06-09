@@ -147,12 +147,16 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 		rankIcon.SetVisible(false);
 		
 		//~ No rank required
-		if (m_eRequiredRank < 0)
+		if (m_eRequiredRank < SCR_ECharacterRank.PRIVATE)
 			return;
-		
+
+		ResourceName rankIconImageSet = SCR_XPInfoDisplay.GetRankIconImageSet();
+		if (rankIconImageSet.IsEmpty())
+			return;
+
 		//~ Get the rank icon and set it and disable the slot
-		IEntity localPlayerEntity = SCR_PlayerController.GetLocalControlledEntity();
-		if (!localPlayerEntity || m_eRequiredRank <= SCR_CharacterRankComponent.GetCharacterRank(localPlayerEntity))
+		SCR_ChimeraCharacter localCharacter = SCR_ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+		if (!localCharacter || m_eRequiredRank <= SCR_CharacterRankComponent.GetCharacterRank(localCharacter))
 			return;
 
 		SetItemAvailability(false);
@@ -161,24 +165,16 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 		if (m_wMSARIcon)
 			m_wMSARIcon.SetVisible(false);
 		
-		ResourceName rankIconImageSet = SCR_XPInfoDisplay.GetRankIconImageSet();
-		if (rankIconImageSet.IsEmpty())
-			return;
-		
-		FactionAffiliationComponent playerFactionAffiliation = FactionAffiliationComponent.Cast(localPlayerEntity.FindComponent(FactionAffiliationComponent));
-		if (!playerFactionAffiliation)
-			return;
-		
-		SCR_Faction playerFaction = SCR_Faction.Cast(playerFactionAffiliation.GetAffiliatedFaction());
+		SCR_Faction playerFaction = SCR_Faction.Cast(localCharacter.GetFaction());
 		if (!playerFaction)
 			return;
-		
-		string rankInsignia = playerFaction.GetRanks().GetRankInsignia(m_eRequiredRank);
-		if (rankInsignia.IsEmpty())
+
+		SCR_RankInfo rank = playerFaction.GetRanks().GetRankByID(m_eRequiredRank, true);
+		if (!rank)
 			return;
-		
+
 		//~ Set rank icon
-		rankIcon.LoadImageFromSet(0, rankIconImageSet, rankInsignia);
+		rankIcon.LoadImageFromSet(0, rankIconImageSet, rank.GetRankInsignia());
 	}
 	
 	//------------------------------------------------------------------------------------------------

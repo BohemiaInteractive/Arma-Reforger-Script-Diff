@@ -26,7 +26,13 @@ class SCR_SupplyInventorySlotUI : SCR_InventorySlotUI
 	protected SCR_ResourceConsumer m_ResourceConsumer;
 	protected ref SCR_ResourceSystemSubscriptionHandleBase m_ResourceSubscriptionHandle;
 	protected ref array<RplId> m_aStackedItems = {};
-	
+
+	//------------------------------------------------------------------------------------------------
+	SCR_ResourceComponent GetResourceComponent()
+	{
+		return m_ResourceComponent;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override protected string SetSlotSize()
 	{
@@ -106,6 +112,16 @@ class SCR_SupplyInventorySlotUI : SCR_InventorySlotUI
 			overrideSlotFunction = ESlotFunction.TYPE_GADGET;
 
 		return storage.CanUseItem(item, overrideSlotFunction);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool IsDraggable()
+	{
+		if (!super.IsDraggable())
+			return false;
+
+		SCR_ChimeraCharacter char = SCR_ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+		return !m_ResourceComponent || char && m_ResourceComponent.CanBeUsedByCharacter(char);
 	}
 	
 	//------------------------------------------------------------------------------------------------

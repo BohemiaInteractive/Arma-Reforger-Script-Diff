@@ -304,8 +304,13 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 		if (!faction)
 			return false;
 		
-		if (faction == m_CurrentFaction)
-			return m_AdditionalSettings.HasNametagRelationFilters(SCR_ENametagRelationFilter.SHOW_SAME_FACTION);
+		if (faction == m_CurrentFaction) // Some factions are enemies to themselves (free for all gamemodes etc) hence we need to check for faction friendlyness too
+		{
+			if (IsFactionFriendly(faction))
+				return m_AdditionalSettings.HasNametagRelationFilters(SCR_ENametagRelationFilter.SHOW_SAME_FACTION);
+			else
+				return m_AdditionalSettings.HasNametagRelationFilters(SCR_ENametagRelationFilter.SHOW_HOSTILE);
+		}
 				
 		if (IsFactionFriendly(faction))
 		{
@@ -508,7 +513,17 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 			m_aUninitializedTags.Insert(tagData);
 		}
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Forces the deletion and re-initialisation of a nametag to remake it entirely. 
+	//! \param data is the subject nametag.
+	//! \param entity is the entity the nametag is for.
+	void ForceRedoTag(notnull SCR_NameTagData data, notnull IEntity entity)
+	{
+		CleanupTag(data);
+		InitializeTag(entity);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	// Cleanup methods
 	//------------------------------------------------------------------------------------------------

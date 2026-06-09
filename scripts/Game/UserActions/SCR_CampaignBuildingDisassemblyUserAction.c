@@ -624,7 +624,7 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 		if (!owner)
 			return null;
 
-		return baseMgr.FindClosestBase(owner.GetOrigin());
+		return baseMgr.FindClosestBase(owner.GetOrigin(), SCR_ECampaignBaseType.BASE);
 	}
 
 	//------------------------------------------------------------------------------------------------

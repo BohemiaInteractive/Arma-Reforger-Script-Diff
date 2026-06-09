@@ -9,15 +9,20 @@ class SCR_EditableEntityUIRuleTracker
 {
 	protected SCR_EntitiesEditorUIRule m_Rule;
 	protected SCR_EditableEntitySlotManagerUIComponent m_SlotManager;
-	
+
+	//------------------------------------------------------------------------------------------------	
 	SCR_EntitiesEditorUIRule GetRule()
 	{
 		return m_Rule;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	bool HasState(SCR_EditableEntityComponent entity)
 	{
 		return (entity.GetEntityStates() | m_SlotManager.GetForcedStates()) & m_Rule.GetStates();
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	void AddEntity(SCR_EditableEntityComponent entity)
 	{
 		if (!HasState(entity))
@@ -29,6 +34,8 @@ class SCR_EditableEntityUIRuleTracker
 		
 		entitySlot.CreateWidget(entity, m_Rule);
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void OnChanged(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
 		if (entitiesRemove)
@@ -57,6 +64,8 @@ class SCR_EditableEntityUIRuleTracker
 			}
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SCR_EditableEntityUIRuleTracker(SCR_EntitiesEditorUIRule rule, SCR_EditableEntitySlotManagerUIComponent slotManager, bool canAddAllEntities)
 	{
 		SCR_EntitiesManagerEditorComponent filterManager = SCR_EntitiesManagerEditorComponent.Cast(SCR_EntitiesManagerEditorComponent.GetInstance(SCR_EntitiesManagerEditorComponent, true));
@@ -85,6 +94,8 @@ class SCR_EditableEntityUIRuleTracker
 			}
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	void ~SCR_EditableEntityUIRuleTracker()
 	{
 		SCR_EntitiesManagerEditorComponent filterManager = SCR_EntitiesManagerEditorComponent.Cast(SCR_EntitiesManagerEditorComponent.GetInstance(SCR_EntitiesManagerEditorComponent));

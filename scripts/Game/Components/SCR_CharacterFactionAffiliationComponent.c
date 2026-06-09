@@ -15,6 +15,7 @@ class SCR_CharacterFactionAffiliationComponent : FactionAffiliationComponent
 	protected ref set<SCR_OutfitFactionDataHolder> m_CurrentOutfitData = new set<SCR_OutfitFactionDataHolder>();
 	
 	protected ref ScriptInvokerFaction m_OnPerceivedFactionChanged;
+	protected ref OnFactionChangedInvoker m_OnFactionChangedInvoker;
 	
 	protected SCR_PerceivedFactionManagerComponent m_PerceivedManager;
 	
@@ -97,9 +98,9 @@ class SCR_CharacterFactionAffiliationComponent : FactionAffiliationComponent
 		
 		m_CurrentOutfitData.Insert(outfitFactionHolder);
 		
-		if (!m_PerceivedManager || !HasPerceivedFaction() || m_PerceivedManager.GetCharacterPerceivedFactionOutfitType() == SCR_EPerceivedFactionOutfitType.DISABLED)
+		if (!m_PerceivedManager || m_PerceivedManager.GetCharacterPerceivedFactionOutfitType() == SCR_EPerceivedFactionOutfitType.DISABLED)
 			return;
-		
+
 		if (m_PerceivedManager.GetCharacterPerceivedFactionOutfitType() == SCR_EPerceivedFactionOutfitType.FULL_OUTFIT)
 		{
 			//~ If Full outfit and the outfit has the default faction then ignore all other outfit factions
@@ -568,10 +569,27 @@ class SCR_CharacterFactionAffiliationComponent : FactionAffiliationComponent
 	{
 		if (!m_OnPerceivedFactionChanged)
 			m_OnPerceivedFactionChanged = new ScriptInvokerFaction();
-		
+
 		return m_OnPerceivedFactionChanged;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void OnFactionChanged(Faction previous, Faction current)
+	{
+		if (m_OnFactionChangedInvoker)
+			m_OnFactionChangedInvoker.Invoke(this, previous, current);
+	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return On Faction changed script invoker. Called when the character changes factions 
+	OnFactionChangedInvoker GetOnFactionChanged()
+	{
+		if (!m_OnFactionChangedInvoker)
+			m_OnFactionChangedInvoker = new OnFactionChangedInvoker();
+
+		return m_OnFactionChangedInvoker;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Called by SCR_PerceivedFactionManagerComponent when player is spawned. Is not called for Non-Players
 	void InitPlayerOutfitFaction_S()

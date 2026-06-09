@@ -121,19 +121,23 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		gameMode.PauseGame(true, SCR_EPauseReason.MENU);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpened()
 	{
 		super.OnMenuOpened();
 		
 		if (m_FactionRequestUIHandler)
 		{
-			SCR_FactionButton btn = SCR_FactionButton.Cast(m_FactionRequestUIHandler.GetFirstValidButton());
+			SCR_FactionButton btn = m_FactionRequestUIHandler.GetFirstValidFactionButton();
 			if (btn)
 				btn.SetFocused();
+			else
+				ShowFactionPlayerList(show: false);
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnMenuUpdate(float tDelta)
 	{
 		super.OnMenuUpdate(tDelta);
@@ -147,7 +151,8 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		if (m_fTimer < 0)
 			UpdateElapsedTime();
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	override void OnMenuFocusGained()
 	{
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
@@ -159,6 +164,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		super.OnMenuFocusGained();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnMenuFocusLost()
 	{
 		GetGame().GetInputManager().RemoveActionListener("ShowScoreboard", EActionTrigger.DOWN, OpenPlayerList);
@@ -166,6 +172,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		super.OnMenuFocusLost();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Find request handlers based on the layout configuration.
 	protected void FindRequestHandlers()
 	{
@@ -174,6 +181,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		m_GroupRequestUIHandler = m_MenuHandler.GetGroupRequestHandler();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Initialize event listeners.
 	protected void HookEvents()
 	{
@@ -198,6 +206,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		m_GroupRequestUIHandler.GetOnLocalPlayerGroupJoined().Insert(OnLocalGroupJoined);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Update elapsed time.
 	protected void UpdateElapsedTime()
 	{
@@ -210,17 +219,17 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		UpdatePlayerCount();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Initialize empty map in the background.
 	protected void InitMapPlain()
 	{
 		const ResourceName conf = "{A786DD4868598F15}Configs/Map/MapPlain.conf"; // TODO: check for good const usage
 		m_MapEntity.OpenMap(m_MapEntity.SetupMapConfig(EMapEntityMode.PLAIN, conf, GetRootWidget()));
 	}
-	
-	/*
-		Determine which widget should be shown on the right side of the role selection screen
-		when user hovers their mouse cursor off a button on the left side of the screen.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Determine which widget should be shown on the right side of the role selection SplashScreen
+	//! when user hovers their mouse cursor off a button on the left side of the screen.
 	protected void OnMouseLeft()
 	{
 		bool hasFaction = (m_PlyFactionAffilComp.GetAffiliatedFaction() != null);
@@ -228,7 +237,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		
 		if (!hasFaction)
 		{
-			SCR_FactionButton btn = SCR_FactionButton.Cast(m_FactionRequestUIHandler.GetFirstValidButton());
+			SCR_FactionButton btn = m_FactionRequestUIHandler.GetFirstValidFactionButton();
 			ShowFactionPlayerList(btn.GetFaction());
 			return;
 		}
@@ -236,24 +245,25 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		ShowLoadoutList();
 	}
 
-	//! Show player list for a faction.
-	protected void ShowFactionPlayerList(Faction faction = null)
+	//------------------------------------------------------------------------------------------------
+	//! Show player list for a faction if the faction valid.
+	//! \param[in] faction Faction that the playerlist should be set to
+	//! \param[in] show If false, hide the list instead of showing
+	protected void ShowFactionPlayerList(Faction faction = null, bool show = true)
 	{
 		if (m_FactionPlayerList)
 		{
 			m_FactionPlayerList.SetFaction(faction);
-			m_FactionPlayerList.ShowPlayerList(true);
-		}	
-		m_LoadoutRequestUIHandler.ShowLoadoutSelector(false);
+			m_FactionPlayerList.ShowPlayerList(show && faction != null);
+		}
 
+		m_LoadoutRequestUIHandler.ShowLoadoutSelector(false);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Shows the loadout selector on the right side of role selection screen.
 	protected void ShowLoadoutList()
 	{
-		if (m_FactionPlayerList)
-			m_FactionPlayerList.ShowPlayerList(false);
-		
 		SCR_PlayerControllerGroupComponent plyGroupComp = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
 		if (!plyGroupComp)
 			return;
@@ -262,9 +272,13 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		if (plyGroupComp.GetGroupID() < 0)
 			return;
 
+		if (m_FactionPlayerList)
+			m_FactionPlayerList.ShowPlayerList(false);
+
 		m_LoadoutRequestUIHandler.ShowLoadoutSelector(true);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	//! Shows the Player List selector on the right side of role selection screen
 	protected void ShowGroupPlayerList()
 	{
@@ -274,6 +288,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		m_LoadoutRequestUIHandler.ShowLoadoutSelector(false);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Updates the session's player count.
 	protected void UpdatePlayerCount()
 	{
@@ -283,6 +298,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 			m_wPlayerCount.SetText(GetGame().GetPlayerManager().GetPlayerCount().ToString());
 	}	
 
+	//------------------------------------------------------------------------------------------------
 	//! Check if role selection screen can be closed.
 	protected bool CanContinue()
 	{
@@ -297,13 +313,15 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 
 		return canContinue;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	//! Check if group menu can be opened.
 	protected bool CanOpenGroupMenu()
 	{
 		return m_PlyFactionAffilComp && m_PlyFactionAffilComp.GetAffiliatedFaction();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void OpenGroupMenu()
 	{
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
@@ -318,6 +336,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 	{
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Callback when player receives a response to afaction request.
 	protected void OnPlayerFactionResponse(SCR_PlayerFactionAffiliationComponent component, int factionIndex, bool response)
 	{
@@ -366,6 +385,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		m_FactionRequestUIHandler.Unlock();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Callback when a player joins a group.
 	protected void OnPlayerGroupJoined(SCR_AIGroup group, int pid = -1)
 	{
@@ -383,6 +403,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		m_LoadoutRequestUIHandler.ShowPlayerLoadouts(players, group);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Callback when local player joins a group.
 	protected void OnLocalGroupJoined(SCR_AIGroup group)
 	{
@@ -400,11 +421,13 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 
 		ShowLoadoutList();
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerLoadoutRequest(SCR_PlayerLoadoutComponent component, int loadoutIndex)
 	{
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Callback when local player receives a response to a loadout request.
 	protected void OnPlayerLoadoutResponse(SCR_PlayerLoadoutComponent component, int loadoutIndex, bool response)
 	{
@@ -419,6 +442,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		m_LoadoutRequestUIHandler.Unlock();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void OnChatToggle()
 	{
 		if (!m_ChatPanel)
@@ -433,7 +457,8 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 
 		SCR_ChatPanelManager.GetInstance().ToggleChatPanel(m_ChatPanel);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnPauseMenu()
 	{
 		UpdateViewProfileButton(true);
@@ -448,6 +473,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnMenuClose()
 	{
 		super.OnMenuClose();
@@ -500,13 +526,15 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		
 		return GetRoleSelectionMenu();
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	//! Close role selection menu.
 	static void CloseRoleSelectionMenu()
 	{
 		GetGame().GetMenuManager().CloseMenuByPreset(ChimeraMenuPreset.RoleSelectionDialog);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get opened role selection menu.
 	\return the menu instance

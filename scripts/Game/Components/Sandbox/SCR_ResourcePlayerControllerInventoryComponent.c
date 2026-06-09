@@ -473,19 +473,44 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 			entry = entityCatalogManager.GetEntryWithPrefabFromFactionCatalog(EEntityCatalogType.ITEM, resourceNameItem, faction);
 		else 
 			entry = entityCatalogManager.GetEntryWithPrefabFromCatalog(EEntityCatalogType.ITEM, resourceNameItem);
-			
-		if (!entry)
-		{
-			string keyInfo;
-			if (faction)
-				keyInfo = " | Arsenal faction key=" + faction.GetFactionKey();
-
-			PrintFormat("SCR_ResourcePlayerControllerInventoryComponent.RpcAsk_ArsenalRequestItem: Player %1 tried to buy an item which is not avialable in the arsenal that he used. Item=%2%3", SCR_PlayerIdentityUtils.GetPlayerLogInfo(controller.GetPlayerId()), FilePath.StripPath(resourceNameItem.GetPath()), keyInfo, level: LogLevel.WARNING);
-			return;
-		}
 
 		float resourceCost;
-		if (arsenalComponent.IsArsenalUsingSupplies())
+		bool isArsenalUsingSupplies = arsenalComponent.IsArsenalUsingSupplies();
+		if (!entry)
+		{
+			array<SCR_ArsenalItem> filteredArsenalItems = {};
+			arsenalComponent.GetFilteredOverwriteArsenalItems(filteredArsenalItems);
+
+			bool containedInOverride;
+
+			SCR_ArsenalItemStandalone standaloneItem;
+			foreach (SCR_ArsenalItem item : filteredArsenalItems)
+			{
+				standaloneItem = SCR_ArsenalItemStandalone.Cast(item);
+				if (!standaloneItem)
+					continue;
+
+				if (standaloneItem.GetItemResourceName() != resourceNameItem)
+					continue;
+
+				containedInOverride = true;
+				if (isArsenalUsingSupplies)
+					resourceCost = standaloneItem.GetSupplyCost(arsenalComponent.GetSupplyCostType());
+
+				break;
+			}
+
+			if (!containedInOverride)
+			{
+				string keyInfo;
+				if (faction)
+					keyInfo = " | Arsenal faction key=" + faction.GetFactionKey();
+	
+				PrintFormat("SCR_ResourcePlayerControllerInventoryComponent.RpcAsk_ArsenalRequestItem: Player %1 tried to buy an item which is not avialable in the arsenal that he used. Item=%2%3", SCR_PlayerIdentityUtils.GetPlayerLogInfo(controller.GetPlayerId()), FilePath.StripPath(resourceNameItem.GetPath()), keyInfo, level: LogLevel.WARNING);
+				return;
+			}
+		}
+		else if (isArsenalUsingSupplies)
 		{
 			SCR_ArsenalItem data = SCR_ArsenalItem.Cast(entry.GetEntityDataOfType(SCR_ArsenalItem));
 			if (!data)
@@ -673,7 +698,16 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		
 		if (!componentFrom)
 			return;
-		
+
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetOwner());
+		SCR_ChimeraCharacter user = SCR_ChimeraCharacter.Cast(playerController.GetControlledEntity());
+		CharacterControllerComponent characterController = user.GetCharacterController();
+		if (!user || !characterController || characterController.GetLifeState() != ECharacterLifeState.ALIVE)
+			return;
+
+		if (!componentFrom.CanBeUsedByCharacter(user))
+			return;
+
 		SCR_ResourceComponent componentTo = SCR_ResourceComponent.Cast(Replication.FindItem(rplIdTo));
 		
 		if (!componentTo)
@@ -712,7 +746,16 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		
 		if (!componentFrom)
 			return;
-		
+
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetOwner());
+		SCR_ChimeraCharacter user = SCR_ChimeraCharacter.Cast(playerController.GetControlledEntity());
+		CharacterControllerComponent characterController = user.GetCharacterController();
+		if (!user || !characterController || characterController.GetLifeState() != ECharacterLifeState.ALIVE)
+			return;
+
+		if (!componentFrom.CanBeUsedByCharacter(user))
+			return;
+
 		SCR_ResourceComponent componentTo = SCR_ResourceComponent.Cast(Replication.FindItem(rplIdTo));
 		
 		if (!componentTo)
@@ -764,7 +807,16 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		
 		if (!resourceComponentFrom)
 			return;
-		
+
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetOwner());
+		SCR_ChimeraCharacter user = SCR_ChimeraCharacter.Cast(playerController.GetControlledEntity());
+		CharacterControllerComponent characterController = user.GetCharacterController();
+		if (!user || !characterController || characterController.GetLifeState() != ECharacterLifeState.ALIVE)
+			return;
+
+		if (!resourceComponentFrom.CanBeUsedByCharacter(user))
+			return;
+
 		float resourceValueCurrentFrom, resourceValueMaxFrom;
 		SCR_ResourceActor actorFrom = TryGetConsumptionActor(resourceComponentFrom, resourceType, resourceValueCurrentFrom, resourceValueMaxFrom);
 		

@@ -1129,6 +1129,8 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 			if (m_bAllowRejoinPlayerAfterReconnecting)
 				GetGame().GetCallqueue().Call(RejoinPlayer, controller.GetPlayerId(), scrFaction);
 		}
+
+		groupComp.ResetGroupIDs_S();
 	}
 
 	//------------------------------------------------------------------------------------------------

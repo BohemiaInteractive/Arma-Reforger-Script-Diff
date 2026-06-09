@@ -207,7 +207,7 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	//! \param showErrorNotification Set to false to prevent sending notification to player when the editor cannot be closed
 	void Close(bool showErrorNotification = true)
 	{
-		if (m_CurrentModeEntity.GetPreventClose())
+		if (!m_CurrentModeEntity || m_CurrentModeEntity.GetPreventClose())
 			return;
 
 		if (!m_bIsOpened || !IsAuthority())
@@ -983,6 +983,33 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void RecreateEditorModes()
+	{
+		EEditorModeFlag flags;
+		if (SCR_Global.IsAdmin(m_iPlayerID) && Replication.IsRunning())
+			flags |= EEditorModeFlag.ADMIN; // admin mode is only meant to be available in MP
+		
+		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+		if (!core)
+			return;
+
+		EEditorMode modes = core.GetBaseModes(flags, true);
+		SetEditorModes(EEditorModeAccess.ROLE, modes, false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void DeleteAllEditors()
+	{
+		EEditorMode modes = GetEditorModes();
+		array<EEditorMode> flags = {};
+		SCR_Enum.BitToIntArray(modes, flags);
+		foreach (EEditorMode mode : flags)
+		{
+			RplComponent.DeleteRplEntity(FindModeEntity(mode), false);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Go thrugh current editor modes and make sure they all have a mode entity.
 	void RepairEditorModes(bool isInit)
 	{
@@ -1233,7 +1260,10 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		{
 			//--- Current mode was removed, switch to another one
 			if (mode == m_CurrentMode)
+			{
+				Close(false);
 				SetCurrentMode(-1);
+			}
 
 			//--- Close when removing the mode changed access rules (e.g., remaining mode is limited)
 			if (!CanOpen() && IsOpened())

@@ -162,6 +162,27 @@ class SCR_ResourceComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Checks if provided character should be able to use this resource component
+	//! \param[in] character
+	//! \return true if provided character should be able to use this resource component, otherwise false
+	bool CanBeUsedByCharacter(notnull SCR_ChimeraCharacter character)
+	{
+		FactionAffiliationComponent factionAffiliation = GetFactionAffiliationComponent();
+		if (!factionAffiliation)
+			return true; // supplies in item form, or some caches dont have faction affiliation
+
+		Faction suppliesFaction = factionAffiliation.GetAffiliatedFaction();
+		if (!suppliesFaction)
+			return true; // for example empty vehicles
+
+		Faction playerFaction = character.GetFaction();
+		if (playerFaction != suppliesFaction)
+			return factionAffiliation.GetOwner().FindComponent(SCR_CampaignSourceBaseComponent) != null; // harbors are unprotected, and thus there shouldn't be anything preventing you from taking their supplies
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Set Resource Type enabled or disabled
 	//! \param[in] enable Set true to enable resource type, set false to disable
 	//! \param[in] resourceType Resource type to enable/disable

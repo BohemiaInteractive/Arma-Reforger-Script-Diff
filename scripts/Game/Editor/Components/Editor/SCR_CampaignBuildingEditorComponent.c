@@ -814,18 +814,31 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	private void RequestRecreationOfEditors()
+	{
+		m_Manager.Close();
+		m_Manager.RecreateEditorModes();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected bool RplSave(ScriptBitWriter writer)
 	{
 		array<RplId> providers = {};
 		RplComponent rplComp;
 		IEntity provider;
+		
+		if (m_aProvidersComponents.Contains(null))
+		{
+			if (GetGame().IsDev())
+				Debug.Error(string.Format("WARNING: SCR_CampaignBuildingEditorComponent.RplSave encountered a null in the list of providers while packing data for the editor %1, which belongs to the player %2", FilePath.StripPath(GetOwner().GetPrefabData().GetPrefabName().GetPath()), SCR_PlayerIdentityUtils.GetPlayerLogInfo(m_Manager.GetPlayerID())));
+
+			GetGame().GetCallqueue().CallLater(RequestRecreationOfEditors); // wait with closing and recreation until we are done with sending information to the client
+		}
+
 		foreach (SCR_CampaignBuildingProviderComponent providerComponent : m_aProvidersComponents)
 		{
 			if (!providerComponent)
-			{
-				Debug.Error("Error: Server found a null reference while trying to save replication data for proxy!");
 				continue;
-			}
 
 			provider = providerComponent.GetOwner();
 			if (!provider)

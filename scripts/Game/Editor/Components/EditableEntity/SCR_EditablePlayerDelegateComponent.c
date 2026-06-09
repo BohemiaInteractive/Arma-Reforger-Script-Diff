@@ -16,6 +16,7 @@ class SCR_EditablePlayerDelegateComponent : SCR_EditableEntityComponent
 	protected bool m_bHasLimitedEditor;
 	
 	protected SCR_EditableEntityComponent m_ControlledEntity; //--- Don't use RplProp(), controlled entity cannot be found on client using Replication.FindItem() right after being spawned
+	protected RplId m_EntityID = RplId.Invalid();
 	
 	protected ref ScriptInvoker m_OnUIReset = new ScriptInvoker();
 	protected ref ScriptInvoker m_OnLimitedEditorChanged = new ScriptInvoker();
@@ -27,7 +28,8 @@ class SCR_EditablePlayerDelegateComponent : SCR_EditableEntityComponent
 	//! \param[in] playerID Player ID
 	void InitPlayerDelegate(SCR_EditorManagerEntity editorManager, int playerID)
 	{
-		if (m_iPlayerID != 0) return;
+		if (m_iPlayerID != 0)
+			return;
 		
 		m_iPlayerID = playerID;
 		OnRplPlayerID();
@@ -76,7 +78,9 @@ class SCR_EditablePlayerDelegateComponent : SCR_EditableEntityComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void SetControlledEntityOwner(RplId entityID)
 	{
+		m_EntityID = entityID;
 		m_ControlledEntity = SCR_EditableEntityComponent.Cast(Replication.FindItem(entityID));
+
 		m_OnUIReset.Invoke();
 	}
 
@@ -97,13 +101,17 @@ class SCR_EditablePlayerDelegateComponent : SCR_EditableEntityComponent
 		{
 			//--- Initialized before the editor - wait
 			SCR_EditorManagerCore editorManagerCore = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
-			if (editorManagerCore) editorManagerCore.Event_OnEditorManagerInitOwner.Insert(OnRplPlayerID);
-			return;
+			if (editorManagerCore)
+			{
+				editorManagerCore.Event_OnEditorManagerInitOwner.Insert(OnRplPlayerID);
+				return;
+			}
 		}
 		else
 		{
 			SCR_EditorManagerCore editorManagerCore = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
-			if (editorManagerCore) editorManagerCore.Event_OnEditorManagerInitOwner.Remove(OnRplPlayerID);
+			if (editorManagerCore)
+				editorManagerCore.Event_OnEditorManagerInitOwner.Remove(OnRplPlayerID);
 		}
 		
 		SCR_PlayerDelegateEditorComponent delegateManager = SCR_PlayerDelegateEditorComponent.Cast(SCR_PlayerDelegateEditorComponent.GetInstance(SCR_PlayerDelegateEditorComponent, true));
@@ -127,6 +135,22 @@ class SCR_EditablePlayerDelegateComponent : SCR_EditableEntityComponent
 		Replication.BumpMe();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected bool FetchControlledEntity()
+	{
+		if (!m_ControlledEntity)
+		{
+			if (m_EntityID == RplId.Invalid())
+				return false;
+			
+			m_ControlledEntity = SCR_EditableEntityComponent.Cast(Replication.FindItem(m_EntityID));
+			if (!m_ControlledEntity)
+				return false;
+		}
+
+		return true;
+	}
+
 	//--- Overrides
 	override EEditableEntityType GetEntityType(IEntity owner = null)
 	{
@@ -139,7 +163,7 @@ class SCR_EditablePlayerDelegateComponent : SCR_EditableEntityComponent
 	//------------------------------------------------------------------------------------------------
 	override SCR_UIInfo GetInfo(IEntity owner = null)
 	{
-		if (m_ControlledEntity)
+		if (FetchControlledEntity())
 		{
 			SCR_UIInfo info = m_ControlledEntity.GetInfo(owner);
 			return info;
@@ -159,21 +183,24 @@ class SCR_EditablePlayerDelegateComponent : SCR_EditableEntityComponent
 	//------------------------------------------------------------------------------------------------
 	override Faction GetFaction()
 	{
-		if (m_ControlledEntity)
+		if (m_iPlayerID > 0)
 		{
-			Faction faction = m_ControlledEntity.GetFaction();
-			return faction;
+			SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+			if (factionManager)
+				return factionManager.GetPlayerFaction(m_iPlayerID);
 		}
-		else
-		{
-			return null;
-		}
+
+		FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(m_Owner.FindComponent(FactionAffiliationComponent));
+		if (factionAffiliation)
+			return factionAffiliation.GetAffiliatedFaction();
+
+		return null;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override SCR_EditableEntityComponent GetAIGroup()
 	{
-		if (m_ControlledEntity)
+		if (FetchControlledEntity())
 			return m_ControlledEntity.GetAIGroup();
 		else
 			return null;
@@ -182,7 +209,7 @@ class SCR_EditablePlayerDelegateComponent : SCR_EditableEntityComponent
 	//------------------------------------------------------------------------------------------------
 	override SCR_EditableEntityComponent GetVehicle()
 	{
-		if (m_ControlledEntity)
+		if (FetchControlledEntity())
 			return m_ControlledEntity.GetVehicle();
 		else
 			return null;
@@ -191,7 +218,7 @@ class SCR_EditablePlayerDelegateComponent : SCR_EditableEntityComponent
 	//------------------------------------------------------------------------------------------------
 	override float GetHealth()
 	{
-		if (m_ControlledEntity)
+		if (FetchControlledEntity())
 			return m_ControlledEntity.GetHealth();
 		else
 			return 1;
@@ -207,7 +234,7 @@ class SCR_EditablePlayerDelegateComponent : SCR_EditableEntityComponent
 	//------------------------------------------------------------------------------------------------
 	override bool GetPos(out vector pos)
 	{
-		if (m_ControlledEntity)
+		if (FetchControlledEntity())
 			return m_ControlledEntity.GetPos(pos);
 		else
 			return false;

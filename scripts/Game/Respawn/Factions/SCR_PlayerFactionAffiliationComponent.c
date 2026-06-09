@@ -160,7 +160,7 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Sends a request to get assignedf provided faction.
+	//! Sends a request to get assigned provided faction.
 	//! \param[in] faction
 	//! \return True if request was sent, false if request was caught (on owner, still!) because it was invalid.
 	//! NOTE: This is not the final result of the assignation. That result is can be listened to by hooking
@@ -208,9 +208,10 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 			Print("SCR_PlayerFactionAffiliationComponent::Rpc_RequestFaction_S - Caught request on locked player!", LogLevel.DEBUG);
 			return;
 		}
-		
-		// Notify server
 
+		Faction originalFaction = GetAffiliatedFaction();
+
+		// Notify server
 		GetOnPlayerFactionRequestInvoker_S().Invoke(this, factionIndex);
 		Faction faction = GetGame().GetFactionManager().GetFactionByIndex(factionIndex);
 		if (CanRequestFaction_S(faction))
@@ -219,12 +220,31 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 			{
 				// Respond
 				SendRequestFactionResponse_S(factionIndex, true);
+				
+				// Server side logging of faction switches for extra security.
+				if (faction)
+					LogFactionChange(faction, originalFaction);
+
 				return;
 			}
 		}
 
 		// Failure
 		SendRequestFactionResponse_S(factionIndex, false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void LogFactionChange(notnull Faction newFaction, Faction originalFaction = null)
+	{
+		if (!m_PlayerController)
+			return;
+
+		string playerIdentity = SCR_PlayerIdentityUtils.GetPlayerLogInfo(m_PlayerController.GetPlayerId());
+
+		if (!originalFaction) 
+			PrintFormat("INFO: Faction: player %1 has joined faction %2 (%3)", playerIdentity, newFaction.GetFactionName(), newFaction.GetFactionKey(), LogLevel.NORMAL);
+		else
+			PrintFormat("INFO: Faction: player %1 has switched from faction %2 (%3) to faction %4 (%5).", playerIdentity, originalFaction.GetFactionName(), originalFaction.GetFactionKey(), newFaction.GetFactionName(), newFaction.GetFactionKey(), LogLevel.NORMAL);
 	}
 
 	//------------------------------------------------------------------------------------------------

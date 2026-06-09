@@ -273,6 +273,9 @@ class SCR_MilitaryBaseSystem : GameSystem
 	//------------------------------------------------------------------------------------------------
 	void RegisterBase(notnull SCR_MilitaryBaseComponent base)
 	{
+		if (m_aBases.Contains(base))
+			return; // dont register same base more than once
+
 		m_aBases.Insert(base);
 
 		vector basePosition = base.GetOwner().GetOrigin();
@@ -338,6 +341,9 @@ class SCR_MilitaryBaseSystem : GameSystem
 	//------------------------------------------------------------------------------------------------
 	void RegisterLogicComponent(notnull SCR_MilitaryBaseLogicComponent component)
 	{
+		if (m_aLogicComponents.Contains(component))
+			return; // dont register same component more than once
+
 		m_aLogicComponents.Insert(component);
 
 		vector position = component.GetOwner().GetOrigin();

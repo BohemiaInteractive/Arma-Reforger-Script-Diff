@@ -87,6 +87,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	protected int m_iDefRelaySize = 64; 
 	
 	protected ImageWidget m_wLocalTask;
+	protected OverlayWidget m_wCaptureWarning;
 	protected LocalizedString m_sAssembly = "#AR-Vehicle_MobileAssembly_Name";
 
 	static ref ScriptInvoker Event_OnIconUpdated = new ScriptInvoker();
@@ -196,6 +197,16 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 
 			SetBaseIconFactionColor(null);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] isEnabled
+	void SetCaptureWarning(bool isEnabled)
+	{
+		// Show only if base faction is known to player's faction
+		if (m_wCaptureWarning)
+			m_wCaptureWarning.SetVisible(isEnabled && m_Base.IsHQRadioTrafficPossible(SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction())));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -495,6 +506,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		m_wNextSupplyShipmentLabel = TextWidget.Cast(w.FindAnyWidget(m_sNextShipmentLabelName));
 
 		m_wLocalTask = ImageWidget.Cast(w.FindAnyWidget("LocalTask"));
+		m_wCaptureWarning = OverlayWidget.Cast(w.FindAnyWidget("CaptureWarning"));
 
 		SCR_GameModeCampaign gameMode = SCR_GameModeCampaign.GetInstance();
 		if (gameMode)
@@ -1290,6 +1302,9 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		else
 			color = GetColorForFaction("");
 
+		if (!m_wBaseIcon)
+			return;
+
 		m_wBaseIcon.SetColor(color);
 		if (m_wGradient)
 			m_wGradient.SetColor(color);
@@ -1443,6 +1458,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		m_SymbolUI.Update(baseIcon);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override RplId GetSpawnPointId()
 	{
 		if (m_SpawnPoint)

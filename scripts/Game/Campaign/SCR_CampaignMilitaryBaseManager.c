@@ -885,7 +885,7 @@ class SCR_CampaignMilitaryBaseManager
 	}
 
 	//------------------------------------------------------------------------------------------------
-	SCR_CampaignMilitaryBaseComponent FindClosestBase(vector position)
+	SCR_CampaignMilitaryBaseComponent FindClosestBase(vector position, SCR_ECampaignBaseType searchedType = -1)
 	{
 		SCR_CampaignMilitaryBaseComponent closestBase;
 		float closestBaseDistance = float.MAX;
@@ -893,6 +893,9 @@ class SCR_CampaignMilitaryBaseManager
 		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
 		{
 			if (!base.IsInitialized())
+				continue;
+
+			if (searchedType > -1 && base.GetType() != searchedType)
 				continue;
 
 			float distance = vector.DistanceSq(base.GetOwner().GetOrigin(), position);

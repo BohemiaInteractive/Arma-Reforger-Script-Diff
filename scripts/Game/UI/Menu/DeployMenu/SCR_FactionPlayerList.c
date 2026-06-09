@@ -22,6 +22,7 @@ class SCR_PlayerList : ScriptedWidgetComponent
 	protected ref array<SCR_PlayerName> m_aPlayerNames = {};
 	protected Widget m_wRoot;
 
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		m_wRoot = w;
@@ -31,16 +32,20 @@ class SCR_PlayerList : ScriptedWidgetComponent
 		m_wPlayerCount = TextWidget.Cast(w.FindAnyWidget(m_sPlayerCount));
 		m_wPlayerList = w.FindAnyWidget(m_sPlayerList);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	void UpdatePlayerList()
 	{
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] show If true, set the Faction Player List to visible
 	void ShowPlayerList(bool show)
 	{
 		m_wRoot.SetVisible(show);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	protected void CreatePlayerName(int pid)
 	{
 		Widget player = GetGame().GetWorkspace().CreateWidgets(m_sPlayerName, m_wPlayerList);

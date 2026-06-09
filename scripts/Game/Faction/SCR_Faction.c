@@ -25,6 +25,8 @@ class SCR_Faction : ScriptedFaction
 	[Attribute(defvalue: "1", desc: "Will players in the faction be able to volunteer to become a commander? \nKeep in mind commanders might be disabled altogether in the mission header.")]
 	protected bool m_bIsCommanderAvailable;
 
+	[Attribute(defvalue: "1", desc: "Will players in the faction be able to capture new bases")]
+	protected bool m_bCanCaptureBases;
 	[Attribute(desc: "This faction will punish people who lost their rank by removing them from the faction\nIf the player gains rank they can (re)join FIA specifically")]
 	protected bool m_bExileRenegadePunishment;
 	
@@ -335,6 +337,12 @@ class SCR_Faction : ScriptedFaction
 		return m_bIsPlayable;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	bool CanCaptureBases()
+	{
+		return m_bCanCaptureBases;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	bool IsCommanderAvailable()
 	{
@@ -716,8 +724,21 @@ class SCR_Faction : ScriptedFaction
 		if (SCR_Global.IsEditMode()) 
 			return;
 		
+		//~ Init the catalog for faster processing
+		SCR_EntityCatalogManagerComponent.InitCatalogs(m_aEntityCatalogs, m_mEntityCatalogs);
+		m_bCatalogInitDone = true;
 		
-		// These faction relations are hardset, we do them here to avoid doing unnecessary networking calls
+		//~ Clear array as no longer needed
+		m_aEntityCatalogs = null;
+
+		m_bIsPlayableDefault = m_bIsPlayable;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Set up the faction relationships like friendlyness and parents
+	void InitFactionRelationships()
+	{
+		// Parental faction relations are hardset into the game and are not intended to be changed, so we do them here to avoid doing unnecessary networking calls
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		if (factionManager)
 		{
@@ -725,9 +746,6 @@ class SCR_Faction : ScriptedFaction
 
 			if (parent)
 				m_ParentFaction = parent;
-
-			if (IsRenegadePunishedExile() && factionManager.GetFactionByKey("RNGD"))	
-					this.SetFactionFriendly(factionManager.GetFactionByKey("RNGD"));
 		}
 
 		//~ Server only
@@ -748,7 +766,14 @@ class SCR_Faction : ScriptedFaction
 				//~ Make sure faction is friendly towards itself
 				if (m_bFriendlyToSelf)
 					factionManager.SetFactionsFriendly(this, this);
-				
+
+				if (IsRenegadePunishedExile())
+				{
+					SCR_Faction renegadeFaction = SCR_Faction.Cast(factionManager.GetFactionByKey("RNGD"));
+					if (renegadeFaction)
+						factionManager.SetFactionFriendlyOneWay(renegadeFaction, this);
+				}
+
 				//~ On init friendly factions assigning
 				if (!m_aFriendlyFactionsIds.IsEmpty())
 				{			
@@ -776,15 +801,6 @@ class SCR_Faction : ScriptedFaction
 			}
 			
 		}
-		
-		//~ Init the catalog for faster processing
-		SCR_EntityCatalogManagerComponent.InitCatalogs(m_aEntityCatalogs, m_mEntityCatalogs);
-		m_bCatalogInitDone = true;
-		
-		//~ Clear array as no longer needed
-		m_aEntityCatalogs = null;
-        
-        m_bIsPlayableDefault = m_bIsPlayable;
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -46,35 +46,18 @@ class SCR_ArsenalItemRankHintUIInfo : SCR_InventoryItemHintUIInfo
 	//------------------------------------------------------------------------------------------------
 	override string GetItemHintName(InventoryItemComponent item)
 	{
-		//~ Make sure to have a fallback for factions without a rank. Both for the overlay icon as well as this hint
-		
-		IEntity localPlayerEntity = SCR_PlayerController.GetLocalControlledEntity();
-		if (!localPlayerEntity)
-		{
-			Print("'SCR_ArsenalItemRankHintUIInfo' is unable to find the local player.", LogLevel.WARNING);
-			return m_sRankLessFactionFallback;
-		}
-			
-		FactionAffiliationComponent playerFactionAffiliation = FactionAffiliationComponent.Cast(localPlayerEntity.FindComponent(FactionAffiliationComponent));
-		if (!playerFactionAffiliation)
-		{
-			Print("'SCR_ArsenalItemRankHintUIInfo' is unable to find the player's faction affiliation comp.", LogLevel.WARNING);
-			return m_sRankLessFactionFallback;
-		}
-		
-		SCR_Faction playerFaction = SCR_Faction.Cast(playerFactionAffiliation.GetAffiliatedFaction());
+		SCR_Faction playerFaction = SCR_Faction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
 		if (!playerFaction)
 		{
 			Print("'SCR_ArsenalItemRankHintUIInfo' is unable to find the player's faction.", LogLevel.WARNING);
 			return m_sRankLessFactionFallback;
 		}
-		
-		string rankName = playerFaction.GetRanks().GetRankName(m_eRequiredRank);
-		
-		if (rankName.IsEmpty())
+
+		SCR_RankInfo rank = playerFaction.GetRanks().GetRankByID(m_eRequiredRank, true);
+		if (!rank)
 			return m_sRankLessFactionFallback;
-		
-		return WidgetManager.Translate(GetName(), rankName);
+
+		return WidgetManager.Translate(GetName(), rank.GetRankName());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -82,32 +65,23 @@ class SCR_ArsenalItemRankHintUIInfo : SCR_InventoryItemHintUIInfo
 	{
 		if (!imageWidget)
 			return false;
-		
-		IEntity localPlayerEntity = SCR_PlayerController.GetLocalControlledEntity();
-		if (!localPlayerEntity)
-			return false;
-		
+
 		ResourceName rankIconImageSet = SCR_XPInfoDisplay.GetRankIconImageSet();
 		if (rankIconImageSet.IsEmpty())
 			return false;
-		
-		FactionAffiliationComponent playerFactionAffiliation = FactionAffiliationComponent.Cast(localPlayerEntity.FindComponent(FactionAffiliationComponent));
-		if (!playerFactionAffiliation)
-			return false;
-		
-		SCR_Faction playerFaction = SCR_Faction.Cast(playerFactionAffiliation.GetAffiliatedFaction());
+
+		SCR_Faction playerFaction = SCR_Faction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
 		if (!playerFaction)
 			return false;
-		
-		string rankInsignia = playerFaction.GetRanks().GetRankInsignia(m_eRequiredRank);
-		if (rankInsignia.IsEmpty())
+
+		SCR_RankInfo rank = playerFaction.GetRanks().GetRankByID(m_eRequiredRank, true);
+		if (!rank)
 		{
 			imageWidget.LoadImageTexture(0, m_sRankLessFactionIconFallback);
 			return true;
 		}
-			
-		imageWidget.LoadImageFromSet(0, rankIconImageSet, rankInsignia);
-		
+
+		imageWidget.LoadImageFromSet(0, rankIconImageSet, rank.GetRankInsignia());
 		return true;
 	}
 }

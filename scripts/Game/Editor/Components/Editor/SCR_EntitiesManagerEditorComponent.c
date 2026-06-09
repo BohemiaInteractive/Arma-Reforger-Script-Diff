@@ -25,13 +25,12 @@ class SCR_EntitiesManagerEditorComponent : SCR_BaseEditorComponent
 	private bool m_bSkipSuccessors;
 	protected int m_iAsyncIndex;
 	protected ref set<SCR_EditableEntityComponent> m_AsyncEntities;
-	
-	/*!
-	Get filter managing given state.
-	\param state Entity state
-	\param showError True to log a warning message when the filter was not found
-	\return Entity filter
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get filter managing given state.
+	//! \param state Entity EUnitState
+	//! \param showError True to log a warning message when the filter was not found
+	//! \return Entity filter
 	SCR_BaseEditableEntityFilter GetFilter(EEditableEntityState state, bool showError = false)
 	{
 		SCR_BaseEditableEntityFilter filter = null;
@@ -46,11 +45,11 @@ class SCR_EntitiesManagerEditorComponent : SCR_BaseEditorComponent
 			return null;
 		}
 	}
-	/*!
-	Get entities of given state.
-	\param state Entity state
-	\param[out] entities Array to be filled with entities
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get entities of given state.
+	//! \param state Entity state
+	//! \param[out] entities Array to be filled with entities
 	void GetEntities(EEditableEntityState state, out set<SCR_EditableEntityComponent> entities)
 	{
 		if (state == 0)
@@ -65,6 +64,8 @@ class SCR_EntitiesManagerEditorComponent : SCR_BaseEditorComponent
 			if (m_FiltersMap.Find(state, filter)) filter.GetEntities(entities);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	void SetInSuccessors(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
 		if (m_bSkipSuccessors) return;
@@ -85,6 +86,8 @@ class SCR_EntitiesManagerEditorComponent : SCR_BaseEditorComponent
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEntityRegistered(SCR_EditableEntityComponent entity)
 	{
 		foreach (SCR_BaseEditableEntityFilter filter: m_aFiltersRoot)
@@ -93,6 +96,8 @@ class SCR_EntitiesManagerEditorComponent : SCR_BaseEditorComponent
 				filter.Add(entity, false);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnEntityUnregistered(SCR_EditableEntityComponent entity)
 	{
 		foreach (SCR_BaseEditableEntityFilter filter: m_aFiltersRoot)
@@ -100,6 +105,8 @@ class SCR_EntitiesManagerEditorComponent : SCR_BaseEditorComponent
 			filter.Remove(entity, true);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnParentEntityChanged(SCR_EditableEntityComponent entity, SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev)
 	{
 		m_bSkipSuccessors = true; //--- ToDo: Cleaner?
@@ -122,11 +129,11 @@ class SCR_EntitiesManagerEditorComponent : SCR_BaseEditorComponent
 		SCR_EditableEntityComponent parentEntity = SCR_EditableEntityComponent.Cast(Replication.FindItem(parentEntityID));
 		if (entity) entity.SetParentEntity(parentEntity);
 	}
-	/*!
-	Set parent of the entity.
-	\param entity Affected entity
-	\param parentEntity New parent. When null, the entity will be moved to the root.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Set parent of the entity.
+	//! \param entity Affected IEntity
+	//! \param parentEntity New parent. When null, the entity will be moved to the root.
 	void SetParentEntity(SCR_EditableEntityComponent entity, SCR_EditableEntityComponent parentEntity)
 	{
 		int entityID, parentID;
@@ -164,6 +171,8 @@ class SCR_EntitiesManagerEditorComponent : SCR_BaseEditorComponent
 		}
 		debugTexts.Insert("\n");
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
 		foreach (auto filter: m_aFiltersSorted)
@@ -171,6 +180,8 @@ class SCR_EntitiesManagerEditorComponent : SCR_BaseEditorComponent
 			if (filter) filter.OnFrameBase(timeSlice);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnEditorActivate()
 	{
 		SetEventMask(GetOwner(), EntityEvent.FRAME);
@@ -182,6 +193,8 @@ class SCR_EntitiesManagerEditorComponent : SCR_BaseEditorComponent
 		m_Core.Event_OnEntityUnregistered.Insert(OnEntityUnregistered);
 		m_Core.Event_OnParentEntityChanged.Insert(OnParentEntityChanged);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnEditorActivateAsync(int attempt)
 	{
 		//--- Init
@@ -197,6 +210,8 @@ class SCR_EntitiesManagerEditorComponent : SCR_BaseEditorComponent
 		m_iAsyncIndex++;
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnEditorDeactivate()
 	{
 		if (!m_Core) return;
@@ -205,6 +220,8 @@ class SCR_EntitiesManagerEditorComponent : SCR_BaseEditorComponent
 		m_Core.Event_OnEntityUnregistered.Remove(OnEntityUnregistered);
 		m_Core.Event_OnParentEntityChanged.Remove(OnParentEntityChanged);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool EOnEditorDeactivateAsync(int attempt)
 	{
 		//--- Init
@@ -248,6 +265,8 @@ class SCR_EntitiesManagerEditorComponent : SCR_BaseEditorComponent
 		m_iAsyncIndex++;
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnEditorInit()
 	{
 		if (!m_aFilters) return;

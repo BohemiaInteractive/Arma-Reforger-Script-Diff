@@ -53,6 +53,12 @@ class SCR_CharacterRankComponent : ScriptComponent
 	//! Helper method for attempting to switch factions
 	protected void AttemptSwitchFaction(SCR_CampaignFaction campaignFaction)
 	{
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		bool isServer = (gameMode && gameMode.IsMaster()) || (!gameMode && Replication.IsServer());
+
+		if (!isServer)
+			return;
+
 		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(m_Owner);
 		if (!character)
 			return;
@@ -91,7 +97,7 @@ class SCR_CharacterRankComponent : ScriptComponent
 		if (!groupController)
 			return;
 
-		groupController.CreateAndJoinGroup(component.GetAffiliatedFaction());
+		groupController.CreateAndJoinGroup(component.GetAffiliatedFaction(), true);
 	}
 
 	//------------------------------------------------------------------------------------------------

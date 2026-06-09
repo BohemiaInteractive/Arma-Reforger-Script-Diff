@@ -93,7 +93,7 @@ class SCR_CampaignFactionManager : SCR_FactionManager
 	//! \return
 	int GetRankRequestCooldown(SCR_ECharacterRank rankID, int playerID)
 	{
-		SCR_RankInfoCampaign rank = SCR_RankInfoCampaign.Cast(GetFactionRanks(playerID).GetRankByID(rankID));
+		SCR_RankInfoCampaign rank = SCR_RankInfoCampaign.Cast(GetFactionRanks(playerID).GetRankByID(rankID, false));
 		
 		if (!rank)
 			return int.MAX;
@@ -107,7 +107,7 @@ class SCR_CampaignFactionManager : SCR_FactionManager
 	//! \return
 	int GetRankRadioRespawnCooldown(SCR_ECharacterRank rankID, int playerID)
 	{
-		SCR_RankInfoCampaign rank = SCR_RankInfoCampaign.Cast(GetFactionRanks(playerID).GetRankByID(rankID));
+		SCR_RankInfoCampaign rank = SCR_RankInfoCampaign.Cast(GetFactionRanks(playerID).GetRankByID(rankID, false));
 		
 		if (!rank)
 			return int.MAX;
@@ -121,7 +121,7 @@ class SCR_CampaignFactionManager : SCR_FactionManager
 	//! \return
 	int GetRankFastTravelCooldown(SCR_ECharacterRank rankID, int playerID)
 	{
-		SCR_RankInfoCampaign rank = SCR_RankInfoCampaign.Cast(GetFactionRanks(playerID).GetRankByID(rankID));
+		SCR_RankInfoCampaign rank = SCR_RankInfoCampaign.Cast(GetFactionRanks(playerID).GetRankByID(rankID, false));
 		
 		if (!rank)	
 			return int.MAX;

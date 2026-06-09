@@ -186,6 +186,7 @@ class SCR_EditorManagerCore : SCR_GameCoreBase
 		
 			m_aEditorEntities.Remove(playerID);
 			Event_OnEditorManagerDeletedServer.Invoke(editorManager);
+			editorManager.DeleteAllEditors();
 			delete editorManager;
 		}
 	}
@@ -400,6 +401,7 @@ class SCR_EditorManagerCore : SCR_GameCoreBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	[Friend(SCR_ReconnectComponent)]
 	protected void OnPlayerSpawn(int playerID, IEntity controlledEntity)
 	{
 		SCR_EditorManagerEntity editorManager = GetEditorManager(playerID);

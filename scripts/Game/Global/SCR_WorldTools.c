@@ -76,13 +76,16 @@ class SCR_WorldTools
 		//--- Precalculate vars
 		float cellW = cylinderRadius * Math.Sqrt(3);
 		float cellH = cylinderRadius * 2;
-		vector cylinderVectorOffset = Vector(0, cylinderHeight * 0.5, 0);
+		vector cylinderVectorOffset = {0, cylinderHeight * 0.5, 0};
 		int rMax = Math.Ceil(areaRadius / cylinderRadius / Math.Sqrt(3));
-
 		TraceParam trace = new TraceParam();
 		trace.Flags = flags | TraceFlags.WORLD;
-		vector traceOffset = Vector(0, 10, 0);
-
+		vector traceOffset = {0, 10, 0};
+		TraceParam traceUp = new TraceParam();
+		traceUp.Flags = flags | TraceFlags.WORLD; 
+		vector traceUpOffset = {0, 10, 0};
+		float maxDist = areaRadius - cylinderRadius;
+		float maxDistSq = maxDist * maxDist;
 		float posX, posY;
 		int yMin, yMax, yStep;
 		float traceCoef;
@@ -102,8 +105,8 @@ class SCR_WorldTools
 
 				for (int y = yMin; y <= yMax; y += yStep)
 				{
-					outPosition = areaCenter + Vector(posX, 0, posY + cellH * y);
-					if (vector.DistanceXZ(outPosition, areaCenter) > areaRadius - cylinderRadius)
+					outPosition = areaCenter + {posX, 0, posY + cellH * y};
+					if (vector.DistanceSqXZ(outPosition, areaCenter) > maxDistSq)
 						continue;
 
 					//--- Find nearest surface below (make sure it's not underground)
@@ -111,6 +114,13 @@ class SCR_WorldTools
 					trace.End = outPosition - traceOffset;
 					traceCoef = world.TraceMove(trace, null);
 					outPosition[1] = Math.Max(trace.Start[1] - traceCoef * traceOffset[1] + 0.01, world.GetSurfaceY(outPosition[0], outPosition[2]));
+					
+					//--- Check if postion is inside the rock
+					traceUp.Start = outPosition + Vector(0, 0.1, 0);
+					traceUp.End = traceUp.Start + traceUpOffset;
+					float traceUpCoef = world.TraceMove(traceUp, null);
+					if (traceUpCoef < 1.0 && traceUp.TraceEnt && traceUp.TraceEnt.IsInherited(SCR_IndestructibleEnvironmentalEntity))
+						continue;
 
 					if (TraceCylinder(outPosition + cylinderVectorOffset, cylinderRadius, cylinderHeight, flags, world))
 						return true;

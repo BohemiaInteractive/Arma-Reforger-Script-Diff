@@ -206,5 +206,9 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 		SCR_ReconnectSynchronizationComponent syncComp = SCR_ReconnectSynchronizationComponent.Cast(playerController.FindComponent(SCR_ReconnectSynchronizationComponent));
 		if (syncComp)
 			syncComp.CreateReconnectDialog();
+
+		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+		if (core)
+			core.OnPlayerSpawn(playerId, character);
 	}
 }

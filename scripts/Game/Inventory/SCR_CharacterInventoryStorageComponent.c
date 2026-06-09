@@ -1691,7 +1691,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	//~ Called on init and when an item is added or removed from the character
 	protected void UpdatePerceivedFaction(bool addedToSlot, IEntity item, bool updateFaction = true)
 	{
-		if (!m_CharacterAffiliationComponent || !m_CharacterAffiliationComponent.HasPerceivedFaction())
+		if (!m_CharacterAffiliationComponent)
 			return;
 		
 		//~ Send update to character affiliation comp that a piece of clothing was added/removed even if it has no faction

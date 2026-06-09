@@ -137,6 +137,33 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Replicates the setting faction to friendly. Called by SCR_FactionManager (Server only)
+	//! \param[in] FactionIndex index to set faction friendly to
+	void SetFactionFriendlyOneWay_S(int FactionIndex)
+	{
+		Rpc(RpcDo_SetFactionFriendlyOneWayBroadcast, FactionIndex);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void RpcDo_SetFactionFriendlyOneWayBroadcast(int FactionIndex)
+	{
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!SCR_FactionManager)
+			return;
+
+		SCR_Faction refFaction = SCR_Faction.Cast(m_Faction);
+		if (!refFaction)
+			return;
+
+		SCR_Faction scrFaction = SCR_Faction.Cast(factionManager.GetFactionByIndex(FactionIndex));
+		if (!scrFaction)
+			return;
+
+		factionManager.SetFactionFriendlyOneWay(scrFaction, refFaction);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Replicates the setting faction to hostile. Called by SCR_FactionManager (Server Only)
 	//! \param[in] FactionIndex index to set faction hostile to
 	void SetFactionHostile_S(int FactionIndex)
@@ -619,7 +646,7 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 			reader.ReadBool(isFriendly);
 			
 			if (isFriendly)
-				factionManager.SetFactionsFriendly(factionRef, scrFaction);
+				factionManager.SetFactionFriendlyOneWay(factionRef, scrFaction);
 			else 
 				factionManager.SetFactionsHostile(factionRef, scrFaction);
 		}

@@ -4297,7 +4297,12 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (!draggedEntity)
 			return false;
 		
-		SCR_ResourceComponent resourceComponentFrom = SCR_ResourceComponent.FindResourceComponent(draggedEntity);
+		SCR_ResourceComponent resourceComponentFrom;
+		SCR_SupplyInventorySlotUI supplySlot = SCR_SupplyInventorySlotUI.Cast(m_pSelectedSlotUI);
+		if (supplySlot)
+			resourceComponentFrom = supplySlot.GetResourceComponent();
+		else // keep the old way for backwards compatibility
+			resourceComponentFrom = SCR_ResourceComponent.FindResourceComponent(draggedEntity);
 		
 		if (!resourceComponentFrom)
 			return false;

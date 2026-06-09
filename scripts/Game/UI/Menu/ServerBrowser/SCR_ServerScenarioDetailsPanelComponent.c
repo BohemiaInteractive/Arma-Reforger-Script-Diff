@@ -252,6 +252,7 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		m_CommonWidgets.m_wNameText.SetText(title);
 		m_CommonWidgets.m_wDescriptionText.SetText(scenarioDescription);
 		m_CommonWidgets.m_wAuthorNameText.SetText(strVersion);
+		m_CommonWidgets.m_wCrossplayHorizontalLayout.SetVisible(room.IsCrossPlatform());
 		
 		// Version match 
 		if (room.GameVersion() == GetGame().GetBuildVersion() && room.Joinable())

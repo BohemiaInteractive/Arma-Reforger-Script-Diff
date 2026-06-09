@@ -95,6 +95,7 @@ class SCR_NameTagData : Managed
 	Widget m_NameTagWidget;										// tag visiblity setting is done on this level because setting it on root with negative values conflicts with render ZOrder
 	SCR_VehicleTagData m_VehicleParent;
 	SCR_CharacterControllerComponent m_CharController;
+
 	protected SCR_NameTagDisplay m_NTDisplay;
 	protected BaseCompartmentSlot m_VehicleCompartment; 		// vehicle compartment slot if entity is in a vehicle
 	protected SCR_GroupsManagerComponent m_GroupManager;
@@ -465,7 +466,7 @@ class SCR_NameTagData : Managed
 	
 	//------------------------------------------------------------------------------------------------
 	//! VoNComponent event, only used for "Current player" tag
-	void OnReceivedVON(int playerId, BaseTransceiver receiver, int frequency, float quality)
+	protected void OnReceivedVON(int playerId, BaseTransceiver receiver, int frequency, float quality)
 	{				
 		IEntity character = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId);
 		if (!character)
@@ -480,14 +481,25 @@ class SCR_NameTagData : Managed
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_CharacterController event
-	void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
+	protected void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
 	{
 		if (newLifeState == ECharacterLifeState.INCAPACITATED)
 			ActivateEntityState(ENameTagEntityState.UNCONSCIOUS);
 		else
 			DeactivateEntityState(ENameTagEntityState.UNCONSCIOUS);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! SCR_CharacterFactionAffiliationComponent callback
+	protected void OnFactionChanged(FactionAffiliationComponent owner, Faction previousFaction, Faction newFaction)
+	{
+		if (!this || !m_Entity)
+			return;
+
+		if (m_NTDisplay) // forces the system to delete and remake the nametag
+			m_NTDisplay.ForceRedoTag(this, m_Entity);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Cleanup
 	//! \param removeFromArray determines whether the tag is removed from main array, this is not desired when entrire array is being cleaned up
@@ -666,6 +678,13 @@ class SCR_NameTagData : Managed
 				if (vonComp)
 					vonComp.m_OnReceivedVON.Insert(OnReceivedVON);
 			}
+			else
+			{
+				SCR_CharacterFactionAffiliationComponent characterFactionAffiliation = SCR_CharacterFactionAffiliationComponent.Cast(entity.FindComponent(SCR_CharacterFactionAffiliationComponent));
+
+				if (characterFactionAffiliation)
+					characterFactionAffiliation.GetOnFactionChanged().Insert(OnFactionChanged);
+			}
 		}
 			
 		InitDefaults();			
@@ -678,12 +697,19 @@ class SCR_NameTagData : Managed
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Uninitialize class when its being moved to unsued tags in order to be reused
+	//! Uninitialize class when its being moved to unused tags in order to be reused
 	void ResetTag()
 	{
 		if (m_CharController)
 			m_CharController.m_OnLifeStateChanged.Remove(OnLifeStateChanged);
-		
+
+		if (m_Entity)
+		{
+			SCR_CharacterFactionAffiliationComponent characterFactionAffiliation = SCR_CharacterFactionAffiliationComponent.Cast(m_Entity.FindComponent(SCR_CharacterFactionAffiliationComponent));
+			if (characterFactionAffiliation)
+				characterFactionAffiliation.GetOnFactionChanged().Remove(OnFactionChanged);
+		}
+
 		if (m_bIsCurrentPlayer && m_Entity)
 		{
 			SCR_VoNComponent vonComp = SCR_VoNComponent.Cast( m_Entity.FindComponent(SCR_VoNComponent) );

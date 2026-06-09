@@ -64,6 +64,9 @@ class SCR_SpawnPoint : SCR_Position
 	[Attribute("0", desc: "Additional respawn time (in seconds) when spawning on this spawn point"), RplProp()]
 	protected float m_fRespawnTime;
 	
+	[Attribute("0", desc: "Spawn directly in the location of the spawnpoint, ignoring any checks")]
+	protected bool m_bForcedPosition;
+
 	[Attribute("0", desc: "Spawn at a random place on the map")]
 	protected bool m_bRandomizedSpawn;
 	
@@ -372,6 +375,13 @@ class SCR_SpawnPoint : SCR_Position
 	{
 		if (m_bRandomizedSpawn && GetRandomPositionAndRotation(pos,rot))
 			return;
+
+		if (m_bForcedPosition)
+		{
+			pos = GetOrigin();
+			rot = GetAngles();
+			return;
+		}
 
 		if (m_bUseNearbySpawnPositions)
 		{
