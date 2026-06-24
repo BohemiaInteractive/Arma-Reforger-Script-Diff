@@ -612,9 +612,14 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnEntityCoreBudgetUpdated(EEditableEntityBudget entityBudget, int originalBudgetValue, int budgetChange, int updatedBudgetValue)
 	{
+		IEntity owner = GetOwner();
+		if (!owner || owner.IsDeleted())
+			return;
+
 		int maxBudgetValue;
 		if (!GetMaxBudgetValue(entityBudget, maxBudgetValue))
-			return;	
+			return;
+
 		bool budgetMaxReached;
 		bool sendBudgetMaxEvent = CheckMaxBudgetReached(entityBudget, budgetChange, originalBudgetValue, updatedBudgetValue, maxBudgetValue, budgetMaxReached);
 		/*if (!IsOwner())*/

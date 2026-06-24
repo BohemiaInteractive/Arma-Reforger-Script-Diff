@@ -103,9 +103,9 @@ class SCR_MapRadialUI : SCR_MapUIBaseComponent
 	//------------------------------------------------------------------------------------------------
 	//! SCR_RadialMenuController event
 	//! \param[in] controller
-	protected void InputOpenMenu(SCR_RadialMenuController controller)
+	protected void InputOpenMenu(SCR_RadialMenuController controller, bool hasControl)
 	{		
-		if (!controller.HasControl())
+		if (!hasControl)
 		{
 			m_RadialController.Control(m_MapEntity, m_RadialMenu);
 			
@@ -145,7 +145,7 @@ class SCR_MapRadialUI : SCR_MapUIBaseComponent
 	//------------------------------------------------------------------------------------------------
 	//! SCR_RadialMenuController event
 	//! \param[in] controller
-	protected void OnControllerChanged(SCR_RadialMenuController controller)
+	protected void OnControllerChanged(SCR_RadialMenuController controller, bool hasControl)
 	{
 		m_RadialMenu = m_RadialController.GetRadialMenu();
 		m_RadialMenu.GetOnSelect().Remove(OnEntrySelected);
@@ -327,7 +327,7 @@ class SCR_MapRadialUI : SCR_MapUIBaseComponent
 			if (m_RadialMenu.IsOpened())	// close event is unregistered below so close manually here
 				CloseMenu();
 			
-			OnControllerChanged(null);
+			OnControllerChanged(null, false);
 			m_RadialController.StopControl(true);
 		}
 				

@@ -30,6 +30,7 @@ class SCR_BasePreviewEntry
 	float m_fHeightTerrain;
 	IEntity m_Entity;
 	IEntitySource m_EntitySource;
+	ref Resource m_Resource;
 	
 	/*!
 	Save scale of entity within vector scale

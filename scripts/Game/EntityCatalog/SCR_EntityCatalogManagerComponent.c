@@ -315,7 +315,7 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 	}
 		
 	//======================================== SPAWNER ========================================\\
-		//--------------------------------- Get List of valid prefabs for spawner ---------------------------------\\
+	//--------------------------------- Get List of valid prefabs for spawner ---------------------------------\\
 	/*!
 	Get all prefabs that have the spawner data, the given labels and are valid in the editor mode for all factions
 	\param catalogType Type to catalog to get prefabs from
@@ -360,6 +360,7 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 	
 		array<ResourceName> filteredPrefabsOfFaction = {};
 		SCR_Faction scrFaction;
+		set<ResourceName> uniquePrefabs();
 		
 		//~ Get filtered prefabs of each faction
 		foreach (Faction faction : factions)
@@ -369,16 +370,40 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 				continue;
 			
 			GetFilteredEditorPrefabs(catalogType, editorMode, scrFaction, filteredPrefabsOfFaction, includedLabels, excludedLabels, needsAllIncludedLabels);
-			filteredPrefabsList.InsertAll(filteredPrefabsOfFaction);
+			foreach (ResourceName prefab : filteredPrefabsOfFaction)
+			{
+				if (uniquePrefabs.Insert(prefab))
+				{
+					filteredPrefabsList.Insert(prefab);
+				}
+				else
+				{
+#ifdef ENABLE_DIAG
+					PrintFormat("SCR_EntityCatalogManagerComponent.GetFilteredEditorPrefabsOfAllFactions: Detected that %1 is present in at least two different faction entity catalogs! Since this may cause issues, such as dupliacted entries in build mode, one of them will be discarded! This is only supported for items. Other things require creation of faction specific variants.", SCR_FileIOHelper.GetShortResourceName(prefab), level: LogLevel.WARNING);
+#endif
+				}
+			}
 		}
 		
 		//~ Get filtered prefabs of factionless entries
 		if (getFactionLessPrefabs)
 		{
 			GetFilteredEditorPrefabs(catalogType, editorMode, null, filteredPrefabsOfFaction, includedLabels, excludedLabels, needsAllIncludedLabels);
-			filteredPrefabsList.InsertAll(filteredPrefabsOfFaction);
+			foreach (ResourceName prefab : filteredPrefabsOfFaction)
+			{
+				if (uniquePrefabs.Insert(prefab))
+				{
+					filteredPrefabsList.Insert(prefab)
+				}
+				else
+				{
+#ifdef ENABLE_DIAG
+					PrintFormat("SCR_EntityCatalogManagerComponent.GetFilteredEditorPrefabsOfAllFactions: Detected that %1 is present more than once in ! Since this may cause issues, such as dupliacted entries in build mode, one of them will be discarded! This is only supported for items. Other things require creation of faction specific variants.", SCR_FileIOHelper.GetShortResourceName(prefab), level: LogLevel.WARNING);
+#endif
+				}
+			}
 		}
-		
+
 		return filteredPrefabsList.Count();
 	}
 	
@@ -416,6 +441,7 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 		catalog.GetFullFilteredEntityList(filteredEntityList, includedLabels, excludedLabels, filterClassArray, needsAllIncludedLabels: needsAllIncludedLabels);
 		
 		SCR_EntityCatalogEditorData editorData;
+		set<ResourceName> uniquePrefabs();
 		
 		//~ Get all valid prefabs for mode
 		foreach (SCR_EntityCatalogEntry entry : filteredEntityList)
@@ -425,11 +451,22 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 			//~ Ignore entries not valid in current editor mode
 			if (!editorData.IsValidInEditorMode(editorMode))
 				continue;
-		
+
+			ResourceName prefab = entry.GetPrefab();
+
 			//~ Add the prefab to the array
-			filteredPrefabsList.Insert(entry.GetPrefab());
+			if (uniquePrefabs.Insert(prefab))
+			{
+				filteredPrefabsList.Insert(prefab);
+			}
+			else
+			{
+#ifdef ENABLE_DIAG
+				PrintFormat("SCR_EntityCatalogManagerComponent.GetFilteredEditorPrefabs: Detected that %1 is present in at least two different faction entity catalogs! Since this may cause issues, such as dupliacted entries in build mode, one of them will be discarded! This is only supported for items. Other things require creation of faction specific variants.", SCR_FileIOHelper.GetShortResourceName(entry.GetPrefab()), level: LogLevel.WARNING);
+#endif
+			}
 		}
-		
+
 		return filteredPrefabsList.Count();
 	}
 	

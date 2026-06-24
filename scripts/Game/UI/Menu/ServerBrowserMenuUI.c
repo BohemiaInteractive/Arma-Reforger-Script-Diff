@@ -119,6 +119,8 @@ class ServerBrowserMenuUI : MenuRootBase
 	
 	protected int m_iSelectedTab = 0;
 	
+	protected bool m_WaitingForModContent = false;
+	
 	//------------------------------------------------------------------------------------------------
 	// --- OVERRIDES ---
 	//------------------------------------------------------------------------------------------------
@@ -943,6 +945,9 @@ class ServerBrowserMenuUI : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void ReceiveRoomContent(notnull Room room, bool receiveMods)
 	{
+		if (m_WaitingForModContent)
+			return;
+		
 		GetGame().GetCallqueue().Remove(ReceiveRoomContent_Mods);
 		
 		if (m_ServerScenarioDetails)
@@ -970,6 +975,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		{
 			// Load mods after short delay - to prevent spamming mods receive request with fast server selecting
 			GetGame().GetCallqueue().CallLater(ReceiveRoomContent_Mods, ROOM_CONTENT_LOAD_DELAY, false, room);
+			m_WaitingForModContent = true;
 		}		
 	}
 
@@ -993,6 +999,8 @@ class ServerBrowserMenuUI : MenuRootBase
 
 		m_ModsManager.GetOnGetAllDependencies().Insert(OnLoadingDependencyList);
 		m_ModsManager.ReceiveRoomMods(room);
+		
+		m_WaitingForModContent = false;
 	}
 	
 	//------------------------------------------------------------------------------------------------

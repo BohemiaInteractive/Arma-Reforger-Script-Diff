@@ -147,7 +147,7 @@ class SCR_VONMenu
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_RadialMenuController event
-	protected void OnInputOpenMenu(SCR_RadialMenuController controller)
+	protected void OnInputOpenMenu(SCR_RadialMenuController controller, bool hasControl)
 	{
 		/*if (!m_RadialMenu.HasDisplay())	// TODO currently has to be called after control, sequencing needs adjusting
 		{
@@ -156,7 +156,7 @@ class SCR_VONMenu
 			m_RadialMenu.SetMenuDisplay(m_Display);
 		}*/
 		
-		if (!controller.HasControl() && !m_bIsDisabled)	
+		if (!hasControl && !m_bIsDisabled)	
 		{
 			m_RadialController.Control(GetGame().GetPlayerController(), m_RadialMenu);
 			
@@ -219,7 +219,7 @@ class SCR_VONMenu
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_RadialMenuController event
-	protected void OnControllerChanged(SCR_RadialMenuController controller)
+	protected void OnControllerChanged(SCR_RadialMenuController controller, bool hasControl)
 	{
 		m_RadialMenu.GetOnPerform().Remove(OnEntryPerformed);
 		m_RadialMenu.GetOnSelect().Remove(OnEntrySelected);

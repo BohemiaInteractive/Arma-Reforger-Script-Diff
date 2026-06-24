@@ -6,6 +6,10 @@ It finds global menu, holds controller settings and data required for menu
 void ScriptInvoker_RadialMenuEventMethod(SCR_RadialMenuController radialMenuController);
 typedef func ScriptInvoker_RadialMenuEventMethod;
 typedef ScriptInvokerBase<ScriptInvoker_RadialMenuEventMethod> ScriptInvoker_RadialMenuEvent;
+
+void ScriptInvoker_ControlledRadialMenuEventMethod(SCR_RadialMenuController radialMenuController, bool hasControl);
+typedef func ScriptInvoker_ControlledRadialMenuEventMethod;
+typedef ScriptInvokerBase<ScriptInvoker_ControlledRadialMenuEventMethod> ScriptInvoker_ControlledRadialMenuEvent;
 //------------------------------------------------------------------------------------------------
 [BaseContainerProps(configRoot: true)]
 class SCR_RadialMenuController
@@ -25,24 +29,24 @@ class SCR_RadialMenuController
 	
 	// Callbacks
 	//protected ref ScriptInvoker<SCR_RadialMenuController> m_OnBeforeOpen;
-	protected ref ScriptInvoker_RadialMenuEvent m_OnInputOpen;
+	protected ref ScriptInvoker_ControlledRadialMenuEvent m_OnInputOpen;
 	protected ref ScriptInvoker_RadialMenuEvent m_OnTakeControl;
-	protected ref ScriptInvoker_RadialMenuEvent m_OnControllerChanged;
+	protected ref ScriptInvoker_ControlledRadialMenuEvent m_OnControllerChanged;
 	
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker_RadialMenuEvent GetOnInputOpen()
+	ScriptInvoker_ControlledRadialMenuEvent GetOnInputOpen()
 	{
 		if (!m_OnInputOpen)
-			m_OnInputOpen = new ScriptInvoker_RadialMenuEvent();
+			m_OnInputOpen = new ScriptInvoker_ControlledRadialMenuEvent();
 
 		return m_OnInputOpen;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void InvokeOnInputOpen()
+	protected void InvokeOnInputOpen(bool hasControl)
 	{
 		if (m_OnInputOpen)
-			m_OnInputOpen.Invoke(this);
+			m_OnInputOpen.Invoke(this, hasControl);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -62,17 +66,17 @@ class SCR_RadialMenuController
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void InvokeOnControllerChanged()
+	protected void InvokeOnControllerChanged(bool hasControl)
 	{
 		if (m_OnControllerChanged)
-			m_OnControllerChanged.Invoke(this);
+			m_OnControllerChanged.Invoke(this, hasControl);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker_RadialMenuEvent GetOnControllerChanged()
+	ScriptInvoker_ControlledRadialMenuEvent GetOnControllerChanged()
 	{
 		if (!m_OnControllerChanged)
-			m_OnControllerChanged = new ScriptInvoker_RadialMenuEvent();
+			m_OnControllerChanged = new ScriptInvoker_ControlledRadialMenuEvent();
 
 		return m_OnControllerChanged;
 	}
@@ -139,13 +143,14 @@ class SCR_RadialMenuController
 	
 	//------------------------------------------------------------------------------------------------
 	void OnInputOpen()
-	{	
-		InvokeOnInputOpen();
+	{
+		bool hasControl = HasControl(); // get state for potentially old controller
+		InvokeOnInputOpen(hasControl);
 		
 		if (!m_sEnableControl)
 			return;
 		
-		if (!HasControl())
+		if (!HasControl()) // get the most up to date state
 			Control(m_Owner, m_RadialMenuToControl);
 		
 		// Check owner character concious state
@@ -183,7 +188,7 @@ class SCR_RadialMenuController
 			menu.ClearEntries();
 			
 			m_RadialMenu.Close();
-			InvokeOnControllerChanged();
+			InvokeOnControllerChanged(false);
 			
 			StopControl();
 		}

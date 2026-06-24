@@ -476,6 +476,15 @@ class SCR_FileIOHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Strips the resource name of the path while preserving the GUID and file name
+	//! \param[in] resourceName
+	//! \return {GUID}FileName.Extension
+	static string GetShortResourceName(ResourceName rn)
+	{
+		return rn.Substring(0, rn.IndexOf("}") + 1) + FilePath.StripPath(rn.GetPath());
+	}
+
+	//------------------------------------------------------------------------------------------------
 	// constructor
 	protected void SCR_FileIOHelper();
 }

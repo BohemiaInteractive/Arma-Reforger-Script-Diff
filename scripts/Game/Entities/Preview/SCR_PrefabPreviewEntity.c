@@ -426,6 +426,7 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 				groupMemberSource = SCR_BaseContainerTools.FindEntitySource(resource);
 				groupMemberEntry = new SCR_BasePreviewEntry(true);
 				groupMemberEntry.m_vPosition = groupOffsets[i];
+				groupMemberEntry.m_Resource = resource;
 				GetPreviewEntries(groupMemberSource, outEntries, parentID, groupMemberEntry);
 			}
 		}
@@ -461,6 +462,7 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 			return;
 		
 		SCR_BasePreviewEntry entry = new SCR_BasePreviewEntry(true);
+		entry.m_Resource = resource;
 		slotSource.Get("Offset", entry.m_vPosition);
 		slotSource.Get("Angles", entry.m_vAngles);
 		slotSource.Get("PivotID", entry.m_iPivotID);
@@ -475,6 +477,7 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 			return;
 		
 		SCR_BasePreviewEntry entry = new SCR_BasePreviewEntry(true);
+		entry.m_Resource = resource;
 		entry.m_vPosition = link.m_vPosition;
 		entry.m_vAngles = link.m_vAngles;
 		entry.SetScale(link.m_fScale);

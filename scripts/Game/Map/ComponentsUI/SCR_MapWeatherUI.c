@@ -12,6 +12,9 @@ class SCR_MapWeatherUI : SCR_MapUIBaseComponent
 	[Attribute(defvalue: "40 0 0", desc: "Position offset of the layout from the position of the button[px]", params: "0 inf")]
 	protected vector m_vPositionOffset;
 
+	[Attribute("MapWeatherFrame", desc: "Map Weather root widget name")]
+	protected string m_sMapWeatherFrame;
+
 	protected const ResourceName ICON = "{857DD01860810AE9}UI/Textures/Editor/Attributes/Categories/Attribute_Category_Weather.edds";
 	protected const ResourceName LAYOUT = "{E360A5329459869F}UI/layouts/Menus/DeployMenu/MapWeatherData.layout";
 	protected const string LABEL_DIRECTION = "#AR-MapInfo_WeatherData_WindDirection";
@@ -25,6 +28,7 @@ class SCR_MapWeatherUI : SCR_MapUIBaseComponent
 	protected bool m_bLastAutomaticWindState;
 	protected float m_fLastWindSpeed;
 	protected float m_fLastWindDirection;
+	protected Widget m_wMapWeatherFrame;
 	protected Widget m_wWeatherDataRoot;
 	protected Widget m_wWindOverrideInfo;
 	protected Widget m_wWeatherOverrideInfo;
@@ -59,19 +63,25 @@ class SCR_MapWeatherUI : SCR_MapUIBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Changes the position of the layout to be next to the weather button, but not outside of the viewable area
+	//! Changes the Y position of the layout to be next to the weather button
 	protected void UpdateLayoutPosition()
 	{
-		if (!m_ToolMenuEntry || !m_ToolMenuEntry.m_ButtonComp || !m_ToolMenuEntry.m_ButtonComp.m_wBorder)
+		if (!m_ToolMenuEntry || !m_ToolMenuEntry.m_ButtonComp)
 			return;
 
-		float screenX, screenY, width, height, buttonPosX, buttonPosY;
-		m_RootWidget.GetScreenSize(screenX, screenY);
-		m_wWeatherDataRoot.GetChildren().GetScreenSize(width, height);
-		m_ToolMenuEntry.m_ButtonComp.m_wBorder.GetScreenPos(buttonPosX, buttonPosY);
-		float posX = Math.Min(buttonPosX + m_vPositionOffset[0], screenX - width - m_vPositionOffset[0]);
-		float posY = Math.Min(buttonPosY + m_vPositionOffset[1], screenY - height - m_vPositionOffset[1]);
-		FrameSlot.SetPos(m_wWeatherDataRoot, posX, posY);
+		Widget toolButton = m_ToolMenuEntry.m_ButtonComp.GetRootWidget();
+		if (!toolButton)
+			return;
+		
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
+		if (!workspace)
+			return;
+
+		float buttonPosX, buttonPosY, buttonSizeX, buttonSizeY;
+		toolButton.GetScreenPos(buttonPosX, buttonPosY);
+		toolButton.GetScreenSize(buttonSizeX, buttonSizeY);
+		
+		FrameSlot.SetPosY(m_wWeatherDataRoot, workspace.DPIUnscale(buttonPosY - buttonSizeY + m_vPositionOffset[1]));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -258,7 +268,11 @@ class SCR_MapWeatherUI : SCR_MapUIBaseComponent
 	//------------------------------------------------------------------------------------------------
 	protected bool CreateLayout()
 	{
-		m_wWeatherDataRoot = GetGame().GetWorkspace().CreateWidgets(LAYOUT, m_RootWidget);
+		m_wMapWeatherFrame = m_RootWidget.FindAnyWidget(m_sMapWeatherFrame);
+		if (!m_wMapWeatherFrame)
+			return false;
+
+		m_wWeatherDataRoot = GetGame().GetWorkspace().CreateWidgets(LAYOUT, m_wMapWeatherFrame);
 		if (!m_wWeatherDataRoot)
 			return false;
 

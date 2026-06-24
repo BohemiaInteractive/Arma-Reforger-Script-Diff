@@ -922,7 +922,7 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_RadialMenuController event
-	protected void OnRadialMenuOpen(SCR_RadialMenuController controller)
+	protected void OnRadialMenuOpen(SCR_RadialMenuController controller, bool hasControl)
 	{		
 		SCR_MapRadialUI radialUI = SCR_MapRadialUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapRadialUI));
 		if (m_MarkerRemoveEntry)

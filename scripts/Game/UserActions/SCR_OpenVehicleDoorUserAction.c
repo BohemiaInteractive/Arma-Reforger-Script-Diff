@@ -32,6 +32,10 @@ class SCR_OpenVehicleDoorUserAction : VehicleDoorUserAction
 		ChimeraCharacter character = ChimeraCharacter.Cast(pUserEntity);
 		if (!character)
 			return;
+
+		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+		if (controller && controller.IsLoitering())
+			return;
 		
 		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
 		if (!compartmentAccess)
@@ -67,6 +71,10 @@ class SCR_OpenVehicleDoorUserAction : VehicleDoorUserAction
 		IEntity owner = GetOwner();//no null check here as it was already done in CanBeShownScript
 		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(user);
 		if (!character)
+			return false;
+
+		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+		if (controller && controller.IsLoitering())
 			return false;
 
 		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();

@@ -799,14 +799,10 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	*/
 	SCR_EditableEntityUIInfo GetInfo(int index)
 	{
-		if (m_aInfos && index >= 0 && index < m_aInfos.Count())
-		{
+		if (m_aInfos && m_aInfos.IsIndexValid(index))
 			return m_aInfos[index];
-		}
-		else
-		{
-			return null;
-		}
+
+		return null;
 	}
 
 	/*!

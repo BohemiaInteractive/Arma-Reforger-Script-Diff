@@ -172,9 +172,9 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//!
-	protected void OnControllerLostControl(SCR_RadialMenuController controller)
+	protected void OnControllerLostControl(SCR_RadialMenuController controller, bool hasControl)
 	{
-		if (!controller.HasControl())
+		if (!hasControl)
 			RemoveListenersFromRadial();
 	}
 
