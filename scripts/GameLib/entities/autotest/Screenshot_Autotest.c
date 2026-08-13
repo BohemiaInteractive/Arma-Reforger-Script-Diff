@@ -113,7 +113,7 @@ class Screenshot_Autotest: GenericEntity
 
 	override void EOnInit(IEntity owner) //!EntityEvent.INIT
 	{
-		m_camera = g_Game.FindEntity(m_cameraEntityName);
+		m_camera = GetWorld().FindEntityByName(m_cameraEntityName);
 		m_waypoint = Screenshot_Waypoint.Cast(GetChildren());
 
 		if (!m_camera)

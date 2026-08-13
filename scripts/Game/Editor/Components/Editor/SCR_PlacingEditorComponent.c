@@ -1183,7 +1183,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	*/
 	bool SetSelectedPrefab(ResourceName prefab = "", bool onConfirm = false, bool showBudgetMaxNotification = true, set<SCR_EditableEntityComponent> recipients = null, SCR_BaseEditorAction sourceAction = null)
 	{
-		if (prefab == m_SelectedPrefab) return true;
+		if (prefab == m_SelectedPrefab && (prefab.IsEmpty() || m_StatesManager.GetState() == EEditorState.PLACING)) return true;
 
 		//--- Check if entity is within budget
 		EEditableEntityBudget blockingBudget;

@@ -6,6 +6,84 @@ Provides integration with test specific logger for improved output.
 [BaseContainerProps(category: "Autotest")]
 class SCR_AutotestSuiteBase : TestSuite
 {
+	ref array<ref SCR_AutotestCaseBase> m_aTests = {};
+
+	//! Returns an array of ALL test cases that belong to this test suite
+	//! Internally calls GetTestCases(null)
+	[Friend(SCR_AutotestHarness)]
+	protected array<ref SCR_AutotestCaseBase> GetAllTestCases()
+	{
+		return GetTestCases(null);
+	}
+	
+	//! Returns an array of test cases such that 
+	//! they belong to this test suite AND are present in the [specifiedTests] array
+	//! Returns ALL test cases if the [specifiedTests] is NULL. 
+	[Friend(SCR_AutotestHarness)]
+	protected array<ref SCR_AutotestCaseBase> GetTestCases(array<typename> specificTests)
+	{
+		array<typename> testTypes = {};
+		TestHarness.GetTestTypes(testTypes);
+		
+		array<ref SCR_AutotestCaseBase> tests = {};
+
+		array<ref SCR_AutotestParamData> suiteParams = CreateParams();
+	
+		foreach(typename testType : testTypes)
+		{
+			Test testAttr = SCR_AutotestCaseBase.GetTestAttribute(testType);
+			if (!testAttr)
+				continue;
+	
+			typename suiteType = testAttr.Suite;
+			if (!suiteType)
+				continue;
+			
+			if (suiteType != Type())
+				continue;
+			
+			if (specificTests && !specificTests.Contains(testType))
+				continue;
+			
+			bool paramsValid = suiteParams && !suiteParams.IsEmpty();
+			if (SCR_AutotestCaseBase.IsParameterized(testType) && paramsValid)
+			{
+				foreach (int idx, SCR_AutotestParamData suiteParam : suiteParams)
+				{
+					SCR_AutotestCaseBase testWithParams = SCR_AutotestCaseBase.Cast(testType.Spawn());
+					testWithParams.SetParamsInternal(suiteParam.WithIdx(idx));
+					tests.Insert(testWithParams);
+				}
+			}
+			else
+			{
+				SCR_AutotestCaseBase test = SCR_AutotestCaseBase.Cast(testType.Spawn());
+				tests.Insert(test);
+			}
+		}
+		
+		return tests;
+	}
+	
+	//! This method must return an array of container classes that inherit from SCR_AutotestParamData. 
+	//! Each container is one set of parameters to run your tests with.
+	array<ref SCR_AutotestParamData> CreateParams();
+	
+	// TODO(maciejewskifil) refactor
+	[Friend(SCR_AutotestHarness)]
+	protected void AddTest(notnull SCR_AutotestCaseBase test)
+	{
+		test.SetSuite(this);
+		m_aTests.Insert(test);
+		super.AddTest(test);
+	}
+	
+	// TODO(maciejewskifil) refactor
+	array<ref SCR_AutotestCaseBase> GetTestCaseInstances()
+	{
+		return m_aTests;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Override in your user test suites to specify the world the test will run in.
 	ResourceName GetWorldFile()
@@ -40,7 +118,7 @@ class SCR_AutotestSuiteBase : TestSuite
 
 	//------------------------------------------------------------------------------------------------
 	//! Log "opening" part of the test suite output.
-	[Step(EStage.Setup)]
+	[TestStep(TestStage.Setup)]
 	private void Setup_PrintPrelude()
 	{
 		SCR_AutotestHarness.GetLogger().PrintTestSuitePrelude(this);
@@ -48,7 +126,7 @@ class SCR_AutotestSuiteBase : TestSuite
 
 	//------------------------------------------------------------------------------------------------
 	//! Open world requested by this test suite.
-	[Step(EStage.Setup)]
+	[TestStep(TestStage.Setup)]
 	private void Setup_OpenWorld()
 	{
 		ResourceName world = GetWorldFile();
@@ -58,13 +136,13 @@ class SCR_AutotestSuiteBase : TestSuite
 			string failure = string.Format("Failed to load world: %1, %2", world, systemsConfig);
 			SCR_AutotestHarness.GetLogger().Log(failure, level: LogLevel.ERROR);
 
-			SetResult(SCR_AutotestResult.AsFailure(failure));
+			SetFailure(SCR_AutotestFailure.Create(failure));
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Waits for the world to load.
-	[Step(EStage.Setup)]
+	[TestStep(TestStage.Setup)]
 	private bool Setup_AwaitWorld()
 	{
 		return !GameStateTransitions.IsTransitionRequestedOrInProgress();
@@ -72,15 +150,31 @@ class SCR_AutotestSuiteBase : TestSuite
 
 	//------------------------------------------------------------------------------------------------
 	//! Close all menus that could interfere with the test suite.
-	[Step(EStage.Setup)]
+	[TestStep(TestStage.Setup)]
 	private void Setup_CloseMenus()
 	{
 		GetGame().GetMenuManager().CloseAllMenus();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set time multiplier.
+	[TestStep(TestStage.Setup)]
+	private void Setup_SetTimeMultiplier()
+	{
+		SCR_AutotestHelper.WorldSetTimeCoef(SCR_AutotestHarness.GetWorldTimeCoef());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Reset time multiplier.
+	[TestStep(TestStage.TearDown)]
+	private void TearDown_ResetTimeMultiplier()
+	{
+		SCR_AutotestHelper.WorldSetTimeCoef(1);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Log "closing" part of the test suite output.
-	[Step(EStage.TearDown)]
+	[TestStep(TestStage.TearDown)]
 	private void TearDown_PrintEpilogue()
 	{
 		SCR_AutotestHarness.GetLogger().PrintTestSuiteEpilogue(this);

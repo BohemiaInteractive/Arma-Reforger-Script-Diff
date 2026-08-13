@@ -23,11 +23,11 @@ enum EAIDebugCategory
 class SCR_AIWorld : ChimeraAIWorld
 {
 	static const float MAX_NAVMESH_REBUILD_SIZE = 100 * 100; //--- Squared value
-	
+
 	static ref ScriptInvoker s_OnAgentSpawned = new ScriptInvoker();
 	static ref ScriptInvoker s_OnAgentRemoved = new ScriptInvoker();
 	static bool s_bDiagRegistered;
-	
+
 	[Attribute("", UIWidgets.Object)]
 	ref array<ref SCR_AIMessageGoal> m_aGoalMessages;
 	ref array<ref SCR_AIMessageGoal> m_aGoalMessagesPacked = new array<ref SCR_AIMessageGoal>();
@@ -203,7 +203,7 @@ class SCR_AIWorld : ChimeraAIWorld
 	{
 		s_OnAgentRemoved.Invoke(agent);
 	}
-	
+
 	//----------Used for translating enum to message type, confirugable in editor---------------------
 	typename GetGoalMessageOfType(EMessageType_Goal eventType)
 	{

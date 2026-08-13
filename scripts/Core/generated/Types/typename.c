@@ -26,8 +26,8 @@ sealed class typename
 	proto external string ToString();
 	/*!
 	Returns true when type is the same as 'baseType', or inherited one.
-	\param baseType typename
-	\returns \p bool true when type is the same as 'baseType', or inherited one.
+	\param baseType base typename
+	\return true when type is the same as 'baseType', or inherited one.
 	*/
 	proto external bool IsInherited(typename baseType);
 	/*!
@@ -96,6 +96,20 @@ sealed class typename
 	\endcode
 	*/
 	proto external void GetAttributes(out notnull array<Class> attributes);
+	/*!
+	Fill \p inheritedTypes with all types in the inheritance chain of this typename.
+	\param inheritedTypes Output array populated with the inherited types.
+	\code
+		array<typename> types = {};
+		typename base = Widget;
+		base.GetInheritedTypes(types);
+		foreach (typename t: types)
+		{
+			Print(t);
+		}
+	\endcode
+	*/
+	proto external void GetInheritedTypes(out notnull array<typename> inheritedTypes);
 	/*!
 	Return string name of enum value.
 	\code

@@ -52,7 +52,7 @@ sealed class ContainerID: array<ref ContainerIdPathEntry>
 
 	\note Use this method only when editing outside WorldEditor. In WorldEditor, when editing entities or components, just pass ContainerID to WorldEditorAPI.SetVariableValue and let undo stack to do the job.
 
-	Let's have an example container from \ref ContainerID
+	Let's have an example container from ContainerID
 	To set a Name in Metadata of the second shape point, we do:
 	\code
 		BaseContainer rootContainer = LoadMe(); // the root container point to "Shape"

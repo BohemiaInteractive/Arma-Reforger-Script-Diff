@@ -18,7 +18,7 @@ to provider events using ConnectEvent.
 
 Methods must have a signature compatible with the associated event.
 
-\see \ref Page_EventSystem
+\see Page_EventSystem
 */
 class ReceiverAttribute: UniqueAttribute
 {

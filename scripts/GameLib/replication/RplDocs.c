@@ -1,18 +1,13 @@
 /*!
-\defgroup Replication Replication
-\addtogroup Replication
-\{
-1. \ref Page_Replication_Overview
-2. \ref Page_Replication_RplNode
-3. \ref Page_Replication_EntitiesAndComponents
-4. \ref Page_Replication_LoadtimeAndRuntime
-\}
-*/
-
-/*!
-\page Page_Replication_Overview %Replication overview
+\page Page_Replication Replication
 
 \tableofcontents
+
+| Pages |
+|-------|
+| \subpage Page_Replication_RplNode |
+| \subpage Page_Replication_EntitiesAndComponents |
+| \subpage Page_Replication_LoadtimeAndRuntime |
 
 \section RplDocs_Introduction Introduction
 Gameplay networking in the Enfusion engine is based client-server architecture

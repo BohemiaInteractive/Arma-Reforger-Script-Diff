@@ -7,6 +7,17 @@ enum ELoiterCommandState // TODO: SCR_
 
 class SCR_CharacterCommandLoiter : CharacterCommandScripted
 {
+	protected CharacterAnimationComponent m_pCharAnimComponent;
+	protected ChimeraCharacter m_pCharacter;
+	protected CharacterInputContext m_pBaseInputCtx;
+	protected SCR_ScriptedCharacterInputContext m_pScrInputCtx;
+	protected SCR_ScriptedCommandsStaticTable m_pStaticTable;
+	protected SCR_CharacterCommandHandlerComponent m_pCommandHandler;
+	protected ref SCR_LoiterCustomAnimData m_customAnimData;
+		
+	protected ELoiterCommandState m_eState;
+	protected bool m_bWasTag;
+	
 	//------------------------------------------------------------------------------------------------
 	// constructor
 	void SCR_CharacterCommandLoiter(BaseAnimPhysComponent pAnimPhysComponent, ChimeraCharacter pCharacter, CharacterInputContext pBaseInputCtx, 
@@ -19,7 +30,7 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 		m_pScrInputCtx = pScrInputCtx;
 		m_pStaticTable = pStaticTable;
 		m_pCommandHandler = pScrCommandHandler;
-		m_customAnimData = customAnimData;
+		m_customAnimData = SCR_LoiterCustomAnimData.Cast(customAnimData.Clone());
 	}
 	//------------------------------------------------------------------------------------------------
 	SCR_ScriptedCharacterInputContext GetScriptedInputContext()
@@ -38,11 +49,14 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 			return;
 		}
 		
-		if (m_customAnimData.m_GraphBindingName != string.Empty && m_customAnimData.m_GraphName != string.Empty)
+		if (m_customAnimData)
 		{
-			PreAnim_SetAttachment(m_customAnimData.m_GraphBindingName, m_customAnimData.m_GraphName, m_customAnimData.m_GraphInstanceName, "MasterControl");
+			if (m_customAnimData.m_sGraphBindingName != string.Empty && m_customAnimData.m_sGraphName != string.Empty)
+				PreAnim_SetAttachment(m_customAnimData.m_sGraphBindingName, m_customAnimData.m_sGraphName, m_customAnimData.m_sGraphInstanceName, "MasterControl");
+			
+			m_customAnimData.SpawnItem(m_pCharacter);
 		}
-		
+
 		SwitchState(ELoiterCommandState.LOITERING);
 	}
 
@@ -77,9 +91,12 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 		// If loitering was terminated without properly releasing the ownership of the loiter action, do it now
 		FreeOccupiedActions();
 		
-		if (m_customAnimData && m_customAnimData.m_CustomCommand != -1 && m_customAnimData.m_GraphName != string.Empty)
+		if (m_customAnimData)
 		{
-			PreAnim_SetAttachment(m_customAnimData.m_GraphBindingName, string.Empty, string.Empty, string.Empty);
+			if (m_customAnimData.m_iCommandBindID != -1 && m_customAnimData.m_sGraphName != string.Empty)
+				PreAnim_SetAttachment(m_customAnimData.m_sGraphBindingName, string.Empty, string.Empty, string.Empty);
+
+			m_customAnimData.DeleteItem();
 		}
 	}
 	
@@ -147,8 +164,12 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 	void SwitchState(ELoiterCommandState newState)
 	{
 		TAnimGraphCommand customCommand = -1;
+		int customCommandValue = -1;
 		if (m_customAnimData)
-			customCommand = m_customAnimData.m_CustomCommand;
+		{
+			customCommand = m_customAnimData.m_iCommandBindID;
+			customCommandValue = m_customAnimData.m_iCommandValue;
+		}
 		
 		switch (newState)
 		{
@@ -156,7 +177,7 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 			{
 				m_bWasTag = false;
 				if (customCommand != -1)
-					m_pCharAnimComponent.CallCommand4I(customCommand, 0, m_pScrInputCtx.m_iLoiteringType, 0, 0, 0.0);
+					m_pCharAnimComponent.CallCommand4I(customCommand, 0, customCommandValue, 0, 0, 0.0);
 				else
 					m_pCharAnimComponent.CallCommand4I(m_pStaticTable.m_CommandGesture, 0, m_pScrInputCtx.m_iLoiteringType, 0, 0, 0.0);
 			}
@@ -165,6 +186,8 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 			{
 				if (customCommand == -1)
 					m_pCharAnimComponent.CallCommand(m_pStaticTable.m_CommandGesture, -1, 0.0); // -1 is soft exit.
+				else
+					m_pCharAnimComponent.CallCommand(customCommand, customCommandValue, 0.0);
 			}
 			break;
 		}
@@ -184,114 +207,5 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 	{
 		SetFlagFinished(true);
 		m_pScrInputCtx.m_iLoiteringType = -1;
-	}
-
-	protected CharacterAnimationComponent m_pCharAnimComponent;
-	protected ChimeraCharacter m_pCharacter;
-	protected CharacterInputContext m_pBaseInputCtx;
-	protected SCR_ScriptedCharacterInputContext m_pScrInputCtx;
-	protected SCR_ScriptedCommandsStaticTable m_pStaticTable;
-	protected SCR_CharacterCommandHandlerComponent m_pCommandHandler;
-	protected SCR_LoiterCustomAnimData m_customAnimData;
-		
-	protected ELoiterCommandState m_eState;
-	protected bool m_bWasTag;
-}
-
-class SCR_LoiterCustomAnimData
-{
-	const static string BINDING_NAME_NPC = "NPC";
-	TAnimGraphCommand m_CustomCommand = -1; 
-	string m_GraphName = string.Empty;
-	string m_GraphInstanceName = string.Empty;	
-	string m_GraphBindingName = BINDING_NAME_NPC;
-	
-	const static ref SCR_LoiterCustomAnimData Default = new SCR_LoiterCustomAnimData();
-	
-	//------------------------------------------------------------------------------------------------
-	void SCR_LoiterCustomAnimData()
-	{}
-	
-	//------------------------------------------------------------------------------------------------
-	bool IsDefault()
-	{
-		return m_CustomCommand == -1 && m_GraphName.IsEmpty() && m_GraphInstanceName.IsEmpty() && m_GraphBindingName == BINDING_NAME_NPC;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void OnRplLoad(ScriptBitReader r)
-	{
-		int cmdInt;
-		r.ReadInt(cmdInt);
-		m_CustomCommand = cmdInt;
-		r.ReadString(m_GraphName);
-		r.ReadString(m_GraphInstanceName);
-		r.ReadString(m_GraphBindingName);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void OnRplSave(ScriptBitWriter w)
-	{
-		w.WriteInt(m_CustomCommand);
-		w.WriteString(m_GraphName);
-		w.WriteString(m_GraphInstanceName);
-		w.WriteString(m_GraphBindingName);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	static bool Extract(SCR_LoiterCustomAnimData instance, ScriptCtx ctx, SSnapSerializerBase snapshot)
-	{
-		snapshot.SerializeInt(instance.m_CustomCommand);
-		snapshot.SerializeString(instance.m_GraphName);
-		snapshot.SerializeString(instance.m_GraphInstanceName);
-		snapshot.SerializeString(instance.m_GraphBindingName);
-		return true;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	static bool Inject(SSnapSerializerBase snapshot, ScriptCtx ctx, SCR_LoiterCustomAnimData instance)
-	{
-		snapshot.SerializeInt(instance.m_CustomCommand);
-		snapshot.SerializeString(instance.m_GraphName);
-		snapshot.SerializeString(instance.m_GraphInstanceName);
-		snapshot.SerializeString(instance.m_GraphBindingName);		
-		return true;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	static void Encode(SSnapSerializerBase snapshot, ScriptCtx ctx, ScriptBitSerializer packet)
-	{
-		snapshot.EncodeInt(packet);
-		snapshot.EncodeString(packet);
-		snapshot.EncodeString(packet);
-		snapshot.EncodeString(packet);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	static bool Decode(ScriptBitSerializer packet, ScriptCtx ctx, SSnapSerializerBase snapshot)
-	{
-		snapshot.DecodeInt(packet);
-		snapshot.DecodeString(packet);
-		snapshot.DecodeString(packet);
-		snapshot.DecodeString(packet);
-		return true;
-	}
-	
-		//------------------------------------------------------------------------------------------------
-	static bool SnapCompare(SSnapSerializerBase lhs, SSnapSerializerBase rhs , ScriptCtx ctx)
-	{
-		return lhs.CompareSnapshots(rhs, 4)	
-			&& lhs.CompareStringSnapshots(rhs)
-			&& lhs.CompareStringSnapshots(rhs)
-			&& lhs.CompareStringSnapshots(rhs);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	static bool PropCompare(SCR_LoiterCustomAnimData instance, SSnapSerializerBase snapshot, ScriptCtx ctx)
-	{
-		return snapshot.CompareInt(instance.m_CustomCommand)
-			&& snapshot.CompareString(instance.m_GraphName)
-			&& snapshot.CompareString(instance.m_GraphInstanceName)
-			&& snapshot.CompareString(instance.m_GraphBindingName);
 	}
 }

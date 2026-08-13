@@ -48,7 +48,7 @@ class BaseTransceiver: ScriptAndConfig
 	/*!
 	Sets maximum transmitting range of radio.
 	Has effect only on owner (server).
-	\param range: Distance in meters. Must be > 1m otherwise 1m is used.
+	\param range Range in meters. Valid values are 1 to 65535. Values outside this range are clamped.
 	*/
 	proto external void SetRange(float range);
 	proto external BaseRadioComponent GetRadio();

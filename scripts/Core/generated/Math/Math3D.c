@@ -30,7 +30,7 @@ sealed class Math3D
 	\param radius Radius of sphere
 	\param conepos Position of top of cone
 	\param axis Orientation of cone in direction from top to bottom
-	\param angle Angle of cone in radians
+	\param angle Angle of cone in radians.
 	\return `true` when intersects
 	*/
 	static proto bool IntersectionSphereCone(vector origin, float radius, vector conepos, vector axis, float angle);
@@ -40,7 +40,7 @@ sealed class Math3D
 	\param radius Radius of sphere
 	\param conepos Position of top of cone
 	\param axis Orientation of cone in direction from top to bottom
-	\param angle Angle of cone in radians
+	\param angle Angle of cone in radians.
 	\return `true` when intersects
 	*/
 	static proto bool IntersectionWholeSphereCone(vector origin, float radius, vector conepos, vector axis, float angle);
@@ -49,7 +49,7 @@ sealed class Math3D
 	\param origin Origin of point
 	\param cylinderTip Tip of cylinder
 	\param cylinderAxis Axis of cylinder
-	\param cylinderRadius Radius of cylinder
+	\param cylinderRadius Radius of cylinder.
 	\return `true` when intersects
 	*/
 	static proto bool IntersectionPointCylinder(vector origin, vector cylinderTip, vector cylinderAxis, float cylinderRadius);
@@ -58,7 +58,7 @@ sealed class Math3D
 	\param origin Origin of sphere
 	\param radius Radius of sphere
 	\param mins minimum point of bounding box
-	\param maxs maximum point of bounding box
+	\param maxs maximum point of bounding box.
 	\return `true` when intersects
 	*/
 	static proto bool IntersectionSphereAABB(vector origin, float radius, vector mins, vector maxs);
@@ -73,9 +73,9 @@ sealed class Math3D
 
 		>> 1
 	\endcode
-	\param mins1 Minimum point of first bounding box.
-	\param maxs1 Maximum point of first bounding box.
-	\param mins2 Minimum point of second bounding box.
+	\param mins1 Minimum point of first bounding box
+	\param maxs1 Maximum point of first bounding box
+	\param mins2 Minimum point of second bounding box
 	\param maxs2 Maximum point of second bounding box.
 	\return `true` when bounding boxes intersect, otherwise `false`.
 	*/
@@ -221,7 +221,7 @@ sealed class Math3D
 	/*!
 	Returns angles and scale of rotation matrix.
 	\param mat rotation matrix
-	\param angles yaw, pitch, roll angles in degrees
+	\param[out] angles yaw, pitch, roll angles in degrees
 	\return scale of matrix
 	*/
 	static proto float MatrixToAnglesAndScale(vector mat[3], out vector angles);

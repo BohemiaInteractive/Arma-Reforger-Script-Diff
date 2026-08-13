@@ -192,6 +192,7 @@ class SCR_MultiPartDeployableItemComponent : SCR_BaseDeployableInventoryItemComp
 {
 	protected ref SCR_DeployableVariantContainer m_VariantContainer;
 	protected ref array<ref SCR_RequiredDeployablePart> m_aFoundElements;
+	protected ref set<IEntity> m_aIgnoredItems;
 	protected float m_fReplacementPrefabHealthScaled = 1;
 	protected int m_iCurrentVariant = -1;
 
@@ -383,6 +384,7 @@ class SCR_MultiPartDeployableItemComponent : SCR_BaseDeployableInventoryItemComp
 
 		m_VariantContainer = data.GetVariantContainer(variant);
 		m_iCurrentVariant = variant;
+		m_aIgnoredItems = null;
 		return m_VariantContainer != null;
 	}
 
@@ -392,6 +394,7 @@ class SCR_MultiPartDeployableItemComponent : SCR_BaseDeployableInventoryItemComp
 	{
 		m_iCurrentVariant = -1;
 		m_VariantContainer = null;
+		m_aIgnoredItems = null;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -449,11 +452,26 @@ class SCR_MultiPartDeployableItemComponent : SCR_BaseDeployableInventoryItemComp
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Set of items which are going to be ignored when system is evaluating items for deployment requirements
+	//! Set is automatically nulled when variant data is fetched
+	void SetIgnoredItems(notnull set<IEntity> items)
+	{
+		m_aIgnoredItems = items;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	set<IEntity> GetIgnoredItemsSet()
+	{
+		return m_aIgnoredItems;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Method used to check if there are required partes within the area of deployment
 	//! \param[out] failReason string containing the text about missing item with their name
 	//! \param[in] position from which script will search for required elements. If position == -vector.One then owner origin will be used
+	//! \param[in] user whose inventory items will be used to evaluate if they meet the requirements
 	//! \return true if all required elements were found
-	bool FindRequiredElements(out string failReason, vector position = -vector.One)
+	bool FindRequiredElements(out string failReason, vector position = -vector.One, ChimeraCharacter user = null)
 	{
 		if (!m_VariantContainer)
 			return false;
@@ -475,6 +493,9 @@ class SCR_MultiPartDeployableItemComponent : SCR_BaseDeployableInventoryItemComp
 			position = owner.GetOrigin();
 
 		world.QueryEntitiesBySphere(position, data.GetSearchRadius(), EvaluateFoundEntity);
+		if (user)
+			EvaluateInventoryItems(user);
+
 		foreach (SCR_RequiredDeployablePart partReq : m_aFoundElements)
 		{
 			int difference;
@@ -512,6 +533,9 @@ class SCR_MultiPartDeployableItemComponent : SCR_BaseDeployableInventoryItemComp
 		if (ChimeraCharacter.Cast(ent))
 			return true;//character cannot be a required element
 
+		if (m_aIgnoredItems && m_aIgnoredItems.Contains(ent))
+			return true;
+
 		BaseContainer foundPrefab = ent.GetPrefabData().GetPrefab();
 		vector origin = GetOwner().GetOrigin();
 		float distToEnt = vector.DistanceSq(origin, ent.GetOrigin());
@@ -522,6 +546,36 @@ class SCR_MultiPartDeployableItemComponent : SCR_BaseDeployableInventoryItemComp
 		}
 
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks if user has required items and presents them as the ones which should have the priority
+	//! \param[in] user whose inventory items will be used to evaluate if they meet the requirements
+	protected void EvaluateInventoryItems(notnull ChimeraCharacter user)
+	{
+		InventoryStorageManagerComponent storageMgr = user.GetCharacterController().GetInventoryStorageManager();
+
+		array<IEntity> userItems = {};
+		storageMgr.GetItems(userItems, EStoragePurpose.PURPOSE_DEPOSIT | EStoragePurpose.PURPOSE_LOADOUT_PROXY | EStoragePurpose.PURPOSE_WEAPON_PROXY);
+
+		if (m_aIgnoredItems)
+		{
+			foreach (IEntity ignoredItem : m_aIgnoredItems)
+			{
+				userItems.RemoveItem(ignoredItem);
+			}
+		}
+
+		BaseContainer foundPrefab;
+		foreach (IEntity item : userItems)
+		{
+			foundPrefab = item.GetPrefabData().GetPrefab();
+			foreach (SCR_RequiredDeployablePart partReq : m_aFoundElements)
+			{
+				if (partReq.EvaluateFoundEntity(vector.Zero, 0, foundPrefab, item))
+					break; // skip further evaluation as it already matches one of the requirements
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

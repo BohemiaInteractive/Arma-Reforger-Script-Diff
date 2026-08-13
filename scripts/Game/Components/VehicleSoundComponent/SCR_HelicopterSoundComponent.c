@@ -27,7 +27,6 @@ class SCR_HelicopterSoundComponent : SCR_VehicleSoundComponent
 	protected int m_MainRotorRPMScaledIdx;
 
 	//
-	protected SignalsManagerComponent m_SignalsManagerComponent;
 	protected float m_fTimer;
 
 	//! Wash rotor audio handle
@@ -42,7 +41,7 @@ class SCR_HelicopterSoundComponent : SCR_VehicleSoundComponent
 	protected EDamageState m_eRotorMainDamageState;
 	
 	//------------------------------------------------------------------------------------------------
-	override void UpdateSoundJob(IEntity owner, float timeSlice)
+	protected override void UpdateSoundJob(IEntity owner, float timeSlice)
 	{	
 		super.UpdateSoundJob(owner, timeSlice);
 		
@@ -169,11 +168,10 @@ class SCR_HelicopterSoundComponent : SCR_VehicleSoundComponent
 	}
 		
 	//------------------------------------------------------------------------------------------------
-	override void OnPostInit(IEntity owner)
+	protected override void OnPostInit(IEntity owner)
 	{	
 		super.OnPostInit(owner);
 		
-		m_SignalsManagerComponent = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));
 		if (!m_SignalsManagerComponent)
 			return;
 			
@@ -184,7 +182,7 @@ class SCR_HelicopterSoundComponent : SCR_VehicleSoundComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnInit(IEntity owner)
+	protected override void OnInit(IEntity owner)
 	{
 		super.OnInit(owner);
 		

@@ -30,6 +30,10 @@ class SCR_RepairAtSupportStationAction : SCR_BaseDamageHealSupportStationAction
 	[Attribute("1", desc: "if true then the action will not be shown if the entity (or root parent entity) is on fire")]
 	protected bool m_bHideIfEntityOnFire;
 
+	[Attribute(defvalue: "1.5", desc: "Value by which action progress is going to be multiplied to speed it up when character is a vehicle crewman or an engineer", params: "0.1 inf 0.01")]
+	protected float m_fQualifiedPersonnelBonusUseSpeedFactor;
+
+	protected bool m_bIsQualified;
 	protected SCR_DamageManagerComponent m_OnFireCheckDamageManager;
 
 	//------------------------------------------------------------------------------------------------
@@ -219,6 +223,47 @@ class SCR_RepairAtSupportStationAction : SCR_BaseDamageHealSupportStationAction
 	override bool IsStabilizedReason()
 	{
 		return m_eCannotPerformReason == ESupportStationReasonInvalid.HEAL_MAX_HEALABLE_HEALTH_REACHED_FIELD;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnActionStart(IEntity pUserEntity)
+	{
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(pUserEntity);
+		m_bIsQualified = character && (character.HasRole(GetQualifiedRoles()) || character.HasLabel(GetQualifiedLabels()));
+
+		super.OnActionStart(pUserEntity);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Override this if you would want to change which squad roles should make a character qualified
+	protected array<SCR_EGroupRole> GetQualifiedRoles()
+	{
+		return {SCR_EGroupRole.TRANSPORT, SCR_EGroupRole.ENGINEER, SCR_EGroupRole.HELI_TRANSPORT};
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Override this if you would want to change which character label should make a character qualified
+	protected array<EEditableEntityLabel> GetQualifiedLabels()
+	{
+		return {EEditableEntityLabel.TRAIT_VEHICLE_CREW, EEditableEntityLabel.ROLE_SAPPER, EEditableEntityLabel.TRAIT_HELI_CREW};
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override float GetActionProgressScript(float fProgress, float timeSlice)
+	{
+		if (m_bIsQualified)
+			timeSlice *= m_fQualifiedPersonnelBonusUseSpeedFactor;
+
+		return super.GetActionProgressScript(fProgress, timeSlice);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override bool LoopActionUpdate(float timeSlice)
+	{
+		if (m_bIsQualified)
+			timeSlice *= m_fQualifiedPersonnelBonusUseSpeedFactor;
+
+		return super.LoopActionUpdate(timeSlice);
 	}
 
 	//------------------------------------------------------------------------------------------------

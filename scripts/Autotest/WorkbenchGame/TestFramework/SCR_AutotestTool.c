@@ -17,6 +17,9 @@ class SCR_AutotestTool : WorldEditorTool
 
 	[Attribute(SCR_AutotestHelper.GetDefaultLaunchParams(), UIWidgets.EditBoxMultiline, category: "New Process", desc: "Additional arguments the new process will launch with.")]
 	protected string m_bArguments;
+	
+	[Attribute("", UIWidgets.FileNamePicker, category: "New Process", desc: "Game exe path", params: "exe FileNameFormat=absolute")]
+	protected string m_sExePath;
 
 	protected ScriptEditor m_ScriptEditor = Workbench.GetModule(ScriptEditor);
 
@@ -25,12 +28,6 @@ class SCR_AutotestTool : WorldEditorTool
 	protected void ButtonRunGroup()
 	{
 		PrintFormat("User requested test run: %1", m_sTestGroup, level: LogLevel.NORMAL);
-
-		SCR_AutotestGroup config = GetConfigByPath(m_sTestGroup);
-		if (!config)
-		{
-			Print("Invalid config", LogLevel.ERROR);
-		}
 
 		if (m_bRunInNewWindow)
 		{
@@ -41,7 +38,10 @@ class SCR_AutotestTool : WorldEditorTool
 		SCR_AutotestPlugin autotestPlugin = SCR_AutotestPlugin.Cast(m_ScriptEditor.GetPlugin(SCR_AutotestPlugin));
 		autotestPlugin.FocusWorldEditor();
 
-		autotestPlugin.RunConfig(config);
+		PrintFormat("Running test group: %1", m_sTestGroup, level: LogLevel.NORMAL);
+
+		SCR_TestRunner.InitRunner(autotestPlugin.CreateParamContainer(m_sTestGroup));
+		SCR_AutotestHelper.SwitchToGameMode();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -57,17 +57,11 @@ class SCR_AutotestTool : WorldEditorTool
 		SCR_AutotestPlugin autotestPlugin = SCR_AutotestPlugin.Cast(m_ScriptEditor.GetPlugin(SCR_AutotestPlugin));
 		autotestPlugin.FocusWorldEditor();
 
-		autotestPlugin.RunClassName(m_sTestClass.Trim(), true);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected SCR_AutotestGroup GetConfigByPath(ResourceName configName)
-	{
-		Resource configHolder = Resource.Load(configName);
-
-		return SCR_AutotestGroup.Cast(BaseContainerTools.CreateInstanceFromContainer(configHolder.GetResource().ToBaseContainer()));
+		SCR_TestRunner.InitRunner(autotestPlugin.CreateParamContainer(m_sTestClass.Trim()));
+		SCR_AutotestHelper.SwitchToGameMode();
 	}
 	
+	// TODO: Add the new params from the param container as args to the CLI this generates
 	//------------------------------------------------------------------------------------------------
 	protected void RunNewProcess(string autotestArg)
 	{
@@ -75,19 +69,16 @@ class SCR_AutotestTool : WorldEditorTool
 		Workbench.GetCwd(cwd);
 		
 		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
-		SCR_AutotestToolPlugin settings = SCR_AutotestToolPlugin.Cast(worldEditor.GetPlugin(SCR_AutotestToolPlugin));
 
-		string exePath = settings.GetExecutablePath();
-		if (!exePath)
+		if (!m_sExePath)
 		{
-			Workbench.Dialog("Autotest Tool - Error", "Executable path not configured.\nPlugins > Settings > Autotest Tool");
+			Workbench.Dialog("Autotest Tool - Error", "Executable path not configured.\nAutotest Tool > New Process > Exe Path");
 			return;
 		}
 		
-		string exe = exePath;
 		string gproj = Workbench.GetCurrentGameProjectFile();
 
-		string cmd = string.Format("\"%1\" -gproj \"%2\"", exe, gproj);
+		string cmd = string.Format("\"%1\" -gproj \"%2\"", m_sExePath, gproj);
 
 		string addonDirs = GetAddonsDirCLI();
 		cmd += string.Format(" -addonsDir %1", addonDirs);

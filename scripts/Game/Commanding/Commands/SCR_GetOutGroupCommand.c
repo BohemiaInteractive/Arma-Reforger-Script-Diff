@@ -2,7 +2,7 @@
 class SCR_GetOutGroupCommand : SCR_WaypointGroupCommand
 {	
 	//------------------------------------------------------------------------------------------------
-	override bool Execute(IEntity cursorTarget, IEntity target, vector targetPosition, int playerID, bool isClient)
+	override bool Execute(IEntity cursorTarget, IEntity groupEnt, vector targetPosition, int playerID, bool isClient)
 	{
 		if (isClient && playerID == SCR_PlayerController.GetLocalPlayerId())
 		{
@@ -11,15 +11,15 @@ class SCR_GetOutGroupCommand : SCR_WaypointGroupCommand
 		}
 
 		//SpawnWPVisualization(targetPosition, playerID);
-		if (!m_sWaypointPrefab || !target || !targetPosition)
+		if (!m_sWaypointPrefab || !groupEnt || !targetPosition)
 			return false;
 
-		return GetOutAtVehiclePosition(target, playerID);
+		return GetOutAtVehiclePosition(groupEnt, playerID);
 	}
 	
-	bool GetOutAtVehiclePosition(IEntity target, int playerID)
+	bool GetOutAtVehiclePosition(IEntity groupEnt, int playerID)
 	{
-		SCR_AIGroup group = SCR_AIGroup.Cast(target);
+		SCR_AIGroup group = SCR_AIGroup.Cast(groupEnt);
 		if (!group)
 			return false;
 		
@@ -48,6 +48,6 @@ class SCR_GetOutGroupCommand : SCR_WaypointGroupCommand
 		if (!vehicleIn)
 			return false;
 		
-		return SetWaypointForAIGroup(target, vehicleIn.GetOrigin(), playerID);
+		return SetWaypointForAIGroup(groupEnt, vehicleIn.GetOrigin(), playerID);
 	}
 }

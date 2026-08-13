@@ -115,6 +115,9 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 	//! \return Waypoint or group (when there is no previous waypoint)
 	SCR_EditableEntityComponent GetPrevWaypoint()
 	{
+		if (!m_PrevWaypoint && m_PrevWaypointId.IsValid())
+			OnPreWaypointIdRpl(); // Attempt to fetch the waypoint after delayed RPL stream in on proxies.
+
 		if (m_PrevWaypoint)
 			return m_PrevWaypoint;
 		else

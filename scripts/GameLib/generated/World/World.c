@@ -17,11 +17,12 @@ sealed class World: BaseWorld
 	/*!
 	Creates single visual mark, e.g. from shots, version with projection vector and angle.
 	When lifetime=0, pointer to decal is returned, that can be removed by RemoveDecal then.
-	\param entity       entity where the Track should be created
+	\param entity          entity where the Track should be created
 	\param origin       first point of the decal, nothing is done now
 	\param project      projection direction (length is far clipping distance)
-	\param nearclip     near clipping distance
-	\param farclip      far clipping distance
+	\param nearclip    near clipping distance
+	\param farclip     far clipping distance
+	\param angle        angle of the decal
 	\param materialName Material used for decal
 	\param size         size of decal
 	\param stretch      stretch of decal
@@ -55,8 +56,10 @@ sealed class World: BaseWorld
 	\param occlOpacity  Alpha of an occluded part of the outline
 	\param fillOpacity  Alpha of the fill (of occluded parts of the entity), 0 to turn the fill off
 	\param inclChildren true to outline the entity together with its child entities
+	\param thickness		Thickness of the outline (in range from 1 up to 2)
+	\param fillTextureName Optional texture for outline fill. If it is not defined, the default texture will be used instead.
 	*/
-	proto external void OutlineEntity(notnull IEntity ent, notnull Color color, float occlOpacity = 1.0, float fillOpacity = 0.0, bool inclChildren = false);
+	proto external void OutlineEntity(notnull IEntity ent, notnull Color color, float occlOpacity = 1.0, float fillOpacity = 0.0, bool inclChildren = false, int thickness = 1, ResourceName fillTextureName = "");
 	/*!
 	Outlines a group of entities in the current frame.
 	The entities will be outlined together (without any intersections). To be called every frame.
@@ -64,8 +67,10 @@ sealed class World: BaseWorld
 	\param color        Color of the outline in the linear color space (and also of a fill - if used)
 	\param occlOpacity  Alpha of an occluded part of the outline
 	\param fillOpacity  Alpha of the fill (of occluded parts of the entity), 0 to turn the fill off
+	\param thickness		Thickness of the outline (in range from 1 up to 2)
+	\param fillTextureName Optional texture for outline fill. If it is not defined, the default texture will be used instead.
 	*/
-	proto external void OutlineEntityGroup(notnull array<IEntity> entities, notnull Color color, float occlOpacity = 1.0, float fillOpacity = 0.0);
+	proto external void OutlineEntityGroup(notnull array<IEntity> entities, notnull Color color, float occlOpacity = 1.0, float fillOpacity = 0.0, int thickness = 1, ResourceName fillTextureName = "");
 	//! Reload all systems, by deleting all current systems, and create them again
 	proto external void ReloadSystems();
 	//! Find a world system based on its type.

@@ -11,7 +11,7 @@ class SCR_NavigationBarConfig
 };
 
 //------------------------------------------------------------------------------------------------
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_BaseContainerCustomTitleFields({"m_sButtonID", "m_sDisplayName"}, "%1 - %2")]
 class NavigationButtonEntry
 {
 	[Attribute(uiwidget: UIWidgets.LocaleEditBox, desc: "Display name of input action")]

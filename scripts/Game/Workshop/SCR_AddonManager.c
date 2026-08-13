@@ -867,15 +867,13 @@ class SCR_AddonManager : GenericEntity
 		// Reliance on reference counting
 		
 		// Iterate all items
-		// Existins utems are updated
-		// Non-existant items are marked for deletion from the map
+		// Existing items are updated
+		// Non-existent items are marked for deletion from the map
 		foreach (string id, SCR_WorkshopItem item : m_mItems)
 		{
 			// Item can be unregistered when no actions are running
 			// And when the addon manager holds the only reference to it
-			int refCount = item.GetRefCount();
-			bool canBeUnregistered = item.Internal_GetCanBeUnregistered();
-			if (canBeUnregistered && item.GetRefCount() == 2) // SCR_WorkshopItem item above also holds one reference! The other reference is the map entry.
+			if (item.Internal_GetCanBeUnregistered() && item.GetRefCount() == 2) //SCR_WorkshopItem item above also holds one reference! The other reference is the map entry (the reference held by the AddonManager).
 			{
 				if (!unregisterIds)
 					unregisterIds = {};

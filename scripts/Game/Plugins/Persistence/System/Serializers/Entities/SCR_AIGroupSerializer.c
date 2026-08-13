@@ -1,6 +1,19 @@
+class SCR_WaypointLoadContextShared
+{
+	int m_iPendingResults;
+	ref array<AIWaypoint> m_aWaypoints;
+	SCR_AIGroup m_Group;
+}
+
+class SCR_WaypointLoadContext
+{
+	ref SCR_WaypointLoadContextShared m_Shared;
+	int m_iIdx;
+}
+
 class SCR_AIGroupSerializer : ScriptedEntitySerializer
 {
-	[Attribute("60.0", desc: "Maximum time after group creation a player has time to be reconnected to automatically join back into it.")]
+	[Attribute("300.0", desc: "Maximum time after group creation a player has time to be reconnected to automatically join back into it.")]
 	protected float m_fMaxPlayerReconnectTime;
 
 	//------------------------------------------------------------------------------------------------
@@ -10,7 +23,7 @@ class SCR_AIGroupSerializer : ScriptedEntitySerializer
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override ESerializeResult SerializeSpawnData(notnull IEntity entity, notnull SaveContext context, SerializerDefaultSpawnData defaultData)
+	override ESerializeResult SerializeSpawnData(notnull IEntity entity, notnull SaveContext context, EntitySerializerDefaultSpawnData defaultData)
 	{
 		context.WriteValue("version", 1);
 		context.WriteValue("prefab", SCR_ResourceNameUtils.GetPrefabName(entity));
@@ -45,7 +58,7 @@ class SCR_AIGroupSerializer : ScriptedEntitySerializer
 				aiMembers.Insert(uuid);
 		}
 
-		set<UUID> waypoints();
+		array<UUID> waypoints();
 		array<AIWaypoint> outWaypoints();
 		group.GetWaypoints(outWaypoints);
 		foreach (auto waypoint : outWaypoints)
@@ -64,8 +77,12 @@ class SCR_AIGroupSerializer : ScriptedEntitySerializer
 		const ResourceName preset = group.GetPresetResource();
 		array<int> playerIds = group.GetPlayerIDs();
 
+		// A dormant ChimeraAIGroup is legitimately empty (members despawned on purpose) but still
+		// needs to round-trip through save/load so its alive / dead counts persist.
+		const bool isDormant = group.IsDormant();
+
 		// If entirely empty usually not needed unless commander setup some groups in advance
-		if (aiMembers.IsEmpty() && playerIds.IsEmpty() && !group.IsCreatedByCommander())
+		if (aiMembers.IsEmpty() && playerIds.IsEmpty() && !group.IsCreatedByCommander() && !isDormant)
 			return ESerializeResult.DEFAULT;
 
 		context.WriteValue("version", 1);
@@ -141,6 +158,17 @@ class SCR_AIGroupSerializer : ScriptedEntitySerializer
 				context.Write(playerIdentities);
 		}
 
+		// Persist dormant-lifecycle bookkeeping. Written at the end so the format stays
+		// backward-compatible with saves that lack these fields; ReadDefault supplies sentinels
+		// on load.
+		if (group)
+		{
+			const int dormantAlive = group.GetDormantAliveCount();
+			const int dormantDead = group.GetDormantDeadCount();
+			context.WriteDefault(dormantAlive, -1);
+			context.WriteDefault(dormantDead, 0);
+		}
+
 		return ESerializeResult.OK;
 	}
 
@@ -207,11 +235,22 @@ class SCR_AIGroupSerializer : ScriptedEntitySerializer
 
 		array<UUID> waypoints();
 		context.Read(waypoints);
-		foreach (int idx, auto waypoint : waypoints)
+		if (!waypoints.IsEmpty())
 		{
-			Tuple2<SCR_AIGroup, int> waypointContext(group, idx);
-			PersistenceWhenAvailableTask waypointTask(OnWaypointAvailable, waypointContext);
-			GetSystem().WhenAvailable(waypoint, waypointTask);
+			SCR_WaypointLoadContextShared sharedContext();
+			sharedContext.m_iPendingResults = waypoints.Count();
+			sharedContext.m_aWaypoints = {};
+			sharedContext.m_aWaypoints.Resize(sharedContext.m_iPendingResults);
+			sharedContext.m_Group = group;
+
+			foreach (int idx, auto waypoint : waypoints)
+			{
+				SCR_WaypointLoadContext waypointContext();
+				waypointContext.m_Shared = sharedContext;
+				waypointContext.m_iIdx = idx;
+				PersistenceWhenAvailableTask waypointTask(OnWaypointAvailable, waypointContext);
+				GetSystem().WhenAvailable(waypoint, waypointTask);
+			}
 		}
 
 		if (group.IsPlayable())
@@ -309,6 +348,18 @@ class SCR_AIGroupSerializer : ScriptedEntitySerializer
 			}
 		}
 
+		// Restore dormant-lifecycle bookkeeping. Absent in older saves; ReadDefault falls back
+		// to sentinels (-1 alive) which IsDormant treats as "never been despawned".
+		if (group)
+		{
+			int dormantAlive = -1;
+			int dormantDead = 0;
+			context.ReadDefault(dormantAlive, -1);
+			context.ReadDefault(dormantDead, 0);
+			if (dormantAlive >= 0)
+				group.SetDormantCounts(dormantAlive, dormantDead);
+		}
+
 		return true;
 	}
 
@@ -382,13 +433,16 @@ class SCR_AIGroupSerializer : ScriptedEntitySerializer
 	//------------------------------------------------------------------------------------------------
 	protected static void OnWaypointAvailable(Managed instance, PersistenceDeferredDeserializeTask task, bool expired, Managed context)
 	{
-		auto waypoint = AIWaypoint.Cast(instance);
-		if (!waypoint)
-			return;
-
-		auto waypointContext = Tuple2<SCR_AIGroup, int>.Cast(context);
-		if (waypointContext.param1)
-			waypointContext.param1.AddWaypointAt(waypoint, waypointContext.param2);
+		auto waypointContext = SCR_WaypointLoadContext.Cast(context);
+		waypointContext.m_Shared.m_aWaypoints[waypointContext.m_iIdx] = AIWaypoint.Cast(instance);
+		if (--waypointContext.m_Shared.m_iPendingResults == 0 && waypointContext.m_Shared.m_Group)
+		{
+			foreach (AIWaypoint waypoint : waypointContext.m_Shared.m_aWaypoints)
+			{
+				if (waypoint)
+					waypointContext.m_Shared.m_Group.AddWaypoint(waypoint);
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

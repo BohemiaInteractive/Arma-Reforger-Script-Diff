@@ -28,7 +28,7 @@ class SCR_AutotestDebugMenu
 
 	static void Terminate()
 	{
-		delete s_Instance;
+		s_Instance = null;
 	}
 
 	void Update()
@@ -46,7 +46,17 @@ class SCR_AutotestDebugMenu
 			DbgUI.Text(string.Format("%1/%2", GetCurrentTestNumber(currentTest), s_aAllTests.Count()));
 			DbgUI.Text(currentTest.GetName());
 			DbgUI.Text((System.GetUnixTime() - m_iLastExecutedTestStart).ToString() + "s");
-
+			
+			SCR_AutotestCaseBase currentAutotest = SCR_AutotestCaseBase.Cast(currentTest);
+			if (currentAutotest)
+			{
+				foreach (int i, string text : currentAutotest.GetDebugText())
+				{
+					if (i == 0)
+						DbgUI.Spacer(10);
+					DbgUI.Text(text);
+				}
+			}
 		}
 		DbgUI.End();
 	}

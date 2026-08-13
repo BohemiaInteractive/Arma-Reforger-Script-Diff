@@ -1,14 +1,14 @@
 #ifdef WORKBENCH
 
 [WorkbenchPluginAttribute(
-	name: "Run test",
+	name: "Autotest",
 	description: "Runs the test suite or test case the cursor currently is in.\nSupports only SCR_Autotest* suites.",
 	shortcut: "F4",
-	wbModules: { "ScriptEditor" },
+	wbModules: { "ScriptEditor", "WorldEditor" },
 //	category: SCR_PluginCategory.SCRIPTEDITOR_ASSISTANCE,
 	awesomeFontCode: 0xF188
 )]
-class SCR_AutotestPlugin : WorkbenchPlugin
+class SCR_AutotestPlugin : WorldEditorPlugin
 {
 	[Attribute(defvalue: "1", desc: "Focus world editor when starting the run")]
 	bool m_bFocusWorldEditor;
@@ -22,8 +22,8 @@ class SCR_AutotestPlugin : WorkbenchPlugin
 	[Attribute(defvalue: "0", desc: "Output all logs for successful tests in autotest.log")]
 	bool m_bVerboseLog;
 
-	[Attribute(defvalue: "1", desc: "Close the game after test runner has finished")]
-	bool m_bCloseGameAfterRun;
+	[Attribute(SCR_EAutotestOnFinishedAction.EXIT.ToString(), desc: "Close the game after test runner has finished?", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_EAutotestOnFinishedAction))]
+	SCR_EAutotestOnFinishedAction m_eActionAfterRun;
 
 #ifndef AUTOTEST_DISABLE_RUN_SCRIPT_EDITOR
 	//------------------------------------------------------------------------------------------------
@@ -47,92 +47,42 @@ class SCR_AutotestPlugin : WorkbenchPlugin
 		}
 		
 		if (m_bFocusWorldEditor)
-		{
 			FocusWorldEditor();
-		}
-
-		RunClassName(className.Trim());
+		
+		SCR_AutotestRunSettings container = CreateParamContainer(className.Trim());
+		SCR_TestRunner.InitRunner(CreateParamContainer(className.Trim()));
+		SCR_AutotestHelper.SwitchToGameMode();
 	}
 #endif
-
+	
+	[Friend(SCR_AutotestTool)]
+	protected SCR_AutotestRunSettings CreateParamContainer(string config)
+	{
+		SCR_AutotestPlugin plugin = GetSourcePlugin();
+		
+		SCR_AutotestRunSettings container = SCR_AutotestRunSettingsBuilder
+			.CreateContainer(config)
+			.WithLogAfterRun(plugin.m_bOpenLogAfterRun)
+			.WithDialogAfterRun(plugin.m_bOpenDialogAfterRun)
+			.WithActionAfterRun(plugin.m_eActionAfterRun)
+			.WithVerboseLog(plugin.m_bVerboseLog)
+			.Build();
+		
+		return container;
+	}
+	
+	override void OnGameModeEnded()
+	{
+		SCR_TestRunner.AbortRunner();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Shows plugin configuration dialog.
 	override void Configure()
 	{
-		Workbench.ScriptDialog("Autotest Plugin Configuration", "", this);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Run tests by providing test group config.
-	void RunConfig(notnull SCR_AutotestGroup testGroupConfig)
-	{
-		PrintFormat("Running test group: %1", testGroupConfig, level: LogLevel.NORMAL);
-
-		SCR_AutotestHarness.s_bOpenLogAfterRun = m_bOpenLogAfterRun;
-		SCR_AutotestHarness.s_bOpenDialogAfterRun = m_bOpenDialogAfterRun;
-		SCR_AutotestHarness.s_bCloseGameAfterRun = m_bCloseGameAfterRun;
-
-		SCR_AutotestHarness.Begin(testGroupConfig, true, m_bVerboseLog);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Run tests by providing test suite or test case class name.
-	void RunClassName(string className, bool gui = false)
-	{
-		if (className.ToType().IsInherited(SCR_AutotestSuiteBase))
-		{
-			RunTestSuite(className);
-			return;
-		}
-
-		if (className.ToType().IsInherited(SCR_AutotestCaseBase))
-		{
-			RunTestCase(className, gui);
-			return;
-		}
-
-		PrintFormat("Current line is not inside of a test suite or test case: \"%1\"", className, level: LogLevel.WARNING);
-		if (gui)
-		{
-			string msg = string.Format("\"%1\" is not a test suite or test case class.", className);
-			Workbench.Dialog("Invalid class", msg);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void RunTestSuite(string testSuiteClass)
-	{
-		PrintFormat("Running test suite: %1", testSuiteClass, level: LogLevel.NORMAL);
-
-		SCR_AutotestHarness.s_bOpenLogAfterRun = m_bOpenLogAfterRun;
-		SCR_AutotestHarness.s_bOpenDialogAfterRun = m_bOpenDialogAfterRun;
-		SCR_AutotestHarness.s_bCloseGameAfterRun = m_bCloseGameAfterRun;
-
-		SCR_AutotestSuiteBase testSuite = SCR_AutotestSuiteBase.Cast(testSuiteClass.ToType().Spawn());
-		SCR_AutotestHarness.Begin(testSuite, true, m_bVerboseLog);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void RunTestCase(string testCaseClass, bool gui)
-	{
-		PrintFormat("Running test case: %1", testCaseClass, level: LogLevel.NORMAL);
-		SCR_AutotestCaseBase testCase = SCR_AutotestCaseBase.Cast(testCaseClass.ToType().Spawn());
-
-		// TODO(maciejewskifil) refactor
-		/*if (!testCase.GetSuite())
-		{
-			Print("Specified test does not have parent suite.", LogLevel.WARNING);
-			if (gui)
-				Workbench.Dialog("Error", "Specified test does not have parent suite.");
-
-			return;
-		}*/
-
-		SCR_AutotestHarness.s_bOpenLogAfterRun = m_bOpenLogAfterRun;
-		SCR_AutotestHarness.s_bOpenDialogAfterRun = m_bOpenDialogAfterRun;
-		SCR_AutotestHarness.s_bCloseGameAfterRun = m_bCloseGameAfterRun;
-
-		SCR_AutotestHarness.Begin(testCase, true, m_bVerboseLog);
+		SCR_AutotestPlugin plugin = GetSourcePlugin();
+		
+		Workbench.ScriptDialog("Autotest Plugin Configuration", "", plugin);
 	}
 
 	[Friend(SCR_AutotestTool)]
@@ -141,6 +91,16 @@ class SCR_AutotestPlugin : WorkbenchPlugin
 		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
 		// getting plugin focuses the module window
 		worldEditor.GetPlugin(SCR_AutotestTool);
+	}
+	
+	//! We are using this plugin across different workbench windows, but it is instantiated in each one separately.
+	//! In order to synchronize the parameters, we only use one "source" instance to set/get the parameters from.
+	//! This method finds that "source" plugin.
+	private SCR_AutotestPlugin GetSourcePlugin()
+	{
+		ScriptEditor we = Workbench.GetModule(WorldEditor);
+		SCR_AutotestPlugin plugin = SCR_AutotestPlugin.Cast(we.GetPlugin(SCR_AutotestPlugin));
+		return plugin;
 	}
 }
 #endif

@@ -73,7 +73,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 	[Attribute(desc: "Link to config that holds military supply allocation data", params: "conf class=SCR_MilitarySupplyAllocationConfig")]
 	protected ResourceName m_sMilitarySupplyAllocationConfigHolder;
 
-	[Attribute("0", desc: "Items consume Military Supply Allocation if true")]
+	[RplProp(onRplName: "OnMilitarySupplyAllocationToggle"), Attribute("0", desc: "Items consume Military Supply Allocation if true")]
 	protected bool m_bUseMilitarySupplyAllocation;
 
 	[Attribute("1", desc: "Multiplier of refund value for items that belong to the same faction as Arsenal.", params: "0 1 0.01")]
@@ -83,6 +83,8 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 	protected float m_fRefundDifferentFactionItemMultiplier;
 
 	protected ref SCR_ArsenalGameModeUIDataHolder m_ArsenalGameModeUIDataHolder;
+
+	protected static const int LOADOUT_MINIMUM_SUPPLY_COST = 1;
 
 	//------------------------------------------------------------------------------------------------
 	static void GetArsenalLoadoutComponentsToCheck(out array<typename> componentsToCheck)
@@ -237,7 +239,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 			arsenalData = SCR_ArsenalItem.Cast(data);
 			if (arsenalData)
 			{
-				refundAmount = SCR_ResourceSystemHelper.RoundRefundSupplyAmount(arsenalData.GetSupplyRefundAmount(supplyCostType, false) * refundMultiplier);
+				refundAmount = SCR_ResourceSystemHelper.RoundRefundSupplyAmount(arsenalData.GetSupplyRefundAmount(supplyCostType, false, item) * refundMultiplier);
 				countedItems.Insert(item);
 				break;
 			}
@@ -802,7 +804,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 			if (getLocalPlayer && arsenalManager.m_LocalPlayerLoadoutData)
 			{
 				if (baseMultiplier > 0)
-					return Math.Clamp(arsenalManager.m_LocalPlayerLoadoutData.LoadoutCost * baseMultiplier, 0, float.MAX);
+					return Math.Clamp(arsenalManager.m_LocalPlayerLoadoutData.LoadoutCost * baseMultiplier, LOADOUT_MINIMUM_SUPPLY_COST, float.MAX);
 				else
 					return Math.Clamp(arsenalManager.m_LocalPlayerLoadoutData.LoadoutCost, 0, float.MAX);
 			}
@@ -810,7 +812,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 			else if ((gameMode && gameMode.IsMaster()) || (!gameMode && Replication.IsServer()))
 			{
 				if (baseMultiplier > 0)
-					return Math.Clamp(playerArsenalLoadout.GetLoadoutSuppliesCost(playerID) * baseMultiplier, 0, float.MAX);
+					return Math.Clamp(playerArsenalLoadout.GetLoadoutSuppliesCost(playerID) * baseMultiplier, LOADOUT_MINIMUM_SUPPLY_COST, float.MAX);
 				else
 					return Math.Clamp(playerArsenalLoadout.GetLoadoutSuppliesCost(playerID), 0, float.MAX);
 			}
@@ -1487,6 +1489,9 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 			}
 		}
 
+		if (loadoutCost < LOADOUT_MINIMUM_SUPPLY_COST)
+			return LOADOUT_MINIMUM_SUPPLY_COST;
+
 		return loadoutCost;
 	}
 
@@ -1586,6 +1591,9 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 
 		context.StartObject(SCR_PlayerArsenalLoadout.ARSENALLOADOUT_KEY);
 		SCR_PlayerArsenalLoadout.ComputeSuppliesCost(context, faction, playerLoadout, arsenalSupplyType);
+
+		if (playerLoadout.suppliesCost < LOADOUT_MINIMUM_SUPPLY_COST)
+			playerLoadout.suppliesCost = LOADOUT_MINIMUM_SUPPLY_COST;
 	}
 
 	//------------------------------------------------------------------------------------------------

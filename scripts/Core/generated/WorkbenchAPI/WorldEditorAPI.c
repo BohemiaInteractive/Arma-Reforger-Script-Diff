@@ -18,13 +18,13 @@ sealed class WorldEditorAPI
 	proto external bool BeginEntityAction(string historyPointName = string.Empty, string historyPointIcon = string.Empty, void userData = NULL);
 	//! Ending of edit action.
 	proto external bool EndEntityAction(string historyPointName = string.Empty);
-	proto external bool IsDoingEditAction();
 	//! Together with EndEditSequence() it can be used to define a block where entity will never be re-initialized. Useful for multiple edit actions upon single entity.
 	proto external bool BeginEditSequence(IEntitySource entSrc);
-	//! Together with BeginEditSequence() it can be used to define a block where entity will never be re-initialized. Useful for multiple edit actions upon single entity.
-	proto external bool EndEditSequence(IEntitySource entSrc);
 	//! Check whether we are between BeginEditSequence() and EndEditSequence().
 	proto external bool IsEditSequenceActive(IEntitySource entSrc);
+	//! Together with BeginEditSequence() it can be used to define a block where entity will never be re-initialized. Useful for multiple edit actions upon single entity.
+	proto external bool EndEditSequence(IEntitySource entSrc);
+	proto external bool IsDoingEditAction();
 	//! Check whether editor is restoring undo or redo state.
 	proto external bool UndoOrRedoIsRestoring();
 	//! Check whether user created an entity in editor window. Eg. drag and drop from hierarchy, etc.
@@ -44,7 +44,7 @@ sealed class WorldEditorAPI
 	proto external IEntitySource GetEntity(int subScene, int index);
 	//! Checks whether there previously were any entities copied
 	proto external bool HasCopiedEntities();
-	//! Copies selected entities. Returns true if any entity was succesfully copied
+	//! Copies selected entities. Returns true if any entity was successfully copied
 	proto external bool CopySelectedEntities();
 	//! Pastes previously copied entities at the same position. Returns true if any entity was created
 	proto external bool PasteEntities();
@@ -52,13 +52,8 @@ sealed class WorldEditorAPI
 	proto external bool PasteEntitiesAtMouseCursorPos();
 	//! Duplicates selected entities and places them at the same position. Returns true if any entity was duplicated
 	proto external bool DuplicateSelectedEntities();
-	//! Copies selected entities and deletes them from map. Returns true if any entity was cutted out
+	//! Copies selected entities and deletes them from map. Returns true if any entity was cut out
 	proto external bool CutSelectedEntities();
-	//	virtual bool ModifyComponentTemplateKey(enf::EntitySource* entityTmplOwner, enf::EntityComponentSource* tmpl, enf::uint keyIndex, enf::CStr value)=0;
-	proto external bool ParentEntity(notnull IEntitySource parent, notnull IEntitySource child, bool transformChildToParentSpace);
-	proto external bool RemoveEntityFromParent(notnull IEntitySource child);
-	proto external IEntityComponentSource CreateComponent(IEntitySource owner, string className);
-	proto external bool DeleteComponent(IEntitySource owner, IEntityComponentSource component);
 	proto external int GetSelectedEntitiesCount();
 	proto external IEntitySource GetSelectedEntity(int n = 0);
 	proto external void ClearEntitySelection();
@@ -67,28 +62,41 @@ sealed class WorldEditorAPI
 	proto external void UpdateSelectionGui();
 	proto external bool CreateEntityTemplate(IEntitySource entitySrc, string templateFileAbs);
 	proto external bool SaveEntityTemplate(IEntitySource tmpl);
-	//create clone of entity
+	//! Owner - an entity. className - class name or prefab resource name
+	proto external IEntityComponentSource CreateComponent(IEntitySource owner, string className);
+	proto external bool DeleteComponent(IEntitySource owner, IEntityComponentSource component);
 	proto external IEntitySource GetEntityUnderCursor();
+	proto external bool ParentEntity(notnull IEntitySource parent, notnull IEntitySource child, bool transformChildToParentSpace);
+	//parent childs to parent and resolve previous parent->child dependencies
+	proto external bool RemoveEntityFromParent(notnull IEntitySource child);
 	proto external bool RenameEntity(notnull IEntitySource ent, string newName);
 	proto external int GetCurrentSubScene();
 	proto external int GetNumSubScenes();
-	//! Returns width of active scene window (usually it's perspective window but it can be also one of Top, Back, Right view).
+	//! Returns width of active scene window (usually it's perspective window, but it can be also one of Top, Back, Right view).
 	proto external int GetScreenWidth();
-	//! Returns height of active scene window (usually it's perspective window but it can be also one of Top, Back, Right view).
+	//! Returns height of active scene window (usually it's perspective window, but it can be also one of Top, Back, Right view).
 	proto external int GetScreenHeight();
 	/*!
-	Returns horizontal mouse cursor position in active scene window (usually it's perspective window but it can be also one of Top, Back, Right view).
+	Returns horizontal mouse cursor position in active scene window (usually it's perspective window, but it can be also one of Top, Back, Right view).
 	\param clamped Whether returned values should be clamped in a range between zero and screen width (window width in fact).
 	*/
 	proto external int GetMousePosX(bool clamped);
 	/*!
-	Returns vertical mouse cursor position in active scene window (usually it's perspective window but it can be also one of Top, Back, Right view).
+	Returns vertical mouse cursor position in active scene window (usually it's perspective window, but it can be also one of Top, Back, Right view).
 	\param clamped Whether returned values should be clamped in a range between zero and screen height (window height in fact).
 	*/
 	proto external int GetMousePosY(bool clamped);
-	//! Enable/disable calling of events on generators. Must be enabled for the VectorTool and generators to work properly.
-	proto external void ToggleGeneratorEvents(bool isEnabled);
-	proto external bool AreGeneratorEventsEnabled();
+	//! Returns a script-accessible API object previously registered using it's class, or nullptr if not found.
+	proto external Managed GetPluginAPI(typename cl);
+	//! Returns true, if entity is hidden by functions HIDE/UNHIDE or is hidden because of hidden layer etc.
+	proto external bool IsEntityVisible(IEntitySource entity);
+	proto external void SetEntityVisible(IEntitySource entity, bool isVisible, bool recursive);
+	//! Whether entity is selected (any member of multi-selection)
+	proto external bool IsEntitySelected(IEntitySource entity);
+	//! Whether entity is selected and it's a main member of multi-selection
+	proto external bool IsEntitySelectedAsMain(IEntitySource entity);
+	proto external bool IsEditMode();
+	proto external bool IsGameMode();
 	/*!
 	Modifies the terrain height at specified position based on given brush.
 	\param xWorldPos X coordinate of the modification position.
@@ -191,43 +199,30 @@ sealed class WorldEditorAPI
 	proto external void RegenerateFlowMaps(bool preview = true, bool save = true, bool asyncReturn = true, bool noWarning = false);
 	//--------------------------------- Shore -----------------------------------
 	proto external void BuildShoreMap();
-	//! Returns true, if entity is hidden by functions HIDE/UNHIDE or is hidden because of hidden layer etc.
-	proto external bool IsEntityVisible(IEntitySource entity);
-	proto external void SetEntityVisible(IEntitySource entity, bool isVisible, bool recursive);
-	//! Whether entity is selected (any member of multi-selection)
-	proto external bool IsEntitySelected(IEntitySource entity);
-	//! Whether entity is selected and it's a main member of multi-selection
-	proto external bool IsEntitySelectedAsMain(IEntitySource entity);
-	proto external bool IsEditMode();
-	proto external bool IsGameMode();
-	//! Set world editor perspective view camera position and look direction.
-	proto external void SetCamera(vector pos, vector lookVec);
-	proto external void AddTerrainFlatterEntity(IEntity entity, vector mins, vector maxs, int iPriority, float fFalloffStart, float fFalloff, bool bForceUpdate = true, array<vector> updateMins = null, array<vector> updateMaxes = null);
-	proto external void AddCommentEntity(IEntity entity, string comment, Color commentColor = Color.White);
-	//! Fills `y` with GetTerrainSurfaceY() and returns true if on x, z position is terrain, returns false otherwise.
-	proto external bool TryGetTerrainSurfaceY(float x, float z, out float y);
-	proto external void AddToEntitySelection(notnull IEntitySource ent);
-	proto external void SetEntitySelection(notnull IEntitySource ent);
-	[Obsolete("Use SetVariableValue instead!")]
-	proto external bool ModifyEntityKey(notnull IEntitySource ent, string key, string value);
-	[Obsolete("Use SetVariableValue instead!")]
-	proto external bool ModifyComponentKey(notnull IEntitySource ent, string componentName, string key, string value);
-	proto external IEntitySource CreateEntity(string className, string name, int layerId, IEntitySource parent, vector coords, vector angles);
-	//! Extended version of base method that will use randomization/placement parameters set in Template Library (if any).
-	proto external IEntitySource CreateEntityExt(string className, string name, int layerId,  IEntitySource parent, vector coords, vector angles, int traceFlags);
-	proto external IEntitySource CreateClonedEntity(notnull IEntitySource ent, string name, IEntitySource parent, bool cloneChildren);
-	proto external IEntitySource CreateEntityInWindow(RenderTargetWidget window, int winX, int winY, string className, string name, int layerID);
-	proto external IEntitySource CreateEntityInWindowEx(int windowType, int winX, int winY, string className, string name, int layerID);
-	//! Parent childs to parent and resolve previous parent->child dependencies
-	proto external bool ParentEntities(notnull IEntitySource parent, notnull array<IEntitySource> childs, bool transformChildToParentSpace);
+	//! Enable/disable calling of events on generators. Must be enabled for the VectorTool and generators to work properly.
+	proto external void ToggleGeneratorEvents(bool isEnabled);
+	proto external bool AreGeneratorEventsEnabled();
 	proto external bool DeleteEntity(notnull IEntitySource ent);
 	proto external bool DeleteEntities(notnull array<IEntitySource> ents);
+	//! Checks whether a layer is explicitly locked. If can return false also when any parent layer is locked! Consider whether you don't need to use IsEntityLayerLockedHierarchy instead
+	proto external bool IsEntityLayerLocked(int subscene, int layerId);
+	//! Returns true if a layer itself or any its parent layer is locked.
+	proto external bool IsEntityLayerLockedHierarchy(int subscene, int layerId);
+	proto external void LockEntityLayer(int subscene, int layerId);
+	proto external void UnlockEntityLayer(int subscene, int layerId);
+	proto external int GetCurrentEntityLayerId();
+	proto external IEntitySource CreateEntityInWindow(RenderTargetWidget window, int winX, int winY, string className, string name, int layerID);
+	proto external IEntitySource CreateEntityInWindowEx(int windowType, int winX, int winY, string className, string name, int layerID);
+	//! Adds (or update) entity to list of terrain flatters and updates heightmap
+	proto external void AddTerrainFlatterEntity(IEntity entity, vector mins, vector maxs, int iPriority, float fFalloffStart, float fFalloff, bool bForceUpdate = true, array<vector> updateMins = null, array<vector> updateMaxes = null);
+	//! Adds entity to list of comment entities
+	proto external void AddCommentEntity(IEntity entity, string comment, Color commentColor = Color.White, string category = string.Empty);
+	proto external void MoveCommentEntity(IEntity entity, vector newTranslation);
+	proto external void GetCommentCategories(out notnull array<string> outCategories);
+	//! Fills `y` with GetTerrainSurfaceY() and returns true if on x, z position is terrain, returns false otherwise.
+	proto external bool TryGetTerrainSurfaceY(float x, float z, out float y);
 	//! Trace inside WorldEditor window, x and y coords are window coordinates.
 	proto external bool TraceWorldPos(int x, int y, TraceFlags traceFlags, out vector traceStart, out vector traceEnd, out vector traceDir, out IEntity hitEntity = null);
-	proto external void GetWorldPath(out string path);
-	proto external string GetEntityNiceName(IEntitySource entSrc);
-	//! Generates unique name for a particular entity which is based on class/prefab name and numerical postfix
-	proto external string GenerateDefaultEntityName(IEntitySource entSrc);
 	/*!
 	Set value of potentially nested variable. The whole path must exist, this function is just to set
 	the value. For creation, see CreateObjectArrayVariableMember().
@@ -287,6 +282,39 @@ sealed class WorldEditorAPI
 	*/
 	proto external bool RemoveObjectArrayVariableMember(notnull BaseContainer topLevel, array<ref ContainerIdPathEntry> containerIdPath, string key, int memberIndex);
 	proto external bool ChangeObjectClass(notnull BaseContainer topLevel, array<ref ContainerIdPathEntry> containerIdPath, string baseClassName);
+	proto external BaseWorld GetWorld();
+	proto external string CreateSubsceneLayer(int subScene, string name, string parentPath = string.Empty);
+	proto external string CreateSubsceneFolder(int subScene, string name, string parentPath = string.Empty);
+	proto external bool RenameSubsceneFolder(int subScene, string itemPath, string newItemName);
+	proto external bool DeleteSubsceneFolder(int subScene, string itemPath);
+	proto external bool SetSubsceneFolderParent(int subScene, string itemPath, string parentPath);
+	proto external void GetSubsceneFolders(int subscene, out notnull array<string> outItemPaths);
+	proto external bool SetEntitySubsceneLayer(int subScene, IEntitySource pEntitySource, string itemPath);
+	proto external string GetEntitySubsceneLayer(int subScene, IEntitySource pEntitySource);
+	proto external string GetActiveSubsceneLayer(int subScene);
+	proto external void SetActiveSubsceneLayer(int subScene, string layerPath);
+	proto external int GetSubsceneLayerId(int subscene, string layerPath);
+	proto external string GetSubsceneLayerPath(int subscene, int layerId);
+	proto external bool IsSubsceneLayerVisible(int subscene, string layerPath);
+	proto external bool IsEntityLayerVisible(int subscene, int layerId);
+	proto external void GetWorldPath(out string path);
+	//! Set world editor perspective view camera position and look direction.
+	proto external void SetCamera(vector pos, vector lookVec);
+	proto external void AddToEntitySelection(notnull IEntitySource ent);
+	proto external void SetEntitySelection(notnull IEntitySource ent);
+	[Obsolete("Use SetVariableValue instead!")]
+	proto external bool ModifyEntityKey(notnull IEntitySource ent, string key, string value);
+	[Obsolete("Use SetVariableValue instead!")]
+	proto external bool ModifyComponentKey(notnull IEntitySource ent, string componentName, string key, string value);
+	proto external IEntitySource CreateEntity(string className, string name, int layerId, IEntitySource parent, vector coords, vector angles);
+	//! Extended version of base method that will use randomization/placement parameters set in Template Library (if any).
+	proto external IEntitySource CreateEntityExt(string className, string name, int layerId,  IEntitySource parent, vector coords, vector angles, int traceFlags);
+	proto external IEntitySource CreateClonedEntity(notnull IEntitySource ent, string name, IEntitySource parent, bool cloneChildren);
+	//! Parent childs to parent and resolve previous parent->child dependencies
+	proto external bool ParentEntities(notnull IEntitySource parent, notnull array<IEntitySource> childs, bool transformChildToParentSpace);
+	proto external string GetEntityNiceName(IEntitySource entSrc);
+	//! Generates unique name for a particular entity which is based on class/prefab name and numerical postfix
+	proto external string GenerateDefaultEntityName(IEntitySource entSrc);
 	/*!
 	Shows a selection dialog with provided items where user can select one or multiple items.
 	\param title Title of the dialog window.
@@ -310,28 +338,6 @@ sealed class WorldEditorAPI
 	*/
 	proto external bool MoveEntitiesToPrefab(IEntitySource newParentInMap, IEntitySource newParentInPrefab, notnull array<IEntitySource> entitiesInMap, bool convertTransformations = true);
 	proto external string GetCurrentToolName();
-	proto external BaseWorld GetWorld();
-	proto external string CreateSubsceneLayer(int subScene, string name, string parentPath = string.Empty);
-	proto external string CreateSubsceneFolder(int subScene, string name, string parentPath = string.Empty);
-	proto external bool RenameSubsceneFolder(int subScene, string itemPath, string newItemName);
-	proto external bool DeleteSubsceneFolder(int subScene, string itemPath);
-	proto external bool SetSubsceneFolderParent(int subScene, string itemPath, string parentPath);
-	proto external void GetSubsceneFolders(int subscene, out notnull array<string> outItemPaths);
-	proto external bool SetEntitySubsceneLayer(int subScene, IEntitySource pEntitySource, string itemPath);
-	proto external string GetEntitySubsceneLayer(int subScene, IEntitySource pEntitySource);
-	proto external string GetActiveSubsceneLayer(int subScene);
-	proto external void SetActiveSubsceneLayer(int subScene, string layerPath);
-	proto external int GetSubsceneLayerId(int subscene, string layerPath);
-	proto external string GetSubsceneLayerPath(int subscene, int layerId);
-	proto external bool IsSubsceneLayerVisible(int subscene, string layerPath);
-	proto external bool IsEntityLayerVisible(int subscene, int layerId);
-	//! Checks whether a layer is explicitly locked. If can return false also when any parent layer is locked! Consider whether you don't need to use IsEntityLayerLockedHierarchy instead
-	proto external bool IsEntityLayerLocked(int subscene, int layerId);
-	//! Returns true if a layer itself or any its parent layer is locked.
-	proto external bool IsEntityLayerLockedHierarchy(int subscene, int layerId);
-	proto external void LockEntityLayer(int subscene, int layerId);
-	proto external void UnlockEntityLayer(int subscene, int layerId);
-	proto external int GetCurrentEntityLayerId();
 }
 
 /*!

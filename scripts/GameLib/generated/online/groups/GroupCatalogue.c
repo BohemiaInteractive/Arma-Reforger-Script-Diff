@@ -21,15 +21,14 @@ sealed class GroupCatalogue
 	//! Returns application catalogue
 	proto external GroupApplicationCatalogue GetApplicationCatalogue();
 	/*!
-	Initializes the Group Catalogue by fetching all data needed from backend for proper functionality.
-	This must be called before use and before calling InitMyGroups()!
-
-	Fetch all Group member Roles and their permissions.
+	Initializes the Group Catalogue by fetching group member roles and their permissions from the backend.
+	\warning This must be called before use and before calling InitMyGroups()!
 	*/
 	proto external void InitCatalogue(notnull BackendCallback pCallback);
 	/*!
 	Fetch currently joined groups and the user's membership data of the joined groups from the backend.
-	This must be called AFTER InitCatalogue() to properly fill Group Member Roles and their permissions.
+	\warning This must be called AFTER InitCatalogue() to properly fill Group Member Roles and their permissions.
+	\warning At least one order by needs to be set via AppendOrderBy
 	*/
 	proto external void InitMyGroups(notnull BackendCallback pCallback);
 	/*!
@@ -38,20 +37,28 @@ sealed class GroupCatalogue
 
 	Pages are indexed from 0. Int is casted into uint32.
 	\note This method should be used for paging UI where single page with fixed size and offset is visible at the time.
-				It should not be used for scrolling implementation which can possibly show items from 2 pages at once which can introduce issues.
+	\throws VME - if size was not yet set via SetPageSize
+							- if no order by was set yet via AppendOrderBy
 	*/
-	proto external void RequestPage(BackendCallback pCallback, int uPage, bool bClearCache);
-	//! Will forcefully request refresh for current page/offset. Always clears already present items.
-	proto external void RequestRefresh(BackendCallback pCallback);
+	proto external void RequestPage(notnull BackendCallback pCallback, int uPage, bool bClearCache);
+	/*!
+	Will request forced refresh of currently loaded page/offset.
+	Items will be cleared from cache and created again from received data
+	which might be possibly different.
+	\throws VME - if size was not yet set via SetPageSize
+							- if no order by was set yet via AppendOrderBy
+	*/
+	proto external void RequestRefresh(notnull BackendCallback pCallback);
 	/*!
 	Will request load of data for offset from first item
 	If data are already cached then callback is invoked immediately with this method and no request is sent to the backend.
 
 	Offset 0 represent first item. Int is casted into uint32.
 	\note This method should be used for scrolling UI - there is no fixed position where page begins and ends.
-				It can be used even for paging UI implementation but it is recommended to use RequestPage() method for simplicity.
+	\throws VME - if size was not yet set via SetPageSize
+							- if no order by was set yet via AppendOrderBy
 	*/
-	proto external void RequestOffset(BackendCallback pCallback, int uOffset, bool bClearCache);
+	proto external void RequestOffset(notnull BackendCallback pCallback, int uOffset, bool bClearCache);
 	/*!
 	Returns Groups the user is currently member of.
 	\note Data must be fetched using InitMyGroups() before use.

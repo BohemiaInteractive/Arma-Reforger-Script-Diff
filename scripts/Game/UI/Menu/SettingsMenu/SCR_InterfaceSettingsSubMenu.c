@@ -18,6 +18,9 @@ class SCR_InterfaceSettingsSubMenu : SCR_SettingsSubMenuBase
 	protected const string SERVERNAME_SPINBOX_WIDGET_NAME = "ServerName";
 	protected const string INTERACTION_HINT_SPINBOX_WIDGET_NAME = "InteractionHint";
 
+	protected const string DPISCALE_SETTING_NAME = "m_fDPIscale";
+	protected const string DPISCALE_SLIDER_WIDGET_NAME = "DPIScale";
+
 	protected const string MASTER_SWITCH_HIDE_STATE_NAME = "#AR-Settings_Hide_All";
 	protected const string MASTER_SWITCH_SHOW_STATE_NAME = "#AR-Settings_Show_All";
 	protected const string MASTER_SWITCH_CUSTOM_STATE_NAME = "#AR-Settings_Interface_Custom";
@@ -27,6 +30,7 @@ class SCR_InterfaceSettingsSubMenu : SCR_SettingsSubMenuBase
 	protected BaseContainer m_InterfaceSettings;
 	protected SCR_SpinBoxComponent m_SpinnerBoxComp;
 	protected SCR_SpinBoxComponent m_MasterSpinBoxComp;
+	protected SCR_SliderComponent m_DPIScaleSliderComp;
 
 	protected bool m_bIsAllShown;
 	protected bool m_bIsCustom;
@@ -48,7 +52,6 @@ class SCR_InterfaceSettingsSubMenu : SCR_SettingsSubMenuBase
 			bool state;
 			m_InterfaceSettings.Get(settingName, state);
 			m_SpinnerBoxComp.SetCurrentItem(state);
-
 			
 			m_SpinnerBoxComp.SetData(data);
 			m_aAllSpinBoxes.Insert(m_SpinnerBoxComp);
@@ -117,6 +120,35 @@ class SCR_InterfaceSettingsSubMenu : SCR_SettingsSubMenuBase
 		// Add the invoker again once everything is done
 		m_MasterSpinBoxComp.m_OnChanged.Insert(OnMasterChange);
 
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void BindDPIScaleSetting()
+	{
+		Widget w = m_wRoot.FindAnyWidget(DPISCALE_SLIDER_WIDGET_NAME);
+		if (!w)
+			return;
+
+		m_DPIScaleSliderComp = SCR_SliderComponent.Cast(w.FindHandler(SCR_SliderComponent));
+		if (!m_DPIScaleSliderComp)
+			return;
+
+		float savedValue;
+		m_InterfaceSettings.Get(DPISCALE_SETTING_NAME, savedValue);
+
+		m_DPIScaleSliderComp.SetValue(savedValue);
+		m_DPIScaleSliderComp.m_OnChanged.Insert(OnDPIScaleChanged);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] slider Slider Component
+	//! \param[in] value Value to which the DPI scale has been changed
+	protected void OnDPIScaleChanged(SCR_SliderComponent slider, float value)
+	{
+		m_InterfaceSettings.Set(DPISCALE_SETTING_NAME, value);
+		SCR_DPIScaleHelper.SetDPIScale(GetGame().GetWorkspace(), value);
+
+		GetGame().UserSettingsChanged();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -218,6 +250,9 @@ class SCR_InterfaceSettingsSubMenu : SCR_SettingsSubMenuBase
 		
 		// Setup Master switch
 		SetupMasterSwitch();
+
+		// Bind DPI Scale setting
+		BindDPIScaleSetting();
 	}
 
 	//------------------------------------------------------------------------------------------------

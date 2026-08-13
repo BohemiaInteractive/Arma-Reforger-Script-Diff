@@ -24,6 +24,12 @@ class SCR_NameTagRulesetBase : Managed
 	[Attribute("120", UIWidgets.CheckBox, desc: "degrees \n base angle from center of the screen to entity required to display nametag, automatically scales with distance")]
 	protected int m_iMaxAngle;						// degrees, no tags may be visible outside of this angle to screen center
 	
+	[Attribute("5", UIWidgets.Slider, desc: "How many LOS traces per one frame is allowed", "1 10 1")]
+	protected int m_iMaxTracesPerFrame;
+	
+	[Attribute(desc: "List of base entities that nametags are seen through. Affects all inherited prefabs.", uiwidget: UIWidgets.ResourcePickerThumbnail, params: "et")]
+	protected ref array<ResourceName> m_aIgnoredPrefabs;
+	
 	// Consts
 	const int DISABLE_FLAGS = ENameTagFlags.UPDATE_DISABLE | ENameTagFlags.DISABLED; // flags which mark the nametag for cleanup process
 	const int SECONDARY_FLAGS = ENameTagEntityState.VON; // tags with these entity states are eligible to be secondary tags
@@ -34,9 +40,19 @@ class SCR_NameTagRulesetBase : Managed
 	const float VERT_ANGLE_ADJUST = 0.3; 			// multiplies vertical angle weight when determining whether tag should be displayed, lower number means higher vertical tolerance -> easier to focus tag
 	const vector HEAD_LOS_OFFSET = "0 0.05 0";		// ajdustment of head pos for LOS tracing
 	protected vector m_CameraPosition;
+	protected vector m_vCameraForward;
 	const float VON_STOP_TIME = 1;					// time (seconds) it takes for the VON state to end since the last received VON
 	protected const string ZONE_SCOPED = "Scoped";
+	
+	// Cache for tracing to avoid checking inheritance on every frame
+	protected ref map<ResourceName, bool> m_aFilteredPrefabs = new map<ResourceName, bool>();
+	protected ref array<IEntity> m_aTraceExcludeArray = {};
 
+	// Cached FOV data
+	protected float m_fFOVThreshold;
+	protected float m_fLastVerticalFOV;
+	protected float m_fLastAspectRatio;
+	
 	protected float m_fTimeElapsed = 0;				// used to calculate elapsed time for nametag expand/collapse delay	
 	protected float m_fTimeFade = 0;				// time for the tag to fade when no longer visible
 	protected float m_fFocusPrioAngle;				// highest priority candidate for tag 	
@@ -44,7 +60,7 @@ class SCR_NameTagRulesetBase : Managed
 	protected int m_iRefResolutionX;				// cached reference resolution, not to be confused with reference screen size
 	protected int m_iRefResolutionY;				// =||=
 	
-	SCR_NameTagData m_CurrentPlayerTag;				// nametag data of current player	
+	SCR_NameTagData m_CurrentPlayerTag;				// nametag data of current player
 	protected SCR_NameTagData m_ClosestAngleTag;	// candidate for primary tag
 	protected SCR_NameTagData m_PrimaryTag;			// primary visible tag which needs to pass all of the visibility rules
 	protected SCR_NameTagData m_ExpandedTag;		// currently expanded tag, by default primary tag after expand conditions are passed
@@ -147,7 +163,7 @@ class SCR_NameTagRulesetBase : Managed
 		}
 					
 		CalculateScreenPos(data);
-		if (m_iRefResolutionY * 1.1 < data.m_vTagScreenPos[1] || m_iRefResolutionX * 1.1 < data.m_vTagScreenPos[0] || 0 > data.m_vTagScreenPos[1] || 0 > data.m_vTagScreenPos[0])
+		if (data.m_vTagScreenPos[2] < 0 || m_iRefResolutionY * 1.1 < data.m_vTagScreenPos[1] || m_iRefResolutionX * 1.1 < data.m_vTagScreenPos[0] || 0 > data.m_vTagScreenPos[1] || 0 > data.m_vTagScreenPos[0])
 			return false;	
 			
 		return true;	
@@ -225,38 +241,75 @@ class SCR_NameTagRulesetBase : Managed
 		else if (data.m_eAttachedTo == ENameTagPosition.BODY)
 			data.SetTagPosition(ENameTagPosition.HEAD, false);
 	}
+
+	// ------------------------------------------------------------------------------------------------
+	//! Updates FOV values once per frame, to avoid even checking nametags that are not visible
+	protected void UpdateFOVThreshold()
+	{
+		float verticalFOV = 70.0; // Fallback
+		CameraManager cameraManager = GetGame().GetCameraManager();
+		if (cameraManager)
+		{
+			CameraBase camera = cameraManager.CurrentCamera();
+			if (camera)
+				verticalFOV = camera.GetVerticalFOV();
+		}
+		
+		float aspectRatio = 1.77; // Fallback
+		if (m_Workspace)
+		{
+			int height = m_Workspace.GetHeight();
+			if (height > 0)
+				aspectRatio = m_Workspace.GetWidth() / (float)height;
+		}
+
+		if (verticalFOV == m_fLastVerticalFOV && aspectRatio == m_fLastAspectRatio)
+			return;
+
+		m_fLastVerticalFOV = verticalFOV;
+		m_fLastAspectRatio = aspectRatio;
+
+		// Calculating visible cone
+		float fovV_Half = verticalFOV * 0.5;
+		float fovH_Half = Math.Atan2(Math.Tan(fovV_Half * Math.DEG2RAD) * aspectRatio, 1) * Math.RAD2DEG;
+		
+		float fovDiagonal_Half = Math.Sqrt((fovV_Half * fovV_Half) + (fovH_Half * fovH_Half));
+		
+		// Adding 5 degrees buffer to avoid flickering
+		m_fFOVThreshold = Math.Cos((fovDiagonal_Half + 5.0) * Math.DEG2RAD);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Change opacity based on line of sight
 	protected void CheckLOS()
 	{								
-		int count = m_aNameTags.Count(); // use base array here because cnadidate tags are being actively filtered out
-		if (m_iIndexLOS >= count)
-			m_iIndexLOS = 0;
-		
+		int count = m_aNameTags.Count();
 		vector cameraMat[4];
 		m_World.GetCurrentCamera(cameraMat);
 		m_CameraPosition = cameraMat[3];
-		
-		int id;
-		
-		while (m_iIndexLOS < count)
-		{	
-			SCR_NameTagData data = m_aNameTags.Get(m_iIndexLOS);
+		m_vCameraForward = cameraMat[2];
+		SCR_NameTagData data;
+		int tracesDone = 0;
+		int maxTraces = m_iMaxTracesPerFrame; 
+		if (maxTraces <= 0) 
+			maxTraces = 3;
+			
+		for (int i = 0; i < count; i++)
+		{
+			if (m_iIndexLOS >= count)
+				m_iIndexLOS = 0;
+				
+			data = m_aNameTags.Get(m_iIndexLOS);
 			m_iIndexLOS++;
 			
 			if (data == m_CurrentPlayerTag)
 				continue;
 			
-			id = data.m_iZoneID;
-			if (id == -1)
-				id = 0;
-			
-			if (m_eTraceForLOSMode == SCR_ELOSTraceMode.NON_GROUP_MEMBERS && data.m_iGroupID == m_CurrentPlayerTag.m_iGroupID)
+			if (m_eTraceForLOSMode == SCR_ELOSTraceMode.NON_GROUP_MEMBERS && CountsAsSquadmate(data))
 				continue;
 			
-			// trace
-			if ( TraceLOS(data) )
+			tracesDone++;
+			if (TraceLOS(data))
 			{
 				data.m_Flags &= ~ENameTagFlags.OBSTRUCTED;
 				data.m_fTimeSliceFade = 0;
@@ -268,10 +321,22 @@ class SCR_NameTagRulesetBase : Managed
 				data.m_Flags |= ENameTagFlags.OBSTRUCTED;
 			}
 			else 
+			{
 				data.m_Flags |= ENameTagFlags.FADE_TIMER;
-			
-			return;	
+			}
+
+			if (tracesDone >= maxTraces)
+				break;
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool CountsAsSquadmate(SCR_NameTagData data)
+	{
+		if (data.m_eEntityStateFlags & ENameTagEntityState.AI_SUBORDINATE)
+			return true;
+
+		return (data.m_iGroupID != -1 && data.m_iGroupID == m_CurrentPlayerTag.m_iGroupID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -279,34 +344,81 @@ class SCR_NameTagRulesetBase : Managed
 	//! \param data is the subject nametag
 	//! \return Returns true if the tested target is visible/not obstructed in current players line of sight
 	protected bool TraceLOS(SCR_NameTagData data)
-	{						
-		TraceParam param = new TraceParam;
-		param.Start = m_CameraPosition;
-		param.End = data.m_vEntHeadPos + HEAD_LOS_OFFSET;
-		param.Flags = TraceFlags.ANY_CONTACT | TraceFlags.WORLD | TraceFlags.ENTS; 
-		IEntity targetEntity = data.m_Entity;
+	{	
+		vector targetPos = data.m_vEntHeadPos + HEAD_LOS_OFFSET;
 		
+		vector dirToTarget = targetPos - m_CameraPosition;
+		dirToTarget.Normalize();
+		
+		float dot = vector.Dot(m_vCameraForward, dirToTarget);
+		if (dot < m_fFOVThreshold)
+			return false;
+		
+		IEntity targetEntity = data.m_Entity;
 		if (data.GetVehicleCompartment())
 			targetEntity = data.GetVehicleCompartment().GetVehicle();
 		
-		array<IEntity> ExcludeArray = {};
-		ExcludeArray.Insert(targetEntity);
-		ExcludeArray.Insert(m_CurrentPlayerTag.m_Entity);
-		param.ExcludeArray = ExcludeArray;
+		m_aTraceExcludeArray.Clear();
+		m_aTraceExcludeArray.Insert(targetEntity);
+		m_aTraceExcludeArray.Insert(m_CurrentPlayerTag.m_Entity);
+		
+		TraceParam param = new TraceParam();
+		param.Start = m_CameraPosition;
+		param.End = targetPos;
+		param.Flags = TraceFlags.ANY_CONTACT | TraceFlags.WORLD | TraceFlags.ENTS;
+		param.ExcludeArray = m_aTraceExcludeArray;
 		
 		param.LayerMask = TRACE_LAYER_CAMERA;
-		float percent = GetGame().GetWorld().TraceMove(param, null);
+		float percent = m_World.TraceMove(param, null);
 		if (percent == 1)
 			return true;
 		
 		param.LayerMask = EPhysicsLayerDefs.Projectile;
-		percent = GetGame().GetWorld().TraceMove(param, null);
+		percent = m_World.TraceMove(param, TraceFilter);
 		if (percent == 1)
 			return true;
 		
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Filter for the trace, removes ignored prefabs (like glass/windows) from possible contacts
+	protected bool TraceFilter(notnull IEntity entity)
+	{
+		if (!m_aIgnoredPrefabs || m_aIgnoredPrefabs.IsEmpty())
+			return true;
+		
+		EntityPrefabData prefabData = entity.GetPrefabData();
+		if (!prefabData)
+			return true;
+		
+		ResourceName entityPrefab = prefabData.GetPrefabName();
+		bool cachedResult; 
+		if (m_aFilteredPrefabs.Find(entityPrefab, cachedResult)) 
+			return cachedResult;
+		
+		bool isValidCollision = true;
+		BaseContainer targetContainer = prefabData.GetPrefab();
+		if (!targetContainer)
+			return true;
+		
+		//Going through parents to find a blacklisted prefab
+		foreach (ResourceName ignoredPrefab : m_aIgnoredPrefabs)
+		{
+			if (ignoredPrefab.IsEmpty())
+				continue;
 			
+			if (SCR_BaseContainerTools.IsKindOf(targetContainer, ignoredPrefab))
+			{
+				isValidCollision = false;
+				break;
+			}
+		}
+
+		m_aFilteredPrefabs.Insert(entityPrefab, isValidCollision);
+		return isValidCollision;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Evaluates if player is focusing a nametag entity or not, expands/collapses nametag after a set time
 	//! \param timeSlice is the OnFrame timeslice
@@ -658,6 +770,9 @@ class SCR_NameTagRulesetBase : Managed
 				
 		m_CurrentPlayerTag = nameTagPlayer;
 		m_PIPSightsComp = null;
+		
+		// Update FOV Threshold once per frame before doing any LOS checks
+		UpdateFOVThreshold();
 		
 		// Filter tags using visibility rules
 		m_aCandidateTags.Clear();

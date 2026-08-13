@@ -253,6 +253,8 @@ sealed class BaseWorld: global_pointer
 	proto external float GetTimeSlice();
 	//! Returns fixed time slice of the world.
 	proto external float GetFixedTimeSlice();
+	//! Returns the number of fixed steps during this frame of the world.
+	proto external int GetFixedSteps();
 	//! Returns physics time slice of the world.
 	proto external float GetPhysicsTimeSlice();
 	proto external IEntity FindEntityByName(string name);
@@ -261,6 +263,8 @@ sealed class BaseWorld: global_pointer
 	proto external bool IsEditMode();
 	//! Update active entities in the world, do not call from inside another world update (e.g. from IEntity::EOnXXX)
 	proto external void UpdateEntities();
+	//! Returns true if the world is currently being destroyed
+	proto external bool IsDestroying();
 	//! Create new empty BaseWorld
 	static proto SharedItemRef CreateWorld(string type, string name);
 }

@@ -150,13 +150,6 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 			SCR_EditableEntityComponent editableVehicle = m_EditableEntity.GetVehicle();
 			if (!editableVehicle || editedEntities.Find(editableVehicle) == -1)
 			{
-				if (isInstant)
-				{
-					vector localPos = m_EditableEntity.GetOwner().CoordToLocal(transform[3]);
-					localPos -= m_EditableEntity.GetIconPos();
-					transform[3] = m_EditableEntity.GetOwner().CoordToParent(localPos);
-				}
-
 				if (!m_EditableEntity.SetTransform(transform, isDirectChild && !isInstant))
 					return false;
 			}

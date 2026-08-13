@@ -192,10 +192,10 @@ class SCR_PlayerSupplyAllocationComponent : ScriptComponent
 		if (!playerXPHandlerComponent)
 			return;
 
-		int thresholdValue = m_MilitarySupplyAllocationConfig.GetAvailableAllocatedSuppliesReplenishmentThresholdValueAtRank(playerXPHandlerComponent.GetPlayerRankByXP());
+		int replenishAmount = m_MilitarySupplyAllocationConfig.GetAvailableAllocatedSuppliesReplenishmentThresholdValueAtRank(playerXPHandlerComponent.GetPlayerRankByXP());
 
-		if (m_iPlayerAvailableAllocatedSupplies < thresholdValue)
-			AddPlayerAvailableAllocatedSupplies(thresholdValue - m_iPlayerAvailableAllocatedSupplies);
+		if (m_iPlayerAvailableAllocatedSupplies < m_iPlayerMilitarySupplyAllocation)
+			AddPlayerAvailableAllocatedSupplies(replenishAmount);
 
 		m_fAvailableAllocatedSuppliesReplenishmentTimer = m_MilitarySupplyAllocationConfig.GetAvailableAllocatedSuppliesReplenishmentTimer();
 	}

@@ -16,8 +16,6 @@ class CharacterAnimationComponent: BaseAnimPhysComponent
 	//! Set animation layer for first person camera
 	proto external void SetAnimationLayerFPP();
 	proto external bool SetIKTarget(string bindingName, string boneName, vector position, vector rotationRad);
-	// Set an IK target plane to a plane given by specified normal vector and a dist distance from the world origin.
-	proto external bool SetIKTargetPlane(string bindingName, float normalX, float normalY, float normalZ, float dist);
 	/*!
 	Returns the collision box of the character in a specific stance.
 	\param outMin Minimum point of the collision box.

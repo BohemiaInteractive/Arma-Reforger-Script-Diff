@@ -251,7 +251,13 @@ class SCR_CampaignBuildingProviderComponent : SCR_MilitaryBaseLogicComponent
 	//! \return bool When true, view will be obstructed when an enemy is present within the radius of the building.
 	bool ObstrucViewWhenEnemyInRange()
 	{
-		return m_bObstructViewWhenEnemyInRange;
+		SCR_CampaignMilitaryBaseComponent base = GetCampaignMilitaryBaseComponent();
+
+		if (!base)
+			return m_bObstructViewWhenEnemyInRange;
+
+		// HQ should never have building blocked
+		return m_bObstructViewWhenEnemyInRange && !base.IsHQ();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -611,11 +617,147 @@ class SCR_CampaignBuildingProviderComponent : SCR_MilitaryBaseLogicComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Track an AI group spawned with this provider. Members are hooked as they spawn, so
+	//! the AI budget stays in sync with queue-driven (partial fill) spawning and with
+	//! members spawned again after a dormant period.
+	void TrackAIGroup(notnull SCR_AIGroup group)
+	{
+		group.GetOnAgentAdded().Insert(OnTrackedGroupAgentAdded);
+		group.GetOnMembersDespawning().Insert(OnTrackedGroupMembersDespawning);
+
+		SCR_EditableGroupComponent editableGroup = SCR_EditableGroupComponent.Cast(group.FindComponent(SCR_EditableGroupComponent));
+		if (editableGroup)
+			editableGroup.GetOnDeleted().Insert(OnTrackedGroupDeleted);
+
+		// Hook members that were already spawned before tracking started.
+		array<AIAgent> agents = {};
+		group.GetAgents(agents);
+		foreach (AIAgent agent : agents)
+		{
+			OnTrackedGroupAgentAdded(agent);
+		}
+
+		// Hand the group to the proximity lifecycle so it goes dormant when no observer is
+		// near, like ambient patrols do. Without this the group stays in Manual policy and
+		// keeps its characters materialised forever once placed. Same distance source as
+		// SCR_AmbientPatrolSpawnPointComponent.ConfigureGroupLifecycle.
+		float spawnDist = 600;
+		float despawnDist = 800;
+		SCR_AmbientPatrolSystem patrolSystem = SCR_AmbientPatrolSystem.GetInstance();
+		if (patrolSystem)
+		{
+			spawnDist = patrolSystem.GetSpawnDistance();
+			despawnDist = patrolSystem.GetDespawnDistance();
+		}
+		group.SetLifecyclePolicy(SCR_EAIGroupLifecyclePolicy.ProximityDriven, spawnDist, despawnDist);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! An event called when a tracked group starts a dormant transition, before its member
+	//! characters get deleted. Unhook the kill / delete events now, while the members still
+	//! exist: once the delete loop runs, the per-member delete callbacks cannot reliably
+	//! tell a dormant transition apart from a regular removal (component delete order is
+	//! not guaranteed). The members stay in the AI budget; they are hooked again through
+	//! OnTrackedGroupAgentAdded when they respawn.
+	protected void OnTrackedGroupMembersDespawning(SCR_AIGroup group)
+	{
+		if (!group)
+			return;
+
+		array<AIAgent> agents = {};
+		group.GetAgents(agents);
+		foreach (AIAgent agent : agents)
+		{
+			if (!agent)
+				continue;
+
+			IEntity ent = agent.GetControlledEntity();
+			if (ent)
+				RemoveEvents(ent);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! An event called for every member spawned into a tracked group.
+	protected void OnTrackedGroupAgentAdded(AIAgent agent)
+	{
+		if (!agent)
+			return;
+
+		IEntity ent = agent.GetControlledEntity();
+		if (!ent)
+			return;
+
+		// Mark the character as building AI, so saving / loading can process it.
+		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(ent.FindComponent(SCR_EditableEntityComponent));
+		if (editableEntity)
+			editableEntity.SetEntityFlag(EEditableEntityFlag.FREE_ROAM_BUILDING_AI, true);
+
+		SetOnEntityKilled(ent);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! An event called when a tracked group entity is deleted. Members of a dormant group
+	//! are not materialised and have no kill / delete hooks, so their budget share is
+	//! released here.
+	protected void OnTrackedGroupDeleted(IEntity groupEnt)
+	{
+		SCR_AIGroup group = SCR_AIGroup.Cast(groupEnt);
+		if (!group || !group.IsDormant())
+			return;
+
+		int dormantAlive = group.GetDormantAliveCount();
+		if (dormantAlive > 0)
+			AddAIValue(-dormantAlive);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! An event called when AI spawned by this provider is killed or deleted
 	protected void OnAIRemoved(IEntity ent)
 	{
 		RemoveEvents(ent);
+
+		// A dormant transition deletes the member characters, but the group still counts
+		// them as alive and spawns them back later. Keep them in the AI budget; the new
+		// characters are hooked again through OnTrackedGroupAgentAdded. DespawnMembers
+		// writes the dormant alive count before it starts deleting, so count >= 0 marks
+		// that transition. IsDormant() cannot be used here: while the members are being
+		// deleted one by one, the group agent list is not empty yet.
+		SCR_AIGroup group = GetMemberGroup(ent);
+		if (group && group.GetDormantAliveCount() >= 0)
+			return;
+
 		AddAIValue(-1);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Find the AI group a member character belongs to. The agent path covers a killed
+	//! character. During deletion the agent may be gone already (component delete order is
+	//! not guaranteed), so fall back to the editor hierarchy parent, which is still set
+	//! when the delete event fires.
+	protected SCR_AIGroup GetMemberGroup(notnull IEntity ent)
+	{
+		AIControlComponent control = AIControlComponent.Cast(ent.FindComponent(AIControlComponent));
+		if (control)
+		{
+			AIAgent agent = control.GetAIAgent();
+			if (agent)
+			{
+				SCR_AIGroup group = SCR_AIGroup.Cast(agent.GetParentGroup());
+				if (group)
+					return group;
+			}
+		}
+
+		SCR_EditableCharacterComponent editableCharacter = SCR_EditableCharacterComponent.Cast(ent.FindComponent(SCR_EditableCharacterComponent));
+		if (!editableCharacter)
+			return null;
+
+		SCR_EditableEntityComponent editableParent = editableCharacter.GetParentEntity();
+		if (!editableParent)
+			return null;
+
+		return SCR_AIGroup.Cast(editableParent.GetOwnerScripted());
 	}
 	
 	//------------------------------------------------------------------------------------------------

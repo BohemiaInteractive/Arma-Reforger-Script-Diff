@@ -77,6 +77,8 @@ class SCR_AvailableActionsConditionData
 	protected BaseWeaponComponent m_CurrentWeapon;
 	//! Current weapon muzzle
 	protected BaseMuzzleComponent m_CurrentMuzzle;
+	//! Current weapon sights
+	protected BaseSightsComponent m_CurrentSights;
 	//! Current weapon magazine
 	protected BaseMagazineComponent m_CurrentMagazine;
 
@@ -95,6 +97,10 @@ class SCR_AvailableActionsConditionData
 	protected BaseWeaponComponent m_CurrentVehicleWeapon;
 	//! Current turret controller
 	protected TurretControllerComponent m_CurrentTurretController;
+	//! Current turret
+	protected TurretComponent m_CurrentTurret;
+	//! Current turret sights
+	protected int m_iCurrentTurretSightCount;
 	
 	// Character health state
 	protected SCR_CharacterDamageManagerComponent m_CharacterDamageComponent;
@@ -219,9 +225,12 @@ class SCR_AvailableActionsConditionData
 		m_CurrentWeaponEntity = null;
 		m_CurrentWeapon = null;
 		m_CurrentMuzzle = null;
+		m_CurrentSights = null;
 		m_CurrentMagazine = null;
 		m_CurrentVehicleWeapon = null;
 		m_CurrentTurretController = null;
+		m_CurrentTurret = null;
+		m_iCurrentTurretSightCount = 0;
 		
 		// Health
 		m_CharacterDamageComponent = null;
@@ -295,10 +304,17 @@ class SCR_AvailableActionsConditionData
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Returns current weapon or none if null
+	//! Returns current muzzle or none if null
 	BaseMuzzleComponent GetCurrentMuzzle()
 	{
 		return m_CurrentMuzzle;
+	}	
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns current sights or none if null
+	BaseSightsComponent GetCurrentSights()
+	{
+		return m_CurrentSights;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -572,6 +588,20 @@ class SCR_AvailableActionsConditionData
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Returns currently controlled turret
+	TurretComponent GetCurrentTurret()
+	{
+		return m_CurrentTurret;
+	}	
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns amount of sights of currently controlled turret
+	int GetCurrentTurretSightCount()
+	{
+		return m_iCurrentTurretSightCount;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Returns for how long is vehicle using turbo
 	float GetCurrentVehicleTurboTime()
 	{
@@ -829,6 +859,14 @@ class SCR_AvailableActionsConditionData
 					BaseWeaponManagerComponent weaponManager = m_CurrentTurretController.GetWeaponManager();
 					if (weaponManager)
 						m_CurrentVehicleWeapon = weaponManager.GetCurrentWeapon();
+					
+					// Turret and sights
+					m_CurrentTurret = m_CurrentTurretController.GetTurretComponent();
+					if (m_CurrentTurret)
+					{
+						array<GenericComponent> sights = {};
+						m_iCurrentTurretSightCount = m_CurrentTurret.FindComponents(SightsComponent, sights);
+					}
 				}
 			}
 			else
@@ -865,6 +903,7 @@ class SCR_AvailableActionsConditionData
 			// Muzzle and magazine
 			if (m_CurrentWeapon)
 			{
+				m_CurrentSights = weaponManager.GetCurrentSights();
 				m_CurrentMuzzle = m_CurrentWeapon.GetCurrentMuzzle();
 				m_CurrentMagazine = m_CurrentWeapon.GetCurrentMagazine();
 			}

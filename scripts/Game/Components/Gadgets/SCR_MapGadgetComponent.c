@@ -97,6 +97,8 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 			
 			MenuManager menuManager = g_Game.GetMenuManager();
 			menuManager.OpenMenu(ChimeraMenuPreset.MapMenu);
+			// force close pause menu as otherwise it will conflict with map menu bindings, thus effectively locking the player in a broken state
+			menuManager.CloseMenuByPreset(ChimeraMenuPreset.PauseMenu);
 			m_bIsMapOpen = true;
 		}
 		else

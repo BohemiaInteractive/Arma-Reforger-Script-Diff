@@ -8,9 +8,6 @@ class SCR_WaypointGroupCommand : SCR_BaseGroupCommand
 	[Attribute(defvalue: "1", desc: "Will the command override all previous commands?")]
 	protected bool m_bOverridePreviousCommands;
 	
-	[Attribute(defvalue: "0", desc: "Will the command be automatically set to players position?")]
-	protected bool m_bTargetSelf;
-	
 	[Attribute(defvalue: "0", desc: "Will the command override autonomous group behavior?")]
 	protected bool m_bForceCommand;
 	
@@ -27,7 +24,7 @@ class SCR_WaypointGroupCommand : SCR_BaseGroupCommand
 	protected ref SCR_BaseWaypointCommandHandler m_WaypointCommandHandler;
 
 	//------------------------------------------------------------------------------------------------
-	override bool Execute(IEntity cursorTarget, IEntity target, vector targetPosition, int playerID, bool isClient)
+	override bool Execute(IEntity cursorTarget, IEntity groupEnt, vector targetPosition, int playerID, bool isClient)
 	{
 		SCR_ChimeraCharacter user = SCR_ChimeraCharacter.Cast(GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID));
 		if (user && !CanBePerformed(user))
@@ -40,25 +37,25 @@ class SCR_WaypointGroupCommand : SCR_BaseGroupCommand
 		}
 
 		SpawnWPVisualization(targetPosition, playerID);
-		if (!m_sWaypointPrefab || !target || !targetPosition)
+		if (!m_sWaypointPrefab || !groupEnt || !targetPosition)
 			return false;
 
-		bool waypointCreated = SetWaypointForAIGroup(target, targetPosition, playerID);
+		bool waypointCreated = SetWaypointForAIGroup(groupEnt, targetPosition, playerID);
 		
 		if (!waypointCreated)
 			return false;
 		
 		// Set combat mode
 		if (m_bSetCombatMode)
-			SetCombatMode(target, m_eCombatMode);
+			SetCombatMode(groupEnt, m_eCombatMode);
 		
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	bool SetWaypointForAIGroup(IEntity target, vector targetPosition, int playerID)
+	bool SetWaypointForAIGroup(IEntity groupEnt, vector targetPosition, int playerID)
 	{
-		SCR_AIGroup slaveGroup = SCR_AIGroup.Cast(target);
+		SCR_AIGroup slaveGroup = SCR_AIGroup.Cast(groupEnt);
 		if (!slaveGroup)
 			return false;
 		
@@ -153,7 +150,9 @@ class SCR_WaypointGroupCommand : SCR_BaseGroupCommand
 			return playerEntity.GetOrigin();
 		}
 		else
+		{
 			return targetPosition;
+		}
 	}
 	
 	//-------------------------------------------------------------------------------------------------

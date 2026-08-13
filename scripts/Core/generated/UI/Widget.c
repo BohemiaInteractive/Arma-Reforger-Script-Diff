@@ -112,7 +112,8 @@ sealed class Widget: Managed
 	proto ref Color GetColor();
 	/*!
 	Gets navigation rule for given direction
-	\param rule Out value of rule in given direction
+	\param direction Direction to get navigation rule for
+	\param[out] rule Navigation rule type for the given direction
 	\return Explicit target if rule is EXPLICIT. Otherwise undefined.
 	*/
 	proto string GetNavigation(WidgetNavigationDirection direction, out WidgetNavigationRuleType rule);

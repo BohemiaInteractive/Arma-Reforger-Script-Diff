@@ -17,7 +17,7 @@ class IEntity: Managed
 
 	\param owner The owner entity
 	\param other Entity who touched us
-	\param touchTypesMask Bitmask of touch types TODO
+	\param touchTypesMask Bitmask of touch types
 	*/
 	event protected void EOnTouch(IEntity owner, IEntity other, int touchTypesMask);
 	/*!
@@ -183,6 +183,8 @@ class IEntity: Managed
 	proto external BaseWorld GetWorld();
 	//! Set fixed LOD. Use -1 for non-fixed LOD.
 	proto external void SetFixedLOD(int lod);
+	//! Tells whether the Entity has been rendered last frame, only works when the entity has SET_RENDERED entity flag.
+	proto external bool IsRendered();
 	/*!
 	Returns world transformation of Entity. It returns only as many vectors as is array length.
 	\code
@@ -194,7 +196,7 @@ class IEntity: Managed
 
 		>> <0.989879,-0,0.141916>,<0,1,0>,<-0.141916,0,0.989879>,<2545.08,15.6754,2867.49>
 	\endcode
-	\param mat `vector[1...4]` matrix to be get
+	\param[out] mat `vector[1...4]` matrix to be get
 	*/
 	proto external void GetTransform(out vector mat[]);
 	//! See IEntity#GetTransform
@@ -392,10 +394,12 @@ class IEntity: Managed
 	/*!
 	Sets the visual object to this entity. Reference is added and released
 	upon entity destruction.
-	\param object Handle to object got by GetObject().
+	\param object Handle to object got by GetObject()
 	\param options String, dependent on object type. The only one supported for
 	XOB objects:
-	```"$remap 'original material name' 'new material'; [$remap 'another original material name' 'another new material']"```
+	```
+	"$remap 'original material name' 'new material'; [$remap 'another original material name' 'another new material']"
+	```
 	*/
 	proto external void SetObject(VObject object, string options);
 	/*!
@@ -495,7 +499,12 @@ class IEntity: Managed
 	proto external int AddChild(notnull IEntity child, TNodeId pivot, EAddChildFlags flags = EAddChildFlags.AUTO_TRANSFORM);
 	//! Remove Entity from hierarchy.
 	proto external void RemoveChild(notnull IEntity child, bool keepTransform = false);
-	proto external void SetName(string name);
+	/*!
+	Set a name to the entity. Can fail if an entity already has the same name in the world.
+	\param name New name of the entity. Use an empty string if you want to remove its name.
+	\return True if the entity name has been set or false if not.
+	*/
+	proto external bool SetName(string name);
 	//! Sets visibility mask for cameras, where Entity will be rendered.
 	proto external int SetCameraMask(int mask);
 	proto external Physics GetPhysics();

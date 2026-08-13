@@ -123,14 +123,21 @@ class SCR_NTIconPlatform : SCR_NTIconBase
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 		if (!playerController)
 			return;
-		
-		bool showOnPC;
+
+		bool platformIconShown;
 		if (m_GameplaySettings)
-			m_GameplaySettings.Get("m_bPlatformIconNametag", showOnPC);
+			m_GameplaySettings.Get("m_bPlatformIconNametag", platformIconShown);
+
+		PlatformKind platform;
+		if (GetGame().GetPlatformService())
+			platform = GetGame().GetPlatformService().GetLocalPlatformKind();
+
+		bool showOnXbox = platformIconShown && platform == PlatformKind.XBOX;
+		bool showOnPC = platformIconShown && (platform == PlatformKind.NONE || PlatformKind.STEAM);
 		
 		if (data.m_eType == ENameTagEntityType.PLAYER)
 		{
-			if (playerController.SetPlatformImageTo(data.m_iPlayerID, iWidget, showOnPC : showOnPC))
+			if (playerController.SetPlatformImageTo(data.m_iPlayerID, iWidget, showOnPC: showOnPC, showOnXbox: showOnXbox))
 				data.SetVisibility(iWidget, true, 100, false);
 		}
 		else if (data.m_eType == ENameTagEntityType.VEHICLE)
@@ -139,7 +146,7 @@ class SCR_NTIconPlatform : SCR_NTIconBase
 			if (!data)
 				return; 
 			
-			if (playerController.SetPlatformImageTo(tagData.GetMainPlayerID(), iWidget, showOnPC : showOnPC))
+			if (playerController.SetPlatformImageTo(tagData.GetMainPlayerID(), iWidget, showOnPC: showOnPC, showOnXbox: showOnXbox))
 				data.SetVisibility(iWidget, true, 100, false);
 		}
 	}
@@ -162,14 +169,21 @@ class SCR_NTIconPlatform : SCR_NTIconBase
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 		if (!playerController)
 			return;
-		
-		bool showOnPC;
+
+		bool platformIconShown;
 		if (m_GameplaySettings)
-			m_GameplaySettings.Get("m_bPlatformIconNametag", showOnPC);
+			m_GameplaySettings.Get("m_bPlatformIconNametag", platformIconShown);
+
+		PlatformKind platform;
+		if (GetGame().GetPlatformService())
+			platform = GetGame().GetPlatformService().GetLocalPlatformKind();
+
+		bool showOnXbox = platformIconShown && platform == PlatformKind.XBOX;
+		bool showOnPC = platformIconShown && (platform == PlatformKind.NONE || platform == PlatformKind.STEAM);
 		
 		if (data.m_eType == ENameTagEntityType.PLAYER)
 		{
-			if (playerController.SetPlatformImageTo(data.m_iPlayerID, image, showOnPC : showOnPC))
+			if (playerController.SetPlatformImageTo(data.m_iPlayerID, image, showOnPC: showOnPC, showOnXbox: showOnXbox))
 				data.SetVisibility(image, true, 100, false);
 		} 
 		else if (data.m_eType == ENameTagEntityType.VEHICLE)
@@ -178,7 +192,7 @@ class SCR_NTIconPlatform : SCR_NTIconBase
 			if (!tagData)
 				return; 
 			
-			if (playerController.SetPlatformImageTo(tagData.GetMainPlayerID(), image, showOnPC : showOnPC))
+			if (playerController.SetPlatformImageTo(tagData.GetMainPlayerID(), image, showOnPC: showOnPC, showOnXbox: showOnXbox))
 				tagData.SetVisibility(image, true, 100, false);
 		}
 	}

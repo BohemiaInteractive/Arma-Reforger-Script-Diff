@@ -5,29 +5,19 @@ class SCR_WeaponChangeSwitchOpticsCondition : SCR_AvailableActionCondition
 	//! Return true if currently held weapon has more than 1 scopes
 	override bool IsAvailable(notnull SCR_AvailableActionsConditionData data)
 	{
-		IEntity controlledEntity = SCR_PlayerController.GetLocalControlledEntity();
-		if (!controlledEntity)
-			return null;
+		// Check turret sights first. 
+		if (data.GetCurrentTurretSightCount() > 1)
+			return GetReturnResult(true);
 
-		ChimeraCharacter character = ChimeraCharacter.Cast(controlledEntity);
-		if (!character)
-			return null;
+		BaseWeaponComponent currentWeapon = data.GetCurrentWeapon();
+		if (!currentWeapon)
+			return GetReturnResult(false);
 
-		BaseWeaponManagerComponent weaponManager = character.GetCharacterController().GetWeaponManagerComponent();
-		if (!weaponManager)
-			return null;
-
-		BaseWeaponComponent currentSights = weaponManager.GetCurrentWeapon();
-		if (!currentSights)
-			return null;
-
-		bool canSwitchOptics;
+		int availableSights = currentWeapon.FindAvailableSights();
 		
-		if (currentSights.FindAvailableSights() == 0)
-			canSwitchOptics = currentSights.CanSetSights(1);
-		else if(currentSights.FindAvailableSights() == 1)
-			canSwitchOptics = currentSights.CanSetSights(0);
+		if (availableSights == 0 || availableSights == 1)
+			return GetReturnResult(currentWeapon.CanSetSights(1 - availableSights)); 
 
-		return canSwitchOptics;
+		return GetReturnResult(false);
 	}
 }

@@ -75,6 +75,16 @@ enum EApiCode
 	EACODE_ERROR_SERVER_PASSWORD_MISMATCH,
 	//! Client-Side only - Requested operation failed because server does not have free slots.
 	EACODE_ERROR_SERVER_IS_FULL,
+	//! Client-Side only - Client can perform replication join to the server.
+	EACODE_SERVER_JOIN,
+	//! Client-Side only - Client is currently waiting in queue for free slot on the server.
+	EACODE_SERVER_QUEUE_WAIT,
+	//! Client-Side only - Client has successfully left the queue.
+	EACODE_SERVER_QUEUE_LEFT,
+	//! Client-Side only - Operation failed because client was not active and the slot in queue expired.
+	EACODE_ERROR_SERVER_QUEUE_EXPIRED,
+	//! Client-Side only - Operation failed because client is not in the queue for the server.
+	EACODE_ERROR_SERVER_QUEUE_NOT_FOUND,
 	//lobby errors
 	EACODE_ERROR_MP_ROOM_NOT_FOUND,
 	EACODE_ERROR_MP_ROOM_IS_FULL,

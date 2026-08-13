@@ -31,5 +31,7 @@ class RplSchedulerInsertionCtx
 	RplStateOverride StateOverride;
 }
 
+typedef func DiagComponentCallback;
+void DiagComponentCallback(IEntity owner, float dt);
 
 

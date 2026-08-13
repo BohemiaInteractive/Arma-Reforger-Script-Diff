@@ -1,10 +1,16 @@
 class SCR_DebugShapeManager
 {
+	static const ShapeFlags NORMAL = ShapeFlags.TRANSP;
+	static const ShapeFlags ALWAYS_VISIBLE = NORMAL | ShapeFlags.NOZBUFFER;
+	static const ShapeFlags SPHERE_NORMAL = ShapeFlags.NOOUTLINE | NORMAL;
+	static const ShapeFlags SPHERE_ALWAYS_VISIBLE = ShapeFlags.NOOUTLINE | NORMAL;
+
 	protected ref set<ref Shape> m_Shapes = new set<ref Shape>();
 	protected ref set<ref DebugTextWorldSpace> m_ScreenSpaceTexts = new set<ref DebugTextWorldSpace>();
 
 	protected static const int DEFAULT_SHAPE_COLOUR = Color.RED;
 	protected static const ShapeFlags DEFAULT_SHAPE_FLAGS = ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP;
+	protected static const ShapeFlags DEFAULT_SPHERE_FLAGS = ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP | ShapeFlags.NOOUTLINE;
 
 	protected static const int DEFAULT_TEXT_COLOUR = Color.WHITE;
 	protected static const int DEFAULT_TEXT_BACKGROUND_COLOUR = 0x88000000;
@@ -43,8 +49,9 @@ class SCR_DebugShapeManager
 	//! Create a polyline
 	//! \param[in] points from 2 up to 50 points (array will be clipped)
 	//! \param[in] colour the shape's colour
+	//! \param[in] additionalFlags additional Shape flags
 	//! \return the created polyline or null on error (e.g not enough points)
-	Shape AddPolyLine(notnull array<vector> points, int colour = DEFAULT_SHAPE_COLOUR)
+	Shape AddPolyLine(notnull array<vector> points, int colour = DEFAULT_SHAPE_COLOUR, ShapeFlags additionalFlags = 0)
 	{
 		int count = points.Count();
 		if (count < 2)
@@ -59,7 +66,7 @@ class SCR_DebugShapeManager
 			pointsS[i] = points[i];
 		}
 
-		Shape shape = Shape.CreateLines(colour, DEFAULT_SHAPE_FLAGS, pointsS, count);
+		Shape shape = Shape.CreateLines(colour, DEFAULT_SHAPE_FLAGS | additionalFlags, pointsS, count);
 		m_Shapes.Insert(shape);
 		return shape;
 	}
@@ -90,7 +97,7 @@ class SCR_DebugShapeManager
 	//! \return the created circle
 	Shape AddCircleXZ(vector centre, float radius, int colour = DEFAULT_SHAPE_COLOUR)
 	{
-		Shape shape = CreateCircle(centre, vector.Up, radius, colour, radius * Math.PI, DEFAULT_SHAPE_FLAGS);
+		Shape shape = CreateCircle(centre, vector.Up, radius, colour, Math.Max(36, radius * Math.PI), DEFAULT_SHAPE_FLAGS);
 		m_Shapes.Insert(shape);
 		return shape;
 	}
@@ -304,7 +311,7 @@ class SCR_DebugShapeManager
 	//! \return the created sphere
 	Shape AddSphere(vector centre, float radius, int colour = DEFAULT_SHAPE_COLOUR, ShapeFlags additionalFlags = 0)
 	{
-		Shape shape = Shape.CreateSphere(colour, DEFAULT_SHAPE_FLAGS | additionalFlags, centre, radius);
+		Shape shape = Shape.CreateSphere(colour, DEFAULT_SPHERE_FLAGS | additionalFlags, centre, radius);
 		m_Shapes.Insert(shape);
 		return shape;
 	}
@@ -440,6 +447,12 @@ class SCR_DebugShapeManager
 	void Remove(notnull DebugTextWorldSpace text)
 	{
 		m_ScreenSpaceTexts.RemoveItem(text);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int CountShapes()
+	{
+		return m_Shapes.Count();
 	}
 
 	//------------------------------------------------------------------------------------------------

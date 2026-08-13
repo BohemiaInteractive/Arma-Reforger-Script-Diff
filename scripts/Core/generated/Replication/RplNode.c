@@ -28,7 +28,11 @@ sealed class RplNode: pointer
 	proto external RplId GetMainItemId();
 	proto external Managed GetItem(int idx);
 	proto external Managed GetMainItem();
-	proto external void AddItem(notnull Managed item);
+	/*!
+	\returns True if the item was added successfully, false otherwise.
+	\warning Can be used only before the RplNode is inserted into replication.
+	*/
+	proto external bool AddItem(notnull Managed item);
 }
 
 /*!

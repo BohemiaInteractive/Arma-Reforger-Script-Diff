@@ -882,7 +882,7 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 	protected void DestroyInterior(bool immediate)
 	{
 		SCR_BuildingDestructionData data = GetData();
-		if (!data)
+		if (!data || !data.m_aQueriedEntities)
 			return;
 
 		int count = data.m_aQueriedEntities.Count();
@@ -1671,7 +1671,9 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 
 		float difY = data.m_vTargetOrigin[1] - data.m_vStartMatrix[3][1];
 		float curY = newOrigin[1] - data.m_vStartMatrix[3][1];
-		float percentDone = curY/difY;
+		float percentDone = 1;
+		if (!float.AlmostEqual(difY, 0))
+			percentDone = curY/difY;
 		SpawnEffects(percentDone, owner, false);
 
 		// Final state

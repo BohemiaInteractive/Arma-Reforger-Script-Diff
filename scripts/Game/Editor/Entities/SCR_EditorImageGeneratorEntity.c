@@ -35,6 +35,7 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 	protected int m_iPrefabIndex = -1;
 	protected SCR_EditorImageGeneratorPrefab m_CurrentPrefab;
 	protected bool m_bIsScreenshotMade;
+	protected bool m_bPaused;
 	
 	//------------------------------------------------------------------------------------------------
 	static SCR_EditorImageGeneratorEntity GetInstance()
@@ -43,6 +44,24 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! Find first available label-free position (for non-group prefabs).
+	//! Positions with labels are reserved for group matching.
+	SCR_EditorImagePositionEntity FindSuitablePosition()
+	{
+		SCR_EditorImagePositionEntity position;
+		for (int i = m_aPositions.Count() - 1; i >= 0; i--)
+		{
+			position = m_aPositions.GetValue(i);
+			if (!position.HasLabels() && IsPositionSelected(position))
+				return position;
+		}
+
+		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Find a position matching the given labels (for group prefabs).
 	SCR_EditorImagePositionEntity FindSuitablePosition(array<EEditableEntityLabel> labels)
 	{
 		SCR_EditorImagePositionEntity position;
@@ -52,6 +71,7 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 			if (position.IsSuitable(labels) && IsPositionSelected(position))
 				return position;
 		}
+
 		return null;
 	}
 	
@@ -84,7 +104,6 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Add selected assets in resource browser to get generated images.
-	\Selected asset has to exist in worl Eden_AssetImage and has to have same labels set
 	\Used for GetResourceBrowserSelection callback
 	*/
 	protected void AddSelectedPrefab(ResourceName prefab, string filePath)
@@ -92,50 +111,56 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 		string ext;
 		FilePath.StripExtension(prefab, ext);
 		if (ext != "et")
-			return;
-		
-		Resource res = Resource.Load(prefab);
-		if (!res || !res.IsValid())
-			return;
-		
-		IEntityComponentSource editableEntitySource = SCR_EditableEntityComponentClass.GetEditableEntitySource(res);
-		if (!editableEntitySource)
-			return;
-		
-		SCR_EditableEntityUIInfo info = SCR_EditableEntityComponentClass.GetInfo(editableEntitySource);
-		if (!info)	
 		{
-			Print(string.Format("Prefab @\"%1\" does not have UI info defined in SCR_EditableEntityComponent!", prefab.GetPath()), LogLevel.WARNING);
+			PrintFormat("Skipping @\"%1\" — not an .et prefab (ext: %2)", prefab, ext, level: LogLevel.WARNING);
 			return;
 		}
-		
+
+		Resource res = Resource.Load(prefab);
+		if (!res || !res.IsValid())
+		{
+			PrintFormat("Skipping @\"%1\" — failed to load resource", prefab, level: LogLevel.WARNING);
+			return;
+		}
+
+		IEntityComponentSource editableEntitySource = SCR_EditableEntityComponentClass.GetEditableEntitySource(res);
+		if (!editableEntitySource)
+		{
+			PrintFormat("Skipping @\"%1\" — no SCR_EditableEntityComponent found", prefab.GetPath(), level: LogLevel.WARNING);
+			return;
+		}
+
+		SCR_EditableEntityUIInfo info = SCR_EditableEntityComponentClass.GetInfo(editableEntitySource);
+		if (!info)
+		{
+			PrintFormat("Skipping @\"%1\" — no UI info defined in SCR_EditableEntityComponent", prefab.GetPath(), level: LogLevel.WARNING);
+			return;
+		}
+
 		ResourceName imagePath = info.GetImage();
 		if (imagePath.IsEmpty())
 		{
-			Print(string.Format("Prefab @\"%1\" does not have image path defined in UI info of SCR_EditableEntityComponent!", prefab.GetPath()), LogLevel.WARNING);
+			PrintFormat("Skipping @\"%1\" — no image path defined in UI info", prefab.GetPath(), level: LogLevel.WARNING);
 			return;
 		}
-		
+
+		//--- Try labeled position first (Eden multi-position workflow); fall back to first
+		//--- label-free position (single-position workflow).
+		SCR_EditorImagePositionEntity position;
 		array<EEditableEntityLabel> labels = {};
 		info.GetEntityLabels(labels);
-		SCR_EditorImagePositionEntity position = FindSuitablePosition(labels);
+		if (!labels.IsEmpty())
+			position = FindSuitablePosition(labels);
+
+		if (!position)
+			position = FindSuitablePosition();
+
 		if (!position)
 		{
-			if (s_aSelectedPositions.IsEmpty())
-			{
-				string labelsLine;
-				foreach (int i, EEditableEntityLabel label: labels)
-				{
-					if (i > 0)
-						labelsLine += ", ";
-					
-					labelsLine += typename.EnumToString(EEditableEntityLabel, label);
-				}
-				Print(string.Format("No suitable position found for @\"%1\" with labels %2!", prefab, labelsLine), LogLevel.WARNING);
-			}
+			PrintFormat("Skipping @\"%1\" — no suitable position found (prefab labels: %2, registered positions: %3)", prefab.GetPath(), labels.Count(), m_aPositions.Count(), level: LogLevel.WARNING);
 			return;
 		}
-		
+
 		imagePath = FilePath.StripExtension(imagePath.GetPath());
 		m_aSelectedPrefabs.Insert(new SCR_EditorImageGeneratorPrefab(prefab, imagePath, position));
 	}
@@ -180,9 +205,9 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 				m_fTimeNext = m_fTime + 1;
 				
 				if (s_aSelectedPositions.IsEmpty())
-					Print(string.Format("Initiating image generation for %1 prefab(s).", m_iSelectedPrefabsCount), LogLevel.DEBUG);
+					PrintFormat("Initiating image generation for %1 prefab(s).", m_iSelectedPrefabsCount, level: LogLevel.DEBUG);
 				else
-					Print(string.Format("Initiating image generation for %1 prefab(s) on %2 pre-selected position(s).", m_iSelectedPrefabsCount, s_aSelectedPositions.Count()), LogLevel.DEBUG);
+					PrintFormat("Initiating image generation for %1 prefab(s) on %2 pre-selected position(s).", m_iSelectedPrefabsCount, s_aSelectedPositions.Count(), level: LogLevel.DEBUG);
 			}
 			m_iInit++; //--- Wait one frame before evaluating screen dimensions, otherwise they will still be default 128x128
 		}
@@ -195,8 +220,19 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 		if (!Init())
 			return;
 		
+		//--- Pause toggle
+		if (Debug.KeyState(KeyCode.KC_P))
+		{
+			Debug.ClearKey(KeyCode.KC_P);
+			m_bPaused = !m_bPaused;
+		}
+
 		bool canContinue;
-		if (m_fTimeNext != -1 || !m_CurrentPrefab)
+		if (m_bPaused)
+		{
+			canContinue = false;
+		}
+		else if (m_fTimeNext != -1 || !m_CurrentPrefab)
 		{
 			canContinue = m_fTime > m_fTimeNext;
 		}
@@ -217,12 +253,12 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 					string addonName = SCR_AddonTool.GetResourceLastAddon(m_CurrentPrefab.m_Prefab);
 					addonName = SCR_AddonTool.ToFileSystem(addonName);
 					System.MakeScreenshot(addonName + m_CurrentPrefab.m_ImagePath);
-					Print(string.Format("Image of prefab '%1' at position '%2' saved to @\"%3.png\"", FilePath.StripPath(m_CurrentPrefab.m_Prefab), m_CurrentPrefab.m_Position.GetName(), m_CurrentPrefab.m_ImagePath), LogLevel.DEBUG);
+					PrintFormat("Image of prefab '%1' at position '%2' saved to @\"%3.png\"", FilePath.StripPath(m_CurrentPrefab.m_Prefab), m_CurrentPrefab.m_Position.GetName(), m_CurrentPrefab.m_ImagePath, level: LogLevel.DEBUG);
 					return; //--- Wait until next frame to give MakeScreenshot function enough time to actually capture the screen
 				}
 				else
 				{
-					Print(string.Format("SIMULATION: Image of prefab '%1' at position '%2' would be saved to @\"%3.png\"", FilePath.StripPath(m_CurrentPrefab.m_Prefab), m_CurrentPrefab.m_Position.GetName(), m_CurrentPrefab.m_ImagePath), LogLevel.VERBOSE);
+					PrintFormat("SIMULATION: Image of prefab '%1' at position '%2' would be saved to @\"%3.png\"", FilePath.StripPath(m_CurrentPrefab.m_Prefab), m_CurrentPrefab.m_Position.GetName(), m_CurrentPrefab.m_ImagePath, level: LogLevel.VERBOSE);
 				}
 			}
 			
@@ -268,11 +304,15 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 		{
 			DbgUI.Text(string.Format("%1\n\n", m_CurrentPrefab.m_Prefab.GetPath()));
 			DbgUI.Text(string.Format("Progress: %1 of %2", m_iPrefabIndex, m_iSelectedPrefabsCount));
-			
-			if (m_fTimeNext == -1)
+
+			if (m_bPaused)
+				DbgUI.Text("\n*** PAUSED — Press 'P' to resume ***\n");
+			else if (m_fTimeNext == -1)
 				DbgUI.Text("Press 'Space' to take screenshot and continue to next prefab\n\n");
 			else
 				DbgUI.Text(string.Format("Estimated remaining time: %1", SCR_FormatHelper.GetTimeFormatting(m_fTimeRemaining, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS)));
+
+			DbgUI.Text("\nPress 'P' to pause/resume");
 		}
 		else
 		{
@@ -364,7 +404,7 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 			{
 				configurations.Get(0).Set("ColorSpace", "ToSRGB"); //--- Assume PC is the first
 				metaContainer.Save();
-				Print(string.Format("Editable entity preview image ADDED: @\"%1\"", targetPath), LogLevel.DEBUG);
+				PrintFormat("Editable entity preview image ADDED: @\"%1\"", targetPath, level: LogLevel.DEBUG);
 				return;
 			}
 		}

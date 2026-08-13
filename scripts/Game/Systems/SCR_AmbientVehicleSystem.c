@@ -119,6 +119,14 @@ class SCR_AmbientVehicleSystem : GameSystem
 	}
 
 	//------------------------------------------------------------------------------------------------
+	[Friend(SCR_AmbientVehicleSpawnPointComponent)]
+	protected void OnVehicleSpawned(notnull SCR_AmbientVehicleSpawnPointComponent spawnpoint, notnull Vehicle vehicle)
+	{
+		if (m_OnVehicleSpawned)
+			m_OnVehicleSpawned.Invoke(spawnpoint, vehicle);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateCheckInterval()
 	{
 		m_fCheckInterval = CHECK_INTERVAL / m_aSpawnpoints.Count();
@@ -236,11 +244,7 @@ class SCR_AmbientVehicleSystem : GameSystem
 
 		if (!spawnedVeh && playersNear)
 		{
-			Vehicle vehicle = spawnpoint.SpawnVehicle();
-
-			if (vehicle && m_OnVehicleSpawned)
-				m_OnVehicleSpawned.Invoke(spawnpoint, vehicle);
-
+			spawnpoint.SpawnVehicle();
 			return;
 		}
 

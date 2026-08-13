@@ -2,7 +2,7 @@ class SCR_ContentBrowserSortingBar : SCR_ServerFilterBarComponent
 {
 	
 	[Attribute()]
-	bool m_bDefaultSelected = true;
+	bool m_bDefaultSelected;
 	
 	SCR_ButtonImageComponent m_CurrentSelection;
 	protected int m_iCurrentIndex;

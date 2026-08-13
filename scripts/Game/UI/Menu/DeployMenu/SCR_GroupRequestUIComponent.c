@@ -59,6 +59,7 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		SCR_AIGroup.GetOnPlayerAdded().Insert(UpdateGroupPlayers);
 		SCR_AIGroup.GetOnPrivateGroupChanged().Insert(UpdateGroupPrivacy);
 		SCR_AIGroup.GetOnCustomNameChanged().Insert(UpdateGroupNames);
+		SCR_AIGroup.GetOnCallsignChanged().Insert(UpdateGroupName);
 		SCR_AIGroup.GetOnFrequencyChanged().Insert(UpdateGroupFrequency);
 		SCR_AIGroup.GetOnFlagSelected().Insert(UpdateGroupFlag);
 		
@@ -111,7 +112,8 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		SCR_AIGroup.GetOnPlayerAdded().Remove(UpdateGroupPlayers);
 		SCR_AIGroup.GetOnPrivateGroupChanged().Remove(UpdateGroupPrivacy);
 		SCR_AIGroup.GetOnCustomNameChanged().Remove(UpdateGroupNames);
-		SCR_AIGroup.GetOnFrequencyChanged().Remove(UpdateGroupFrequency);		
+		SCR_AIGroup.GetOnCallsignChanged().Remove(UpdateGroupName);
+		SCR_AIGroup.GetOnFrequencyChanged().Remove(UpdateGroupFrequency);
 		SCR_AIGroup.GetOnFlagSelected().Remove(UpdateGroupFlag);
 		
 		if (m_PlyGroupComp)
@@ -231,6 +233,19 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 					SCR_GroupButton.SGetGroupName(groupBtn.GetGroup(), m_wExpandButtonName,m_wExpandButtonNameFreq); // update group name in map's group selector
 			}
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Set the name of the group button of the given group
+	protected void UpdateGroupName(notnull SCR_AIGroup group)
+	{
+		SCR_GroupButton groupBtn = GetGroupButton(group);
+		if (!groupBtn)
+			return;
+
+		groupBtn.UpdateGroupName();
+		if (m_wExpandButtonName && groupBtn.GetGroup() == GetPlayerGroup())
+			SCR_GroupButton.SGetGroupName(groupBtn.GetGroup(), m_wExpandButtonName, m_wExpandButtonNameFreq); // update group name in map's group selector
 	}
 
 	//------------------------------------------------------------------------------------------------

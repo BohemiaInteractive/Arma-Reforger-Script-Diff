@@ -41,9 +41,6 @@ class SCR_FactionManager : FactionManager
 	//~ Server only \/
 	protected ref ScriptInvokerBase<SCR_FactionManager_PlayerFactionChanged> m_OnPlayerFactionChanged;
 	
-	// if nonempty this stores player limits of factions, that are different on server and client
-	protected ref map<FactionKey, int> m_mPendingLimitUpdates;
-	
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	ScriptInvoker GetOnPlayerFactionCountChanged()
@@ -407,16 +404,7 @@ class SCR_FactionManager : FactionManager
 						playerTotalLimit = playerMissionLimit;
 					
 					if (playerTotalLimit >= 0)
-					{
 						scriptedFaction.SetPlayerLimit(playerTotalLimit);
-						if (!m_mPendingLimitUpdates)
-						{
-							m_mPendingLimitUpdates = new map<FactionKey, int>();
-							SetEventMask(EntityEvent.FIXEDFRAME);
-						}
-						
-						m_mPendingLimitUpdates.Insert(scriptedFactionKey, playerTotalLimit);
-					}
 				}
 				
 				scriptedFaction.InitializeFaction();
@@ -451,22 +439,6 @@ class SCR_FactionManager : FactionManager
 		gameMode.GetOnPlayerDisconnected().Insert(OnPlayerDisconnected);
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	override protected void EOnFixedFrame(IEntity owner, float timeSlice)
-	{
-		super.EOnFixedFrame(owner,timeSlice);
-		if (m_mPendingLimitUpdates)
-		{
-			foreach (FactionKey factionKey, int playerLimit : m_mPendingLimitUpdates)
-			{
-				Rpc(RPC_UpdatePlayerLimit, factionKey, playerLimit);
-			}
-			
-			m_mPendingLimitUpdates = null;
-		}
-		ClearEventMask(EntityEvent.FIXEDFRAME);
-	}
-	
 	#ifdef ENABLE_DIAG
 	//------------------------------------------------------------------------------------------------
 	protected override void EOnDiag(IEntity owner, float timeSlice)
@@ -491,6 +463,38 @@ class SCR_FactionManager : FactionManager
 	}
 	#endif
 
+	//------------------------------------------------------------------------------------------------
+	protected override bool RplSave(ScriptBitWriter writer)
+	{
+		array<Faction> factions = {};
+		GetFactionsList(factions);
+		foreach (Faction faction : factions)
+		{
+			SCR_Faction scriptedFaction = SCR_Faction.Cast(faction);
+			if (!scriptedFaction)
+				continue;
+			
+			scriptedFaction.DoRplSave(writer)
+		}
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override bool RplLoad(ScriptBitReader reader)
+	{
+		array<Faction> factions = {};
+		GetFactionsList(factions);
+		foreach (Faction faction : factions)
+		{
+			SCR_Faction scriptedFaction = SCR_Faction.Cast(faction);
+			if (!scriptedFaction)
+				continue;
+			
+			scriptedFaction.DoRplLoad(reader)
+		}
+		return true;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	// constructor
 	//! \param[in] src
@@ -821,43 +825,6 @@ class SCR_FactionManager : FactionManager
 		
 		// Clear faction, this will result in proper update of things
 		playerFactionAffiliation.RequestFaction(null);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override protected bool RplSave(ScriptBitWriter writer)
-	{
-		array<Faction> factions = {};
-		GetFactionsList(factions);
-		
-		writer.WriteInt(factions.Count());
-
-		foreach (Faction basefaction : factions)
-		{
-			SCR_Faction faction = SCR_Faction.Cast(basefaction);
-			writer.WriteString(faction.GetFactionKey());
-			
-			faction.DoRplSave(writer);
-		}
-
-		return true;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override protected bool RplLoad(ScriptBitReader reader)
-	{
-		int count;
-		reader.ReadInt(count);
-
-		for (int i = 0; i < count; i++)
-		{
-			string key;
-			reader.ReadString(key);
-			
-			SCR_Faction faction = SCR_Faction.Cast(GetFactionByKey(key));
-			faction.DoRplLoad(reader);
-		}
-
-		return true;
 	}
 
 	//-----------------------------------------------------------------------------------------------

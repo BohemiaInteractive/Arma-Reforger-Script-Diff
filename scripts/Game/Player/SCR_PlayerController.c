@@ -165,7 +165,7 @@ class SCR_PlayerController : PlayerController
 		
 		GameBlocklist blocklist = GetGame().GetGameBlocklist();
 		
-		array<string> identityIDs = {};
+		array<UUID> identityIDs = {};
 		foreach (SCR_EditableEntityAuthor author : activeUGCAuthors)
 		{
 			identityIDs.Insert(author.m_sAuthorUID);
@@ -1068,16 +1068,22 @@ class SCR_PlayerController : PlayerController
 			case PlatformKind.STEAM:
 				if (showOnPC)
 					SetPlatformImagePC(targetPlatform, image, glow, setVisible);
+				else
+					return false;
 			break;
 			
 			case PlatformKind.XBOX:
 				if (showOnXbox)
 					SetPlatformImageXbox(targetPlatform, image, glow, setVisible);
+				else
+					return false;
 			break;
 			
 			case PlatformKind.NONE:
 				if (showOnPC)
 					SetPlatformImagePC(targetPlatform, image, glow, setVisible);
+				else
+					return false;
 			break;
 		}
 		

@@ -5,7 +5,7 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	protected SCR_EditableEntityComponent m_EditableEntity;
 	protected SCR_EditorManagerEntity m_EditorManager;
 	protected FactionAffiliationComponent m_FactionComponent;
-	protected SCR_MilitaryBaseComponent m_BaseComponent;
+	protected SCR_CampaignMilitaryBaseComponent m_BaseComponent;
 	protected ref array<SCR_EditableVehicleComponent> m_EditableVehicle = {};
 	protected SCR_CampaignBuildingProviderComponent m_MasterProviderComponent;
 	protected bool m_bCompositionSpawned;
@@ -16,6 +16,7 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	protected bool m_bSameFactionDisassembleOnly = false;
 	protected bool m_bTemporarilyBlockedAccess;
 	protected bool m_bAccessCanBeBlocked;
+	protected bool m_bBuildingNotAttachedToBase;
 	protected WorldTimestamp m_ResetTemporaryBlockedAccessTimestamp;
 	protected RplComponent m_RplComponent;
 	SCR_CampaignBuildingBuildUserAction m_BuildAction;
@@ -441,7 +442,13 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 			}
 		}
 		
-		
+		// not attached to a base (construction truck or world placed composition) so doesnt need to check all the base dependent logic.
+		if (m_bBuildingNotAttachedToBase)
+			return true;
+
+		if (!GetBase())
+			return true;
+
 		if (IsHQService())
 		{
 			if (CanBaseBeDisassembled(character))
@@ -449,7 +456,6 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 				if (HasBaseCompositionsAnyService())
 				{
 					SetCannotPerformReason(DISMANTLE_ALL_BUILDINGS);
-
 					return false;
 				}
 			}
@@ -472,27 +478,6 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 
 		if (!m_bDisassembleOnlyWhenCapturing || IsPlayerFactionSame(character))
 			return true;
-		
-		if (!m_BaseComponent)
-		{
-			if (!m_CompositionComponent)
-				return false;
-			
-			IEntity provider = m_CompositionComponent.GetProviderEntity();
-			if (!provider)
-				return false;
-			
-			SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(provider.FindComponent(SCR_CampaignBuildingProviderComponent));
-			if (!providerComponent)
-				return false;
-			
-			array<SCR_MilitaryBaseComponent> bases = {};
-			providerComponent.GetBases(bases);
-			if (bases.IsEmpty())
-				return false;
-			
-			m_BaseComponent = bases[0];
-		}
 		
 		Faction playerFaction = character.GetFaction();
 		
@@ -597,7 +582,7 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 		if (!campaignGameMode || !m_EditableEntity)
 			return false;
 
-		SCR_EditableEntityUIInfo editableEntityUIInfo = SCR_EditableEntityUIInfo.Cast(m_EditableEntity.GetInfo(GetOwner()));
+		SCR_EditableEntityUIInfo editableEntityUIInfo = SCR_EditableEntityUIInfo.Cast(m_EditableEntity.GetInfo());
 		if (!editableEntityUIInfo)
 			return false;
 
@@ -612,6 +597,9 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	protected SCR_CampaignMilitaryBaseComponent GetBase()
 	{
+		if (m_BaseComponent)
+			return m_BaseComponent;
+
 		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		if (!campaign)
 			return null;
@@ -624,7 +612,24 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 		if (!owner)
 			return null;
 
-		return baseMgr.FindClosestBase(owner.GetOrigin(), SCR_ECampaignBaseType.BASE);
+		SCR_CampaignMilitaryBaseComponent base = baseMgr.FindClosestBase(owner.GetOrigin(), SCR_ECampaignBaseType.BASE);
+		if (!base)
+			return null;
+
+		m_MasterProviderComponent = base.GetMasterProvider();
+
+		if (!m_MasterProviderComponent)
+			return null;
+
+		float buildingRadiusSq = m_MasterProviderComponent.GetBuildingRadius() * m_MasterProviderComponent.GetBuildingRadius();
+		if (vector.DistanceSqXZ(base.GetOwner().GetOrigin() , GetOwner().GetOrigin()) > buildingRadiusSq)
+		{
+			m_bBuildingNotAttachedToBase = true;
+			return null;
+		}
+
+		m_BaseComponent = base;
+		return m_BaseComponent;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -724,24 +729,13 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 
 		m_bTemporarilyBlockedAccess = false;
 
-		// cache master provider component
 		if (!m_MasterProviderComponent)
 		{
 			SCR_CampaignMilitaryBaseComponent campaignBase = GetBase();
 			if (!campaignBase)
 				return;
 
-			array<SCR_CampaignBuildingProviderComponent> providers = {};
-			campaignBase.GetBuildingProviders(providers);
-
-			foreach (SCR_CampaignBuildingProviderComponent provider : providers)
-			{
-				if (!provider.IsMasterProvider())
-					continue;
-
-				m_MasterProviderComponent = provider;
-				break;
-			}
+			m_MasterProviderComponent = campaignBase.GetMasterProvider();
 		}
 
 		if (!m_MasterProviderComponent)

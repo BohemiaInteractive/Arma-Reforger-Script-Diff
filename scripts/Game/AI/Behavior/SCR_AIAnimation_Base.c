@@ -1,9 +1,13 @@
 //------------------------------------------------------------------------------------------------
 // all AI re-gistered animations, must specify In and Out to be possible to use in "AnimationWaypoint"
-
 [BaseContainerProps()]
 class SCR_AIAnimation_Base
 {
+	ref SCR_CustomAnimDataConfig_Base m_CustomAnimData;	//container with animation properties
+	protected ResourceName m_sConfigPath;
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetAnimDataFromConfig();
 	bool StartAnimation(IEntity pUserEntity, vector vAnimationTransform[4]);
 	bool StopAnimation(IEntity pUserEntity, bool performFast);
 }
@@ -139,13 +143,14 @@ class SCR_AIAnimation_OfficerMission_Table : SCR_AIAnimation_Base
 		if (!staticTable)
 			return false;
 		
-		SCR_LoiterCustomAnimData customAnimData = new SCR_LoiterCustomAnimData(); 
+		SCR_LoiterCustomAnimData customAnimData = SCR_LoiterCustomAnimData.CreateInstance(
+			staticTable.m_CustomCinematicCommand, ELoiteringType.CUSTOM,
+			graphName : "{312D2589E4BF5BC8}anims/anm/NPC/workspaces/Officier_Mission01.agr",
+			graphInstanceName: "{DC477052F8B60926}anims/anm/NPC/workspaces/Officier_Mission01.asi",
+			controlVariableID: staticTable.m_OfficerMissionSpeech,
+			controlVariableValue: 2);
 		
-		animComp.SetVariableInt(staticTable.m_OfficerMissionSpeech,2);
-		
-		customAnimData.m_CustomCommand = staticTable.m_CustomCinematicCommand; 
-		customAnimData.m_GraphName = "{312D2589E4BF5BC8}anims/anm/NPC/workspaces/Officier_Mission01.agr"; 
-		customAnimData.m_GraphInstanceName = "{DC477052F8B60926}anims/anm/NPC/workspaces/Officier_Mission01.asi";   
+		animComp.SetVariableInt(customAnimData.m_iControlVariableID, customAnimData.m_iControlVariableValue);
 		controller.StartLoitering(null, ELoiteringType.CUSTOM, true, true, true, vAnimationTransform, true, customAnimData);
 		
 		return true;
@@ -194,13 +199,14 @@ class SCR_AIAnimation_OfficerMission_Walking : SCR_AIAnimation_Base
 		if (!staticTable)
 			return false;
 		
-		SCR_LoiterCustomAnimData customAnimData = new SCR_LoiterCustomAnimData(); 
+		SCR_LoiterCustomAnimData customAnimData = SCR_LoiterCustomAnimData.CreateInstance(
+			staticTable.m_CustomCinematicCommand, ELoiteringType.CUSTOM,
+			graphName : "{312D2589E4BF5BC8}anims/anm/NPC/workspaces/Officier_Mission01.agr",
+			graphInstanceName: "{DC477052F8B60926}anims/anm/NPC/workspaces/Officier_Mission01.asi",
+			controlVariableID: staticTable.m_OfficerMissionSpeech,
+			controlVariableValue: 1);
 		
-		animComp.SetVariableInt(staticTable.m_OfficerMissionSpeech,1);
-		
-		customAnimData.m_CustomCommand = staticTable.m_CustomCinematicCommand; 
-		customAnimData.m_GraphName = "{312D2589E4BF5BC8}anims/anm/NPC/workspaces/Officier_Mission01.agr"; 
-		customAnimData.m_GraphInstanceName = "{DC477052F8B60926}anims/anm/NPC/workspaces/Officier_Mission01.asi";   
+		animComp.SetVariableInt(customAnimData.m_iControlVariableID, customAnimData.m_iControlVariableValue);
 		controller.StartLoitering(null, ELoiteringType.CUSTOM, true, true, true, vAnimationTransform, true, customAnimData);
 		
 		return true;

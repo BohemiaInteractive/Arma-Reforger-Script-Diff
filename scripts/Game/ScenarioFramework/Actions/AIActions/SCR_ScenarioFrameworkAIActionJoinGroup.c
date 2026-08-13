@@ -68,7 +68,7 @@ class SCR_ScenarioFrameworkAIActionJoinGroup : SCR_ScenarioFrameworkAIAction
 			
 			foreach (AIAgent agent : agents)
 			{
-				pControllerGroupComponent.RequestAddAIAgent(SCR_ChimeraCharacter.Cast(agent.GetControlledEntity()), leaderId);
+				pControllerGroupComponent.RequestAddAIAgent(SCR_ChimeraCharacter.Cast(agent.GetControlledEntity()));
 			}
 		}
 		else

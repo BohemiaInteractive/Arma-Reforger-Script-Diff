@@ -15,11 +15,13 @@ class SCR_MapCampaignUI : SCR_MapUIElementContainer
 	protected ResourceName m_sSpawnPositionHint;
 	
 	protected static const int TASK_ICON_Y_OFFSET = 10;
+	protected static const int BASE_CREATION_BATCH_SIZE = 5;
 
 	protected Widget m_wMobileAssembly;
 	protected ref ScriptInvokerVoid m_OnBasesInited;
 	protected ref BaseHoveredInvoker m_OnBaseHovered;
 	protected SCR_CampaignMilitaryBaseComponent m_HoveredBase;
+	protected ref array<SCR_MilitaryBaseComponent> m_aMilitaryBases;
 	
 	//------------------------------------------------------------------------------
 	void InitMobileAssembly(string factionKey, bool deployed)
@@ -68,52 +70,93 @@ class SCR_MapCampaignUI : SCR_MapUIElementContainer
 	protected void InitBases()
 	{
 		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
-		array<SCR_MilitaryBaseComponent> bases = {};
-		baseManager.GetBases(bases);
+		m_aMilitaryBases = {};
+		baseManager.GetBases(m_aMilitaryBases);
+		// we dont need to call the iteration itself as it will automatically start iterating through the update function
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! A method that iterates through the list of bases to create all their widgets over multiple frames
+	protected void IterateBaseInit()
+	{
 		SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
-		
+
 		if (!faction)
 			return;
-		
+
 		SCR_CampaignMilitaryBaseComponent base;
-		
-		for (int i = 0, count = bases.Count(); i < count; ++i)
+		int baseCount = m_aMilitaryBases.Count();
+		int basesInitializedInFrame; 
+		Widget widget;
+		SCR_CampaignMapUIBase handler;
+
+		// we dont need to initialize every base so we keep track of the amount initialized this frame to ensure we dont take too long.
+		while (baseCount > 0 && basesInitializedInFrame < BASE_CREATION_BATCH_SIZE)
 		{
-			base = SCR_CampaignMilitaryBaseComponent.Cast(bases[i]);
-			
+			base = SCR_CampaignMilitaryBaseComponent.Cast(m_aMilitaryBases[baseCount-1]);
+
 			if (!base || !base.IsInitialized())
+			{
+				m_aMilitaryBases.Remove(baseCount - 1);
+				baseCount--;
 				continue;
-			
+			}
+
 			// Don't display enemy HQs and established bases which are out of radio range
 			if (base.GetFaction() != faction && (base.IsHQ() || (base.GetBuiltByPlayers() && !base.IsHQRadioTrafficPossible(faction))))
+			{
+				m_aMilitaryBases.Remove(baseCount - 1);
+				baseCount--;
 				continue;
+			}
 
-			Widget w = GetGame().GetWorkspace().CreateWidgets(m_sBaseElement, m_wIconsContainer);
-			SCR_CampaignMapUIBase handler = SCR_CampaignMapUIBase.Cast(w.FindHandler(SCR_CampaignMapUIBase));
-			
+			basesInitializedInFrame++;
+			widget = GetGame().GetWorkspace().CreateWidgets(m_sBaseElement, m_wIconsContainer);
+			handler = SCR_CampaignMapUIBase.Cast(widget.FindHandler(SCR_CampaignMapUIBase));
+
 			if (!handler)
-				return;
+			{
+				m_aMilitaryBases.Remove(baseCount - 1);
+				baseCount--;
+				continue;
+			}
 
 			handler.SetParent(this);
 			handler.InitBase(base);
-			m_mIcons.Set(w, handler);
+			m_mIcons.Set(widget, handler);
 			base.SetBaseUI(handler);
 			base.UpdateCaptureUI();
 
-			FrameSlot.SetSizeToContent(w, true);
-			FrameSlot.SetAlignment(w, 0.5, 0.5);
+			FrameSlot.SetSizeToContent(widget, true);
+			FrameSlot.SetAlignment(widget, 0.5, 0.5);
+
+			m_aMilitaryBases.Remove(baseCount - 1);
+			baseCount--;
 		}
+
+		// if we didnt get to finish every base yet we ensure we continue iterating before calling the "conclusion".
+		if (baseCount > 0)
+			return;
+
+		m_aMilitaryBases = null;
 
 		if (faction)
 		{
 			string factionKey = faction.GetFactionKey();
 			InitMobileAssembly(factionKey, faction.GetMobileAssembly() != null);
 		}
-		
+
 		UpdateIcons();
 
 		if (m_OnBasesInited)
 			m_OnBasesInited.Invoke();
+	}
+
+	//------------------------------------------------------------------------------
+	override void Update(float timeSlice)
+	{
+		if (m_aMilitaryBases)
+			IterateBaseInit();
 	}
 	
 	//------------------------------------------------------------------------------------------------

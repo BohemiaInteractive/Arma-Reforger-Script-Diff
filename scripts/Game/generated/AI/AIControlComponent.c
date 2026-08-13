@@ -17,8 +17,8 @@ class AIControlComponent: AIComponentEntity
 {
 	// AI
 	proto external AIAgent GetControlAIAgent();
-	// enabling, disabling, switching to player control
-	proto external void ActivateAI();
+	// returns whether AI is activated
+	proto external bool ActivateAI(bool forced = true);
 	proto external void DeactivateAI();
 	proto external bool IsAIActivated();
 }

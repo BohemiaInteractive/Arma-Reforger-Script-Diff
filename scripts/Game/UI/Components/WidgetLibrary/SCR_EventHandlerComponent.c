@@ -1,24 +1,22 @@
 //! Component for handling common events other scripts need to listen
-//! Feel free to add any event in the list 
-
-//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
-// Old, unmantained and barely used. Should be merged with SCR_ScriptedWidgetComponent as the base of the widget library, given the need for such events on all UI components
-
-//------------------------------------------------------------------------------------------------
-class SCR_EventHandlerComponent : ScriptedWidgetComponent 
+//! Feel free to add any event in the list
+class SCR_EventHandlerComponent : ScriptedWidgetComponent
 {
-	protected ref ScriptInvoker m_OnHandlerAttached;
-	protected ref ScriptInvoker m_OnHandlerDetached;
-	protected ref ScriptInvoker m_OnChange;
-	protected ref ScriptInvoker m_OnChangeFinal;
-	protected ref ScriptInvoker m_OnFocus;
-	protected ref ScriptInvoker m_OnFocusLost;
-	protected ref ScriptInvoker m_OnMouseEnter;
-	protected ref ScriptInvoker m_OnMouseLeave;
-	protected ref ScriptInvoker m_OnClick;
-	protected ref ScriptInvoker m_OnDoubleClick;
-	protected ref ScriptInvoker m_OnMouseButtonDown;
-	protected ref ScriptInvoker m_OnMouseButtonUp;
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// Old, unmaintained and barely used. Should be merged with SCR_ScriptedWidgetComponent as the base of the widget library, given the need for such events on all UI components
+
+	protected ref ScriptInvokerVoid m_OnHandlerAttached;
+	protected ref ScriptInvokerWidget m_OnHandlerDetached;
+	protected ref ScriptInvoker m_OnChange;		// should be ScriptInvokerWidget but cannot due to wrong usage elsewhere (SCR_ChatPanel)
+	protected ref ScriptInvokerWidget m_OnChangeFinal;
+	protected ref ScriptInvoker m_OnFocus;		// should be ScriptInvokerWidget but cannot due to wrong usage elsewhere (SCR_ComboBoxComponent)
+	protected ref ScriptInvoker m_OnFocusLost;	// should be ScriptInvokerWidget but cannot due to wrong usage elsewhere
+	protected ref ScriptInvoker m_OnMouseEnter;	// should be ScriptInvokerWidget but cannot due to wrong usage elsewhere
+	protected ref ScriptInvoker m_OnMouseLeave;	// should be ScriptInvokerWidget but cannot due to wrong usage elsewhere
+	protected ref ScriptInvoker m_OnClick;		// should be ScriptInvokerWidget but cannot due to wrong usage elsewhere
+	protected ref ScriptInvokerWidget m_OnDoubleClick;
+	protected ref ScriptInvokerWidget m_OnMouseButtonDown;
+	protected ref ScriptInvokerWidget m_OnMouseButtonUp;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -26,22 +24,23 @@ class SCR_EventHandlerComponent : ScriptedWidgetComponent
 		if (m_OnHandlerAttached)
 			m_OnHandlerAttached.Invoke();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		if (m_OnHandlerDetached)
 			m_OnHandlerDetached.Invoke(w);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
 		if (m_OnClick)
 			m_OnClick.Invoke(w);
+
 		return false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override bool OnChange(Widget w, bool finished)
 	{
@@ -59,25 +58,28 @@ class SCR_EventHandlerComponent : ScriptedWidgetComponent
 	{
 		if (m_OnMouseEnter)
 			m_OnMouseEnter.Invoke(w);
+
 		return false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{
 		if (m_OnMouseLeave)
 			m_OnMouseLeave.Invoke(w);
+
 		return false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocus(Widget w, int x, int y)
 	{
 		if (m_OnFocus)
 			m_OnFocus.Invoke(w);
+
 		return false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocusLost(Widget w, int x, int y)
 	{
@@ -101,7 +103,7 @@ class SCR_EventHandlerComponent : ScriptedWidgetComponent
 			m_OnMouseButtonUp.Invoke(w, button);
 		return false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override bool OnDoubleClick(Widget w, int x, int y, int button)
 	{
@@ -109,20 +111,22 @@ class SCR_EventHandlerComponent : ScriptedWidgetComponent
 			m_OnDoubleClick.Invoke(w);
 		return false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnHandlerAttached()
+	ScriptInvokerVoid GetOnHandlerAttached()
 	{
 		if (!m_OnHandlerAttached)
-			m_OnHandlerAttached = new ScriptInvoker();
+			m_OnHandlerAttached = new ScriptInvokerVoid();
+
 		return m_OnHandlerAttached;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker m_OnHandlerDetached()
+	ScriptInvokerWidget m_OnHandlerDetached()
 	{
 		if (!m_OnHandlerDetached)
-			m_OnHandlerDetached = new ScriptInvoker();
+			m_OnHandlerDetached = new ScriptInvokerWidget();
+
 		return m_OnHandlerDetached;
 	}
 
@@ -131,14 +135,16 @@ class SCR_EventHandlerComponent : ScriptedWidgetComponent
 	{
 		if (!m_OnChange)
 			m_OnChange = new ScriptInvoker();
+
 		return m_OnChange;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnChangeFinal()
+	ScriptInvokerWidget GetOnChangeFinal()
 	{
 		if (!m_OnChangeFinal)
-			m_OnChangeFinal = new ScriptInvoker();
+			m_OnChangeFinal = new ScriptInvokerWidget();
+
 		return m_OnChangeFinal;
 	}
 
@@ -147,6 +153,7 @@ class SCR_EventHandlerComponent : ScriptedWidgetComponent
 	{
 		if (!m_OnFocus)
 			m_OnFocus = new ScriptInvoker();
+
 		return m_OnFocus;
 	}
 
@@ -155,6 +162,7 @@ class SCR_EventHandlerComponent : ScriptedWidgetComponent
 	{
 		if (!m_OnFocusLost)
 			m_OnFocusLost = new ScriptInvoker();
+
 		return m_OnFocusLost;
 	}
 
@@ -163,6 +171,7 @@ class SCR_EventHandlerComponent : ScriptedWidgetComponent
 	{
 		if (!m_OnMouseEnter)
 			m_OnMouseEnter = new ScriptInvoker();
+
 		return m_OnMouseEnter;
 	}
 
@@ -171,40 +180,45 @@ class SCR_EventHandlerComponent : ScriptedWidgetComponent
 	{
 		if (!m_OnMouseLeave)
 			m_OnMouseLeave = new ScriptInvoker();
+
 		return m_OnMouseLeave;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnClick()
 	{
 		if (!m_OnClick)
 			m_OnClick = new ScriptInvoker();
+
 		return m_OnClick;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnMouseButtonDown()
+	ScriptInvokerWidget GetOnMouseButtonDown()
 	{
 		if (!m_OnMouseButtonDown)
-			m_OnMouseButtonDown = new ScriptInvoker();
+			m_OnMouseButtonDown = new ScriptInvokerWidget();
+
 		return m_OnMouseButtonDown;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnMouseButtonUp()
+	ScriptInvokerWidget GetOnMouseButtonUp()
 	{
 		if (!m_OnMouseButtonUp)
-			m_OnMouseButtonUp = new ScriptInvoker();
+			m_OnMouseButtonUp = new ScriptInvokerWidget();
+
 		return m_OnMouseButtonUp;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnDoubleClick()
+	ScriptInvokerWidget GetOnDoubleClick()
 	{
 		if (!m_OnDoubleClick)
-			m_OnDoubleClick = new ScriptInvoker();
+			m_OnDoubleClick = new ScriptInvokerWidget();
+
 		return m_OnDoubleClick;
 	}
-	
+
 	//---- REFACTOR NOTE END ----
-};
+}

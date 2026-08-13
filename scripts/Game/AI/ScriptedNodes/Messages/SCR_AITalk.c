@@ -61,14 +61,19 @@ class SCR_AITalk: AITaskScripted
 				return ENodeResult.FAIL;
 			}
 			
-			SCR_AICommsHandler commsHandler = FindCommsHandler(speaker);
+			bool throwVME;
+			SCR_AICommsHandler commsHandler = FindCommsHandler(speaker, throwVME);
 			
 			if (!commsHandler)
 			{
-				// Could not find comms handler, it's impossible to transmit
-				string callstackStr;
-				GetCallstackStr(callstackStr);
-				Print(string.Format("SCR_AITalk: was not able to find SCR_AICommsHandler for %1. BT: %2", speaker, callstackStr), LogLevel.ERROR);
+				if (throwVME)
+				{
+					// Could not find comms handler, it's impossible to transmit
+					string callstackStr;
+					GetCallstackStr(callstackStr);
+					Debug.Error(string.Format("SCR_AITalk: was not able to find SCR_AICommsHandler for %1. BT: %2", speaker, callstackStr));				
+				}
+				
 				Reset();
 				return ENodeResult.FAIL;
 			}
@@ -117,8 +122,10 @@ class SCR_AITalk: AITaskScripted
 	
 	//----------------------------------------------------------------------
 	//! Finds comms handler of provided speaker
-	protected SCR_AICommsHandler FindCommsHandler(notnull IEntity speaker)
+	//! \param[out] throwVME - is missing handler an error or not?
+	protected SCR_AICommsHandler FindCommsHandler(notnull IEntity speaker, out bool throwVME)
 	{
+		throwVME = false;
 		AIAgent speakerAgent = AIAgent.Cast(speaker);
 		AIGroup speakerGroup = AIGroup.Cast(speaker);
 		if (speakerGroup)
@@ -129,19 +136,27 @@ class SCR_AITalk: AITaskScripted
 			AIAgent leaderAgent = speakerGroup.GetLeaderAgent();
 			
 			if (!leaderAgent)
+				// empty group - not a VME error
 				return null;
 			
 			SCR_AIUtilityComponent utility = SCR_AIUtilityComponent.Cast(leaderAgent.FindComponent(SCR_AIUtilityComponent));
-			if (!utility)
+			if (!utility || !utility.m_CommsHandler)
+			{
+				throwVME = true;
 				return null;
+			}
 			
 			return utility.m_CommsHandler;
 		}	
 		else if (speakerAgent)
 		{
 			SCR_AIUtilityComponent utility = SCR_AIUtilityComponent.Cast(speakerAgent.FindComponent(SCR_AIUtilityComponent));
-			if (!utility)
+			if (!utility || !utility.m_CommsHandler)
+			{
+				throwVME = true;
 				return null;
+			}
+			
 			return utility.m_CommsHandler;
 		}
 		else
@@ -149,15 +164,25 @@ class SCR_AITalk: AITaskScripted
 			// Speaker is Entity
 			AIControlComponent contr = AIControlComponent.Cast(speaker.FindComponent(AIControlComponent));
 			if (!contr)
+			{
+				throwVME = true;
 				return null;
+			}
 			
 			speakerAgent = contr.GetControlAIAgent();
 			if (!speakerAgent)
+			{
+				throwVME = true;
 				return null;
+			}
 			
 			SCR_AIUtilityComponent utility = SCR_AIUtilityComponent.Cast(speakerAgent.FindComponent(SCR_AIUtilityComponent));
 			if (!utility)
+			{
+				throwVME = true;
 				return null;
+			}
+			
 			return utility.m_CommsHandler;
 		}
 	}

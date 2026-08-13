@@ -22,7 +22,7 @@
  - Must inherit from the EventProvider base class.
  - To maintain clarity and simplicity, only selected native classes are allowed to inherit from EventProvider. This may vary between projects. For scripting scenarios, the class is sealed to disallow custom script-based providers. Valid providers typically include:
    - \ref Page_WorldSystems "WorldSystem"
-   - \ref WorldSystemDocs_WorldController "WorldController"
+   - \ref Page_WorldSystems_WorldController "WorldController"
  - Contains methods marked with [EventAttribute], representing the events it can broadcast.
 
  \subsection EventSystem_event_provider_api API

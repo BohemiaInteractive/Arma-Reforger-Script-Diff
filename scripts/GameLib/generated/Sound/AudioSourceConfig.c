@@ -17,6 +17,7 @@ class AudioSourceConfig: ScriptAndConfig
 	static const int AS_Obstruction = 8;
 	static const int AS_InteriorValues = 16;
 	static const int AS_BoundingVolume = 32;
+	static const int AS_ExteriorObstruction = 64;
 
 	proto external void SetResource(string resourceName);
 	proto external void SetEvent(string eventName);

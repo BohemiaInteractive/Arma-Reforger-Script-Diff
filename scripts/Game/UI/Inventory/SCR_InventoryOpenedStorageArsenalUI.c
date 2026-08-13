@@ -95,8 +95,33 @@ class SCR_InventoryOpenedStorageArsenalUI : SCR_InventoryOpenedStorageUI
 		
 		RefreshResources();
 		m_wResourceStoredDisplay.SetVisible(false);
+		if (!m_bIsArsenal || !m_Storage)
+			return;
+
+		SCR_ArsenalComponent arsenalComp = SCR_ArsenalComponent.Cast(m_Storage.GetOwner().FindComponent(SCR_ArsenalComponent));
+		if (arsenalComp)
+			arsenalComp.GetOnArsenalUpdated().Insert(OnArsenalUpdated);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnArsenalUpdated(array<ResourceName> arsenalItems)
+	{
+		Refresh();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	override event void HandlerDeattached(Widget w)
+	{
+		super.HandlerDeattached(w);
+
+		if (!m_bIsArsenal || !m_Storage)
+			return;
+
+		SCR_ArsenalComponent arsenalComp = SCR_ArsenalComponent.Cast(m_Storage.GetOwner().FindComponent(SCR_ArsenalComponent));
+		if (arsenalComp)
+			arsenalComp.GetOnArsenalUpdated().Remove(OnArsenalUpdated);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override protected SCR_InventorySlotUI CreateSlotUI( InventoryItemComponent pComponent, SCR_ItemAttributeCollection pAttributes = null )
 	{

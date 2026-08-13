@@ -214,6 +214,12 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 				break;
 			}
 
+			case campaign.GetFactionKeyByEnum(SCR_ECampaignFaction.INDFOR):
+			{
+				m_MapItem.SetFactionIndex(EFactionMapID.FIA);
+				break;
+			}
+						
 			default:
 			{
 				m_MapItem.SetFactionIndex(EFactionMapID.UNKNOWN);

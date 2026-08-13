@@ -99,6 +99,9 @@ class SCR_EditorLinkComponent : ScriptComponent
 
 	void SpawnComposition()
 	{
+		if (IsSpawned())
+			return;
+
 		if ((Replication.IsClient() && !Replication.Loadtime()) || SCR_Global.IsEditMode(GetOwner()))
 			return;
 

@@ -277,7 +277,7 @@ class SCR_SetRallyPointCommand : SCR_BaseRadialCommand
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool Execute(IEntity cursorTarget, IEntity target, vector targetPosition, int playerID, bool isClient)
+	override bool Execute(IEntity cursorTarget, IEntity groupEnt, vector targetPosition, int playerID, bool isClient)
 	{
 		if (!m_HoveredBase)
 			return false;

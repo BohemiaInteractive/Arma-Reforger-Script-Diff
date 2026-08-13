@@ -124,6 +124,24 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 	{
 		return GetLoiterCommand() != null;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] currentLoiterType
+	//! \return
+	bool IsLoitering(out ELoiteringType currentLoiterType)
+	{
+		SCR_CharacterCommandLoiter currentLoiterCommand = GetLoiterCommand();
+		if (!currentLoiterCommand)
+			return false;
+
+		SCR_ScriptedCharacterInputContext input = currentLoiterCommand.GetScriptedInputContext();
+		if (!input)
+			return false;
+
+		currentLoiterType = input.m_iLoiteringType;
+		return true;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	private void StartLoiteringRpl(SCR_ScriptedCharacterInputContext inputCtx)
 	{

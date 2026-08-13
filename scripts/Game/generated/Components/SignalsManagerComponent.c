@@ -21,7 +21,9 @@ class SignalsManagerComponent: GameComponent
 	/*!
 	Add or find a signal which is synchronized over the network automatically.
 	\param signalName Name of the signal to add / find
-	\param valueThreshold How much the value has to changed compared to the previous one in order to sync it over the network.
+	\param valueThreshold How much the value has to change compared to the previous one in order to sync it over the network.
+	                      If zero, the change is treated as a state change and synchronizes reliably. Non-zero values are treated
+	                      as a steady signal and get synchronized unreliably when the accumulated change exceeds the threshold.
 	\param blendSpeed How fast the value is interpolated when synced over the network. It also influences how much time can
 	                  pass before the values is synced over the network again. Time in seconds = 1.0/blendSpeed.
 	\param value Value the newly created signal is going to have.

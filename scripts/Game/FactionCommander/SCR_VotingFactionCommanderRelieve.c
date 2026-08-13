@@ -17,10 +17,33 @@ class SCR_VotingFactionCommanderRelieve : SCR_VotingReferendum
 			return false;
 
 		SCR_Faction playerFactionLocal = SCR_Faction.Cast(fManager.GetLocalPlayerFaction());
-		if (!playerFactionLocal || playerFactionLocal != playerFaction)
+		if (!playerFactionLocal || playerFactionLocal != playerFaction || value != playerFactionLocal.GetCommanderId())
 			return false;
 
-		return value == playerFactionLocal.GetCommanderId();
+		PlayerController pc = GetGame().GetPlayerController();
+
+		if (!pc)
+			return false;
+
+		SCR_FactionCommanderPlayerComponent comp = SCR_FactionCommanderPlayerComponent.Cast(pc.FindComponent(SCR_FactionCommanderPlayerComponent));
+
+		if (!comp)
+			return false;
+
+		ChimeraWorld world = pc.GetWorld();
+
+		if (!world)
+			return false;
+
+		WorldTimestamp nextVolunteeringAvailableAt = comp.GetNextVolunteeringTimestamp();
+		WorldTimestamp currentTimestamp = world.GetServerTimestamp();
+
+		if (nextVolunteeringAvailableAt.Greater(currentTimestamp))
+			return false;
+
+		WorldTimestamp canVolunteeringAgain = comp.GetReplaceCommanderCooldownTimestamp();
+		
+		return canVolunteeringAgain.LessEqual(currentTimestamp);
 	}
 
 	//------------------------------------------------------------------------------------------------

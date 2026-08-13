@@ -380,15 +380,25 @@ class SCR_PlaceableItemComponent : ScriptComponent
 	{
 		RplId parentId = RplId.Invalid();
 		int nodeId = -1;
-		SCR_PlaceableInventoryItemComponent placeableIIC = SCR_PlaceableInventoryItemComponent.Cast(GetOwner().FindComponent(SCR_PlaceableInventoryItemComponent));
+		IEntity owner = GetOwner();
+		SCR_PlaceableInventoryItemComponent placeableIIC = SCR_PlaceableInventoryItemComponent.Cast(owner.FindComponent(SCR_PlaceableInventoryItemComponent));
 		if (placeableIIC)
 		{
 			parentId = placeableIIC.GetParentRplId();
 			nodeId = placeableIIC.GetParentNodeId();
 		}
+
 		writer.WriteRplId(parentId);
 		if (parentId.IsValid())
+		{
 			writer.WriteInt(nodeId);
+			vector localTransform[4];
+			owner.GetLocalTransform(localTransform);
+			foreach (vector component : localTransform)
+			{ // send local offset to ensure that player will know where it should be even when parent is on the move
+				writer.WriteVector(component);
+			}
+		}
 
 		return super.RplSave(writer);
 	}
@@ -402,10 +412,16 @@ class SCR_PlaceableItemComponent : ScriptComponent
 		{
 			int nodeId = -1;
 			reader.ReadInt(nodeId);
+			vector localTransform[4];
+			foreach (int i, vector component : localTransform)
+			{
+				reader.ReadVector(component);
+				localTransform[i] = component;
+			}
 
 			SCR_PlaceableInventoryItemComponent placeableIIC = SCR_PlaceableInventoryItemComponent.Cast(GetOwner().FindComponent(SCR_PlaceableInventoryItemComponent));
 			if (placeableIIC)
-				placeableIIC.SetNewParent(parentId, nodeId);
+				placeableIIC.SetNewParent(parentId, nodeId, localTransform);
 		}
 
 		return super.RplLoad(reader);

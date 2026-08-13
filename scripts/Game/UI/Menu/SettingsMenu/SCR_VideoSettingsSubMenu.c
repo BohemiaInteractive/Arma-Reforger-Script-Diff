@@ -1,23 +1,23 @@
+[EnumLinear()]
 enum EWindowMode
 {
-	FULLSCREEN = 0, // keep order in the enum
+	FULLSCREEN,
 	WINDOWED,
 	MAXIMIZED,
 	BORDERLESS,
-};
+}
 
-/*
-enum EAspectRatio
-{
-	ASPECT_RATIO_AUTO = 0, // keep order in the enum
-	ASPECT_RATIO_16_9,
-	ASPECT_RATIO_16_10,
-	ASPECT_RATIO_4_3,
-	ASPECT_RATIO_5_4,
-	ASPECT_RATIO_32_9,
-	ASPECT_RATIO_48_9,
-};
-// */
+// [EnumLinear()]
+//enum EAspectRatio
+//{
+//	ASPECT_RATIO_AUTO,
+//	ASPECT_RATIO_16_9,
+//	ASPECT_RATIO_16_10,
+//	ASPECT_RATIO_4_3,
+//	ASPECT_RATIO_5_4,
+//	ASPECT_RATIO_32_9,
+//	ASPECT_RATIO_48_9,
+//}
 
 class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 {
@@ -42,17 +42,15 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 
 	//! list of WIDGET names
 	protected static const ref array<string> PRESET_SETTINGS = {
-		/*
-			the following settings are out of presets; they were not forgotten:
-			"WindowMode"
-			"Resolution"
-			"ResolutionScale"
-			"AspectRatio"
-			"VSync"
-			"MaxFPS"
-			"DOF"		// scripted
-			"NearDOF"	// scripted
-		*/
+//			the following settings are out of presets; they were not forgotten:
+//			"WindowMode"
+//			"Resolution"
+//			"ResolutionScale"
+//			"AspectRatio"
+//			"VSync"
+//			"MaxFPS"
+//			"DOF"		// scripted
+//			"NearDOF"	// scripted
 		"Detail",
 		"DistantShadows",
 		"EnvironmentQuality",

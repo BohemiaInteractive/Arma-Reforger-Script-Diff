@@ -175,7 +175,7 @@ class SCR_BaseResupplySupportStationAction : SCR_BaseItemHolderSupportStationAct
 		SCR_ResupplyCatalogItemSupportStationData catalogSupportData = SCR_ResupplyCatalogItemSupportStationData.Cast(m_ResupplyData);
 		SCR_ResupplyHeldWeaponSupportStationData muzzleSupportData = SCR_ResupplyHeldWeaponSupportStationData.Cast(m_ResupplyData);
 		
-		if (characterRank <= SCR_ECharacterRank.RENEGADE || (catalogSupportData && characterRank < catalogSupportData.GetRequiredRank(owner, m_SupportStationGadget)))
+		if (characterRank <= SCR_ECharacterRank.RENEGADE || (m_ResupplyData && characterRank < m_ResupplyData.GetRequiredRank(owner, m_sItemPrefab, m_SupportStationGadget)))
 			m_eResupplyUnavailableReason = EResupplyUnavailableReason.RANK_TOO_LOW;
 
 		if (SCR_ArsenalManagerComponent.IsMilitarySupplyAllocationEnabled())

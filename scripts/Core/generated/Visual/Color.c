@@ -79,6 +79,18 @@ class Color: Managed
 	static proto ref Color FromIntSRGB(int color);
 	//! Creates a new color instance in linear color space from RGBA integers in range 0-255 which are in sRGB color space
 	static proto ref Color FromSRGBA(int r, int g, int b, int a);
+	/*!
+	\param h	Hue in degrees, wrapped internally
+	\param s	Saturation, 0-1
+	\param l	Lightness, 0-1
+	*/
+	static proto ref Color FromHSL(float h, float s, float l);
+	/*!
+	\param h	Hue in degrees, wrapped internally
+	\param s	Saturation, 0-1
+	\param v	Value, 0-1
+	*/
+	static proto ref Color FromHSV(float h, float s, float v);
 	//! Creates a new color instance from Color object
 	proto ref Color Copy();
 	//! Returns Red component
@@ -136,12 +148,18 @@ class Color: Managed
 	//! Returs this color as integer with 8 bits per channel
 	proto external int PackToInt();
 	/*!
+	\param[out] h	Hue in degrees [0-360), wrapped internally
+	\param[out] s	Saturation, 0-1
+	\param[out] v	Value, 0-1
+	*/
+	proto void ToHSV(out float h, out float s, out float v);
+	/*!
 	Unpack color data from packed integer, see PackToInt().
 	\param argb input packed argb int
-	\param a out alpha channel <0..255>
-	\param r out red channel <0..255>
-	\param g out green channel <0..255>
-	\param b out blue channel <0..255>
+	\param[out] a alpha channel <0..255>
+	\param[out] r red channel <0..255>
+	\param[out] g green channel <0..255>
+	\param[out] b blue channel <0..255>
 	*/
 	static proto void UnpackInt(int argb, out int a, out int r, out int g, out int b);
 	//! Converts this color from sRGB color space to linear RGB color space

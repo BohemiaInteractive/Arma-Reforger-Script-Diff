@@ -21,6 +21,10 @@ sealed class SliderWidget: UIWidget
 	proto external float GetStep();
 	proto external float GetCurrent();
 	proto external void SetCurrent(float curr);
+	proto external bool IsVertical();
+	proto external void SetVertical(bool vertical);
+	proto external bool IsFlipped();
+	proto external void SetFlipped(bool flipped);
 }
 
 /*!

@@ -132,6 +132,14 @@ class SCR_CampaignReconfigureRelayUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(user);
+		if (!character)
+			return false;
+
+		SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(character.GetFaction());
+		if (!faction || !faction.CanCaptureBases())
+			return false;
+
 		return m_Base != null;
 	}
 	

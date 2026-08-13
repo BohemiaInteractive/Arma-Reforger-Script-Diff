@@ -480,7 +480,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnPlayerGroupChanged(SCR_AIGroup group)
+	protected void OnPlayerGroupChanged(int groupId)
 	{
 		int pid = SCR_PlayerController.GetLocalPlayerId();
 		foreach (Widget w, SCR_MapUIElement e : m_mIcons)

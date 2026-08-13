@@ -548,19 +548,29 @@ class SCR_VONController : ScriptComponent
 				transmitType = EVONTransmitType.DIRECT;
 		}
 
+		if (transmitType != EVONTransmitType.DIRECT && m_eLifeState == ECharacterLifeState.INCAPACITATED)
+			return false;
+
 		m_eVONType = transmitType;
 		if (transmitType != EVONTransmitType.DIRECT && !GetGame().GetVONCanTransmitCrossFaction() && !SCR_Global.IsAdmin())		// is cross faction transmit disabled
 		{
 			InitEncryptionKey();
 		
-			SCR_VONEntryRadio radioEntry = SCR_VONEntryRadio.Cast(entry);
-			if (radioEntry && m_sLocalEncryptionKey != string.Empty && radioEntry.GetTransceiver().GetRadio().GetEncryptionKey() != m_sLocalEncryptionKey)
+			if (m_sLocalEncryptionKey != string.Empty)
 			{
-				SetVONProximity(true);
-				if (m_VONDisplay)
-					m_VONDisplay.ShowSelectedVONDisabledHint(true);
+				SCR_VONEntryRadio radioEntry = SCR_VONEntryRadio.Cast(entry);
+				if (radioEntry)
+				{
+					BaseRadioComponent radio = radioEntry.GetTransceiver().GetRadio();
+					if (radio && radio.GetEncryptionKey() != m_sLocalEncryptionKey)
+					{
+						SetVONProximity(true);
+						if (m_VONDisplay)
+							m_VONDisplay.ShowSelectedVONDisabledHint(true);
 
-				return false;
+						return false;
+					}
+				}
 			}
 		}
 					
@@ -611,7 +621,10 @@ class SCR_VONController : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	//! Set transmission method depending on entry type when starting VON transmit
 	protected void SetActiveTransmit(notnull SCR_VONEntry entry)
-	{		
+	{
+		if (!m_VONComp && !AssignVONComponent())
+			return;
+		
 		if (entry.GetVONMethod() == ECommMethod.SQUAD_RADIO)
 		{
 			m_VONComp.SetCommMethod(ECommMethod.SQUAD_RADIO);

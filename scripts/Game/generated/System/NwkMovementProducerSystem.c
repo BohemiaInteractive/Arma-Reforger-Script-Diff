@@ -10,9 +10,7 @@ Do not modify, this script is generated
 */
 
 /*!
-System for handling transforms over the network. It generates inputs for consumers (NwkMovementConsumerSystem)
-
-TODO: Transfer fully to ECS or at least move most of related logic from NwkMovementComponent here
+System for handling transforms over the network. It generates inputs for consumers (NwkMovementConsumerSystem).
 */
 class NwkMovementProducerSystem: GameSystem
 {

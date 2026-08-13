@@ -33,6 +33,11 @@ sealed class ServerCatalogueApi
 	private void ServerCatalogueApi();
 	private void ~ServerCatalogueApi();
 
+	[Obsolete("Use ServerJoinManagerApi.GetJoiningServer() instead.")]
+	static ServerInfo GetJoiningServer() { return ServerJoinManagerApi.GetJoiningServer(); }
+	[Obsolete("Use ServerJoinManagerApi.GetPreviousServer() instead.")]
+	static ServerInfo GetLastServer() { return ServerJoinManagerApi.GetPreviousServer(); }
+
 	//! Returns maximum supported size of catalogue for pages/offsets.
 	static proto int GetMaxSize();
 	/*!
@@ -44,17 +49,6 @@ sealed class ServerCatalogueApi
 	static proto void SetSize(int size);
 	//! Returns currently set size of catalogue for pages/offsets.
 	static proto int GetSize();
-	/*!
-	Returns server that client is currently in process of joining to.
-	It is set by initiating RequestJoin() on ServerInfo and should be cleared during join transition in native c++ implementaiton.
-	*/
-	static proto ServerInfo GetJoiningServer();
-	/*!
-	Returns server which was used in some of the last operations.
-	- last joined server
-	\note Server persist between game reloads but not game restarts/crashes.
-	*/
-	static proto ServerInfo GetLastServer();
 	//! Returns current mode of catalogue which determines its source of data
 	static proto EServerCatalogueMode GetMode();
 	/*!

@@ -107,7 +107,7 @@ class SCR_AutotuneStickyNotificationUIComponent : SCR_StickyNotificationUICompon
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnGroupChanged()
+	protected void OnGroupChanged(int groupId)
 	{		
 		//we dont care if the player doesnt have entity as there is no radio to tune
 		IEntity controlled = GetGame().GetPlayerManager().GetPlayerControlledEntity(SCR_PlayerController.GetLocalPlayerId());		

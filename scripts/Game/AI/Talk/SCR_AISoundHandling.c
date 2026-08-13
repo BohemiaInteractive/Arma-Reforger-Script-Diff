@@ -449,24 +449,12 @@ class SCR_AISoundHandling
 	//--------------------------------------------------------------------------------------------
 	static void SetSignal_GridValues(vector locationTarget, SignalsManagerComponent signalsManagerComponent, array<float> signals)
 	{
-		array<int> gridXcoords = {};
-		array<int> gridZcoords = {};
 		int gridX, gridZ;
 		SCR_MapEntity.GetGridPos(locationTarget, gridX: gridX, gridZ: gridZ);
 							
 		int SN_Grid = signalsManagerComponent.FindSignal("Grid");
-		for (int i = 2; i >= 0; i--)
-		{
-			int mod = Math.Pow(10, i);
-			gridXcoords.Insert(gridX / mod);
-			gridZcoords.Insert(gridZ / mod);
-			gridX = gridX % mod;
-			gridZ = gridZ % mod;
-		};
-		for (int i = 0; i < 3; i++)
-			SetSignal(SN_Grid, gridXcoords[i], signals);
-		for (int i = 0; i < 3; i++)
-			SetSignal(SN_Grid, gridZcoords[i], signals);
+		float gridValue = (gridX * 1000) + gridZ;
+		SetSignal(SN_Grid, gridValue, signals);
 	}
 	
 	//--------------------------------------------------------------------------------------------

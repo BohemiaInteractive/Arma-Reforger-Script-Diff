@@ -118,7 +118,13 @@ class SCR_ConsumableTourniquet : SCR_ConsumableEffectHealthItems
 		params.SetCommandID(GetApplyToSelfAnimCmnd(target));
 		params.SetCommandIntArg(1);
 		params.SetCommandFloatArg(0.0);
-		params.SetMaxAnimLength(m_fApplyToSelfDuration);
+
+		float usageDuration = m_fApplyToSelfDuration;
+		SCR_ChimeraCharacter character = GetItemUser(item);
+		if (character)
+			usageDuration /= GetUsageSpeedFactor(character);
+
+		params.SetMaxAnimLength(usageDuration);
 		params.SetIntParam(bodyPartToBandage);
 
 		return params;

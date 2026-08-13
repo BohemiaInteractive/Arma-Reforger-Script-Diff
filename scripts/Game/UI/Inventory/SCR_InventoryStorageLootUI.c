@@ -131,11 +131,56 @@ class SCR_InventoryStorageLootUI : SCR_InventoryStorageBaseUI
 			return;
 
 		m_ResourceSubscriptionHandleConsumer = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandle(m_ResourceConsumer, resourceInventoryPlayerComponentRplId);
+
+		if (m_bIsArsenal && m_aTraverseStorage.Count() == 1)
+		{
+			BaseInventoryStorageComponent observedStorage = m_aTraverseStorage[0];
+			if (!observedStorage)
+				return;
+
+			SCR_ArsenalComponent arsenalComp = SCR_ArsenalComponent.Cast(observedStorage.GetOwner().FindComponent(SCR_ArsenalComponent));
+			if (arsenalComp)
+				arsenalComp.GetOnArsenalUpdated().Insert(OnArsenalUpdated);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnArsenalUpdated(array<ResourceName> arsenalItems)
+	{
+		Refresh();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override event void HandlerDeattached(Widget w)
+	{
+		super.HandlerDeattached(w);
+
+		if (!m_bIsArsenal || m_aTraverseStorage.IsEmpty())
+			return;
+
+		BaseInventoryStorageComponent observedStorage = m_aTraverseStorage[0];
+		if (!observedStorage)
+			return;
+
+		SCR_ArsenalComponent arsenalComp = SCR_ArsenalComponent.Cast(observedStorage.GetOwner().FindComponent(SCR_ArsenalComponent));
+		if (arsenalComp)
+			arsenalComp.GetOnArsenalUpdated().Remove(OnArsenalUpdated);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void Back(int traverseStorageIndex)
 	{
+		if (m_bIsArsenal && m_aTraverseStorage.Count() == 1)
+		{
+			BaseInventoryStorageComponent observedStorage = m_aTraverseStorage[0];
+			if (!observedStorage)
+				return;
+	
+			SCR_ArsenalComponent arsenalComp = SCR_ArsenalComponent.Cast(observedStorage.GetOwner().FindComponent(SCR_ArsenalComponent));
+			if (arsenalComp)
+				arsenalComp.GetOnArsenalUpdated().Remove(OnArsenalUpdated);
+		}
+
 		super.Back(traverseStorageIndex);
 
 		if (m_ResourceComponent)

@@ -99,9 +99,8 @@ class SCR_NarrativeComponent : ScriptComponent
 
 		if (m_bRootMotion && m_CharController && animId > -1)
 		{
-			SCR_LoiterCustomAnimData customAnimData = new SCR_LoiterCustomAnimData();
-			customAnimData.m_CustomCommand = commandId;
-
+			SCR_LoiterCustomAnimData customAnimData = SCR_LoiterCustomAnimData.CreateInstance(commandId, animId);
+			
 			SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(m_CharacterAnimation.GetCommandHandler());
 			scrCmdHandler.StartCommand_Move();
 			

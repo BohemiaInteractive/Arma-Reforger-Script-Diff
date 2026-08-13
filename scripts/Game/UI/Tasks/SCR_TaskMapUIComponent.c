@@ -14,7 +14,7 @@ class SCR_TaskMapUIComponent : SCR_MapUIElement
 	protected bool m_bShowAuthor;
 	
 	protected bool m_bRequestPlayerNameCacheUpdate;
-	protected ref array<string> m_aPlayerIdentitiesToUpdate = {};
+	protected ref array<UUID> m_aPlayerIdentitiesToUpdate = {};
 	protected ref array<ref TextWidget> m_aWidgetsToUpdate = {};
 	
 	protected SCR_TaskManagerUIComponent m_TaskManager;

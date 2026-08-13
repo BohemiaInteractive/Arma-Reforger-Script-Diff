@@ -263,7 +263,12 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 		{
 			ChimeraCharacter character = ChimeraCharacter.Cast(from);
 			if (character && m_CharacterController)
+			{
 				m_CharacterController.m_OnLifeStateChanged.Remove(OnLifeStateChanged);
+				EventHandlerManagerComponent characterEventHandler = EventHandlerManagerComponent.Cast(character.FindComponent(EventHandlerManagerComponent));
+				if (characterEventHandler)
+					characterEventHandler.RemoveScriptHandler("OnFreeLookStateChanged", this, OnFreeLookStateChanged);
+			}
 		}
 		
 		// Update camera handler + init 1st/3rd person monitoring, if visibility is changing between 1st/3rd person cameras
@@ -307,6 +312,10 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 				m_CharacterController.m_OnLifeStateChanged.Insert(OnLifeStateChanged);
 				m_bIsUnconscious = m_CharacterController.GetLifeState() == ECharacterLifeState.INCAPACITATED;
 			}
+
+			EventHandlerManagerComponent characterEventHandler = EventHandlerManagerComponent.Cast(character.FindComponent(EventHandlerManagerComponent));
+			if (characterEventHandler)
+				characterEventHandler.RegisterScriptHandler("OnFreeLookStateChanged", this, OnFreeLookStateChanged);	
 		}
 		
 		// Init the state flags
@@ -336,6 +345,15 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 		
 		m_bInADS = inADS;
 		
+		UpdateVisibility();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	private void OnFreeLookStateChanged(bool isFreeLookEnabled)
+	{
+		// when free look is used then player stops aiming down the sights
+		m_bInADS = !isFreeLookEnabled && (m_bInADS || (m_CharacterController.IsWeaponADS() || m_CharacterController.GetCharacter().IsInVehicleADS()));
+
 		UpdateVisibility();
 	}
 
@@ -495,7 +513,16 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 			m_PlayerController.m_OnControlledEntityChanged.Remove(OnControlledEntityChanged);	
 			
 		if (m_CharacterController)
+		{
 			m_CharacterController.m_OnLifeStateChanged.Remove(OnLifeStateChanged);
+			SCR_ChimeraCharacter character = m_CharacterController.GetCharacter();
+			if (character)
+			{
+				EventHandlerManagerComponent characterEventHandler = EventHandlerManagerComponent.Cast(character.FindComponent(EventHandlerManagerComponent));
+				if (characterEventHandler)
+					characterEventHandler.RemoveScriptHandler("OnFreeLookStateChanged", this, OnFreeLookStateChanged);
+			}
+		}
 
 		PauseMenuUI.m_OnPauseMenuOpened.Remove(OnPauseMenuOpen);
 		PauseMenuUI.m_OnPauseMenuClosed.Remove(OnPauseMenuClose);

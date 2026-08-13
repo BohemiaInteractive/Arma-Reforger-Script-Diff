@@ -116,7 +116,8 @@ class Game
 	proto external void RequestReload(array<string> addonGUIDs = null);
 	/*!
 	Safely instantiate the entity and calls EOnInit if the entity sets event mask EntityEvent.INIT.
-	\param typeName Name of entity's type to instantiate.
+	\note Script params:
+	- \b typeName - Name of entity's type to instantiate.
 	\return instantiated entity
 	*/
 	proto external IEntity SpawnEntity(typename typeName, BaseWorld world = null, EntitySpawnParams params = null);

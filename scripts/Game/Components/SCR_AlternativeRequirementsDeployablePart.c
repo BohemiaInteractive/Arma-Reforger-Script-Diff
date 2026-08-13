@@ -34,7 +34,10 @@ class SCR_AlternativeRequirementsDeployablePart : SCR_RequiredDeployablePart
 
 		foreach (int id, IEntity foundElement : m_aFoundEntities)
 		{
-			if (vector.DistanceSq(foundElement.GetOrigin(), origin) <= distanceSqToFoundEntity)
+			if (ChimeraCharacter.Cast(foundElement.GetRootParent()))
+				continue; // items from player inventory should have top priority and should be always first to be used for assembling
+
+			if (distanceSqToFoundEntity != 0 && vector.DistanceSq(foundElement.GetOrigin(), origin) <= distanceSqToFoundEntity)
 				continue;
 
 			ReplaceFoundEntity(foundEntity, id);

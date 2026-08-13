@@ -33,6 +33,7 @@ class SCR_SpawnPoint : SCR_Position
 	protected float m_fColliderWidth = m_fPlayerCylinderRadius * 1.73205;
 	protected float m_fColliderHeight = m_fPlayerCylinderRadius * 2;
 	protected vector m_vCylinderVectorOffset = Vector(0, m_fPlayerCylinderHeight * 0.5, 0);
+	protected Faction m_Faction;
 	
 	[Attribute("0", UIWidgets.EditBox, "If bigger than 0, defines radius in which spawn will be randomized")]
 	float m_fRandomSpawnRadius;
@@ -69,6 +70,9 @@ class SCR_SpawnPoint : SCR_Position
 
 	[Attribute("0", desc: "Spawn at a random place on the map")]
 	protected bool m_bRandomizedSpawn;
+	
+	[Attribute("100", params: "0 inf", desc: "Radius to scan for enemies during Random Spawn, disabled if 0")]
+	protected float m_fRandomSpawnSafetyRadius;
 	
 	[Attribute("10", params: "1 inf", desc: "Random position attempt count")]
 	protected int m_iRandomSpawnMaxAttempts;
@@ -477,6 +481,10 @@ class SCR_SpawnPoint : SCR_Position
 	}
 	protected void OnSetFactionKey()
 	{
+		FactionManager factionManager = GetGame().GetFactionManager();
+		if (factionManager)
+			m_Faction = factionManager.GetFactionByKey(m_sFaction);
+		
 		Event_SpawnPointFactionAssigned.Invoke(this);
 	}
 
@@ -678,17 +686,9 @@ class SCR_SpawnPoint : SCR_Position
 	override void SetColorAndText()
 	{
 		m_sText = m_sFaction;
-
-		// Fetch faction data
-		FactionManager factionManager = GetGame().GetFactionManager();
-		if (factionManager)
-		{
-			Faction faction = factionManager.GetFactionByKey(m_sFaction);
-			if (faction)
-			{
-				m_iColor = faction.GetFactionColor().PackToInt();
-			}
-		}
+		if (m_Faction)
+			m_iColor = m_Faction.GetFactionColor().PackToInt();
+		
 	}
 #endif
 
@@ -776,6 +776,7 @@ class SCR_SpawnPoint : SCR_Position
 		}
 
 		InitFactionAffiliation(owner);
+		OnSetFactionKey();
 
 		// Add to list of all points
 		m_aSpawnPoints.Insert(this);
@@ -794,7 +795,10 @@ class SCR_SpawnPoint : SCR_Position
 			m_FactionAffiliationComponent.GetOnFactionChanged().Insert(ApplyFactionChange);
 			Faction faction = m_FactionAffiliationComponent.GetAffiliatedFaction();
 			if (faction)
+			{
 				m_sFaction = faction.GetFactionKey();
+				m_Faction = faction;
+			}
 		}
 	}
 	
@@ -862,14 +866,20 @@ class SCR_SpawnPoint : SCR_Position
 		vector safePosition;
 		BaseWorld world = GetWorld();
 		
-		// Attempt a few times in case the pre-calculated points are now occupied by moving objects
 		for (int i; i < m_iRandomSpawnMaxAttempts; i++)
 		{
 			if (!randomSpawnManager.RequestSpawnPosition(m_sFaction, m_aSpawnPoints, safePosition))
 				break;
 			
-			if (SCR_WorldTools.TraceCylinder(safePosition + m_vCylinderVectorOffset, m_fPlayerCylinderRadius, m_fPlayerCylinderHeight, TraceFlags.ENTS, world))
+			if (SCR_WorldTools.TraceCilinderUtil(safePosition + m_vCylinderVectorOffset, m_fPlayerCylinderRadius, m_fPlayerCylinderHeight, TraceFlags.ENTS, world))
 			{
+				bool enemyNearby = false;
+				if (m_fRandomSpawnSafetyRadius > 0)
+					enemyNearby = !world.QueryEntitiesBySphere(safePosition, 100.0, CheckEnemyProximity, null, EQueryEntitiesFlags.DYNAMIC);
+
+				if (enemyNearby)
+					continue; 
+
 				vOutPosition = safePosition;
 				vOutRotation = {Math.RandomFloat(0, 360), 0, 0};
 				return true;
@@ -878,5 +888,19 @@ class SCR_SpawnPoint : SCR_Position
 		
 		vOutPosition = GetOrigin();
 		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool CheckEnemyProximity(IEntity entity)
+	{
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(entity);
+		if (!character)
+			return true; 
+			
+		Faction charFaction = character.GetFaction();
+		if (charFaction && charFaction != m_Faction) 
+			return false; 
+
+		return true; 
 	}
 }

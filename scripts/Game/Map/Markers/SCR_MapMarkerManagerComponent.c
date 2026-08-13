@@ -196,7 +196,20 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 			}
 		}
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Return factionID based on the symbol of a Faction
+	//! \param[in] faction
+	int GetFactionIDFromMilitarySymbol(EMilitarySymbolIdentity factionMilitarySymbol)
+	{
+		SCR_MapMarkerEntryMilitary militaryConfig = SCR_MapMarkerEntryMilitary.Cast(m_MarkerCfg.GetMarkerEntryConfigByType(SCR_EMapMarkerType.PLACED_MILITARY));
+		if (!militaryConfig)
+			return -1;
+
+		// check whether the provided parameters are defined within marker config
+		return militaryConfig.GetFactionEntryID(factionMilitarySymbol);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Prepare military marker based on existing configure attributes within marker config
 	//! \param[in] faction
@@ -360,6 +373,9 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 	{			
 		foreach (SCR_MapMarkerEntity dynamicMarker : m_aDynamicMarkers)
 		{
+			if (!dynamicMarker)
+				continue;
+			
 			Faction markerFaction = dynamicMarker.GetFaction();
 			
 			if (!markerFaction || markerFaction == SCR_FactionManager.SGetPlayerFaction(playerID))
@@ -545,7 +561,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 		}
 
 		SCR_MapEntity mapEnt = SCR_MapEntity.GetMapInstance();
-		if (mapEnt.IsOpen() && mapEnt.GetMapUIComponent(SCR_MapMarkersUI))		
+		if (mapEnt && mapEnt.IsOpen() && mapEnt.GetMapUIComponent(SCR_MapMarkersUI))		
 			marker.OnCreateMarker(true);
 		
 		CheckMarkersUserRestrictions();

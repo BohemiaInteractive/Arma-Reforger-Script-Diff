@@ -1399,8 +1399,8 @@ class SCR_ScenarioFrameworkActionLimiterSave : SCR_ScenarioFrameworkActionSave
 		if (!limiterAction.m_LimitedUntil)
 			return;
 
-		const WorldTimestamp currentTimestamp = GetGame().GetWorld().GetTimestamp(); // 110
-		m_fLimitRemaining = limiterAction.m_LimitedUntil.DiffMilliseconds(currentTimestamp) // 150 - 110 = 40
+		const WorldTimestamp currentTimestamp = GetGame().GetWorld().GetTimestamp();
+		m_fLimitRemaining = limiterAction.m_LimitedUntil.DiffMilliseconds(currentTimestamp);
 	}
 
 	//------------------------------------------------------------------------------------------------

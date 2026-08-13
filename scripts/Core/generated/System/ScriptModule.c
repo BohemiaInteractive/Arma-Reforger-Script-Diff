@@ -48,17 +48,17 @@ class ScriptModule
 	Available in developer builds (workbench or diag) and in headless server.
 	\param parentModule Module
 	\param scriptFile Script file path
-	\returns Loaded scripted module
+	\return Loaded scripted module
 	*/
 	static proto ref ScriptModule LoadScript(ScriptModule parentModule, string scriptFile);
 	/*!
 	Create ScriptModule from string input.
 	Available in developer builds (workbench or diag) and in headless server.
 	\param parentModule Module
-	\param text to compile
-	\param errorText output from compiler
-	\param errorLine output from compiler
-	\returns Loaded scripted module
+	\param text text to compile
+	\param[out] errorText output from compiler
+	\param[out] errorLine output from compiler
+	\return Loaded scripted module
 	*/
 	static proto ref ScriptModule CompileScript(ScriptModule parentModule, string text, out string errorText, out int errorLine);
 }

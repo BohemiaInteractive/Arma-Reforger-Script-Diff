@@ -12,6 +12,10 @@ class SCR_AIAgentDebugPanel : Managed
 	
 	protected bool m_bShowPerception;
 	
+	protected bool m_bShowPerceptionUnknown;
+	protected bool m_bShowPerceptionFriendly;
+	protected bool m_bShowPerceptionEnemy;
+	
 	// The debug panel can be created for non-AI as well, for instance for vehicles.
 	void SCR_AIAgentDebugPanel(AIAgent agent, IEntity entity)
 	{
@@ -326,20 +330,17 @@ class SCR_AIAgentDebugPanel : Managed
 		
 		
 		// Resolve which types to show
-		bool showUnknown;
-		bool showFriendly;
-		bool showEnemy;
-		DbgUI.Check("  Show Unknown", showUnknown);
-		DbgUI.Check("  Show Friendly", showFriendly);
-		DbgUI.Check("  Show Enemy", showEnemy);
+		DbgUI.Check("  Show Unknown", m_bShowPerceptionUnknown);
+		DbgUI.Check("  Show Friendly", m_bShowPerceptionFriendly);
+		DbgUI.Check("  Show Enemy", m_bShowPerceptionEnemy);
 		
 		
 		array<ETargetCategory> targetCategories = {};
-		if (showUnknown)
+		if (m_bShowPerceptionUnknown)
 			targetCategories.Insert(ETargetCategory.UNKNOWN);
-		if (showFriendly)
+		if (m_bShowPerceptionFriendly)
 			targetCategories.Insert(ETargetCategory.FRIENDLY);
-		if (showEnemy)
+		if (m_bShowPerceptionEnemy)
 		{
 			targetCategories.Insert(ETargetCategory.DETECTED);
 			targetCategories.Insert(ETargetCategory.ENEMY);

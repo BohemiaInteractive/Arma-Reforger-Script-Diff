@@ -56,7 +56,7 @@ class SCR_GameModeCleanSweep : SCR_BaseGameMode
 		else
 			m_aPlayerSpawnPoints.Clear();
 
-		if (m_RplComponent && m_RplComponent.IsProxy())
+		if (Replication.IsClient())
 			return;
 
 		// Spawn setup:
@@ -163,7 +163,7 @@ class SCR_GameModeCleanSweep : SCR_BaseGameMode
 		OnAreaChanged();
 		Replication.BumpMe();
 
-		if (m_RplComponent && !m_RplComponent.IsProxy())
+		if (Replication.IsServer())
 			GetGame().GetCallqueue().CallLater(CheckActiveAreaState, 1, true);
 	}
 
@@ -196,7 +196,7 @@ class SCR_GameModeCleanSweep : SCR_BaseGameMode
 			}
 		}
 
-		if (m_RplComponent && !m_RplComponent.IsProxy())
+		if (Replication.IsServer())
 		{
 			ReplicatedShowHint(0, 5);
 
@@ -262,7 +262,7 @@ class SCR_GameModeCleanSweep : SCR_BaseGameMode
 	//------------------------------------------------------------------------------------------------
 	protected void SpawnEnemies()
 	{
-		if (m_RplComponent && m_RplComponent.IsProxy())
+		if (Replication.IsClient())
 			return;
 
 		if (m_aEnemySpawnPoints.IsEmpty())
@@ -501,15 +501,14 @@ class SCR_GameModeCleanSweep : SCR_BaseGameMode
 		m_bAutoPlayerRespawn = false;
 
 		ArmaReforgerScripted game = GetGame();
-		if (m_RplComponent && !m_RplComponent.IsProxy())
+		if (Replication.IsServer())
 		{
 			SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(game.GetGameMode());
 			if (gameMode)
 				gameMode.GetOnPlayerRegistered().Insert(OnPlayerRegistered);
-		}
-
-		if (m_RplComponent && !m_RplComponent.IsProxy())
+			
 			InitializeServer();
+		}	
 
 		m_wRoot = game.GetWorkspace().CreateWidgets("{DE9F713BE2C5D190}UI/layouts/HUD/HintFrame.layout");
 		if (!m_wRoot)

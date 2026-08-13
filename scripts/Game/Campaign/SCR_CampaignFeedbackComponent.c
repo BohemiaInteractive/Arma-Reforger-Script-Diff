@@ -55,6 +55,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	
 	static const string POPUP_HELP_CONTEST = "#AR-Campaign_Popup_HelpContest";
 	static const string POPUP_SEIZING_CONTESTED = "#AR-Campaign_SeizingContested-UC";
+	static const string POPUP_SEIZING_PLAYER = "#AR-Campaign_SeizingPlayer-UC";
 	static const string POPUP_HELP_CAPTURE = "#AR-Campaign_Popup_HelpCapture";
 	static const string POPUP_SEIZING_FRIENDLY = "#AR-Campaign_SeizingFriendly-UC";
 	static const string POPUP_STOP_CAPTURE = "#AR-Campaign_Popup_StopCapture";
@@ -626,10 +627,10 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 				if (currentMsg && (currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_ENEMY || currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.CONTESTING))
 					popup.HideCurrentMsg();
 
-				if (!m_bIsPlayerCapturing)
-					subTitle = POPUP_HELP_CAPTURE;
-
-				SetPopup(popup, currentMsg, POPUP_SEIZING_FRIENDLY, subTitle, SCR_ECampaignSeizingMessagePrio.SEIZING_YOU, m_bIsPlayerCapturing);
+				if (m_bIsPlayerCapturing)
+					SetPopup(popup, currentMsg, POPUP_SEIZING_PLAYER, subTitle, SCR_ECampaignSeizingMessagePrio.SEIZING_YOU, m_bIsPlayerCapturing);
+				else
+					SetPopup(popup, currentMsg, POPUP_SEIZING_FRIENDLY, POPUP_HELP_CAPTURE, SCR_ECampaignSeizingMessagePrio.SEIZING_YOU, m_bIsPlayerCapturing);
 
 				break;
 			}

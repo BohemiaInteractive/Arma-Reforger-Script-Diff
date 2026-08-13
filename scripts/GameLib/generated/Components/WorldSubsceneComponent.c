@@ -49,11 +49,12 @@ class WorldSubsceneComponent: GenericComponent
 	then used to identify who is trying to affect the portal, e.g., situation where the portal is controlled by two separate door components.
 	Up to 4 independent apertures per single portal are supported.
 
-	\param mins Minimum of the local space oriented bounding box
-	\param maxs Maximum of the local space oriented bounding box
-	\param worldTransform World transformation matrix for the bounding box
-	\param[out] portalIdx The index of a portal if one was found or 0xFFFF
-	\param[out] apertureIdx Unique aperture index for each portal or 0xFF when no portal was found
+	\note Script params:
+	- \b mins - Minimum of the local space oriented bounding box
+	- \b maxs - Maximum of the local space oriented bounding box
+	- \b worldTransform - World transformation matrix for the bounding box
+	- \b portalIdx [out] - The index of a portal if one was found or 0xFFFF
+	- \b apertureIdx [out] - Unique aperture index for each portal or 0xFF when no portal was found
 	*/
 	proto void RegisterApertureByOBB(vector mins, vector maxs, vector worldTransform[4], out int portalIdx, out int apertureIdx);
 	/*!

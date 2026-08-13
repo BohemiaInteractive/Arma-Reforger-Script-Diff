@@ -22,7 +22,9 @@ class GenericComponent
 	/*!
 	Attempts to run a remote procedure call (RPC) of this instance with parameters
 	specified in method RplRpc attribute.
-	\param      method  Member function to be invoked as an RPC.
+	\note Script params:
+	- \b method - Member function to be invoked as an RPC.
+	- \b p0 ... \b p7 - Optional parameters to pass to the RPC.
 	*/
 	proto protected void Rpc(func method, void p0 = NULL, void p1 = NULL, void p2 = NULL, void p3 = NULL, void p4 = NULL, void p5 = NULL, void p6 = NULL, void p7 = NULL);
 	/*!
@@ -47,13 +49,15 @@ class GenericComponent
 	proto external int ClearEventMask(notnull IEntity owner, int mask);
 	/*!
 	Finds first occurance of the coresponding component.
-	\param typeName type of the component
+	\note Script params:
+	- \b typeName - type of the component
 	*/
 	proto external GenericComponent FindComponent(typename typeName);
 	/*!
 	Finds all occurances of the coresponding component.
-	\param typeName type of the component
-	\param outComponents array to fill with selected components
+	\note Script params:
+	- \b typeName - type of the component
+	- \b outComponents - array to fill with selected components
 	*/
 	proto external int FindComponents(typename typeName, notnull array<GenericComponent> outComponents);
 	/*!
@@ -81,8 +85,27 @@ class GenericComponent
 	\param params See the TransformResetParams documentation.
 	*/
 	proto external private void OnTransformResetImplNative(TransformResetParams params);
+	/*!
+	\deprecated Prefer using new API with \ref ConnectToDiag and \ref DisconnectFromDiag
+	*/
 	proto external protected void ConnectToDiagSystem(IEntity owner);
+	/*!
+	\deprecated Prefer using new API with \ref ConnectToDiag and \ref DisconnectFromDiag
+	*/
 	proto external protected void DisconnectFromDiagSystem(IEntity owner);
+	/*!
+	Register a script callback to be invoked when a specific diag menu entry is active.
+	\param diagId Diag menu identifier.
+	\param owner The entity that owns this component.
+	\param callback Member function to invoke.
+	*/
+	proto external protected void ConnectToDiag(int diagId, IEntity owner, DiagComponentCallback callback);
+	/*!
+	Disconnect this component from a specific diag menu entry.
+	\param diagId Diag menu identifier.
+	\param owner The entity that owns this component.
+	*/
+	proto external protected void DisconnectFromDiag(int diagId, IEntity owner);
 	/*!
 	Notifies the component that a transformation of the owner entity has been discontinuously changed.
 

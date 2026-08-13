@@ -276,14 +276,14 @@ class MotionAutoTest: GenericEntity
 	
 	override void EOnInit(IEntity owner) //!EntityEvent.INIT
 	{
-		m_camera = g_Game.FindEntity(m_cameraEntityName);
+		m_camera = GetWorld().FindEntityByName(m_cameraEntityName);
 
 		if (!m_camera)
 		{
 			Print("Camera not found 2!", LogLevel.ERROR);
 		}
 		
-		m_MotionZoneInstance = MotionZone.Cast(g_Game.FindEntity(m_MotionZone));
+		m_MotionZoneInstance = MotionZone.Cast(GetWorld().FindEntityByName(m_MotionZone));
 		
 		if (m_MotionZoneInstance != null)
 		{

@@ -1,4 +1,4 @@
-class SCR_AIWaypointArtillerySupportSerializer : ScriptedEntitySerializer
+class SCR_AIWaypointArtillerySupportSerializer : GenericEntitySerializer
 {
 	//------------------------------------------------------------------------------------------------
 	override static typename GetTargetType()

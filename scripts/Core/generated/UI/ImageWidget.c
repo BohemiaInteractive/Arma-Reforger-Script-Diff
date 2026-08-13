@@ -96,6 +96,7 @@ sealed class ImageWidget: Widget
 	/*!
 	Loads image. When image of this 'num' is already loaded, then is replaced
 	by new one.
+
 	\param num Number of image (0...7)
 	\param resource ResourceName of image file
 	\param noCache Do not cache the texture
@@ -106,14 +107,16 @@ sealed class ImageWidget: Widget
 	/*!
 	Copy image from screenshot texture data into widget texture. When image of this 'num' is already loaded,
 	then is replaced by new one.
+
 	\param num Number of image (0...7)
-	\return True when image is copyied, false otherwise
+	\return True when image is copied, false otherwise
 	*/
 	proto bool CopyImageTexture(int num, ScreenshotTextureData texData);
 	/*!
 	get texture data from image
-	\param num						Number of image (0...7)
-	\param scriptCallback
+
+	\param num Number of image (0...7)
+	\param scriptCallback callback for raw data
 	*/
 	proto bool GetTextureRawData(int num, GetTextureRawDataCallback scriptCallback);
 	//! Returns offset of the image shadow. Z coordinate is not used (always 0)

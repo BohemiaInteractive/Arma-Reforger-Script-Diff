@@ -216,7 +216,7 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 			case UIConstants.MENU_ACTION_FAVORITE:			OnFavouriteButton(); break;
 			case SCR_ScenarioUICommon.ACTION_HOST:
 			{
-				if (!GetGame().IsPlatformGameConsole())
+				if (!SCR_ScenarioUICommon.IsHostingDisabledOnPlatform())
 					Host(scenario);
 				break;
 			}

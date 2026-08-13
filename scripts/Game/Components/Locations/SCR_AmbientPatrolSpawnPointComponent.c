@@ -23,6 +23,9 @@ class SCR_AmbientPatrolSpawnPointComponentClass : ScriptComponentClass
 
 class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 {
+	// Set to true to enable temporary [DBG_AI] diagnostics in this class.
+	protected static const bool DBG_AI_LOGGING = false;
+
 	[Attribute("0", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_EGroupType))]
 	protected SCR_EGroupType m_eGroupType;
 
@@ -38,13 +41,18 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	[Attribute("0", UIWidgets.EditBox, "How often will the group respawn. (seconds, 0 = no respawn)", "0 inf 1")]
 	protected int m_iRespawnPeriod;
 
-	[Attribute("0.95", desc: "If (CurrentAIs / AILimit) > this value, the group will not be spawned.",  params: "0 0.95 0.01")]
-	protected float m_fAILimitThreshold;
+	[Attribute("0", UIWidgets.ComboBox, "Importance tier for the spawned group. Default LOW - ambient patrols bow out first when the active-AI budget fills. Promote specific spawnpoints to NORMAL/HIGH when a particular patrol matters more.", enums: ParamEnumArray.FromEnum(SCR_EAISpawnImportance))]
+	protected SCR_EAISpawnImportance m_eImportance;
 
 	protected bool m_bSpawned;
 	protected bool m_bPaused;
-	protected bool m_bGroupActive;
-	protected int m_iMembersAlive = -1; //How many were alive during despawn to respawn again later
+	protected bool m_bGroupSpawnActive;
+
+	// Explicit "do not respawn this patrol" flag. Campaign code sets this on faction changes to
+	// retire remnant patrols. The alive count lives on the group as
+	// ChimeraAIGroup::m_iDormantAliveCount.
+	protected bool m_bEliminated;
+
 	protected AIWaypoint m_Waypoint;
 	protected ResourceName m_sPrefab;
 	protected SCR_AIGroup m_Group;
@@ -65,17 +73,18 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] count
-	void SetMembersAlive(int count)
+	//! Mark this patrol as retired - the ambient system will stop processing it. Used by campaign
+	//! code when a base changes faction and old remnants should not respawn under the new owner.
+	void SetIsEliminated(bool eliminated)
 	{
-		m_iMembersAlive = count;
+		m_bEliminated = eliminated;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \return
-	int GetMembersAlive()
+	bool IsEliminated()
 	{
-		return m_iMembersAlive;
+		return m_bEliminated;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -105,13 +114,6 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	bool GetIsPaused()
 	{
 		return m_bPaused;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	float GetAILimitThreshold()
-	{
-		return m_fAILimitThreshold;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -153,9 +155,64 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	void SetspawnedGroup(SCR_AIGroup group)
 	{
 		m_Group = group;
-		
+
 		if (m_iRespawnPeriod != 0)
 			m_Group.GetOnAgentRemoved().Insert(OnAgentRemoved);
+
+		// Re-establish proximity-driven lifecycle on the group. This is also called from SpawnPatrol
+		// during the initial creation, but must run on save-game restore too: the group entity is
+		// re-created without its lifecycle policy (m_eLifecyclePolicy is not persisted), and
+		// ProcessSpawnpoint early-returns on GetIsSpawned()==true so SpawnPatrol does not re-fire.
+		// SetLifecyclePolicy is idempotent on repeated same-policy calls.
+		ConfigureGroupLifecycle();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Apply the spawn / despawn distances and ProximityDriven policy to the currently spawned
+	//! group. Pulls clamped defaults from SCR_AmbientPatrolSystem and applies per-spawnpoint
+	//! overrides on top.
+	protected void ConfigureGroupLifecycle()
+	{
+		if (!m_Group)
+			return;
+
+		// Re-anchor the group to the spawnpoint origin. SCR_AIGroupSerializer does not persist
+		// the entity transform, so save-restored groups come back at <0,0,0> (or the prefab
+		// default), which makes proximity checks meaningless and forces members to spawn off-map.
+		// The spawnpoint's own world position is the authoritative anchor for this patrol.
+		vector spawnpointTransform[4];
+		GetOwner().GetWorldTransform(spawnpointTransform);
+		m_Group.SetWorldTransform(spawnpointTransform);
+
+		if (DBG_AI_LOGGING)
+			Print(string.Format("[DBG_AI] ConfigureGroupLifecycle: anchored group %1 to pos=%2", m_Group, spawnpointTransform[3]), LogLevel.NORMAL);
+
+		// Importance is not persisted on the group, so save-restored groups come back at the
+		// default tier. Re-tag from the spawnpoint's authored value (LOW for ambient patrols).
+		m_Group.SetImportance(m_eImportance);
+
+		SCR_AmbientPatrolSystem patrolSystem = SCR_AmbientPatrolSystem.GetInstance();
+		float spawnDist = 600;
+		float despawnDist = 800;
+		if (patrolSystem)
+		{
+			spawnDist = patrolSystem.GetSpawnDistance();
+			despawnDist = patrolSystem.GetDespawnDistance();
+		}
+		if (m_iSpawnDistanceOverride >= 0)
+			spawnDist = m_iSpawnDistanceOverride;
+		if (m_iDespawnDistanceOverride >= 0)
+			despawnDist = m_iDespawnDistanceOverride;
+		m_Group.SetLifecyclePolicy(SCR_EAIGroupLifecyclePolicy.ProximityDriven, spawnDist, despawnDist);
+
+		// If a player reaches the patrol position while the members could not spawn (active-AI
+		// limit), the area counts as cleared - the patrol must not appear there later. The
+		// group deletes itself in that case; the event below retires this spawnpoint.
+		m_Group.SetEliminateWhenReached(true);
+		m_Group.GetOnEliminatedWhenReached().Insert(OnGroupEliminatedWhenReached);
+
+		if (DBG_AI_LOGGING)
+			Print(string.Format("[DBG_AI] ConfigureGroupLifecycle: lifecycle set for group %1 (spawnDist=%.0fm, despawnDist=%.0fm, importance=%2)", m_Group, spawnDist, despawnDist, m_eImportance), LogLevel.NORMAL);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -362,7 +419,7 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 			Update(faction);
 
 		m_bSpawned = true;
-		m_bGroupActive = true;
+		m_bGroupSpawnActive = true;
 
 		if (m_sPrefab.IsEmpty())
 			return;
@@ -382,69 +439,74 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 			}
 		}
 
+		// Suppress SCR_AIGroup::EOnInit auto-spawn so the spawnpoint stays in control of the spawn
+		// intent (observer-gated, breadth-first via SCR_AIWorld's queue).
+		SCR_AIGroup.IgnoreSpawning(true);
+
 		m_Group = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefabEx(m_sPrefab, false, params: params));
 		if (!m_Group)
 			return;
 
 		SetspawnedGroup(m_Group);
-		
-		if (!m_Group.GetSpawnImmediately())
-		{
-			if (m_iMembersAlive > 0)
-				m_Group.SetMaxUnitsToSpawn(m_iMembersAlive);
 
-			m_Group.SpawnUnits();
-		}
-
+		// Importance and lifecycle policy were applied in SetspawnedGroup -> ConfigureGroupLifecycle.
+		// Hand the dormant/active transitions over to the group: it queries ObserversSystem
+		// periodically and auto-dismisses / re-materialises members as observers come and go.
 		m_Group.AddWaypoint(m_Waypoint);
+
+		// Initial materialisation through the spawn queue. observerRange uses the group's currently
+		// configured spawn distance (set inside SetspawnedGroup -> ConfigureGroupLifecycle).
+		if (!m_Group.GetSpawnImmediately())
+			m_Group.RequestSpawn(-1, m_Group.GetSpawnDistance());
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	void DespawnPatrol()
-	{
-		m_DespawnTimestamp = null;
-		m_bSpawned = false;
-
-		if (!m_Group)
-		{
-			m_iMembersAlive = 0;
-			return;
-		}
-
-		array<AIAgent> units = {};
-		m_Group.GetAgents(units);
-		int count = m_Group.GetAgentsCount();
-		m_iMembersAlive = count;
-		RplComponent.DeleteRplEntity(m_Group, false);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//!
+	//! Legacy external entry points. The group now drives its own dormant/active transitions via
+	//! SCR_EAIGroupLifecyclePolicy.ProximityDriven (set in SpawnPatrol). These wrappers remain for
+	//! scripts / save-game deserialisation that still poke activation explicitly.
 	void ActivateGroup()
 	{
 		if (m_Group)
 		{
-			m_bGroupActive = true;
-			m_Group.ActivateAllMembers();
+			m_bGroupSpawnActive = true;
+			// observerRange = 0 skips re-validation because save-game restore is unconditional.
+			m_Group.RequestSpawn();
 		}
 	}
 	//------------------------------------------------------------------------------------------------
-	//!
 	void DeactivateGroup()
 	{
 		if (m_Group)
 		{
-			m_bGroupActive = false;
-			m_Group.DeactivateAllMembers();
+			m_bGroupSpawnActive = false;
+			m_Group.DespawnMembers();
 		}
 	}
+	
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! This checks only if group was selected by script to be actively spawning, it does not detect Dormant groups
 	//! \return
 	bool IsGroupActive()
 	{
-		return m_bGroupActive;
+		return m_bGroupSpawnActive;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! This checks if group was selected by script to be actively spawning and its members are not despawned due to ChimeraAIGroup::IsDormant
+	//! \return
+	bool IsGroupActiveAndNotDormant()
+	{
+		return m_bGroupSpawnActive && m_Group && !m_Group.IsDormant();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! The group eliminated itself because a player reached its position while the members
+	//! could not spawn (active-AI limit). The group entity is deleted right after this call.
+	//! Retire the spawnpoint so the ambient system never creates a replacement patrol;
+	//! m_bEliminated is persisted by the spawnpoint serializer.
+	protected void OnGroupEliminatedWhenReached(SCR_AIGroup group)
+	{
+		m_bEliminated = true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -453,14 +515,16 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 		if (!m_Group || m_Group.GetAgentsCount() > 0)
 			return;
 
-		ChimeraWorld world = GetOwner().GetWorld();
-		if (m_RespawnTimestamp.GreaterEqual(world.GetServerTimestamp()))
+		// Group went empty via DespawnMembers (intentional deactivation), not via combat deaths.
+		// ActivateGroup re-materialises the group from its stored dormant alive count; don't schedule
+		// a fresh-group respawn on top of it.
+		if (m_Group.IsDormant())
 			return;
 
-		// Set up respawn timestamp, convert s to ms, reset original group size
-		m_RespawnTimestamp = world.GetServerTimestamp().PlusSeconds(m_iRespawnPeriod);
-		m_iMembersAlive = -1;
-		m_bSpawned = false;
+		// All members were killed in combat. The old system used m_iMembersAlive == 0 in
+		// ProcessSpawnpoint to block re-creation after a full wipe; that field is gone.
+		// Mark the spawnpoint eliminated so ProcessSpawnpoint never creates a replacement group.
+		m_bEliminated = true;
 	}
 
 	//------------------------------------------------------------------------------------------------

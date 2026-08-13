@@ -123,6 +123,22 @@ class SCR_ResupplySupportStationData
 		
 		return factionAffiliationComponent;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	protected SCR_Faction GetFaction(notnull IEntity actionOwner, SCR_SupportStationGadgetComponent supportStationGadget)
+	{
+		FactionAffiliationComponent factionAffiliationComponent = GetFactionAffiliationGadgetOrOwner(actionOwner, supportStationGadget);
+		if (!factionAffiliationComponent)
+			return null;
+
+		return 	SCR_Faction.Cast(factionAffiliationComponent.GetDefaultAffiliatedFaction());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_ECharacterRank GetRequiredRank(notnull IEntity actionOwner, ResourceName resourceName, SCR_SupportStationGadgetComponent supportStationGadget)
+	{
+		return SCR_ECharacterRank.RENEGADE;
+	}
 }
 
 [BaseContainerProps()]
@@ -203,34 +219,49 @@ class SCR_ResupplyCatalogItemSupportStationData : SCR_ResupplySupportStationData
 	}
 
 	//------------------------------------------------------------------------------------------------
-	SCR_ECharacterRank GetRequiredRank(notnull IEntity actionOwner, SCR_SupportStationGadgetComponent supportStationGadget)
+	override SCR_ECharacterRank GetRequiredRank(notnull IEntity actionOwner, ResourceName resourceName, SCR_SupportStationGadgetComponent supportStationGadget)
 	{
-		SCR_ECharacterRank requiredRank = SCR_ECharacterRank.PRIVATE;
+		SCR_ECharacterRank requiredRank = SCR_ECharacterRank.RENEGADE;
+		SCR_Faction faction = GetFaction(actionOwner, supportStationGadget);
 
-		if (m_mFactionItems.IsEmpty())
-			return requiredRank;
+		if (!m_mFactionItems.IsEmpty())
+		{
+			FactionAffiliationComponent factionAffiliationComponent = GetFactionAffiliationGadgetOrOwner(actionOwner, supportStationGadget);
 
-		FactionAffiliationComponent factionAffiliationComponent = GetFactionAffiliationGadgetOrOwner(actionOwner, supportStationGadget);
-		if (!factionAffiliationComponent)
-			return false;
+			if (factionAffiliationComponent && m_bAlwaysTakeDefaultFaction)
+				faction = SCR_Faction.Cast(factionAffiliationComponent.GetDefaultAffiliatedFaction());
 
-		Faction faction;
-		if (!m_bAlwaysTakeDefaultFaction)
-			faction = factionAffiliationComponent.GetAffiliatedFaction();
+			if (faction)
+			{
+				SCR_EntityCatalogEntry catalogEntry;
+				if (m_mFactionItems.Find(faction.GetFactionKey(), catalogEntry) && catalogEntry)
+				{
+					SCR_ArsenalItem itemData = SCR_ArsenalItem.Cast(catalogEntry.GetEntityDataOfType(SCR_ArsenalItem));
+					if (itemData)
+						return itemData.GetRequiredRank();
+				}
+			}
+		}
 
-		if (!faction)
-			faction = factionAffiliationComponent.GetDefaultAffiliatedFaction();
-
-		if (!faction)
+		// fallback (less fast due to having to fetch new data)
+		SCR_EntityCatalogManagerComponent entityCatalogManager = SCR_EntityCatalogManagerComponent.GetInstance();
+		if (!entityCatalogManager)
 			return requiredRank;
 
 		SCR_EntityCatalogEntry catalogEntry;
-		if (!m_mFactionItems.Find(faction.GetFactionKey(), catalogEntry) || !catalogEntry)
+		if (faction)
+			catalogEntry = entityCatalogManager.GetEntryWithPrefabFromFactionCatalog(EEntityCatalogType.ITEM, resourceName, faction);
+		else
+ 			catalogEntry = entityCatalogManager.GetEntryWithPrefabFromAnyCatalog(EEntityCatalogType.ITEM, resourceName);
+
+		if (!catalogEntry)
 			return requiredRank;
 
-		SCR_ArsenalItem itemData = SCR_ArsenalItem.Cast(catalogEntry.GetEntityDataOfType(SCR_ArsenalItem));
-		if (itemData)
-			requiredRank = itemData.GetRequiredRank();
+		SCR_ArsenalItem arsenalItemData = SCR_ArsenalItem.Cast(catalogEntry.GetEntityDataOfType(SCR_ArsenalItem));
+		if (!arsenalItemData)
+			return requiredRank;
+
+		requiredRank = arsenalItemData.GetRequiredRank();
 
 		return requiredRank;
 	}
@@ -379,6 +410,34 @@ class SCR_ResupplyHeldWeaponSupportStationData : SCR_ResupplySupportStationData
 		}
 		
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override SCR_ECharacterRank GetRequiredRank(notnull IEntity actionOwner, ResourceName resourceName, SCR_SupportStationGadgetComponent supportStationGadget)
+	{
+		SCR_ECharacterRank requiredRank = SCR_ECharacterRank.RENEGADE;
+		SCR_Faction faction = GetFaction(actionOwner, supportStationGadget);
+
+		SCR_EntityCatalogManagerComponent entityCatalogManager = SCR_EntityCatalogManagerComponent.GetInstance();
+		if (!entityCatalogManager)
+			return requiredRank;
+
+		SCR_EntityCatalogEntry catalogEntry;
+		if (faction)
+			catalogEntry = entityCatalogManager.GetEntryWithPrefabFromFactionCatalog(EEntityCatalogType.ITEM, resourceName, faction);
+		else
+ 			catalogEntry = entityCatalogManager.GetEntryWithPrefabFromAnyCatalog(EEntityCatalogType.ITEM, resourceName);
+
+		if (!catalogEntry)
+			return requiredRank;
+
+		SCR_ArsenalItem arsenalItemData = SCR_ArsenalItem.Cast(catalogEntry.GetEntityDataOfType(SCR_ArsenalItem));
+		if (!arsenalItemData)
+			return requiredRank;
+
+		requiredRank = arsenalItemData.GetRequiredRank();
+
+		return requiredRank;
 	}
 
 	//------------------------------------------------------------------------------------------------

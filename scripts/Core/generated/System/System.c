@@ -211,7 +211,7 @@ sealed class System
 	/*!
 	read config constant value
 	\param constantName name of constant
-	\param value output variable where will be value copied
+	\param[out] value output variable where will be value copied
 	\return true when constant is found and output value type match, false otherwise
 
 	\code

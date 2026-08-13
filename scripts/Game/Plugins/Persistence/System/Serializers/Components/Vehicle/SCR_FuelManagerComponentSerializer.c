@@ -16,7 +16,7 @@ class SCR_FuelManagerComponentSerializer : ScriptedComponentSerializer
 	override protected ESerializeResult Serialize(notnull IEntity owner, notnull GenericComponent component, notnull SaveContext context)
 	{
 		const SCR_FuelManagerComponent fuelManager = SCR_FuelManagerComponent.Cast(component);
-		
+
 		array<ref SCR_SerializedFuelNode> saveNodes();
 		array<SCR_FuelNode> outScriptedNodes();
 		fuelManager.GetScriptedFuelNodesList(outScriptedNodes);
@@ -24,7 +24,7 @@ class SCR_FuelManagerComponentSerializer : ScriptedComponentSerializer
 		{
 			if (float.AlmostEqual(fuelNode.GetFuel(), fuelNode.GetInitialFuelTankState()))
 				continue;
-			
+
 			SCR_SerializedFuelNode saveNode();
 			saveNode.tankId = fuelNode.GetFuelTankID();
 			saveNode.fuel = fuelNode.GetFuel();
@@ -33,7 +33,7 @@ class SCR_FuelManagerComponentSerializer : ScriptedComponentSerializer
 
 		if (saveNodes.IsEmpty())
 			return ESerializeResult.DEFAULT;
-		
+
 		context.WriteValue("version", 1);
 		const bool prev = context.EnableTypeDiscriminator(false);
 		context.WriteValue("fuelNodes", saveNodes);
@@ -45,18 +45,18 @@ class SCR_FuelManagerComponentSerializer : ScriptedComponentSerializer
 	override protected bool Deserialize(notnull IEntity owner, notnull GenericComponent component, notnull LoadContext context)
 	{
 		auto fuelManager = SCR_FuelManagerComponent.Cast(component);
-		
+
 		array<SCR_FuelNode> outScriptedNodes();
 		fuelManager.GetScriptedFuelNodesList(outScriptedNodes);
-		
+
 		int version = -1;
 		context.ReadValue("version", version);
-		
+
 		array<ref SCR_SerializedFuelNode> saveNodes();
 		const bool prev = context.EnableTypeDiscriminator(false);
 		context.ReadValue("fuelNodes", saveNodes);
 		context.EnableTypeDiscriminator(prev);
-		
+
 		foreach (int idx, SCR_SerializedFuelNode savedNode : saveNodes)
 		{
 			// Try direct idx access
@@ -66,23 +66,23 @@ class SCR_FuelManagerComponentSerializer : ScriptedComponentSerializer
 				if (fuelNode.GetFuelTankID() == savedNode.tankId)
 				{
 					fuelNode.SetFuel(savedNode.fuel);
-					break;
+					continue;
 				}
 			}
-			
+
 			// Try others and match tank id
 			foreach (int innerIdx, SCR_FuelNode fuelNode : outScriptedNodes)
 			{
 				if (innerIdx == idx)
 					continue; // Already tried via direct access
-				
+
 				if (fuelNode.GetFuelTankID() == savedNode.tankId)
 				{
 					fuelNode.SetFuel(savedNode.fuel);
 					break;
 				}
 			}
-			
+
 			PrintFormat("Failed to apply fuel save-data. Could not locate tankId:%1 on %2", savedNode.tankId, owner, level: LogLevel.DEBUG);
 		}
 

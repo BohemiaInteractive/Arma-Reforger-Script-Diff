@@ -1,7 +1,32 @@
 [EntityEditorProps(category: "GameLib/Generic", description: "Decal entity", dynamicBox: true, insertable: false)]
 class WorldDecalClass: GenericEntityClass
 {
+#ifdef WORKBENCH
+	//------------------------------------------------------------------------------
+	static override void _WB_SetExtraVisualiser(WorldEditorAPI api, IEntitySource src, EntityVisualizerType type)
+	{
+		WorldDecal ent = WorldDecal.Cast(api.SourceToEntity(src));
+		if (!ent)
+			return;
 
+		if (type == EntityVisualizerType.EVT_NONE)
+			ent.ClearShapes();
+		else
+			ent.RecreateVisualizers();
+	}
+
+	//------------------------------------------------------------------------------
+	static override void _WB_SetTransform(WorldEditorAPI api, IEntitySource src, inout vector mat[4])
+	{
+		WorldDecal ent = WorldDecal.Cast(api.SourceToEntity(src));
+		if (!ent)
+			return;
+
+		ent.Destroy();
+		ent.Create();
+		ent.RecreateVisualizers();
+	}
+#endif
 }
 
 //------------------------------------------------------------------------------
@@ -203,37 +228,7 @@ class WorldDecal: GenericEntity
 			delete m_IntersectionShape;	
 	}
 	
-	//------------------------------------------------------------------------------
-	override void _WB_SetExtraVisualiser(EntityVisualizerType type, IEntitySource src)
-	{
-		/*
-		EVT_NONE,					//no visualizer
-		EVT_NORMAL,					//normal visualizer
-		EVT_SELECTED,				//selected entity visualiser (but no as main)
-		EVT_SELECTED_AS_MAIN,		//selected as main entity visualiser
-		EVT_UNDER_CURSOR,			//under cursor entity visualiser
-		*/
-		if (type == EntityVisualizerType.EVT_NONE)
-		{
-
-			ClearShapes();
-		}
-		else
-		{
-			RecreateVisualizers();
-		}
-	}
-	
-	//------------------------------------------------------------------------------
-	override void _WB_SetTransform(inout vector mat[4], IEntitySource src)
-	{
-		Destroy();
-		Create();
-		
-		RecreateVisualizers();
-	}
-
-#endif	
+#endif
 		
 	//------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner) //!EntityEvent.INIT

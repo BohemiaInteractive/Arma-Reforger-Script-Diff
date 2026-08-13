@@ -136,6 +136,9 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 		//~ If player killed self (Admins and GM are not punished)
 		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.SUICIDE))
 			ProcessSuicide(playerID);
+		else if (!instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER) 
+				&& !instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_AI))
+			ProcessDeath(playerID);
 
 		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerID);
 
@@ -587,7 +590,34 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 		AwardXP(pc.GetPlayerId(), SCR_EXPRewards.SUICIDE);
 	}
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerId
+	void ProcessDeath(int playerId)
+	{
+		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerId);
+		if (!pc)
+			return;
 
+		SCR_PlayerXPHandlerComponent compXPPlayer = SCR_PlayerXPHandlerComponent.Cast(pc.FindComponent(SCR_PlayerXPHandlerComponent));
+		if (!compXPPlayer)
+			return;
+
+		SCR_FactionManager fm = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!fm)
+			return;
+
+		SCR_RankContainer ranks = fm.GetFactionRanks(playerId);
+
+		// Don't make player renegade just by dying
+		int penalty = GetXPRewardAmount(SCR_EXPRewards.DEATH);
+		int playerXPWithPenalty = compXPPlayer.GetPlayerXP() + penalty;
+		SCR_ECharacterRank newRank = ranks.GetRankByXP(playerXPWithPenalty);
+		if (ranks.IsRankRenegade(newRank))
+			return;
+
+		AwardXP(pc.GetPlayerId(), SCR_EXPRewards.DEATH);
+	}
 	//------------------------------------------------------------------------------------------------
 	protected void AwardTransportXP(int playerId)
 	{
@@ -892,4 +922,5 @@ enum SCR_EXPRewards
 	CLEAR_TASK_COMPLETED,
 
 	STARTING_RANK,
+	DEATH,
 }

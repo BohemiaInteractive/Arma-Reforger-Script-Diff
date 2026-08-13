@@ -123,26 +123,25 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	//! \return
 	bool LoadPlayerProfileFromBackend(int playerID)
 	{
-		if (m_mPlayerProfiles && GetGame().GetBackendApi())
-		{
-			if (GetGame().GetBackendApi().GetDSSession() && GetGame().GetBackendApi().GetDSSession().Status() == EDsSessionState.EDSESSION_ACTIVE)
-			{
-				CareerBackendData playerProfile = new CareerBackendData();
-				m_mPlayerProfiles.Set(playerID, playerProfile);
-				playerProfile = GetPlayerProfile(playerID);
-				
-				if (m_Callback)
-					GetGame().GetBackendApi().PlayerData(playerProfile, playerID);
-				
-				return true;
-			}
-			else
-			{
-				return false;
-			}
-		}
-		
-		return false;
+		if (!m_mPlayerProfiles || !GetGame().GetBackendApi())
+			return false;
+
+		/*
+		Used to be:
+		if (GetGame().GetBackendApi().GetDSSession() && GetGame().GetBackendApi().GetDSSession().Status() == EDsSessionState.EDSESSION_ACTIVE)
+		But that is obsolete now and we should use ServerLobbyApi - we do not support this kind yet.
+		Hope this works...
+		*/
+		CareerBackendData playerProfile = new CareerBackendData();
+		m_mPlayerProfiles.Set(playerID, playerProfile);
+		playerProfile = GetPlayerProfile(playerID);
+
+		if (!playerProfile)
+			return false;
+
+		GetGame().GetBackendApi().PlayerData(playerProfile, playerID);
+
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------

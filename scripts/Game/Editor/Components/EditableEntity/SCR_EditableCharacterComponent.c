@@ -28,6 +28,9 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	[RplProp()]
 	protected bool m_bIsPlayerPending;
 
+	[RplProp()]
+	protected ref array<EEditableEntityLabel> m_aCustomInstanceLabels = {};
+
 	protected bool m_bShouldRecalculateDrawDistance;
 
 	//! Authority only, Allows character to be forced into a specific vehicle position and will delete it if failed
@@ -59,6 +62,53 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	AIAgent GetAgent()
 	{
 		return m_Agent;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Fetches character labels used by this instance and its prefab, while ensuring that all labels are unique
+	//! \param[out] labels list to which all labels will be added without clearing it
+	//! \return true if list isnt empty, otherwise false 
+	bool GetAllCharacterLabels(notnull out array<EEditableEntityLabel> labels)
+	{
+		GetCustomCharacterLabels(labels);
+		SCR_EditableCharacterComponentClass data = SCR_EditableCharacterComponentClass.Cast(GetComponentData(GetOwner()));
+		SCR_EditableEntityUIInfo info = SCR_EditableEntityUIInfo.Cast(data.GetInfo());
+		info.GetEntityLabels(labels);
+
+		EEditableEntityLabel label;
+		set<EEditableEntityLabel> uniqueLabels();
+		for (int id = labels.Count() - 1; id >= 0; id--)
+		{
+			label = labels[id];
+			if (uniqueLabels.Contains(label))
+			{
+				labels.Remove(id);
+				continue;
+			}
+
+			uniqueLabels.Insert(label);
+		}
+
+		return !labels.IsEmpty();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Fetches character labels used only by this character instance
+	//! \param[out] labels list to which all labels will be added without clearing it
+	//! \return true if this character has any custom labels
+	bool GetCustomCharacterLabels(notnull out array<EEditableEntityLabel> labels)
+	{
+		labels.InsertAll(m_aCustomInstanceLabels);
+		return !m_aCustomInstanceLabels.IsEmpty();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Authority method for setting and replicating custom labels used by this character
+	//! \param[in] labels list which will override previously used list
+	void SetCustomCharacterLabels_S(notnull array<EEditableEntityLabel> labels)
+	{
+		m_aCustomInstanceLabels = labels;
+		Replication.BumpMe();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -121,7 +171,10 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 			return null;
 		}
 
-		//--- Set group's faction
+		//--- Add the entity to the group
+		group.AddAgent(m_Agent);
+
+		//--- Set group's faction and fire UI update so the group icon is colored correctly
 		SCR_AIGroup groupScripted = SCR_AIGroup.Cast(group);
 		if (groupScripted)
 		{
@@ -130,12 +183,9 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 			{
 				Faction faction = factionComponent.GetAffiliatedFaction();
 				if (faction)
-					groupScripted.InitFactionKey(faction.GetFactionKey());
+					groupScripted.SetFaction(faction);
 			}
 		}
-
-		//--- Add the entity to the group
-		group.AddAgent(m_Agent);
 //
 		//group.SetWorldTransform(matrix);
 
@@ -740,7 +790,10 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		//--- Activate AI
 		m_AgentControlComponent = AIControlComponent.Cast(owner.FindComponent(AIControlComponent));
 		if (m_AgentControlComponent)
+		{
 			m_AgentControlComponent.ActivateAI();
+			m_Agent = m_AgentControlComponent.GetControlAIAgent();
+		}
 		
 		if (parent && AIGroup.Cast(parent.GetOwner()))
 		{

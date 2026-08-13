@@ -72,6 +72,11 @@ class ArmaReforgerScripted : ChimeraGame
 
 	protected ref SCR_ResourceGrid m_ResourceGrid;
 	protected ref SCR_ResourceSystemSubscriptionManager m_ResourceSystemSubscriptionManager;
+	
+	#ifdef ENABLE_DIAG
+	protected WorkspaceWidget m_Workspace;
+	protected float	m_fCurrentDPIscaleDebug = 1;
+	#endif
 
 	//------------------------------------------------------------------------------------------------
 	// destructor
@@ -355,7 +360,6 @@ class ArmaReforgerScripted : ChimeraGame
 	{
 		groupInt = KickCauseCodeAPI.GetGroup(kickCode);
 		reasonInt = KickCauseCodeAPI.GetReason(kickCode);
-		
 
 		group = "<unknown>";
 		reason = "<unknown>";
@@ -581,6 +585,7 @@ class ArmaReforgerScripted : ChimeraGame
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_UI_CLOSE_ALL_MENUS, "", "Close All Menus", "UI");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_UI_OPEN_MAIN_MENU, "", "Open Main Menu", "UI");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_UI_LOG_UNDER_CURSOR, "", "Log widgets under cursor", "UI");
+		DiagMenu.RegisterRange(SCR_DebugMenuID.DEBUGUI_UI_SET_DPI_SCALE, "", "Set DPI Scale", "UI", "0.5, 2.0, 1, 0.05");
 
 		//Scripted systems
 		DiagMenu.RegisterMenu(SCR_DebugMenuID.DEBUGUI_SCRIPTS_MENU, "Scripts", "Physics");
@@ -644,6 +649,14 @@ class ArmaReforgerScripted : ChimeraGame
 		const SCR_AdditionalGameModeSettingsComponent additionalSettingsComp = SCR_AdditionalGameModeSettingsComponent.GetInstance();
 		if (additionalSettingsComp && ((currentMode == RplMode.Listen || currentMode == RplMode.Dedicated) && System.IsCLIParam("enableNightGrain")))
 			additionalSettingsComp.SetNightNoiseEffectState_S(false);
+
+		//For now, force DPI Scale on handheld, should later become SCR_DPIScaleHelper.LoadSavedDPIScale(workspace)
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
+		
+		if (System.GetPlatform() == EPlatform.WINDOWS_HANDHELD)
+			SCR_DPIScaleHelper.SetDPIScale(workspace, 1.05);
+		else
+			SCR_DPIScaleHelper.SetDPIScale(workspace, 1.0);
 
 		return true;
 	}
@@ -1068,6 +1081,18 @@ class ArmaReforgerScripted : ChimeraGame
 			}
 		}
 
+		// Set DPI Scale
+		if (!m_Workspace)
+			m_Workspace = GetGame().GetWorkspace();
+		
+		float dpiScale = DiagMenu.GetRangeValue(SCR_DebugMenuID.DEBUGUI_UI_SET_DPI_SCALE);
+		
+		if (!float.AlmostEqual(dpiScale, m_fCurrentDPIscaleDebug, 0.01))
+		{
+			SCR_DPIScaleHelper.SetDPIScale(m_Workspace, dpiScale);
+			m_fCurrentDPIscaleDebug = dpiScale;
+		}
+
 		#endif
 
 		if (GetGame().InPlayMode() && m_CoresManager)
@@ -1387,14 +1412,12 @@ class ArmaReforgerScripted : ChimeraGame
 
 ArmaReforgerScripted g_ARGame;
 
-//------------------------------------------------------------------------------------------------
 Game CreateGame()
 {
 	g_ARGame = new ArmaReforgerScripted;
 	return g_ARGame;
 }
 
-//------------------------------------------------------------------------------------------------
 ArmaReforgerScripted GetGame()
 {
 	return g_ARGame;

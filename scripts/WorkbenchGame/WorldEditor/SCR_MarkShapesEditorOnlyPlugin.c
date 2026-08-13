@@ -1,24 +1,17 @@
 #ifdef WORKBENCH
-[WorkbenchPluginAttribute(name: "Mark shapes editor only", wbModules: { "WorldEditor"}, awesomeFontCode: 0xF023)]
+[WorkbenchPluginAttribute(name: "Mark shapes editor only", wbModules: { "WorldEditor" }, awesomeFontCode: 0xF023)]
 class SCR_MarkShapesEditorOnlyPlugin : WorkbenchPlugin
 {
-	[Attribute("false", UIWidgets.CheckBox)]
-	protected bool ActiveLayerOnly;
+	[Attribute("0", UIWidgets.CheckBox)]
+	protected bool m_bActiveLayerOnly;
 
-	protected ref array<string> m_aEditorOnlyGenerators = {
-		"ForestGeneratorEntity",
-		"PrefabGeneratorEntity",
-		"RoadGeneratorEntity",
-		"SCR_PowerlineGeneratorEntity",
-		"WallGeneratorEntity"
+	protected ref array<typename> m_aEditorOnlyGenerators = {
+		ForestGeneratorEntity,
+		PrefabGeneratorEntity,
+		RoadGeneratorEntity,
+		SCR_PowerlineGeneratorEntity,
+		WallGeneratorEntity
 	};
-
-	//------------------------------------------------------------------------------------------------
-	[ButtonAttribute("OK")]
-	protected bool OkButton()
-	{
-		return true;
-	}
 
 	//------------------------------------------------------------------------------------------------
 	override void Run()
@@ -86,7 +79,7 @@ class SCR_MarkShapesEditorOnlyPlugin : WorkbenchPlugin
 	//------------------------------------------------------------------------------------------------
 	protected void ProcessEntity(WorldEditorAPI worldEditorAPI, IEntitySource src)
 	{
-		if (ActiveLayerOnly)
+		if (m_bActiveLayerOnly)
 		{
 			int activeLayer = worldEditorAPI.GetCurrentEntityLayerId();
 			if (src.GetLayerID() != activeLayer)
@@ -94,9 +87,9 @@ class SCR_MarkShapesEditorOnlyPlugin : WorkbenchPlugin
 		}
 
 		int childCount = src.GetNumChildren();
-		string classname = src.GetClassName();
+		typename classType = src.GetClassName().ToType();
 
-		if (classname == "PolylineShapeEntity" || classname == "SplineShapeEntity")
+		if (classType == PolylineShapeEntity || classType == SplineShapeEntity)
 		{
 			// All shape entites are considered Editor Only by default
 			bool shapeEdOnly = true;
@@ -108,9 +101,9 @@ class SCR_MarkShapesEditorOnlyPlugin : WorkbenchPlugin
 				// Check if given child falls into the "eligable" category
 				bool isEdOnlyGenerator = false;
 				childSrc = src.GetChild(i);
-				foreach (string editorOnlyGenerator : m_aEditorOnlyGenerators)
+				foreach (typename editorOnlyGenerator : m_aEditorOnlyGenerators)
 				{
-					if (childSrc.GetClassName() == editorOnlyGenerator)
+					if (childSrc.GetClassName().ToType() && childSrc.GetClassName().ToType().IsInherited(editorOnlyGenerator))
 					{
 						isEdOnlyGenerator = true;
 						// Even if the whole shape may not be editor only, the generator itself can
@@ -137,6 +130,20 @@ class SCR_MarkShapesEditorOnlyPlugin : WorkbenchPlugin
 				ProcessEntity(worldEditorAPI, src.GetChild(i));
 			}
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[ButtonAttribute("OK")]
+	protected int ButtonOK()
+	{
+		return 1;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[ButtonAttribute("Cancel")]
+	protected int ButtonCancel()
+	{
+		return 0;
 	}
 }
 #endif // WORKBENCH

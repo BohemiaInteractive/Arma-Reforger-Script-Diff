@@ -4,38 +4,58 @@ class SCR_PrefabDeleterEntityClass : GenericEntityClass
 }
 
 //! - Deletes entities in the defined area
-//! - Can avoid deleting players
-//! - Can delete only visible entities (avoids deleting logics)
+//! - Option to only delete visible entities (avoids deleting logics)
 class SCR_PrefabDeleterEntity : GenericEntity
 {
 	/*
 		Deletion
 	*/
 
-	[Attribute(defvalue: "1", desc: "Delete player entities", category: "Deletion")]
-	protected bool m_bDeletePlayers;
+	[Attribute(defvalue: "10", uiwidget: UIWidgets.Slider, desc: "Radius (included) in which entities are deleted", params: "0.001 1000 1", category: "Deletion")]
+	protected float m_fRadius;
+
+	[Attribute(defvalue: "1", desc: "Delete root parent entities of detected entities, e.g delete the whole composition if an item is spotted; otherwise only delete entities in range", category: "Deletion")]
+	protected bool m_bDeleteRootEntities;
 
 	[Attribute(defvalue: "0", desc: "Only delete entities with a VObjectComponent, e.g a model/particle/etc; otherwise delete everything", category: "Deletion")]
 	protected bool m_bOnlyDeleteVisibleEntities;
 
-	[Attribute(defvalue: "10", uiwidget: UIWidgets.Slider, desc: "Radius in which entities are deleted", params: "0 1000 1", category: "Deletion")]
-	protected float m_fRadius;
+	[Attribute(defvalue: "1", desc: "Listed Prefabs in Prefabs List are protected, otherwise they are the only ones to be deleted", category: "Deletion")]
+	protected bool m_bUsePrefabsListAsProtectedList;
 
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.Slider, desc: "[s] Delay before deletion", params: "0 10", precision: 1, category: "Deletion")]
-	protected float m_fDelay;
+	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, desc: "Prefabs list to avoid/delete (depending on the Use Prefabs List As Protected List checkbox)\nConsiders inherited Prefabs too", params: "et", category: "Deletion")]
+	protected ref array<ResourceName> m_aPrefabsList;
 
-	protected static ref array<IEntity> s_aFoundEntities = {};
+	protected ref array<IEntity> m_aFoundEntities = {};
 
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
-		// authority only
-		RplComponent rplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
-		if (rplComponent && !rplComponent.IsMaster())
+		// loadtime only
+		if (!Replication.Loadtime())
+		{
+			Print("A " + Type() + " instance was created outside of loadtime and will be ignored/deleted", LogLevel.WARNING);
+			RplComponent.DeleteRplEntity(owner, false); // destroy self
 			return;
+		}
 
-		// CallLater: delete after first frame to not break init
-		GetGame().GetCallqueue().CallLater(PerformDeletion, m_fDelay * 1000, param1: owner);
+		// root only
+		if (GetParent())
+		{
+			Print("A " + Type() + " instance was created in the hierarchy of another entity and will be ignored/deleted", LogLevel.WARNING);
+			RplComponent.DeleteRplEntity(owner, false); // destroy self
+			return;
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void EOnFrame(IEntity owner, float timeSlice)
+	{
+		if (Replication.Runtime())
+		{
+			PerformDeletion(owner); // delete first runtime frame
+			ClearEventMask(EntityEvent.FRAME);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -45,28 +65,60 @@ class SCR_PrefabDeleterEntity : GenericEntity
 		if (m_bOnlyDeleteVisibleEntities)
 			flags |= EQueryEntitiesFlags.WITH_OBJECT;
 
-		GetWorld().QueryEntitiesBySphere(owner.GetOrigin(), m_fRadius, PerformDeletion_QueryEntitiesCallback, null, flags);
+		vector origin = owner.GetOrigin();
+		GetWorld().QueryEntitiesBySphere(origin, m_fRadius, PerformDeletion_QueryEntitiesCallback, null, flags);
 
-		foreach (IEntity entity : s_aFoundEntities)
+		bool useList = !m_aPrefabsList.IsEmpty();
+
+		EntityPrefabData prefabData;
+		BaseContainer baseContainer;
+
+		float radiusSq = m_fRadius * m_fRadius;
+		foreach (IEntity entity : m_aFoundEntities)
 		{
 			if (!entity) // if one saw its parent already deleted
 				continue;
 
-			if (entity.Type() && entity.Type().IsInherited(SCR_PrefabDeleterEntity)) // avoid self and other deleters
+			if (vector.DistanceSq(origin, entity.GetOrigin()) > radiusSq) // sphere query works with bboxes; here we get more accurate by origin
 				continue;
 
-			if (vector.Distance(GetOrigin(), entity.GetOrigin()) > m_fRadius) // sphere query works with bboxes; here we get more accurate by origin
+			if (m_bDeleteRootEntities)
+				entity = entity.GetRootParent();
+
+			if (entity.Type().IsInherited(SCR_PrefabDeleterEntity)) // avoid self and other deleters
 				continue;
 
-			IEntity root = entity.GetRootParent();
+			if (useList)
+			{
+				prefabData = entity.GetPrefabData();
+				if (prefabData)
+				{
+					baseContainer = prefabData.GetPrefab();
+					if (baseContainer)
+					{
+						bool found;
 
-			if (!m_bDeletePlayers && EntityUtils.IsPlayer(root))
-				continue;
+						BaseContainer ancestor = baseContainer;
+						while (ancestor)
+						{
+							if (m_aPrefabsList.Contains(ancestor.GetResourceName()))
+							{
+								found = true;
+								break;
+							}
 
-			RplComponent.DeleteRplEntity(root, false);
+							ancestor = ancestor.GetAncestor();
+						}
+
+						if (found == m_bUsePrefabsListAsProtectedList)
+							continue; // protec
+					}
+				}
+			}
+
+			// default behaviour
+			SCR_EntityHelper.DeleteBuilding(entity);
 		}
-
-		s_aFoundEntities.Clear();
 
 		RplComponent.DeleteRplEntity(owner, false); // destroy self
 	}
@@ -74,7 +126,7 @@ class SCR_PrefabDeleterEntity : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	protected bool PerformDeletion_QueryEntitiesCallback(IEntity e)
 	{
-		s_aFoundEntities.Insert(e);
+		m_aFoundEntities.Insert(e);
 		return true;
 	}
 
@@ -84,10 +136,10 @@ class SCR_PrefabDeleterEntity : GenericEntity
 	//! \param[in] parent
 	void SCR_PrefabDeleterEntity(IEntitySource src, IEntity parent)
 	{
-		if (m_fRadius <= 0 || !GetGame().InPlayMode())
+		if (!GetGame().InPlayMode())
 			return;
 
-		SetEventMask(EntityEvent.INIT);
+		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
 	}
 
 #ifdef WORKBENCH
@@ -102,8 +154,8 @@ class SCR_PrefabDeleterEntity : GenericEntity
 	override void _WB_AfterWorldUpdate(float timeSlice)
 	{
 		super._WB_AfterWorldUpdate(timeSlice);
-		if (m_fRadius > 0)
-			Shape.CreateSphere(0x44FFCC00, ShapeFlags.WIREFRAME | ShapeFlags.ONCE | ShapeFlags.TRANSP, GetOrigin(), m_fRadius);
+
+		Shape.CreateSphere(0x44FFCC00, ShapeFlags.WIREFRAME | ShapeFlags.ONCE | ShapeFlags.TRANSP, GetOrigin(), m_fRadius);
 	}
 
 #endif

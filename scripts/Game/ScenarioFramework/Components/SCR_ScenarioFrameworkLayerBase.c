@@ -1346,6 +1346,9 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override int _WB_GetAfterWorldUpdateSpecs(IEntity owner, IEntitySource src)
 	{
+		if (m_bShowDebugShapesInWorkbench)
+			return EEntityFrameUpdateSpecs.CALL_ALWAYS;
+
 		return EEntityFrameUpdateSpecs.CALL_WHEN_ENTITY_VISIBLE;
 	}
 

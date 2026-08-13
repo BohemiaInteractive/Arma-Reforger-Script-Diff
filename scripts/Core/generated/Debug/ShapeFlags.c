@@ -32,7 +32,7 @@ enum ShapeFlags
 	NOCULL,
 	//! Make it visible. Set by default
 	VISIBLE,
-	//! Additive blending (works with SS_TRANSP)
+	//! Additive blending (works with SS_TRANSP or SS_CONTRAST)
 	ADDITIVE,
 	//! dither according depth
 	DEPTH_DITHER,
@@ -40,6 +40,11 @@ enum ShapeFlags
 	CULL_FAR,
 	//! Draw double sided, highlighting backfaces to visualize vertex winding order errors
 	SHOW_ERRORS,
+	/*!
+	Use contrast rendering mode which darkens the shape color when rendered over a bright background or lightens the shape color over dark backgrounds
+	when this flag is combined with SS_ADDITIVE. This flag should not be set explicitly, but rather via the SetContrast() function.
+	*/
+	CONTRAST,
 	//! Do not insert it to shape-collection
 	NOINSERT,
 	//! Flat shading (no vertex normals are required)

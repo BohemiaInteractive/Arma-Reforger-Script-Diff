@@ -129,10 +129,21 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	//! \param[in] playerID
 	void RequestCommandExecution(int commandIndex, RplId cursorTargetID, RplId groupRplID, vector targetPosition, int playerID, float seed)
 	{
-		//find entity of AI that will be responding to commands
-		SCR_BaseGroupCommand command = SCR_BaseGroupCommand.Cast(FindCommand(FindCommandNameFromIndex(commandIndex)));
+		string commandName = FindCommandNameFromIndex(commandIndex);
+		SCR_BaseRadialCommand command = FindCommand(commandName);
+		if (!command)
+			return;
+
+		if (command.HasLocalEffectOnly())
+		{
+			PrintFormat("WARNING: Player %1 asked the server to execute radial command (id=%2 | name=%3) which is meant to be only executed locally!", SCR_PlayerIdentityUtils.GetPlayerLogInfo(playerID), commandIndex, commandName, level: LogLevel.WARNING);
+			return;
+		}
+
 		RplId responderRplId;
-		if (command && command.ShouldPlayAIResponse())
+		//find entity of AI that will be responding to commands
+		SCR_BaseGroupCommand groupCommand = SCR_BaseGroupCommand.Cast(command);
+		if (groupCommand && groupCommand.ShouldPlayAIResponse())
 		{
 			//find speaking AI, find its rplid and pass it, then in playing response, get the entity from rpl it
 			SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();

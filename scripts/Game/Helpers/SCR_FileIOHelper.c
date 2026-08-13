@@ -275,7 +275,7 @@ class SCR_FileIOHelper
 		if (!fileHandle)
 		{
 			if (printWarning)
-				Print("Cannot open/read " + filePath, LogLevel.WARNING);
+				Print("Cannot open/read file \"" + filePath + "\"", LogLevel.WARNING);
 
 			return null;
 		}
@@ -285,6 +285,65 @@ class SCR_FileIOHelper
 		while (fileHandle.ReadLine(lineContent) > -1)
 		{
 			result.Insert(lineContent);
+		}
+
+		fileHandle.Close();
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get file content as array of lines
+	//! \param[in] filePath relative or absolute
+	//! \param[in] mode
+	//! \param[in] printWarning true to print warning on issue, false otherwise
+	//! \return array of lines or null if file does not exist or cannot be opened
+	static array<int> ReadFileContent(string filePath, SCR_EFileIOHelper_DataMode mode, bool printWarning = true)
+	{
+		FileHandle fileHandle = FileIO.OpenFile(filePath, FileMode.READ);
+		if (!fileHandle)
+		{
+			if (printWarning)
+				Print("Cannot open/read file \"" + filePath + "\"", LogLevel.WARNING);
+
+			return null;
+		}
+
+		if (typename.EnumToString(SCR_EFileIOHelper_DataMode, mode) == "unknown")
+		{
+			if (printWarning)
+				Print("Unsupported data mode " + mode, LogLevel.WARNING);
+
+			fileHandle.Close();
+			return null;
+		}
+
+		int dataSize;
+		if (mode == SCR_EFileIOHelper_DataMode.ONE_BYTE)
+			dataSize = 1;
+		else
+		if (mode == SCR_EFileIOHelper_DataMode.TWO_BYTES)
+			dataSize = 2;
+		else
+		if (mode == SCR_EFileIOHelper_DataMode.THREE_BYTES)
+			dataSize = 3;
+		else
+		// if (mode == SCR_EFileIOHelper_DataMode.FOUR_BYTES)
+			dataSize = 4; // default
+
+		array<int> result = {};
+		int value;
+		int fileSize = fileHandle.GetLength();
+		result.Reserve(fileSize / dataSize + 1);
+		for (int i; i < fileSize; i += dataSize)
+		{
+			if (fileHandle.Read(value, dataSize) < 0)
+			{
+				result = null;
+				break;
+			}
+
+			result.Insert(value);
 		}
 
 		fileHandle.Close();
@@ -461,7 +520,8 @@ class SCR_FileIOHelper
 			|| platform == EPlatform.XBOX_ONE_S
 			|| platform == EPlatform.XBOX_ONE_X
 			|| platform == EPlatform.XBOX_SERIES_S
-			|| platform == EPlatform.XBOX_SERIES_X;
+			|| platform == EPlatform.XBOX_SERIES_X
+			|| platform == EPlatform.WINDOWS_HANDHELD;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -494,4 +554,12 @@ class SCR_FileInfo
 	string m_sFilePath;
 	FileAttribute m_eAttributes;
 	string m_sFileSystem;
+}
+
+enum SCR_EFileIOHelper_DataMode
+{
+	ONE_BYTE,		//!< -128 to 127
+	TWO_BYTES,		//!< -32,768 to 32,767
+	THREE_BYTES,	//!< -8,388,608 to 8,388,607
+	FOUR_BYTES,		//!< -2,147,483,648 to 2,147,483,647
 }

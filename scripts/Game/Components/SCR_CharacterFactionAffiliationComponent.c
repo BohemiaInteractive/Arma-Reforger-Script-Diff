@@ -536,6 +536,12 @@ class SCR_CharacterFactionAffiliationComponent : FactionAffiliationComponent
 			{
 				SCR_Faction scrAffiliatedFaction = SCR_Faction.Cast(affiliatedFaction);
 				
+				if (scrAffiliatedFaction.GetParent() == m_PerceivedFaction)
+				{
+					m_eDisguiseType = SCR_ECharacterDisguiseType.DEFAULT_FACTION;
+					return;
+				}
+
 				//~ Is SCR_Faction
 				if (scrAffiliatedFaction)
 				{

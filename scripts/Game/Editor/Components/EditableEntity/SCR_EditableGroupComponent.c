@@ -50,25 +50,11 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 	override void OnDelete(IEntity owner)
 	{
 		super.OnDelete(owner);
-		
-		//Check how many AI's were queued to be spawned but never did
-		const int missingAgents = m_Group.GetSpawnQueueSize();
-		
-		//everything OK, all AI's got spawned
-		if(m_Group.GetSpawnQueueSize() == 0)
-			return;
-	
-		//Group got deleted before all of its members got spawned		
-		OnAfterAllMembersSpawned();
-		
-		//free the budget we reserved for the AI's we did not spawn
-		SCR_BudgetEditorComponent budgetComponent = SCR_BudgetEditorComponent.Cast(SCR_BudgetEditorComponent.GetInstance(SCR_BudgetEditorComponent));
-		if (!budgetComponent)
-			return;
-	
-		SCR_EditableEntityCoreBudgetSetting aiBudget = budgetComponent.GetBudgetSetting(EEditableEntityBudget.AI);
-		if (aiBudget)
-			aiBudget.UnreserveBudget(missingAgents);
+
+		// Per-group spawn-queue tracking is gone (SCR_AIWorld owns the queue at world scope).
+		// The mid-spawn budget-refund that lived here used GetSpawnQueueSize and is no longer
+		// representable; if budget drift becomes visible we'll need a per-group "members
+		// promised but not yet spawned" counter to drive the refund.
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -208,6 +194,13 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnWaypointAdded(AIWaypoint wp)
 	{
+		if (!m_CycleWaypoint)
+		{
+			m_CycleWaypoint = AIWaypointCycle.Cast(wp);
+			if (m_CycleWaypoint)
+				m_bAreWaypointsCycled = true;
+		}
+
 		if (wp != m_CycleWaypoint)
 		{
 			SCR_EditableWaypointComponent waypoint = SCR_EditableWaypointComponent.Cast(SCR_EditableEntityComponent.GetEditableEntity(wp));
@@ -527,15 +520,39 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 	//------------------------------------------------------------------------------------------------
 	override bool GetPos(out vector pos)
 	{
+		// Group icon position. With a materialised leader, anchor on the leader character so the
+		// icon tracks the visible squad. Without one - dormant group, defender group whose members
+		// are still walking from the spawn slot to the rally point (SCR_DefenderSpawnerComponent
+		// only calls AddAgent in OnMoveFinished), scenario-framework group awaiting AddPrefab -
+		// fall back to the group entity's own world origin so the GM / Editor scene-slot widget
+		// keeps a position and the group stays visible.
+		// (SCR_EditableEntitySceneSlotUIComponent::UpdateSlot hides the widget when GetPos returns
+		// false, which is what hid these groups for the entire walkout window before this fallback.)
+		//
+		// Player-squad placeholders created by SCR_GroupsManagerComponent::CreateNewPlayableGroup
+		// have no real position - they are pre-allocated containers awaiting players to join, and
+		// SpawnEntityPrefab placed them at world origin. Returning entity origin for them would
+		// cluster all squad icons at <0,0,0> off-screen. Detect this case via the world-origin
+		// fingerprint and return false so they stay hidden in the 3D scene; the editor hierarchy
+		// shows them via its own enumeration regardless.
 		if (!m_Leader)
-			return false;
-		
+		{
+			IEntity owner = GetOwner();
+			if (!owner)
+				return false;
+			vector ownerPos = owner.GetOrigin();
+			if (ownerPos == vector.Zero)
+				return false;
+			pos = ownerPos + GetIconPos();
+			return true;
+		}
+
 		if (!m_Leader.GetPos(pos))
 			return false;
-		
+
 		pos += GetIconPos();
 		return true;
-	}	
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool CanDestroy()
@@ -568,15 +585,36 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	void HideIfEmpty()
+	//! True if the underlying group is in dormant state (despawned members, waiting for re-spawn).
+	//! GM / Editor UI should still display dormant groups - they carry the alive / dead counts that
+	//! a later SpawnMembers re-materialises from.
+	bool IsDormant()
+	{
+		return m_Group && m_Group.IsDormant();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Members recorded as alive at the last DespawnMembers, or -1 if the group has never been
+	//! despawned. UI can show this as "(N dormant)" next to an empty group folder.
+	int GetDormantAliveCount()
+	{
+		if (!m_Group)
+			return -1;
+		return m_Group.GetDormantAliveCount();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Called from SCR_AIGroup.SpawnMembers / DespawnMembers so any UI observing this component
+	//! can re-read dormant state and update. Asserts SetVisible(true) on the authority for dormant
+	//! groups so no implicit "empty folder" path drops them from the editor hierarchy.
+	void OnDormantStateChanged()
 	{
 		RplComponent rpl = GetRplComponent();
-		if (!m_Group || !rpl || rpl.IsProxy()) // Only the Authority has the proper data needed to determine visibility
-			return;
+		if (rpl && !rpl.IsProxy() && IsDormant())
+			SetVisible(true);
 
-		bool isGroupEmpty = m_Group.GetAgentsCount() == 0;
-		SetVisible(!isGroupEmpty);
+		if (Event_OnUIRefresh)
+			Event_OnUIRefresh.Invoke();
 	}
 	
 	

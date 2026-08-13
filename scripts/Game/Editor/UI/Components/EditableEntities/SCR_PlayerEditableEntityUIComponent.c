@@ -11,17 +11,42 @@ class SCR_PlayerEditableEntityUIComponent : SCR_BaseEditableEntityUIComponent
 	[Attribute("PlatformIcon")]
 	protected string m_sPlatformIconWidgetName;
 	
+	protected SCR_EditablePlayerDelegateComponent m_EditablePlayerDelegateComp;
+
 	//------------------------------------------------------------------------------------------------
-	protected void SetName(TextWidget nameWidget, int playerID)
+	protected void AttemptSetName(bool success)
+	{
+		Widget widget = GetWidget();
+		if (!widget)
+			return;
+
+		TextWidget nameWidget = TextWidget.Cast(widget.FindAnyWidget(m_sPlayerNameWidgetName));
+		if (!nameWidget)
+			return;
+
+		int playerID;
+		if (m_EditablePlayerDelegateComp)
+			playerID = m_EditablePlayerDelegateComp.GetPlayerID();
+
+		if (playerID <= 0)
+			return;
+
+		if(SetName(nameWidget, playerID))
+			PlayerManager.s_OnPlayerNameCacheUpdateInvoker.Remove(AttemptSetName);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool SetName(TextWidget nameWidget, int playerID)
 	{
 		string playerName = SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerID);
 		if (playerName.IsEmpty())
-			return;
+			return false;
 
 		nameWidget.SetText(playerName);
-		GetGame().GetCallqueue().Remove(SetName);
+		return true;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	override void OnShownOffScreen(bool offScreen)
 	{
 		Widget nameWidget = GetWidget().FindAnyWidget(m_sPlayerNameWidgetName);
@@ -40,16 +65,16 @@ class SCR_PlayerEditableEntityUIComponent : SCR_BaseEditableEntityUIComponent
 		Widget widget = GetWidget();
 		if (!widget)
 			return;
-		
+
 		TextWidget nameWidget = TextWidget.Cast(widget.FindAnyWidget(m_sPlayerNameWidgetName));
 		if (!nameWidget)
 			return;
-		
+
 		int playerID;
-		SCR_EditablePlayerDelegateComponent delegate = SCR_EditablePlayerDelegateComponent.Cast(entity);
-		if (delegate)
+		m_EditablePlayerDelegateComp = SCR_EditablePlayerDelegateComponent.Cast(entity);
+		if (m_EditablePlayerDelegateComp)
 		{
-			playerID = delegate.GetPlayerID();
+			playerID = m_EditablePlayerDelegateComp.GetPlayerID();
 		}
 		else
 		{
@@ -62,23 +87,22 @@ class SCR_PlayerEditableEntityUIComponent : SCR_BaseEditableEntityUIComponent
 			}
 		}
 
-		if (playerID == 0)
+		if (playerID <= 0)
 			return;
 
 		ArmaReforgerScripted game = GetGame();
 		if (!game)
 			return;
-		
-		//--- Assign name after it's been initialized (ToDo: Better solution? Callback?)
-		if (game.GetCallqueue())
-			game.GetCallqueue().CallLater(SetName, 0, true, nameWidget, playerID);
-		
+
 		ImageWidget platformImage = ImageWidget.Cast(widget.FindAnyWidget(m_sPlatformIconWidgetName));
 		if (platformImage)
 			SCR_PlayerController.Cast(game.GetPlayerController()).SetPlatformImageTo(playerID, platformImage);
-		
+
 		SCR_EditableEntitySceneSlotUIComponent sceneSlot = SCR_EditableEntitySceneSlotUIComponent.Cast(slot);
 		if (sceneSlot && sceneSlot.GetOffScreenWidget())
 			sceneSlot.GetOffScreenWidget().SetColor(widget.GetColor());
+
+		if(!SetName(nameWidget, playerID))
+			PlayerManager.s_OnPlayerNameCacheUpdateInvoker.Insert(AttemptSetName);
 	}
 }

@@ -60,10 +60,17 @@ class SCR_WatermarkComponent: ScriptedWidgetComponent
 		
 		if (platformID < platformStrings.Count())
 		{
-			string platformSuffix = WidgetManager.Translate(platformStrings[platformID]);
+			// FIXME: Not the greatest idea to loosely map enum value to this local array. Slight change may throw this off
+			string platformSuffix = platformStrings[platformID];
 		
-			if (platformSuffix != "")	
-				version = string.Format("%1 (%2)", version, platformSuffix);			
+			if (platformSuffix != "")
+			{
+				// TODO: Implement me better including localization!
+				string isHandheld = "";
+				if (System.GetPlatform() == EPlatform.WINDOWS_HANDHELD)
+					isHandheld = " #AR-Settings_Title_Handheld";
+				version = string.Format("%1 (%2)%3", version, platformSuffix, isHandheld);
+			}
 		}
 		
 		// Update the game version widget (number + platform suffix)

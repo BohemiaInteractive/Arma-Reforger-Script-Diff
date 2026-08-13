@@ -4,6 +4,7 @@ Do not modify, this script is generated
 ===========================================
 */
 
+[EnumLinear()]
 enum RplKickCauseGroup
 {
 	NONE,

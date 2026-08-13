@@ -135,7 +135,10 @@ class SCR_AIGroupPerception : Managed
 				newTimestamp = target.GetTimeLastDetected();
 			else
 				newTimestamp = target.GetTimeLastSeen();
-			
+
+			if (targetCategory == ETargetCategory.ENEMY && oldCategory == EAITargetInfoCategory.IDENTIFIED) // when target is positively identified as an enemy we mark / update mark on map
+					MarkEnemyOnMap(m_aTargets[id]);
+
 			if (oldTargetInfo.m_fTimestamp < newTimestamp)
 			{
 				// New information is newer
@@ -176,6 +179,17 @@ class SCR_AIGroupPerception : Managed
 	}
 	
 	//---------------------------------------------------------------------------------------------------
+	protected void MarkEnemyOnMap(notnull SCR_AITargetInfo target)
+	{
+		SCR_AIEnemyMarkingSystem enemyMarkingSystem = SCR_AIEnemyMarkingSystem.Cast(GetGame().GetWorld().FindSystem(SCR_AIEnemyMarkingSystem));
+
+		if (!enemyMarkingSystem)
+			return;
+
+		enemyMarkingSystem.MarkTarget(target, m_Group);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void AddOrUpdateGunshot(notnull IEntity shooter, vector worldPos, Faction faction, float timestamp, bool endangering)
 	{
 		int id = m_aTargetEntities.Find(shooter);

@@ -1016,7 +1016,7 @@ class ServerBrowserMenuUI : MenuRootBase
 			m_TabView.GetOnChanged().Insert(OnTabViewSwitch);
 			OnTabViewSwitch(null, null, m_TabView.GetShownTab());
 
-			if (!GetGame().IsPlatformGameConsole())
+			if (!SCR_ScenarioUICommon.IsHostingDisabledOnPlatform())
 				m_TabView.AddTab("", "#AR-Workshop_ButtonHost");
 		}
 

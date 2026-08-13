@@ -3,7 +3,7 @@
 class SCR_GetINtoSelectedVehicleGroupCommand : SCR_WaypointGroupCommand
 {
 	//------------------------------------------------------------------------------------------------
-	override bool Execute(IEntity cursorTarget, IEntity target, vector targetPosition, int playerID, bool isClient)
+	override bool Execute(IEntity cursorTarget, IEntity groupEnt, vector targetPosition, int playerID, bool isClient)
 	{
 		if (isClient)
 		{
@@ -14,7 +14,7 @@ class SCR_GetINtoSelectedVehicleGroupCommand : SCR_WaypointGroupCommand
 		if (GetWaypointPrefab().IsEmpty())
 			return false;
 		
-		SCR_AIGroup slaveGroup = SCR_AIGroup.Cast(target);
+		SCR_AIGroup slaveGroup = SCR_AIGroup.Cast(groupEnt);
 		if (!slaveGroup)
 			return false;
 		

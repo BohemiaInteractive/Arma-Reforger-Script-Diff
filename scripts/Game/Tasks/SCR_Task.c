@@ -1552,7 +1552,7 @@ class SCR_Task : GenericEntity
 		array<LocalizedString> descParams;
 		writer.WriteString(info.GetUnformattedName(nameParams));
 		writer.WriteString(info.GetUnformattedDescription(descParams));
-		writer.WriteString(info.GetImageSetPath());
+		writer.WriteResourceName(info.GetIcon());
 		writer.WriteString(info.GetIconSetName());
 		
 		if (!nameParams || nameParams.IsEmpty())
@@ -1708,10 +1708,11 @@ class SCR_Task : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	protected void ReadUIInfo(ScriptBitReader reader, out SCR_TaskUIInfo info)
 	{
-		string name, desc, iconPath, iconSetName;
+		string name, desc, iconSetName;
+		ResourceName iconPath;
 		reader.ReadString(name);
 		reader.ReadString(desc);
-		reader.ReadString(iconPath);
+		reader.ReadResourceName(iconPath);
 		reader.ReadString(iconSetName);
 		
 		array<LocalizedString> nameParams;

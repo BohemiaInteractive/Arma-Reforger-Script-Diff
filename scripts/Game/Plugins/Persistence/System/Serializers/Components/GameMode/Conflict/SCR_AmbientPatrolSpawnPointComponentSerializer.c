@@ -15,13 +15,16 @@ class SCR_AmbientPatrolSpawnPointComponentSerializer : ScriptedComponentSerializ
 
 		const bool spawned = ambientPatrol.GetIsSpawned();
 		const bool paused = ambientPatrol.GetIsPaused();
-		const int membersAlive = ambientPatrol.GetMembersAlive();
+		const bool eliminated = ambientPatrol.IsEliminated();
 
-		if (!spawned &&	!paused && (membersAlive == -1))
+		// Alive count for dormant groups is persisted on the group itself via SCR_AIGroupSerializer
+		// (m_iDormantAliveCount). Spawnpoint-level state only needs the "eliminated" flag plus the
+		// timing fields below.
+		if (!spawned && !paused && !eliminated)
 			return ESerializeResult.DEFAULT;
 
 		const UUID groupId = GetSystem().GetId(ambientPatrol.GetSpawnedGroup());
-		const bool groupActive = ambientPatrol.IsGroupActive();
+		const bool groupSpawnActive = ambientPatrol.IsGroupActive();
 		const UUID waypointId = GetSystem().GetId(ambientPatrol.GetWaypoint());
 
 		const WorldTimestamp despawnTimestamp = ambientPatrol.GetDespawnTimestamp();
@@ -34,12 +37,12 @@ class SCR_AmbientPatrolSpawnPointComponentSerializer : ScriptedComponentSerializ
 		if (respawnTimestamp)
 			respawnTime = currentTime.DiffSeconds(respawnTimestamp);
 
-		context.WriteValue("version", 1);
+		context.WriteValue("version", 2);
 		context.WriteDefault(spawned, false);
 		context.WriteDefault(paused, false);
 		context.WriteDefault(groupId, UUID.NULL_UUID);
-		context.WriteDefault(groupActive, false);
-		context.WriteDefault(membersAlive, -1);
+		context.WriteDefault(groupSpawnActive, false);
+		context.WriteDefault(eliminated, false);
 		context.WriteDefault(waypointId, UUID.NULL_UUID);
 		context.WriteDefault(despawnTime, 0.0);
 		context.WriteDefault(respawnTime, 0.0);
@@ -72,10 +75,10 @@ class SCR_AmbientPatrolSpawnPointComponentSerializer : ScriptedComponentSerializ
 			GetSystem().WhenAvailable(groupId, task);
 		}
 
-		bool groupActive;
-		if (context.Read(groupActive))
+		bool groupSpawnActive;
+		if (context.Read(groupSpawnActive))
 		{
-			if (groupActive)
+			if (groupSpawnActive)
 			{
 				ambientPatrol.ActivateGroup();
 			}
@@ -85,9 +88,20 @@ class SCR_AmbientPatrolSpawnPointComponentSerializer : ScriptedComponentSerializ
 			}
 		}
 
-		int membersAlive;
-		if (context.Read(membersAlive))
-			ambientPatrol.SetMembersAlive(membersAlive);
+		// Read the new eliminated flag (v2) or fall back to the legacy membersAlive semantic for
+		// v1 saves: membersAlive == 0 encoded "do not respawn", now captured by IsEliminated.
+		if (version >= 2)
+		{
+			bool eliminated;
+			if (context.Read(eliminated))
+				ambientPatrol.SetIsEliminated(eliminated);
+		}
+		else
+		{
+			int membersAlive;
+			if (context.Read(membersAlive))
+				ambientPatrol.SetIsEliminated(membersAlive == 0);
+		}
 
 		UUID waypointId;
 		if (context.Read(waypointId) && !waypointId.IsNull())

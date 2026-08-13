@@ -56,9 +56,14 @@ class SCR_ScenarioFrameworkActionStartAnimation : SCR_ScenarioFrameworkActionBas
 		if (!staticTable)
 			return;
 		
-		SCR_LoiterCustomAnimData customAnimData = new SCR_LoiterCustomAnimData();
-		
-		animComp.SetVariableInt(staticTable.m_OfficerMissionSpeech, m_iNPC);
+		SCR_LoiterCustomAnimData customAnimData = SCR_LoiterCustomAnimData.CreateInstance(
+			staticTable.m_CustomCinematicCommand, ELoiteringType.CUSTOM,
+			graphName : m_sGraphName,
+			graphInstanceName: m_GraphInstanceName,
+			controlVariableID: staticTable.m_OfficerMissionSpeech,
+			controlVariableValue: m_iNPC);
+			
+		animComp.SetVariableInt(customAnimData.m_iControlVariableID, customAnimData.m_iControlVariableValue);
 		
 		IEntity propEntity;
 		vector vAnimationTransform[4] = { "1 0 0", "0 1 0", "0 0 1", "0 0 0" };
@@ -71,9 +76,6 @@ class SCR_ScenarioFrameworkActionStartAnimation : SCR_ScenarioFrameworkActionBas
 			
 		}
 		
-		customAnimData.m_CustomCommand = staticTable.m_CustomCinematicCommand; 
-		customAnimData.m_GraphName = m_sGraphName; 
-		customAnimData.m_GraphInstanceName = m_GraphInstanceName;   
 		controller.StartLoitering(propEntity, ELoiteringType.CUSTOM, m_bHolsterWeapon, m_bRootMotion, allignToProp, vAnimationTransform, true, customAnimData);
 	}
 }

@@ -137,7 +137,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	//!
 	//! \param[in] groupID
 	//! \param[in] playerID
-	void ClearRequests(int groupID, int playerID)
+	protected void ClearRequests(int groupID, int playerID)
 	{
 		SCR_PlayerControllerGroupComponent playerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
 		if (!playerGroupController)
@@ -1109,9 +1109,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		if (scrFaction.GetCanCreateOnlyPredefinedGroups())
 			return;
 
-		SCR_AIGroup newPlayerGroup = GetFirstNotFullForFaction(newFaction);
+		SCR_AIGroup newPlayerGroup = GetFirstNotFullForFaction(newFaction, respectPrivate: true);
 		if (!newPlayerGroup && scrFaction.IsEnabledAutoGroupCreationWhenFull())
-			newPlayerGroup = CreateNewPlayableGroup(newFaction);
+			newPlayerGroup = CreateNewPlayableGroup(newFaction, scrFaction.GetDefaultGroupRoleForNewGroup());
 
 		if (!owner)
 			return;
@@ -1201,19 +1201,22 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] faction
+	//! \param[in] needsPublic Found group needs to be a public one
 	//! \return
-	SCR_AIGroup TryFindEmptyGroup(notnull Faction faction)
+	SCR_AIGroup TryFindEmptyGroup(notnull Faction faction, bool needsPublic = true)
 	{
 		array<SCR_AIGroup> factionGroups = GetPlayableGroupsByFaction(faction);
 		if (!factionGroups)
 			return null;
 
+		SCR_AIGroup group;
 		for (int i = factionGroups.Count() - 1; i >= 0; i--)
 		{
-			if (!factionGroups[i])
-				return null;
+			group = factionGroups[i];
+			if (!group)
+				continue;
 
-			if (factionGroups[i].GetPlayerCount() == 0)
+			if (group.GetPlayerCount() == 0 && (!needsPublic || (needsPublic && !group.IsPrivate())))
 				return factionGroups[i];
 		}
 
@@ -1252,6 +1255,10 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		AssignGroupID(group);
 		group.SetGroupRole(groupRole);
 
+		// Playable groups are player-led - tag CRITICAL so they get the full active-AI budget
+		// and never get crowded out by ambient AI.
+		group.SetImportance(SCR_EAISpawnImportance.CRITICAL);
+
 		//if there is commanding present, we create the slave group for AIs at the creation of the group
 		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
 		if (commandingManager)
@@ -1265,6 +1272,10 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 				return null;
 
 			slaveGroup.DeactivateAI();
+
+			// Slave group holds AI commanded by the player - same CRITICAL tier as the master
+			// playable group so player's AI followers never lose budget slots.
+			slaveGroup.SetImportance(SCR_EAISpawnImportance.CRITICAL);
 
 			RplComponent RplComp = RplComponent.Cast(slaveGroup.FindComponent(RplComponent));
 			if (!RplComp)

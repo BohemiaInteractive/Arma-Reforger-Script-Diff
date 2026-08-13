@@ -59,13 +59,6 @@ class SCR_AIGroupClass : ChimeraAIGroupClass
 	}
 }
 
-class SCR_AIGroup_DelayedSpawn
-{
-	bool snapToTerrain;
-	int index;
-	ResourceName resourceName;
-	bool editMode;
-}
 
 void ScriptInvoker_AIGroupOnEmpty_Callback(AIGroup group);
 typedef func ScriptInvoker_AIGroupOnEmpty_Callback;
@@ -73,6 +66,9 @@ typedef ScriptInvokerBase<ScriptInvoker_AIGroupOnEmpty_Callback> ScriptInvoker_A
 
 class SCR_AIGroup : ChimeraAIGroup
 {
+	// Set to true to enable temporary [DBG_AI] diagnostics in this class.
+	protected static const bool DBG_AI_LOGGING = false;
+
 	[Attribute("", UIWidgets.EditBox, "Faction", category: "Group")]
 	string m_faction;
 
@@ -109,10 +105,60 @@ class SCR_AIGroup : ChimeraAIGroup
 	protected ref array<AISmartActionComponent> m_aAllocatedComponents = {};	// allocated smart action components this group wants to use
 
 	protected int m_iMaxUnitsToSpawn = int.MAX;
+
+	// Self-managed lifecycle. Default is Manual (external code calls SpawnMembers/DespawnMembers).
+	// Spawners that want the group to self-manage based on observer proximity flip to
+	// ProximityDriven after creating the group. The group then queries ObserversSystem on the
+	// FRAME event (accumulated to ~1s cadence) and materialises / dismisses members without the
+	// spawner needing to iterate players.
+	protected SCR_EAIGroupLifecyclePolicy m_eLifecyclePolicy;
+	// Distance fields below are fallback defaults used only when SetLifecyclePolicy isn't called
+	// with explicit values. Production callers (SCR_AmbientPatrolSpawnPointComponent::SpawnPatrol
+	// via SCR_AmbientPatrolSystem, scenario slots) override per-spawnpoint via SetLifecyclePolicy.
+	// Note: the per-agent LOD system steps every DYNAMICSIM_LASTLOD_DISTANCE / sMaxLODs metres
+	// (default 100 m/level) and only fires EOnDeactivate → IsAIActivated=false at LOD max
+	// (default ≥1000 m). HasHeldMember()'s IsAIActivated() protection means the actual despawn
+	// won't fire until the observer is past the prefab LOD-max regardless of m_fDespawnDistance,
+	// so spawners that want despawn at a specific distance must set DYNAMICSIM_LASTLOD_DISTANCE
+	// on their character prefabs to match.
+	protected float m_fSpawnDistance      = 600;   // metres - observer within this distance -> want active
+	protected float m_fDespawnDistance    = 800;   // metres - all observers beyond this -> want dormant
+	protected float m_fVeryNearBlockDistance = 150; // metres - observer too close -> block fresh spawn to avoid pop-in
+
+	protected float m_fLifecycleTickSeconds = 1.0; // cadence between proximity checks
+	protected float m_fLifecycleAccum;              // time since last LifecycleTick (accumulated in EOnFrame)
+
+	// Counts consecutive frames where navmesh tile loading blocks SpawnGroupMember.
+	// Reset on successful spawn. When it reaches NAVMESH_STALL_LIMIT we stop waiting
+	// and let the spawn proceed without a loaded tile (tile may simply not exist).
+	protected int m_iNavmeshStallFrames;
+	protected static const int NAVMESH_STALL_LIMIT = 30;
+
+	// Previous-tick "any observer within spawn distance" bit. Used by LifecycleTick to
+	// distinguish a gradual approach (apply the very-near pop-in block) from a sudden
+	// appearance (teleport / GM camera focus / fresh spectator - spawn anyway, the user
+	// is staring at empty terrain otherwise).
+	protected bool m_bWasObserverInSpawnRange;
+
+	// Opt-in: when an observer walks onto this group's position while it has no members
+	// (the spawn was blocked, typically by the active-AI limit), the group counts as
+	// eliminated instead of appearing later in an area the player already walked through.
+	// Elimination fires Event_OnEliminatedWhenReached (so the spawner can retire itself)
+	// and then deletes the group entity. Set by remnant / ambient patrol spawners; not
+	// used by groups whose members must come back (e.g. building-mode defenders).
+	protected bool m_bEliminateWhenReached;
+
+	// True once Event_OnInit was invoked. Queue-driven partial fill completes the group
+	// over several ticks and can complete again after a dormant period, but listeners
+	// expect a single "all initial members spawned" notification per group.
+	protected bool m_bOnInitInvoked;
+
 	protected ref ScriptInvoker Event_OnInit;
 	protected ref ScriptInvoker_AIGroupOnEmpty Event_OnEmpty;
 	protected ref ScriptInvoker Event_OnAgentAdded;
 	protected ref ScriptInvoker Event_OnAgentRemoved;
+	protected ref ScriptInvoker Event_OnMembersDespawning;
+	protected ref ScriptInvoker Event_OnEliminatedWhenReached;
 	protected ref ScriptInvoker Event_OnLeaderChanged;
 	protected ref ScriptInvoker Event_OnCurrentWaypointChanged;
 	protected ref ScriptInvoker Event_OnWaypointCompleted;
@@ -161,6 +207,7 @@ class SCR_AIGroup : ChimeraAIGroup
 	protected static ref ScriptInvoker<int, int> s_OnPlayerLeaderChanged = new ScriptInvoker();
 	protected static ref ScriptInvoker s_OnPrivateGroupChanged = new ScriptInvoker();
 	protected static ref ScriptInvoker<SCR_AIGroup> s_OnCustomNameChanged = new ScriptInvoker();
+	protected static ref ScriptInvoker<SCR_AIGroup> s_OnCallsignChanged = new ScriptInvoker();
 	protected static ref ScriptInvoker s_OnFrequencyChanged = new ScriptInvoker();
 	protected static ref ScriptInvoker s_OnMaxMembersChanged = new ScriptInvoker();
 	protected static ref ScriptInvoker s_OnCustomDescChanged = new ScriptInvoker();
@@ -191,17 +238,20 @@ class SCR_AIGroup : ChimeraAIGroup
 	protected RplId m_MasterGroupID; 
 	protected RplId m_SlaveGroupID;
 
-	// entity spawn list
-	protected ref array<ref SCR_AIGroup_DelayedSpawn> m_delayedSpawnList = {};
+	// SCR_AIWorld's spawn queue is the single coordination point for new member spawns - it
+	// dispatches ExpandOneMember at 2 Hz, capped, with frametime-aware throttling. This invoker
+	// fires when CreateUnitEntities finishes a synchronous batch and when ExpandOneMember brings
+	// a group to full capacity, for editor / scenario consumers that wait on group completion.
 	protected ref ScriptInvokerBase<ScriptInvokerAIGroup> Event_OnAllDelayedEntitySpawned;
 
 	protected SCR_ECharacterRank m_eRequiredRank;
 
 	//------------------------------------------------------------------------------------------------
-	//Returns number of AI's that still have to be spawned
+	//! Returns 0. Kept for API compatibility - the per-group delayed-spawn list was removed;
+	//! SCR_AIWorld's queue dispatches one ExpandOneMember per tick now.
 	int GetSpawnQueueSize()
 	{
-		return m_delayedSpawnList.Count();
+		return 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -262,79 +312,26 @@ class SCR_AIGroup : ChimeraAIGroup
 	//------------------------------------------------------------------------------------------------
 	protected override void EOnFrame(IEntity owner, float timeSlice)
 	{
-		// No more entities in the list? Turn off frame events
-		if (m_delayedSpawnList.IsEmpty())
+		// EOnFrame exists solely to drive the proximity-driven lifecycle accumulator.
+		// ProximityDriven groups keep FRAME enabled via SetLifecyclePolicy; other groups should
+		// not have FRAME on at all.
+		if (m_eLifecyclePolicy == SCR_EAIGroupLifecyclePolicy.ProximityDriven)
 		{
-			EndDelayedSpawn();
-			return;
+			m_fLifecycleAccum += timeSlice;
+			if (m_fLifecycleAccum >= m_fLifecycleTickSeconds)
+			{
+				m_fLifecycleAccum = 0;
+				LifecycleTick();
+			}
 		}
-
-		// Spawn a singular AI entity this frame
-		int spawnIndex = m_delayedSpawnList.Count() - 1;
-		if (SpawnDelayedGroupMember(spawnIndex))
-			m_delayedSpawnList.Remove(spawnIndex);
-
-		// Notify all delayed spawning is done
-		if (m_delayedSpawnList.IsEmpty() && Event_OnAllDelayedEntitySpawned)
-			Event_OnAllDelayedEntitySpawned.Invoke(this);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*
-	Returns false when member couldn't be spawned but we should try again
-	True otherwise
-	*/
-	bool SpawnDelayedGroupMember(int spawnIndex)
-	{
-		return SpawnGroupMember(
-			m_delayedSpawnList.Get(spawnIndex).snapToTerrain,
-			m_delayedSpawnList.Get(spawnIndex).index,
-			m_delayedSpawnList.Get(spawnIndex).resourceName,
-			m_delayedSpawnList.Get(spawnIndex).editMode,
-			spawnIndex == 0 // isLast
-		);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void SpawnAllImmediately()
-	{
-		for (int spawnIndex = m_delayedSpawnList.Count() - 1; spawnIndex >= 0; spawnIndex--)
-			SpawnDelayedGroupMember(spawnIndex);
-
-		m_delayedSpawnList.Clear();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Returns true if group is in initialization state, for instance while still spawning its members
+	//! Returns false. Kept for API compatibility - group materialisation is handled by
+	//! SCR_AIWorld's queue at world scope; per-group "still trickling" state no longer exists.
 	bool IsInitializing()
 	{
-		return !m_delayedSpawnList.IsEmpty();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void BeginDelayedSpawn()
-	{
-		SetEventMask(EntityEvent.FRAME);
-		DeactivateAI();
-
-		// Allow this entity to frame/tick while in Game Master Mode
-		ChimeraWorld world = GetGame().GetWorld();
-		if (world)
-			world.RegisterEntityToBeUpdatedWhileGameIsPaused(this);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void EndDelayedSpawn()
-	{
-		ClearEventMask(EntityEvent.FRAME);
-		if (m_bDeleteWhenEmpty && GetAgentsCount() == 0)
-			GetGame().GetCallqueue().CallLater(SCR_EntityHelper.DeleteEntityAndChildren, 1, false, this);
-		else if (!m_bPlayable && !IsSlave())
-			ActivateAI();
-
-		ChimeraWorld world = GetGame().GetWorld();
-		if (world)
-			world.UnregisterEntityToBeUpdatedWhileGameIsPaused(this);
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1111,6 +1108,12 @@ class SCR_AIGroup : ChimeraAIGroup
 	}
 
 	//------------------------------------------------------------------------------------------------
+	static ScriptInvoker GetOnCallsignChanged()
+	{
+		return s_OnCallsignChanged;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	static ScriptInvokerGroupRole GetOnGroupRoleChanged()
 	{
 		if (!s_OnGroupRoleChanged)
@@ -1200,6 +1203,13 @@ class SCR_AIGroup : ChimeraAIGroup
 	{
 		RPC_DoOnGroupMemberStateChange(); //Local call
 		Rpc(RPC_DoOnGroupMemberStateChange); //Broadcast to clients
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Called via broadcast when a callsign gets assigned in SCR_CallSignComponent
+	void OnCallsignChanged()
+	{
+		s_OnCallsignChanged.Invoke(this);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1622,33 +1632,24 @@ class SCR_AIGroup : ChimeraAIGroup
 			m_aSceneGroupUnitInstances = new array<IEntity>;
 
 		m_iNumOfMembersToSpawn = Math.Min(entityResourceNames.Count(), m_iMaxUnitsToSpawn);
-		//--- Create group members
-		for (int i = m_iNumOfMembersToSpawn-1; i >= 0; i--)
-		{
-			// Spawn group across multiple frames
-			SCR_AIGroup_DelayedSpawn delaySpawn = new SCR_AIGroup_DelayedSpawn();
-			delaySpawn.snapToTerrain	= snapToTerrain;
-			delaySpawn.index			= i;
-			delaySpawn.resourceName		= entityResourceNames[i];
-			delaySpawn.editMode			= editMode;
 
-			m_delayedSpawnList.Insert(delaySpawn);
+		// Synchronous fallback path - workbench preview, edit mode, and the legacy non-Chimera
+		// fallback in RequestSpawn. Runtime spawning that needs navmesh-not-loaded retry should
+		// go through SCR_AIWorld's queue (it re-enqueues on SpawnGroupMember failure).
+		for (int i = 0; i < m_iNumOfMembersToSpawn; i++)
+		{
+			bool isLast = (i == m_iNumOfMembersToSpawn - 1);
+			SpawnGroupMember(snapToTerrain, i, entityResourceNames[i], editMode, isLast);
 		}
 
-		if (editMode)
-		{
-			//--- Edit mode has no game world, spawn immediately
-			SpawnAllImmediately();
-		}
-		else
-		{
-			//--- Enable the frame event and frames when paused
-			BeginDelayedSpawn();
-		}
+		// Notify editor / scenario / placing components that were waiting on the group reaching
+		// its requested member count. Empty groups go through the Event_OnInit path below.
+		if (m_iNumOfMembersToSpawn > 0 && Event_OnAllDelayedEntitySpawned)
+			Event_OnAllDelayedEntitySpawned.Invoke(this);
 
 		//--- Call group init if it cannot be called by the last spawned entity
-		if (m_iNumOfMembersToSpawn == 0 && Event_OnInit)
-			Event_OnInit.Invoke(this);
+		if (m_iNumOfMembersToSpawn == 0)
+			InvokeEventOnInit();
 	}
 	/*
 	Spawn single Group member.
@@ -1656,15 +1657,6 @@ class SCR_AIGroup : ChimeraAIGroup
 	*/
 	protected bool SpawnGroupMember(bool snapToTerrain, int index, ResourceName res, bool editMode, bool isLast)
 	{
-		if (!GetGame().GetAIWorld().CanLimitedAIBeAdded())
-		{
-			if (isLast && Event_OnInit)
-				Event_OnInit.Invoke(this);
-
-			//Event_OnLastGroupMemberSpawned.Invoke(this);
-
-			return true;
-		}
 		BaseWorld world = GetWorld();
 		AIFormationDefinition formationDefinition;
 		AIFormationComponent formationComponent = AIFormationComponent.Cast(this.FindComponent(AIFormationComponent));
@@ -1697,12 +1689,35 @@ class SCR_AIGroup : ChimeraAIGroup
 			{
 				if (navmesh.IsTileRequested(pos))
 				{
-					return false;
+					m_iNavmeshStallFrames++;
+					if (m_iNavmeshStallFrames < NAVMESH_STALL_LIMIT)
+					{
+						if (DBG_AI_LOGGING)
+							Print(string.Format("[DBG_AI] SpawnGroupMember fail: navmesh tile REQUESTED at %1 stall=%2/%3 (group %4 slot %5)", pos, m_iNavmeshStallFrames, NAVMESH_STALL_LIMIT, this, index), LogLevel.WARNING);
+						return false;
+					}
+					// Tile was requested but never loaded - no navmesh data at this position.
+					// Give up waiting and let the spawn proceed.
+					if (DBG_AI_LOGGING)
+						Print(string.Format("[DBG_AI] SpawnGroupMember: navmesh stall limit reached at %1, proceeding without loaded tile (group %2 slot %3)", pos, this, index), LogLevel.WARNING);
 				}
-				if (!navmesh.IsTileLoaded(pos))
+				else if (!navmesh.IsTileLoaded(pos))
 				{
+					// Call LoadTileIn to start async tile loading and count the attempt.
+					// If the tile never transitions to IsTileRequested (e.g. navmesh is
+					// pre-baked or not streamed on this server), LoadTileIn is a no-op and
+					// IsTileRequested stays false indefinitely. Count these attempts with the
+					// same stall counter so the give-up path fires after NAVMESH_STALL_LIMIT
+					// calls, preventing an infinite retry loop on servers without tile streaming.
+					m_iNavmeshStallFrames++;
+					if (DBG_AI_LOGGING)
+						Print(string.Format("[DBG_AI] SpawnGroupMember fail: navmesh tile NOT LOADED at %1 - LoadTileIn issued stall=%2/%3 (group %4 slot %5)", pos, m_iNavmeshStallFrames, NAVMESH_STALL_LIMIT, this, index), LogLevel.WARNING);
 					navmesh.LoadTileIn(pos);
-					return false;
+					if (m_iNavmeshStallFrames < NAVMESH_STALL_LIMIT)
+						return false;
+					// Stall limit reached without the tile loading - proceed without navmesh snap.
+					if (DBG_AI_LOGGING)
+						Print(string.Format("[DBG_AI] SpawnGroupMember: LoadTileIn stall limit reached at %1, proceeding without loaded tile (group %2 slot %3)", pos, this, index), LogLevel.WARNING);
 				}
 			}
 		}
@@ -1746,8 +1761,8 @@ class SCR_AIGroup : ChimeraAIGroup
 		if (factionAffiliation)
 			factionAffiliation.SetAffiliatedFactionByKey(m_faction);
 
-		if (isLast && Event_OnInit)
-			Event_OnInit.Invoke(this);
+		if (isLast)
+			InvokeEventOnInit();
 		return true;
 	}
 
@@ -2205,6 +2220,19 @@ class SCR_AIGroup : ChimeraAIGroup
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Invoke Event_OnInit, at most once per group lifetime.
+	protected void InvokeEventOnInit()
+	{
+		if (m_bOnInitInvoked)
+			return;
+
+		m_bOnInitInvoked = true;
+
+		if (Event_OnInit)
+			Event_OnInit.Invoke(this);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get event called when all initial group members were spawned.
 	Called only on server.
@@ -2246,6 +2274,41 @@ class SCR_AIGroup : ChimeraAIGroup
 			Event_OnAgentAdded = new ScriptInvoker();
 
 		return Event_OnAgentAdded;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get event called when this group starts a dormant transition, before any member
+	character is deleted. Lets listeners unhook per-member events while the members
+	still exist and are still parented to the group.
+	Called only on server.
+	Invoker params are: SCR_AIGroup group
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnMembersDespawning()
+	{
+		if (!Event_OnMembersDespawning)
+			Event_OnMembersDespawning = new ScriptInvoker();
+
+		return Event_OnMembersDespawning;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get event called when this group eliminated itself because an observer reached its
+	position while its members could not spawn (see SetEliminateWhenReached). The group
+	entity is deleted right after this event - spawners use it to retire themselves so
+	they never create a replacement.
+	Called only on server.
+	Invoker params are: SCR_AIGroup group
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnEliminatedWhenReached()
+	{
+		if (!Event_OnEliminatedWhenReached)
+			Event_OnEliminatedWhenReached = new ScriptInvoker();
+
+		return Event_OnEliminatedWhenReached;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2381,6 +2444,11 @@ class SCR_AIGroup : ChimeraAIGroup
 		if (Event_OnEmpty)
 			Event_OnEmpty.Invoke(this);
 
+		// Dormant groups (despawned by DespawnMembers) are intentionally empty - keep the group
+		// entity alive so SpawnMembers can later re-materialise members at the recorded alive count.
+		if (IsDormant())
+			return;
+
 		//--- Delete after delay, doing it directly in this event would be unsafe
 		if (m_bDeleteWhenEmpty)
 			GetGame().GetCallqueue().CallLater(SCR_EntityHelper.DeleteEntityAndChildren, 1, false, this);
@@ -2513,14 +2581,25 @@ class SCR_AIGroup : ChimeraAIGroup
 			s_bIgnoreSpawning = false;
 
 			//--- Instantly mark as initialized if no team members are to be spawned
-			if (Event_OnInit)
-				Event_OnInit.Invoke(this);
-			
+			InvokeEventOnInit();
+
 			return;
 		}
 
-		if (m_bSpawnImmediately || GetWorld().IsEditMode())
+		// Edit mode: synchronous SpawnUnits for workbench previews (no SCR_AIWorld queue ticking).
+		// Runtime: route through the queue, which dispatches one ExpandOneMember per tick.
+		if (GetWorld().IsEditMode())
+		{
 			SpawnUnits();
+		}
+		else if (m_bSpawnImmediately)
+		{
+			int slots = 0;
+			if (m_aUnitPrefabSlots)
+				slots = m_aUnitPrefabSlots.Count();
+			if (slots > 0)
+				RequestSpawn(slots);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2567,6 +2646,12 @@ class SCR_AIGroup : ChimeraAIGroup
 	}
 
 	//------------------------------------------------------------------------------------------------
+	int GetMaxUnitsToSpawn()
+	{
+		return m_iMaxUnitsToSpawn;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Set delay (ms) between spawning of individual group members.
 	Can be used only before they are spawned.
@@ -2578,14 +2663,421 @@ class SCR_AIGroup : ChimeraAIGroup
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Enqueue a spawn request rather than materialising the group synchronously. SCR_AIWorld
+	//! drains the queue in importance order, re-validates observer + budget at dequeue time, and
+	//! dispatches one ExpandOneMember per tick. Falls back to synchronous SpawnMembers() on
+	//! non-Chimera worlds (mod testing, headless utility runs).
+	//!
+	//! \param slotsWanted How many members the queue should ultimately spawn. Pass -1 (default)
+	//!                    to derive from group state: dormantAlive when set (re-materialisation
+	//!                    restores previous size), 1 otherwise (first-time activation - the expand
+	//!                    pass tops up to full size). Each queue dispatch spawns 1 member; if
+	//!                    slotsWanted > 1 the request is re-enqueued with slotsWanted-1.
+	//! \param observerRange If > 0, the queue will drop the request when no observer is within
+	//!                     this range at dispatch time.
+	void RequestSpawn(int slotsWanted = -1, float observerRange = 0)
+	{
+		if (slotsWanted < 0)
+		{
+			int dormantAlive = GetDormantAliveCount();
+			if (dormantAlive == 0)
+			{
+				if (DBG_AI_LOGGING)
+					Print(string.Format("[DBG_AI] RequestSpawn: group %1 pos=%2 ELIMINATED (dormantAlive=0) - skipping", this, GetOrigin()), LogLevel.WARNING);
+				return;                          // group was eliminated - don't respawn
+			}
+			if (dormantAlive > 0)
+				slotsWanted = dormantAlive;      // re-materialisation: restore previous size
+			else
+				slotsWanted = 1;                 // first activation; expand pass tops up
+		}
+
+		if (slotsWanted <= 0)
+			return;
+
+		ChimeraAIWorld aiWorld = ChimeraAIWorld.Cast(GetGame().GetAIWorld());
+		if (!aiWorld)
+		{
+			// Non-Chimera world - no queue, fall back to direct spawn.
+			SpawnMembers();
+			return;
+		}
+
+		aiWorld.EnqueueSpawnRequest(this, slotsWanted, observerRange);
+		AddVehiclesStatic(m_aStaticVehicles);
+		AddWaypointsStatic(m_aStaticWaypoints);
+		AddWaypointsDynamic(null, m_aSpawnedWaypoints);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Synchronously spawn one more member from m_aUnitPrefabSlots. Picks slot index = current
+	//! alive count (groups fill in slot order 0,1,2,..; on mid-life death the next call naturally
+	//! fills the gap because alive count drops).
+	//!
+	//! \return true if a member was created. false if at live capacity OR SpawnGroupMember failed
+	//!         transiently (e.g. navmesh tile not loaded). Disambiguate by IsExpandComplete().
+	override bool ExpandOneMember()
+	{
+		if (!m_aUnitPrefabSlots || m_aUnitPrefabSlots.IsEmpty())
+			return false;
+
+		int aliveCount = GetAgentsCount();
+		int totalSlots = m_aUnitPrefabSlots.Count();
+		int liveCapacity = totalSlots - GetDormantDeadCount();
+
+		if (aliveCount >= liveCapacity)
+			return false;
+
+		int nextSlotIndex = aliveCount;
+		if (nextSlotIndex >= totalSlots)
+			return false;
+
+		bool snapToTerrain = m_bSnapToTerrain;
+		if (s_bIgnoreSnapToTerrain)
+		{
+			snapToTerrain = false;
+			s_bIgnoreSnapToTerrain = false;
+		}
+
+		bool spawned = SpawnGroupMember(snapToTerrain, nextSlotIndex, m_aUnitPrefabSlots[nextSlotIndex], false, false);
+		if (!spawned)
+			return false;
+
+		// If this spawn took the group to its full live capacity, notify editor/scenario
+		// consumers that wait on group completion. Event_OnInit fires here as well (once
+		// per group), because queue-driven spawning never reaches the isLast branch of
+		// SpawnGroupMember.
+		if (IsExpandComplete())
+		{
+			if (Event_OnAllDelayedEntitySpawned)
+				Event_OnAllDelayedEntitySpawned.Invoke(this);
+
+			InvokeEventOnInit();
+		}
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! True when alive count >= live capacity (slot count minus dormant dead). Used by the queue
+	//! dispatcher to disambiguate ExpandOneMember failure between "at capacity, drop" and
+	//! "transient failure, retry".
+	override bool IsExpandComplete()
+	{
+		if (!m_aUnitPrefabSlots || m_aUnitPrefabSlots.IsEmpty())
+			return true;
+		return GetAgentsCount() >= m_aUnitPrefabSlots.Count() - GetDormantDeadCount();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Materialise this group's intended members from m_aUnitPrefabSlots. Idempotent - if members
+	//! are already spawned, no-op. If the group was previously despawned (GetDormantAliveCount()
+	//! >= 0), re-spawns that many; otherwise spawns the full slot list. Delegates to SpawnUnits
+	//! for the actual per-member work.
+	override void SpawnMembers()
+	{
+		if (GetAgentsCount() > 0)
+			return;
+
+		int dormantAlive = GetDormantAliveCount();
+		if (dormantAlive >= 0)
+			SetMaxUnitsToSpawn(dormantAlive);
+
+		SpawnUnits();
+
+		// Kick any UI observing the editable group - transition out of dormant toggles visibility
+		// rules and changes what the GM browser should display next to the group.
+		SCR_EditableGroupComponent editable = SCR_EditableGroupComponent.Cast(FindComponent(SCR_EditableGroupComponent));
+		if (editable)
+			editable.OnDormantStateChanged();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! True if any current member is held in materialised state by an external system: either
+	//! AI-activated (driver in a vehicle, player squad subordinate, mid-chase past the group's
+	//! origin), or carries an explicit permanent LOD set by a non-lifecycle caller. Auto-despawn
+	//! paths (LifecycleTick, defender distance state) consult this so they don't delete characters
+	//! that something else is still using.
+	bool HasHeldMember()
+	{
+		array<AIAgent> agents = {};
+		GetAgents(agents);
+		foreach (AIAgent agent : agents)
+		{
+			if (!agent)
+				continue;
+			if (agent.IsAIActivated())
+				return true;
+			if (agent.GetPermanentLOD() != -1)
+				return true;
+		}
+		return false;
+	}
+
+	//! Weaker variant: returns true only if any member carries an explicit permanent LOD pin
+	//! (set by GM tools or another external system). Does NOT consider IsAIActivated, because
+	//! that state can persist after a player teleports away and no observer remains in range -
+	//! in that case no player is using any agent so the activation state is stale.
+	protected bool HasPermanentLodMember()
+	{
+		array<AIAgent> agents = {};
+		GetAgents(agents);
+		foreach (AIAgent agent : agents)
+		{
+			if (agent && agent.GetPermanentLOD() != -1)
+				return true;
+		}
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Diagnostic companion to HasHeldMember. Returns a short string describing the first held
+	//! agent and why it is held. Only call this when HasHeldMember() is already known to be true.
+	protected string GetHeldMemberReason()
+	{
+		array<AIAgent> agents = {};
+		GetAgents(agents);
+		foreach (AIAgent agent : agents)
+		{
+			if (!agent)
+				continue;
+			if (agent.IsAIActivated())
+				return string.Format("agent %1 IsAIActivated", agent);
+			if (agent.GetPermanentLOD() != -1)
+				return string.Format("agent %1 PermanentLOD=%2", agent, agent.GetPermanentLOD());
+		}
+		return "unknown";
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Called from C++ (ChimeraAIWorld eviction) to trigger a dormant transition.
+	override void DespawnMembersFromC()
+	{
+		DespawnMembers();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Move this group to Dormant by deleting its member character entities. The group entity
+	//! itself (and its replicated alive / dead counts) stays, so GM and scripted systems keep
+	//! seeing the group. Records alive / dead counts so a later SpawnMembers can re-materialise
+	//! at the right size.
+	void DespawnMembers()
+	{
+		m_iNavmeshStallFrames = 0;
+
+		int aliveCount = GetAgentsCount();
+		if (aliveCount == 0)
+			return;
+
+		int totalSlots = 0;
+		if (m_aUnitPrefabSlots)
+			totalSlots = m_aUnitPrefabSlots.Count();
+
+		SetDormantCounts(aliveCount, Math.Max(0, totalSlots - aliveCount));
+
+		// Purge any pending spawn queue entries for this group before removing members.
+		// Without this, partial-fill requests enqueued before the despawn would
+		// re-materialise the group on the next ProcessSpawnQueue tick.
+		ChimeraAIWorld chimWorld = ChimeraAIWorld.Cast(GetGame().GetAIWorld());
+		if (chimWorld)
+			chimWorld.PurgeSpawnRequestsForGroup(this);
+
+		// Tell the editable component we're intentionally going dormant BEFORE deleting members,
+		// so the group's editor visibility is asserted before the "empty group" signals cascade.
+		SCR_EditableGroupComponent editable = SCR_EditableGroupComponent.Cast(FindComponent(SCR_EditableGroupComponent));
+		if (editable)
+			editable.OnDormantStateChanged();
+
+		// Let listeners (e.g. the building AI budget) unhook per-member events while the
+		// members still exist - during the delete loop below the agents leave the group one
+		// by one, so listeners cannot reliably tell a dormant transition apart anymore.
+		if (Event_OnMembersDespawning)
+			Event_OnMembersDespawning.Invoke(this);
+
+		array<AIAgent> agents = {};
+		GetAgents(agents);
+		foreach (AIAgent agent : agents)
+		{
+			if (!agent)
+				continue;
+			IEntity controlledEnt = agent.GetControlledEntity();
+			if (controlledEnt)
+				RplComponent.DeleteRplEntity(controlledEnt, false);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Configure who drives this group's dormant/active transitions.
+	//!   Manual           - external code calls SpawnMembers / DespawnMembers. Default.
+	//!   ProximityDriven  - group self-ticks against ObserversSystem and manages itself. Spawners
+	//!                      that hand off lifecycle to the group call this once with the bands.
+	//! Distances in metres; pass negative to leave current values untouched.
+	void SetLifecyclePolicy(SCR_EAIGroupLifecyclePolicy policy, float spawnDistance = -1, float despawnDistance = -1, float veryNearBlockDistance = -1)
+	{
+		SCR_EAIGroupLifecyclePolicy oldPolicy = m_eLifecyclePolicy;
+		m_eLifecyclePolicy = policy;
+
+		if (spawnDistance > 0 && m_fSpawnDistance != spawnDistance)
+			m_fSpawnDistance = spawnDistance;
+		if (despawnDistance > 0 && m_fDespawnDistance != despawnDistance)
+			m_fDespawnDistance = despawnDistance;
+		if (veryNearBlockDistance > 0 && m_fVeryNearBlockDistance != veryNearBlockDistance)
+			m_fVeryNearBlockDistance = veryNearBlockDistance;
+
+		// Seed accumulator and wasInSpawnRange only on actual policy transition. Repeat
+		// calls with the same policy (e.g. spawner refreshing distances) shouldn't shift the
+		// next tick's timing or re-evaluate the previous-tick observer bit.
+		if (m_eLifecyclePolicy == SCR_EAIGroupLifecyclePolicy.ProximityDriven
+			&& oldPolicy != SCR_EAIGroupLifecyclePolicy.ProximityDriven)
+		{
+			// Jitter the first-check so a burst of groups created in the same frame don't all
+			// tick on the same cadence and pile up ObserversSystem work on a single frame.
+			m_fLifecycleAccum = Math.RandomFloat(0, m_fLifecycleTickSeconds);
+			// Seed the previous-tick bit from the current observer state so a group created
+			// on top of an already-stationed observer (designer-placed spawnpoint, save-game
+			// restore) treats the first tick as a gradual approach (block pop-in) rather than
+			// a sudden appearance.
+			m_bWasObserverInSpawnRange = HasObserverInRange(m_fSpawnDistance);
+		}
+
+		// FRAME mask: always assert it for ProximityDriven (prefabs may default to ProximityDriven
+		// without the engine pre-setting the mask, and repeat calls with the same policy should
+		// still leave the mask correct). Only clear FRAME on transition away from ProximityDriven
+		// to avoid touching FRAME for groups that may use it for other purposes.
+		if (m_eLifecyclePolicy == SCR_EAIGroupLifecyclePolicy.ProximityDriven)
+			SetEventMask(EntityEvent.FRAME);
+		else if (oldPolicy == SCR_EAIGroupLifecyclePolicy.ProximityDriven)
+			ClearEventMask(EntityEvent.FRAME);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_EAIGroupLifecyclePolicy GetLifecyclePolicy()
+	{
+		return m_eLifecyclePolicy;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Opt in to permanent elimination when an observer reaches the group's position while no
+	//! member is spawned (see m_bEliminateWhenReached). On elimination the group fires
+	//! GetOnEliminatedWhenReached and deletes itself. Call after SetLifecyclePolicy.
+	void SetEliminateWhenReached(bool eliminate)
+	{
+		m_bEliminateWhenReached = eliminate;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetSpawnDistance()
+	{
+		return m_fSpawnDistance;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetDespawnDistance()
+	{
+		return m_fDespawnDistance;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Periodic proximity check. Asks ObserversSystem (via ChimeraAIGroup::HasObserverInRange)
+	//! whether any observer sits inside the spawn / despawn / veryNear bands and materialises or
+	//! dismisses members accordingly. Invoked from EOnFrame when the accumulated delta-time
+	//! crosses m_fLifecycleTickSeconds.
+	protected void LifecycleTick()
+	{
+		// Authority only - dormant/active transitions delete replicated character entities.
+		RplComponent rpl = RplComponent.Cast(FindComponent(RplComponent));
+		if (rpl && rpl.IsProxy())
+			return;
+
+		// Update the previous-tick spawn-range bit before any early returns. wasInRange below
+		// is the value from the prior tick; m_bWasObserverInSpawnRange now carries the current
+		// tick's value for the next call.
+		bool wasInSpawnRange = m_bWasObserverInSpawnRange;
+		bool isInSpawnRange = HasObserverInRange(m_fSpawnDistance);
+		m_bWasObserverInSpawnRange = isInSpawnRange;
+
+		// No observer inside despawn ring -> dismiss members. Only a permanent LOD pin (set by
+		// GM tools or an external system) keeps the group materialised here: IsAIActivated alone
+		// is not enough, because that state can linger after a player teleports away and there is
+		// no longer any observer within range to actually use those agents.
+		if (!HasObserverInRange(m_fDespawnDistance))
+		{
+			if (GetAgentsCount() > 0)
+			{
+				if (HasPermanentLodMember())
+				{
+					if (DBG_AI_LOGGING)
+					{
+						string heldReason = GetHeldMemberReason();
+						Print(string.Format("[DBG_AI] LifecycleTick: group %1 pos=%2 beyond despawn %3m but HELD (PermanentLOD: %4) agents=%5", this, GetOrigin(), (int)m_fDespawnDistance, heldReason, GetAgentsCount()), LogLevel.WARNING);
+					}
+				}
+				else
+				{
+					if (DBG_AI_LOGGING)
+						Print(string.Format("[DBG_AI] LifecycleTick: DespawnMembers group=%1 pos=%2 agents=%3 despawn=%4m", this, GetOrigin(), GetAgentsCount(), (int)m_fDespawnDistance), LogLevel.NORMAL);
+					DespawnMembers();
+				}
+			}
+			return;
+		}
+
+		// Hysteresis band between despawn and spawn rings: keep current state.
+		if (!isInSpawnRange)
+			return;
+
+		// Already active - nothing to do.
+		if (GetAgentsCount() != 0)
+			return;
+
+		// Dormant and observer is in the very-near band - block fresh spawn to avoid pop-in,
+		// but only if the observer was already inside the spawn ring last tick (gradual
+		// approach). When wasInSpawnRange transitions false -> true we treat it as a sudden
+		// appearance (player teleport, GM camera focus, fresh spectator) and spawn anyway -
+		// the alternative is the user staring at empty terrain.
+		if (wasInSpawnRange && HasObserverInRange(m_fVeryNearBlockDistance))
+		{
+			// The observer crossed the whole spawn ring and reached the group position
+			// without the members ever materialising (the spawn request was dropped,
+			// typically by the active-AI limit). For opted-in groups (remnant patrols),
+			// treat the position as cleared: notify the spawner so it retires itself,
+			// then remove the group entity completely.
+			if (m_bEliminateWhenReached)
+			{
+				if (DBG_AI_LOGGING)
+					Print(string.Format("[DBG_AI] LifecycleTick: observer reached unspawned group=%1 pos=%2 - eliminating and deleting (dormantAlive was %3)", this, GetOrigin(), GetDormantAliveCount()), LogLevel.NORMAL);
+
+				// Spawner first, so it can mark itself as retired while the group still
+				// exists. Then delete - this also invalidates any spawn request still
+				// queued for this group (the queue skips dead group handles). Deleting
+				// from inside the own frame event is safe: EOnFrame does nothing after
+				// LifecycleTick returns and the engine frees the entity at end of frame.
+				if (Event_OnEliminatedWhenReached)
+					Event_OnEliminatedWhenReached.Invoke(this);
+
+				SCR_EntityHelper.DeleteEntityAndChildren(this);
+				return;
+			}
+
+			if (DBG_AI_LOGGING)
+				Print(string.Format("[DBG_AI] LifecycleTick: very-near block group=%1 pos=%2 veryNear=%3m dormantAlive=%4", this, GetOrigin(), (int)m_fVeryNearBlockDistance, GetDormantAliveCount()), LogLevel.NORMAL);
+			return;
+		}
+
+		if (DBG_AI_LOGGING)
+			Print(string.Format("[DBG_AI] LifecycleTick: RequestSpawn group=%1 pos=%2 dormantAlive=%3 spawnDist=%4m", this, GetOrigin(), GetDormantAliveCount(), (int)m_fSpawnDistance), LogLevel.NORMAL);
+
+		// Enqueue rather than spawn synchronously - the queue re-checks observer at dispatch
+		// time and orders this group against others by importance.
+		RequestSpawn(-1, m_fSpawnDistance);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void SpawnUnits()
 	{
 		if (SCR_Global.IsEditMode(this))
 		{
-			CreateUnitEntities(true, m_aUnitPrefabSlots);
-			AddVehiclesStatic(m_aStaticVehicles);
-			AddWaypointsStatic(m_aStaticWaypoints);
-			AddWaypointsDynamic(m_aSceneWaypointInstances, m_aSpawnedWaypoints);
+			CreateUnitEntities(true, m_aUnitPrefabSlots);			
 		}
 		else
 		{

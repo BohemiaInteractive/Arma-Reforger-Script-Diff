@@ -43,6 +43,8 @@ enum ShapeType
 	LINE_LIST,
 	//! Multiple lines in a single winding
 	LINE_STRIP,
+	//! Multiple lines in a single winding, the first and the last point are connected with a line too
+	LINE_LOOP,
 }
 
 /*!

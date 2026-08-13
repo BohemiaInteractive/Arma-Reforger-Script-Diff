@@ -102,4 +102,10 @@ class DamageEffectEvaluator : ScriptAndConfig
 
 	//------------------------------------------------------------------------------------------------
 	void HandleEffectConsequences(SCR_GameMasterActionDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
+
+	//------------------------------------------------------------------------------------------------
+	void HandleEffectConsequences(SCR_ExposedFeetDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
+
+	//------------------------------------------------------------------------------------------------
+	void HandleEffectConsequences(SCR_BlisterDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
 }

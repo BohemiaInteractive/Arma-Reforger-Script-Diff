@@ -60,7 +60,7 @@ class SCR_ControllerPresetsSettingsSubmenu: SCR_SettingsSubMenuBase
 			return;
 
 		// Show only if there is TrackIR connected
-		if (!GetGame().GetInputManager().IsTrackIRConnected())
+		if (!GetGame().GetInputManager().GetTrackIRDeviceHandler().IsTrackIRConnected())
 		{
 			HideMenuItem("TitleHeadTracking");
 
@@ -134,7 +134,7 @@ class SCR_ControllerPresetsSettingsSubmenu: SCR_SettingsSubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void HandleJoystickDevices()
 	{
-		InputManager input = GetGame().GetInputManager();
+		InputManager inputManager = GetGame().GetInputManager();
 		Widget parent = m_wRoot.FindAnyWidget("Content");
 		string deviceName;
 		Widget joystickWidget;
@@ -156,7 +156,7 @@ class SCR_ControllerPresetsSettingsSubmenu: SCR_SettingsSubMenuBase
 		//for now we support up to 4 devices
 		for (int i = 0; i <= 3 ; i++)
 		{
-			deviceName = input.GetJoystickProductName(i);
+			deviceName = inputManager.GetJoystickDeviceHandler().GetJoystickProductName(i);
 			if (deviceName.IsEmpty())
 				continue;
 			

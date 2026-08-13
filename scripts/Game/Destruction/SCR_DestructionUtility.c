@@ -303,6 +303,27 @@ class SCR_DestructionUtility
 
 		return sanitizedRemap;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Destroys all attached child entities of the specified parent object
+	//! \param[in] parent The parent object whose children will be destroyed
+	static void DestroyAllChildren(notnull IEntity parent)
+	{
+		IEntity child = parent.GetChildren();
+		IEntity nextChild;
+		RplComponent rplComp;
+		while (child)
+		{
+			nextChild = child.GetSibling();
+			rplComp = RplComponent.Cast(child.FindComponent(RplComponent));
+			if (rplComp)
+				RplComponent.DeleteRplEntity(child, false);
+			else
+				delete child;
+			
+			child = nextChild;
+		}
+	}
 }
 
 #define ENABLE_BASE_DESTRUCTION

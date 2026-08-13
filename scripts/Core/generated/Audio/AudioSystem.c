@@ -31,7 +31,7 @@ sealed class AudioSystem
 	private void AudioSystem();
 	private void ~AudioSystem();
 
-	//! Play *.wav file.
+	//! Play supported audio file.
 	static proto AudioHandle PlaySound(string resourceName);
 	//! Preload audio file(*.acp).
 	static proto bool PlayEventInitialize(string resourceName);
@@ -52,7 +52,7 @@ sealed class AudioSystem
 		BV_Box		: param0 = x, param1 = y, param2 = z
 		BV_Cylinde	: param0 = radius, param1 = height
 	*/
-	static proto bool SetBoundingVolumeParams(AudioHandle handle, int volumeType, float params0, float param1, float param2);
+	static proto bool SetBoundingVolumeParams(AudioHandle handle, int volumeType, float param0, float param1, float param2);
 	//! Pauses currently playing sounds and rejects insert new sounds. Use: AudioSystem.Pause((1 << AudioSystem.SFX) | (1 << AudioSystem.VoiceChat))
 	static proto void Pause(int mastersMask);
 	//! Resumes paused sources and allow insertion of new ones.
@@ -86,6 +86,22 @@ sealed class AudioSystem
 	static proto bool SetVariableByID(int ID, float value, string resourceName);
 	//! Resets all applicable values to 0 or default value
 	static proto void ResetVariables();
+	//! Loads a music project resource and registers it for playback. Returns a handle to the activated project, or -1 on failure.
+	static proto int MusicProjectActivate(string resourceName);
+	//! Destroys an active music project and releases its resources. Blocks until all audio voices belonging to the project have terminated.
+	static proto bool MusicProjectDeactivate(int handle);
+	//! Begins playback from the opening segment of the project. The project must have been activated and have a segment flagged as the opening segment. Returns true if successful.
+	static proto int MusicProjectStart(int handle);
+	//! Pauses playback of the music project. Returns true if successful. Use MusicProjectResume to resume playback.
+	static proto int MusicProjectPause(int handle);
+	//! Resumes playback of the music project after being paused. Returns true if successful.
+	static proto int MusicProjectResume(int handle);
+	//! Switches the active selection layer, affecting which events play within the current segment. The switch is quantized to the nearest musical boundary (beat or bar). If a switch is already in progress, the request is queued.
+	static proto bool MusicProjectSetSelection(int handle, string selection);
+	//! Sets the selection layer to its initial value.
+	static proto bool MusicProjectResetSelection(int handle);
+	//! Overrides the next segment to transition to. Takes effect at the nearest exit point of the currently playing segment, bypassing the project's default routing.
+	static proto bool MusicProjectSetNextSegment(int handle, string segment);
 }
 
 /*!

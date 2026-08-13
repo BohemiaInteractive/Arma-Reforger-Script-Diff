@@ -9,6 +9,8 @@ class PawnEntityController: ScriptAndConfig
 	protected void PawnEntityController(PawnEntity pawnOwner);
 
 	proto external PawnEntity GetPawnOwner();
+	proto external void EnableUpdate(bool state);
+	proto external bool IsUpdateEnabled();
 	proto external void SetFlags(int flags);
 	proto external void ClearFlags(int flags);
 	proto external bool IsFlagSet(int flag);
@@ -28,8 +30,10 @@ class PawnEntityController: ScriptAndConfig
 	// callbacks
 
 	event protected void OnInit(PawnEntity owner);
+	event protected void OnDeinit(PawnEntity owner);
 	event protected void OnPrepare(PawnEntity owner, float timeSlice);
 	event protected void OnUpdate(PawnEntity owner, float timeSlice);
+	event protected int ResetPackedControls();
 	event protected int OnPackControls(PawnEntity owner);
 	event protected void OnUnpackControls(PawnEntity owner, int packedControls);
 	event protected bool OnPackUserActions(PawnEntity owner, ScriptBitWriter bitWriter);

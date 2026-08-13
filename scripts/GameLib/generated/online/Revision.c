@@ -89,7 +89,8 @@ sealed class Revision: Managed
 	Get size of update patch from currently downloaded revision to this revision in bytes.
 	If no other Revision of same asset is downloaded then size will be total size of Revision.
 	If this Revision is already downloaded then size will be 0.
-	\param[out] size - size of patch in bytes
+	\note Script params:
+	- \b size [out] - size of patch in bytes
 	\returns true if size was successfully calculated. false if we could not get size and result should not be used
 	*/
 	proto bool GetPatchSize(out float size);

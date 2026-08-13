@@ -44,6 +44,9 @@ class SCR_ArsenalComponent : ScriptComponent
 	[Attribute("1", desc: "If false the arsenal is disabled but GM can set it enabled. Setting this to false counts as being overwritten meaning the arsenal is not enabled when the arsenal type flag is set in the manager", category: "Settings")]
 	protected bool m_bArsenalEnabled;
 	
+	[Attribute("1", desc: "If false this arsenal will not accept items for a refund", category: "Settings")]
+	protected bool m_bRefundEnabled;
+	
 	//~ Has arsenal enabled been overwritten before?
 	protected bool m_bArsenalEnabledOverwritten;
 	
@@ -95,6 +98,13 @@ class SCR_ArsenalComponent : ScriptComponent
 	bool IsArsenalEnabled()
 	{
 		return m_bArsenalEnabled;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return If arsenal can accept items and refund them
+	bool IsRefundEnabled()
+	{
+		return m_bRefundEnabled;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -363,6 +373,9 @@ class SCR_ArsenalComponent : ScriptComponent
 	//! \return true if any filtered items were found
 	bool GetFilteredOverwriteArsenalItems(out notnull array<SCR_ArsenalItem> filteredArsenalItems, EArsenalItemDisplayType requiresDisplayType = -1)
 	{
+		if (!m_OverwriteArsenalConfig)
+			return false;
+
 		//~ If overwrite should check if item is valid for arsenal faction
 		if (m_bCheckFactionForOverwriteArsenalConfig)
 			filteredArsenalItems = m_OverwriteArsenalConfig.GetFilteredArsenalItems(m_eSupportedArsenalItemTypes, m_eSupportedArsenalItemModes, requiresDisplayType, GetAssignedFaction());

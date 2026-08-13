@@ -23,6 +23,7 @@ sealed class TextWidget: Widget
 	proto external float GetRotation();
 	//! Sets pivot around which the widget will rotate
 	proto external void SetPivot(float x, float y);
+	proto external int GetNumLines();
 	/*!
 	Sets top-left corner where text begins in widget. For RALIGN the horizontal offset is from the right.
 	\param xoff Offset from left
@@ -102,7 +103,8 @@ sealed class TextWidget: Widget
 	proto external bool GetForceFont();
 	/*!
 	Sets font used for text drawing in this widget.
-	\param fontResource Pointer to font. Always use nullptr when you want to set the Default font or work properly with increments and decrements of font reference.
+
+	Script parameter \b fontResource: Pointer to font. Always use nullptr when you want to set the Default font or work properly with increments and decrements of font reference.
 	*/
 	proto void SetFont(ResourceName fontResource);
 	//! Returns text in this widget. This is NOT a cheap operation - needs to copy the text.

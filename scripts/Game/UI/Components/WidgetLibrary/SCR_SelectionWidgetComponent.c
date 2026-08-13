@@ -94,7 +94,7 @@ class SCR_SelectionWidgetComponent : SCR_ChangeableComponentBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool SetCurrentItem(int i, bool playSound = false, bool animate = false)
+	bool SetCurrentItem(int i, bool playSound = false, bool animate = false, bool invokeOnChanged = true)
 	{
 		if (i < 0 || !m_aElementNames || !m_aElementData || i >= m_aElementNames.Count())
 			return false;

@@ -52,7 +52,7 @@ class SCR_RotorHitZone : SCR_VehicleHitZone
 
 	//------------------------------------------------------------------------------------------------
 	//! Calculates the chance the rotor was hit by a bullet between 0 and 1
-	float RotorHitChance(vector worldPosition)
+	/*float RotorHitChance(vector worldPosition)
 	{
 		if (!m_RotorPointInfo || !m_Simulation || m_fBladeWidth <= 0 || m_iBladeCount < 1)
 			return 1;
@@ -69,7 +69,7 @@ class SCR_RotorHitZone : SCR_VehicleHitZone
 			return 1;
 		
 		return m_fBladeWidth * m_iBladeCount / (Math.PI2 * distanceFromAxis);
-	}
+	}*/
 
 	//------------------------------------------------------------------------------------------------
 	override void OnDamageStateChanged(EDamageState newState, EDamageState previousDamageState, bool isJIP)

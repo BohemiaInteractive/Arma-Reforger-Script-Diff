@@ -1,6 +1,5 @@
 class SCR_HeatmapHelper
 {
-	
 	static const int COLOUR_MODE_GREYSCALE = 0;
 	static const int COLOUR_MODE_THERMAL = 1;
 	static const int COLOUR_MODE_ALPHA = 2;
@@ -41,7 +40,7 @@ class SCR_HeatmapHelper
 		if (maxValueMode == MAX_MODE_2AVG)
 		{
 			Debug.BeginTimeMeasure();
-			
+
 			int maxAvg;
 			int div;
 			foreach (int value : imageData)
@@ -92,7 +91,6 @@ class SCR_HeatmapHelper
 
 		if (maxToUse < MIN_GRADIENT_RGB && colourMode == COLOUR_MODE_THERMAL)
 			PrintFormat("Less than max %1 values per pixel, thermal gradient quality may be poor", MIN_GRADIENT_RGB, level: LogLevel.WARNING);
-
 
 		Debug.BeginTimeMeasure();
 
@@ -338,6 +336,28 @@ class SCR_HeatmapHelper
 			else
 				result += string.Format("%1,×%1,e.g 64×64 becomes %2×%2", multiplier, 64 * multiplier);
 		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] colorMode
+	//! \param[in] inversion
+	//! \return
+	static string GetFileSuffix(int colorMode, bool inversion)
+	{
+		string result;
+		if (colorMode == COLOUR_MODE_ALPHA)
+			result = "Alpha";
+		else
+		if (colorMode == COLOUR_MODE_THERMAL)
+			result = "RGB";
+		else
+		if (colorMode == COLOUR_MODE_GREYSCALE) // -should- be default
+			result = "BW";
+
+		if (inversion)
+			result += "inv";
 
 		return result;
 	}

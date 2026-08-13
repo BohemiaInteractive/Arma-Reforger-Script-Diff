@@ -191,16 +191,20 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 	{
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(playerId));
 		const ChimeraCharacter character = ChimeraCharacter.Cast(data.m_ReservedEntity);
-		playerController.SetInitialMainEntity(character);
 
 		const Faction faction = SCR_FactionManager.SGetFaction(character);
 		if (faction)
 		{
+			const SCR_Faction scriptedFaction = SCR_Faction.Cast(faction);
+			if (!scriptedFaction.IsAvailableForPlayer())
+				return; // No longer able to join the faction due to e.g. limits, abort the reconnect process.
+
 			SCR_PlayerFactionAffiliationComponent playerFactionComp = SCR_PlayerFactionAffiliationComponent.Cast(playerController.FindComponent(SCR_PlayerFactionAffiliationComponent));
 			if (playerFactionComp)
 				playerFactionComp.SetFaction_S(faction);
 		}
 
+		playerController.SetInitialMainEntity(character);
 		SCR_RespawnSystemComponent.GetInstance().EmitPlayerEntityChange_S(playerId, null, character);
 
 		SCR_ReconnectSynchronizationComponent syncComp = SCR_ReconnectSynchronizationComponent.Cast(playerController.FindComponent(SCR_ReconnectSynchronizationComponent));

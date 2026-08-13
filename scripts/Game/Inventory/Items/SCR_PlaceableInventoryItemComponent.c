@@ -239,16 +239,49 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 	//! Same as PlaceItem but with params that allow attaching the object to new parent entity
 	void PlaceItemWithParentChange(RplId newParentRplId, int nodeId = -1)
 	{
-		Rpc(RPC_DoPlaceItemWithParentChange, newParentRplId, nodeId, m_PlacingCharacterRplId);
-		RPC_DoPlaceItemWithParentChange(newParentRplId, nodeId, m_PlacingCharacterRplId);
+		vector localTransform[4];
+		LocalizeGlobalTransform(newParentRplId, localTransform);
+
+		Rpc(RPC_DoPlaceItemWithParentChange, newParentRplId, nodeId, m_PlacingCharacterRplId, localTransform);
+		RPC_DoPlaceItemWithParentChange(newParentRplId, nodeId, m_PlacingCharacterRplId, localTransform);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks if provided transform is a empty transform
+	//! \return true transform is not empty, otherwise false
+	protected bool ValidateTransformData(inout vector transform[4])
+	{
+		foreach (vector component : transform)
+		{
+			if (component == vector.Zero)
+				continue;
+
+			return true;
+		}
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Translates current item position from world space into the space of provided entity
+	//! \param[in] parentRplCompId replciation id of the RplComponent from the entity to which space coordinates will be translated
+	//! \param[out] localizedTransform
+	protected void LocalizeGlobalTransform(RplId parentRplCompId, out vector localizedTransform[4])
+	{
+		RplComponent parentRplComp = RplComponent.Cast(Replication.FindItem(parentRplCompId));
+		vector localTransform[4];
+		if (parentRplComp)
+			SCR_EntityHelper.GetRelativeLocalTransform(parentRplComp.GetEntity(), GetOwner(), localizedTransform);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//!
-	//! \param[in] newParentRplId
-	//! \param[in] nodeId
+	//! \param[in] newParentRplId replication id of the RplComponent of the entity to which object will be attached
+	//! \param[in] nodeId to which item is being attached
+	//! \param[in] placingCharacterRplId repliaciton id of the RplComponent of the character who is placing this item
+	//! \param[in] localTransform of the object in parents space
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void RPC_DoPlaceItemWithParentChange(RplId newParentRplId, int nodeId, RplId placingCharacterRplId)
+	protected void RPC_DoPlaceItemWithParentChange(RplId newParentRplId, int nodeId, RplId placingCharacterRplId, vector localTransform[4])
 	{
 		EnablePhysics();
 		ActivateOwner(true);
@@ -257,6 +290,12 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 		{
 			m_ParentRplId = newParentRplId;
 			m_iParentNodeId = nodeId;
+			
+			if (ValidateTransformData(localTransform))
+				m_vMat = localTransform;
+			else
+				LocalizeGlobalTransform(newParentRplId, m_vMat);
+
 			if (IsLocked())
 				m_OnLockedStateChangedInvoker.Insert(AttachToNewParentWhenUnlocked);
 			else
@@ -268,7 +307,9 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 			m_iParentNodeId = -1;
 		}
 
-		PlayPlacedSound(m_vMat[1], m_vMat[3]);
+		vector mat[4];
+		GetOwner().GetWorldTransform(mat);
+		PlayPlacedSound(mat[1], mat[3]);
 
 		RplComponent characterRplComp = RplComponent.Cast(Replication.FindItem(placingCharacterRplId));
 		if (!characterRplComp)
@@ -285,13 +326,19 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 	//! Method for updating parent when proxy streams in placeable item
 	//! \param[in] parentId replication id of a entity to which this item should be attached
 	//! \param[in] nodeId id of a node to which this item will be attached to
-	void SetNewParent(RplId parentId = RplId.Invalid(), int nodeId = -1)
+	//! \param[in] customLocalTransform
+	void SetNewParent(RplId parentId = RplId.Invalid(), int nodeId = -1, vector customLocalTransform[4] = {})
 	{
 		if (m_ParentRplId == parentId)
 			return;
 
 		m_ParentRplId = parentId;
 		m_iParentNodeId = nodeId;
+
+		if (ValidateTransformData(customLocalTransform))
+			m_vMat = customLocalTransform;
+		else
+			LocalizeGlobalTransform(parentId, m_vMat);
 
 		AttachToNewParent();
 	}
@@ -321,7 +368,6 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 			return;
 
 		RplComponent newParentRplComp = RplComponent.Cast(Replication.FindItem(m_ParentRplId));
-		IEntity newParentEntity;
 		if (newParentRplComp)
 			m_Parent = newParentRplComp.GetEntity();	//cache it as depending how this item will be transfered later we may not have an easy access to it
 
@@ -330,8 +376,6 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 
 		if (!m_Parent)
 			return;
-
-		item.GetWorldTransform(m_vMat);
 
 		RplComponent rplComp = RplComponent.Cast(item.FindComponent(RplComponent));
 		if (rplComp && newParentRplComp && rplComp.IsOwner())
@@ -343,7 +387,7 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 		}
 
 		m_Parent.AddChild(item, m_iParentNodeId);
-		item.SetWorldTransform(m_vMat);
+		item.SetLocalTransform(m_vMat);
 		item.Update();
 
 		HitZoneContainerComponent parentDamageManager = HitZoneContainerComponent.Cast(m_Parent.FindComponent(HitZoneContainerComponent));

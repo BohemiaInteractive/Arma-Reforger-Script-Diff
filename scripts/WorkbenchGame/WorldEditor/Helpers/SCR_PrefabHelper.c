@@ -556,6 +556,208 @@ class SCR_PrefabHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] entitySource the loaded Prefab to check
+	//! \return 0 for root entity, 1 for a direct child, 2 for a grandchild, etc
+	static int GetHierarchyLevel(notnull IEntitySource entitySource)
+	{
+		BaseContainer ancestorContainer = entitySource;
+		int result;
+		while (ancestorContainer.GetAncestor())
+		{
+			++result;
+			ancestorContainer = ancestorContainer.GetAncestor();
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] resourceNames Prefab paths from which to extract result
+	//! \param[in] filter defines which classes/component-specific Prefabs must be obtained from the provided resourceNames list
+	//! \param[in] parentWindow which module is parent to the progress bar; if none provided, no progress bar is used
+	//! \return Prefabs loaded in memory, referenced by resource - see SCR_PrefabHelper_PrefabData
+	static array<ref SCR_PrefabHelper_PrefabData> GetPrefabsData(notnull array<ResourceName> resourceNames, SCR_PrefabHelper_PrefabDataFilter filter, WBModuleDef parentWindow)
+	{
+		array<ref SCR_PrefabHelper_PrefabData> result = {};
+
+		Resource resource;
+		IEntitySource entitySource;
+		IEntityComponentSource entityComponentSource;
+		IEntityComponentSource mpdComponentSource;
+		SCR_PrefabHelper_PrefabData prefabInfo;
+		WBProgressDialog progress;
+		float currProgress, prevProgress;
+		int count = resourceNames.Count();
+		if (parentWindow)
+			progress = new WBProgressDialog("Loading " + count + " Prefabs...", parentWindow);
+
+		foreach (int i, ResourceName resourceName : resourceNames)
+		{
+			if (progress)
+			{
+				currProgress = i / count;
+				if (currProgress - prevProgress >= 0.01)	// min 1%
+				{
+					progress.SetProgress(currProgress);		// expensive
+					prevProgress = currProgress;
+				}
+			}
+
+			resource = Resource.Load(resourceName);
+			if (!resource.IsValid())
+			{
+				Print("Invalid Prefab " + resourceName, LogLevel.WARNING);
+				continue;
+			}
+
+			entitySource = resource.GetResource().ToEntitySource();
+			if (!entitySource)
+			{
+				Print("Invalid Prefab (no IEntitySource) " + resourceName, LogLevel.WARNING);
+				continue;
+			}
+
+			string fileClassName = SCR_PrefabFilesHelper.GetClassName(resourceName);
+			if (!fileClassName.ToType())
+			{
+				Print("Unknown class " + entitySource.GetClassName(), LogLevel.WARNING);
+				continue;
+			}
+
+			// filtering
+			int hierarchyLevel = SCR_PrefabHelper.GetHierarchyLevel(entitySource);
+			if (filter && !PassFilter(filter, entitySource, fileClassName, hierarchyLevel))
+				continue;
+
+			prefabInfo = new SCR_PrefabHelper_PrefabData();
+			prefabInfo.m_Resource = resource;
+			prefabInfo.m_EntitySource = entitySource;
+			prefabInfo.m_sResourceName = resourceName;
+
+			prefabInfo.m_sFileClassName = fileClassName;
+			prefabInfo.m_iHierarchyLevel = hierarchyLevel;
+
+			result.Insert(prefabInfo);
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] prefabsData
+	//! \return a map of <hierarchyLevel, arrayOfPrefabs>
+	static map<int, ref array<ref SCR_PrefabHelper_PrefabData>> GetPrefabsDataByLevel(notnull array<ref SCR_PrefabHelper_PrefabData> prefabsData)
+	{
+		map<int, ref array<ref SCR_PrefabHelper_PrefabData>> result = new map<int, ref array<ref SCR_PrefabHelper_PrefabData>>();
+
+		array<ref SCR_PrefabHelper_PrefabData> levelPrefabsData;
+		foreach (SCR_PrefabHelper_PrefabData prefabData : prefabsData)
+		{
+			levelPrefabsData = result.Get(prefabData.m_iHierarchyLevel);
+			if (!levelPrefabsData)
+			{
+				levelPrefabsData = {};
+				result.Insert(prefabData.m_iHierarchyLevel, levelPrefabsData);
+			}
+
+			levelPrefabsData.Insert(prefabData);
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected static bool PassFilter(notnull SCR_PrefabHelper_PrefabDataFilter filter, notnull IEntitySource entitySource, string fileClassName, int hierarchyLevel)
+	{
+		// filter hierarchy
+		if (filter.m_bTopMostPrefabOnly && hierarchyLevel > 0)
+			return false;
+
+		// filter entity classes
+		if (filter.m_aClasses && !filter.m_aClasses.IsEmpty())
+		{
+			bool isClass;
+			foreach (string className : filter.m_aClasses)
+			{
+				if (filter.m_bExactClassMatch)
+				{
+					if (className == fileClassName)
+					{
+						isClass = true;
+						break;
+					}
+				}
+				else
+				{
+					if (className.ToType() && fileClassName.ToType() && fileClassName.ToType().IsInherited(className.ToType()))
+					{
+						isClass = true;
+						break;
+					}
+				}
+			}
+
+			if (!isClass)
+				return false;
+		}
+
+		// filter component classes
+		if (filter.m_aComponentClasses)
+		{
+			int componentCount = entitySource.GetComponentCount();
+			int componentClassesCount = filter.m_aComponentClasses.Count();
+			// if classes are empty and there is a component, leave
+			// if classes are filled and there are no components, leave
+			if ((componentCount < 1) != (componentClassesCount < 1))
+				return false;
+
+			bool skip;
+			for (int compI; compI < componentCount; ++compI)
+			{
+				string componentClassName = entitySource.GetComponent(compI).GetClassName();
+				foreach (int filterI, string filterClassName : filter.m_aComponentClasses)
+				{
+					bool classNameMatch;
+
+					if (filter.m_bExactComponentClassMatch)
+					{
+						if (componentClassName == filterClassName)
+							classNameMatch = true;
+					}
+					else
+					{
+						if (componentClassName.ToType() && filterClassName.ToType() && componentClassName.ToType().IsInherited(filterClassName.ToType()))
+							classNameMatch = true;
+					}
+
+					if (filter.m_bMustHaveAllComponents)
+					{
+						if (!classNameMatch)
+							return false;
+					}
+					else
+					{
+						if (classNameMatch)
+						{
+							skip = true;
+							break;
+						}
+					}
+				}
+
+				if (skip)
+					break;
+			}
+
+			// didn't find anything
+			if (!filter.m_bMustHaveAllComponents && !skip)
+				return false;
+		}
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Get the absolute file path of the provided resourceName
 	//! \param[in] resourceName the resourceName from which to obtain the absolute file path
 	//! \param[in] mustExist if true, the file MUST exist to return a valid value
@@ -790,6 +992,30 @@ class SCR_PrefabHelper
 		if (manageEditAction)
 			SCR_WorldEditorToolHelper.GetWorldEditorAPI().EndEntityAction();
 	}
+}
+
+class SCR_PrefabHelper_PrefabData
+{
+	ref Resource m_Resource;
+	IEntitySource m_EntitySource;
+
+	ResourceName m_sResourceName;
+	string m_sFileClassName;
+
+	int m_iHierarchyLevel;
+}
+
+// search by typename instead?
+class SCR_PrefabHelper_PrefabDataFilter
+{
+	bool m_bTopMostPrefabOnly;					//!< only get level 0 Prefabs (top-most parent, no ancestor above)
+
+	bool m_bExactClassMatch;					//!< only get exact class match (no child class match)
+	ref array<string> m_aClasses;				//!< case-sensitive classes to match - if null or empty, all classes will do
+
+	bool m_bExactComponentClassMatch;			//!< only get exact component class match (no child class match)
+	bool m_bMustHaveAllComponents;				//!< only entities with ALL the listed components will be returned; otherwise, one of them present is enough
+	ref array<string> m_aComponentClasses;		//!< case-sensitive component classes to match - if EMPTY, no components must be present; if NULL, all component classes will do
 }
 
 [BaseContainerProps(configRoot: true), SCR_BaseContainerCustomTitleField("m_sName")]

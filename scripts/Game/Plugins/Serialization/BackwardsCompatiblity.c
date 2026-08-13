@@ -1,5 +1,4 @@
-[Obsolete("Use SerializationContext instead.")]
-class BaseSerializationContext : SerializationContext {}
+typedef SerializationContext BaseSerializationContext;
 
 [Obsolete("Use LoadContext instead.")]
 class BaseSerializationLoadContext : LoadContext {}

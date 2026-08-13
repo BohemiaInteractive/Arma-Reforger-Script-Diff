@@ -27,14 +27,19 @@ class SCR_DeployMultiPartInventoryItemAction : SCR_DeployInventoryItemAction
 	[Attribute(EGadgetType.NONE.ToString(), uiwidget: UIWidgets.ComboBox, desc: "What gadget player has to equip in order to be able to use this action", enumType: EGadgetType)]
 	protected EGadgetType m_eRequiredGadget;
 
+	[Attribute(defvalue: "1.5", desc: "Value by which action progress is going to be multiplied to speed it up when character is a engineer", params: "0.1 inf 0.01")]
+	protected float m_fQualifiedPersonnelBonusUseSpeedFactor;
+
 	protected SCR_GadgetManagerComponent m_GadgetManager;
 	protected BaseInventoryStorageComponent m_Storage;
 	protected vector m_vDesiredDirection;
 	protected ChimeraCharacter m_CurrentUser;
+	protected bool m_bIsQualified;
 	protected bool m_bIsSelected;
 	protected bool m_bLastCanPerformResult = true;
 	protected WorldTimestamp m_NextCheckTimestamp;
 	protected ECharacterStance m_eSavedStance = -1;
+	protected ref set<IEntity> m_aIgnoredItems;
 
 	protected const LocalizedString CANNOT_PERFORM_REASON_TOO_STEEP = "#AR-UserAction_Assemble_TooSteep";
 	protected const LocalizedString CANNOT_PERFORM_REASON_NOT_EMPTY = "#AR-UserAction_Assemble_NotEmpty";
@@ -189,12 +194,18 @@ class SCR_DeployMultiPartInventoryItemAction : SCR_DeployInventoryItemAction
 			}
 		}
 
-		if (m_bShowVisualisation && !m_bActionStarted)
+		if (!m_bActionStarted)
 		{
-			if (m_bIsSelected)
-				multiPartComp.VisualizeReplacementEntity(transform, angle);
-			else
-				multiPartComp.SetPreviewState(SCR_EPreviewState.NONE);
+			if (m_bShowVisualisation)
+			{
+				if (m_bIsSelected)
+					multiPartComp.VisualizeReplacementEntity(transform, angle);
+				else
+					multiPartComp.SetPreviewState(SCR_EPreviewState.NONE);
+			}
+			
+			FillIgnoredItemsList(character);
+			multiPartComp.SetIgnoredItems(m_aIgnoredItems);
 		}
 
 		WorldTimestamp currentTimestamp = owner.GetWorld().GetTimestamp();
@@ -222,7 +233,7 @@ class SCR_DeployMultiPartInventoryItemAction : SCR_DeployInventoryItemAction
 		}
 
 		string failReason;
-		if (!multiPartComp.FindRequiredElements(failReason))
+		if (!multiPartComp.FindRequiredElements(failReason, user: character))
 		{
 			SetCannotPerformReason(failReason);
 			return false;
@@ -285,8 +296,9 @@ class SCR_DeployMultiPartInventoryItemAction : SCR_DeployInventoryItemAction
 
 		//Do this again so other clients have the same data set
 		multiPartComp.FetchVariantData(m_iVariantId);
+		multiPartComp.SetIgnoredItems(m_aIgnoredItems);
 		string failReason;
-		if (!multiPartComp.FindRequiredElements(failReason))
+		if (!multiPartComp.FindRequiredElements(failReason, user: character))
 			return;
 
 		multiPartComp.Deploy(m_iVariantId, pUserEntity, m_vDesiredDirection, false, !m_bReportAsDismantling);
@@ -308,13 +320,16 @@ class SCR_DeployMultiPartInventoryItemAction : SCR_DeployInventoryItemAction
 		if (m_bReportAsDismantling)
 			ToggleCompartmentAccess(pUserEntity);
 
-		ChimeraCharacter character = ChimeraCharacter.Cast(pUserEntity);
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(pUserEntity);
 		if (!character)
 			return;
 
 		CharacterControllerComponent controller = character.GetCharacterController();
 		if (!controller)
 			return;
+
+		FillIgnoredItemsList(character);
+		m_bIsQualified = character.HasRole(GetQualifiedRoles()) || character.HasLabel(GetQualifiedLabels());
 
 		CharacterHeadAimingComponent headAiming = controller.GetHeadAimingComponent();
 		if (!headAiming)
@@ -353,6 +368,50 @@ class SCR_DeployMultiPartInventoryItemAction : SCR_DeployInventoryItemAction
 		params.SetCommandIntArg(1);
 
 		controller.TryUseItemOverrideParams(params);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Override this if you would want to change which squad roles should make a character qualified
+	protected array<SCR_EGroupRole> GetQualifiedRoles()
+	{
+		return {SCR_EGroupRole.ENGINEER};
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Override this if you would want to change which character label should make a character qualified
+	protected array<EEditableEntityLabel> GetQualifiedLabels()
+	{
+		return {EEditableEntityLabel.ROLE_SAPPER};
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override float GetActionProgressScript(float fProgress, float timeSlice)
+	{
+		if (m_bIsQualified)
+			timeSlice *= m_fQualifiedPersonnelBonusUseSpeedFactor;
+
+		return super.GetActionProgressScript(fProgress, timeSlice);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void FillIgnoredItemsList(notnull ChimeraCharacter character)
+	{
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return;
+
+		if (!m_aIgnoredItems)
+			m_aIgnoredItems = new set<IEntity>();
+		else
+			m_aIgnoredItems.Clear();
+
+		IEntity item = controller.GetAttachedGadgetAtLeftHandSlot(); // currently held gadget
+		if (item)
+			m_aIgnoredItems.Insert(item);
+
+		item = controller.GetCurrentItemInHands(); // currently held weapon
+		if (item)
+			m_aIgnoredItems.Insert(item);
 	}
 
 	//------------------------------------------------------------------------------------------------

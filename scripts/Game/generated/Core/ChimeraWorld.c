@@ -43,10 +43,14 @@ sealed class ChimeraWorld: ChimeraWorldBase
 	//! Unregister the entity, it will not be updated anymore while the game is paused.
 	proto external void UnregisterEntityToBeUpdatedWhileGameIsPaused(IEntity entity);
 	//! Get 2D observers position
+	[Obsolete("Use ObserversSystem.GetObserversSP instead!")]
 	proto external int GetObservers(notnull array<vector> observers);
 	//! Get 2D multiplayer observers position
+	[Obsolete("Use ObserversSystem.GetObserversMP instead!")]
 	proto external int GetMPObservers(notnull array<vector> observers);
 	static proto ChimeraWorld CastFrom(BaseWorld world);
+	proto external void LoadSystems(ResourceName configName);
+	proto external void UnloadSystems();
 }
 
 /*!

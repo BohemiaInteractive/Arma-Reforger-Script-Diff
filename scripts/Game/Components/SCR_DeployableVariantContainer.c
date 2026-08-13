@@ -1,3 +1,4 @@
+[SCR_BaseContainerCountedResourceNameTitle("m_iVariantId", "m_sReplacementPrefab", "Variant: %1 - %2")]
 class SCR_DeployableVariantContainer : ScriptAndConfig
 {
 	[Attribute(defvalue: "0", desc: "Variant id which must be unique", params: "-1 inf")]

@@ -61,7 +61,7 @@ class SCR_CampaignMapUIElement : SCR_MapUIElement
 		return false;
 	}
 
-	override void SetImage(string image)
+	override void SetImage(string image, string imageset)
 	{
 		if (m_wImage)
 			m_bVisible = m_wImage.LoadImageFromSet(0, m_sImageSet, image);

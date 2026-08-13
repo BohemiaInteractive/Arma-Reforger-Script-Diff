@@ -9,9 +9,10 @@ class SCR_AmbientPatrolSystem : GameSystem
 			.AddPoint(ESystemPoint.FixedFrame);
 	}
 
-	protected static const int CHECK_INTERVAL = 3;					//s, how often should an individual patrol spawn be checked
-	protected static const int DESPAWN_TIMEOUT = 10000;				//ms
-	protected static const int SPAWN_RADIUS_BLOCK_SQ = 150 * 150;	// Square value for distance checks
+	// Set to true to enable temporary [DBG_AI] diagnostics in this class.
+	protected static const bool DBG_AI_LOGGING = false;
+
+	protected static const int CHECK_INTERVAL = 3;	//s, how often should an individual patrol spawn be checked
 
 	[Attribute("250", desc: "Minimum allowed spawn distance, in meters.")]
 	protected int m_iMinSpawnDistance;
@@ -28,15 +29,16 @@ class SCR_AmbientPatrolSystem : GameSystem
 	[Attribute("1000", desc: "Maximum allowed despawn distance, in meters.")]
 	protected int m_iMaxDespawnDistance;
 
-	protected int m_iMinSpawnDistanceSq = m_iMinSpawnDistance * m_iMinSpawnDistance;
-	protected int m_iMaxSpawnDistanceSq = m_iMaxSpawnDistance * m_iMaxSpawnDistance;
-
-	protected int m_iDespawnBufferDistanceSq = m_iDespawnBufferDistance * m_iDespawnBufferDistance;
-	protected int m_iMinDespawnDistanceSq = m_iMinDespawnDistance * m_iMinDespawnDistance;
-	protected int m_iMaxDespawnDistanceSq = m_iMaxDespawnDistance * m_iMaxDespawnDistance;
+	// Squared mirrors of the Attribute fields above. Computed in OnInit because Enforce field
+	// initializers run before Attribute values are loaded - a value-derived initializer would
+	// always evaluate to 0*0 here.
+	protected int m_iMinSpawnDistanceSq;
+	protected int m_iMaxSpawnDistanceSq;
+	protected int m_iDespawnBufferDistanceSq;
+	protected int m_iMinDespawnDistanceSq;
+	protected int m_iMaxDespawnDistanceSq;
 
 	protected ref array<SCR_AmbientPatrolSpawnPointComponent> m_aPatrols = {};
-	protected ref array<IEntity> m_aPlayers = {};
 
 	protected int m_iIndexToCheck;
 	protected int m_iSpawnDistanceSq;
@@ -52,34 +54,21 @@ class SCR_AmbientPatrolSystem : GameSystem
 		if (m_aPatrols.IsEmpty())
 			Enable(false);
 
-		RefreshPlayerList();
+		m_iMinSpawnDistanceSq = m_iMinSpawnDistance * m_iMinSpawnDistance;
+		m_iMaxSpawnDistanceSq = m_iMaxSpawnDistance * m_iMaxSpawnDistance;
+		m_iDespawnBufferDistanceSq = m_iDespawnBufferDistance * m_iDespawnBufferDistance;
+		m_iMinDespawnDistanceSq = m_iMinDespawnDistance * m_iMinDespawnDistance;
+		m_iMaxDespawnDistanceSq = m_iMaxDespawnDistance * m_iMaxDespawnDistance;
 
 		// Calculate (de)spawn distance based on view distance, have it squared for faster distance calculation
 		int fractionOfVD = GetGame().GetViewDistance() * 0.3;
 		m_iSpawnDistanceSq = ClampSpawnDistanceSq(fractionOfVD * fractionOfVD);
 		m_iDespawnDistanceSq = ClampDespawnDistanceSq(m_iSpawnDistanceSq + m_iDespawnBufferDistanceSq);
-
-		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		if (!gameMode)
-			return;
-
-		gameMode.GetOnPlayerSpawned().Insert(OnPlayerSpawnedOrDeleted);
-		gameMode.GetOnPlayerKilled().Insert(OnPlayerKilled);
-		gameMode.GetOnPlayerDeleted().Insert(OnPlayerSpawnedOrDeleted);
-		gameMode.GetOnPlayerDisconnected().Insert(OnPlayerDisconnected);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override event protected void OnCleanup()
 	{
-		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		if (!gameMode)
-			return;
-
-		gameMode.GetOnPlayerSpawned().Remove(OnPlayerSpawnedOrDeleted);
-		gameMode.GetOnPlayerKilled().Remove(OnPlayerKilled);
-		gameMode.GetOnPlayerDeleted().Remove(OnPlayerSpawnedOrDeleted);
-		gameMode.GetOnPlayerDisconnected().Remove(OnPlayerDisconnected);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -102,6 +91,10 @@ class SCR_AmbientPatrolSystem : GameSystem
 		if (SCR_PersistenceSystem.IsLoadInProgress())
 			return;
 
+		// Once per full pass through the patrol list, print a summary line so we can see the
+		// system is alive and how many spawnpoints it owns. [DBG_AI] - temporary diagnostics.
+		if (DBG_AI_LOGGING && m_iIndexToCheck == 0)
+			Print(string.Format("[DBG_AI] AmbientPatrolSystem tick: patrols=%1, spawnDist=%2m, despawnDist=%3m", m_aPatrols.Count(), Math.Sqrt(m_iSpawnDistanceSq), Math.Sqrt(m_iDespawnDistanceSq)), LogLevel.NORMAL);
 		ProcessSpawnpoint(m_iIndexToCheck++);
 		if (!m_aPatrols.IsIndexValid(m_iIndexToCheck))
 			m_iIndexToCheck = 0;
@@ -143,40 +136,18 @@ class SCR_AmbientPatrolSystem : GameSystem
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void RefreshPlayerList()
-	{
-		m_aPlayers.Clear();
-		array<int> playerIds = {};
-		PlayerManager pc = GetGame().GetPlayerManager();
-		int playersCount = pc.GetPlayers(playerIds);
-
-		foreach (int playerId : playerIds)
-		{
-			IEntity player = pc.GetPlayerControlledEntity(playerId);
-
-			if (!player)
-				continue;
-
-			CharacterControllerComponent comp = CharacterControllerComponent.Cast(player.FindComponent(CharacterControllerComponent));
-
-			if (!comp || comp.IsDead())
-				continue;
-
-			m_aPlayers.Insert(player);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnPlayerSpawnedOrDeleted(int playerId, IEntity player)
-	{
-		RefreshPlayerList();
-	}
-
-	//------------------------------------------------------------------------------------------------
+	//! Coarse per-spawnpoint gate. Once the group entity exists it self-drives via
+	//! SCR_EAIGroupLifecyclePolicy.ProximityDriven (set in SpawnPatrol); this system only decides
+	//! "is it time to instantiate the group entity at all?". Asks ObserversSystem directly because
+	//! at this point the group entity does not exist yet.
 	protected void ProcessSpawnpoint(int spawnpointIndex)
 	{
 		SCR_AmbientPatrolSpawnPointComponent spawnpoint = m_aPatrols[spawnpointIndex];
-		if (!spawnpoint || (spawnpoint.GetMembersAlive() == 0 && !spawnpoint.GetIsSpawned()))
+		if (!spawnpoint || spawnpoint.IsEliminated())
+			return;
+
+		// Group entity already exists - the group manages its own members from here on.
+		if (spawnpoint.GetIsSpawned())
 			return;
 
 		ChimeraWorld world = GetWorld();
@@ -184,98 +155,53 @@ class SCR_AmbientPatrolSystem : GameSystem
 		if (spawnpoint.GetRespawnTimestamp().Greater(currentTime))
 			return;
 
-		if (!spawnpoint.GetIsSpawned())
+		// Manager-level "is there room in the budget at all?" probe; per-tier cap on the actual
+		// group is re-checked when the group tries to materialise members.
+		AIWorld aiWorld = GetGame().GetAIWorld();
+		if (aiWorld && !aiWorld.CanActivateGroup(null))
 		{
-			spawnpoint.SpawnPatrol();
+			if (DBG_AI_LOGGING)
+				Print(string.Format("[DBG_AI] ProcessSpawnpoint[%1] BLOCKED: CanActivateGroup(null)=false (over budget)", spawnpointIndex), LogLevel.NORMAL);
 			return;
 		}
 
-		bool playersNear;
-		bool playersVeryNear;
-		bool playersFar = true;
-		vector location = spawnpoint.GetOwner().GetOrigin();
-		int distance;
-
-		int spawnDistanceSq = m_iSpawnDistanceSq;
-		int spawnPointSpawnDistance = spawnpoint.GetSpawnDistanceOverride();
-		if (spawnPointSpawnDistance >= 0)
-			spawnDistanceSq = ClampSpawnDistanceSq(spawnPointSpawnDistance * spawnPointSpawnDistance);
+		ObserversSystem observers = ObserversSystem.Cast(world.FindSystem(ObserversSystem));
+		if (!observers)
+		{
+			if (DBG_AI_LOGGING)
+				Print(string.Format("[DBG_AI] ProcessSpawnpoint[%1] BLOCKED: ObserversSystem not found", spawnpointIndex), LogLevel.WARNING);
+			return;
+		}
 
 		int despawnDistanceSq = m_iDespawnDistanceSq;
 		int spawnPointDespawnDistance = spawnpoint.GetDespawnDistanceOverride();
 		if (spawnPointDespawnDistance >= 0)
 			despawnDistanceSq = ClampDespawnDistanceSq(spawnPointDespawnDistance * spawnPointDespawnDistance);
 
-		// Define if any player is close enough to spawn or if all players are far enough to despawn
-		foreach (IEntity player : m_aPlayers)
+		vector pos = spawnpoint.GetOwner().GetOrigin();
+		if (!observers.HasObserverWithinRangeSq(pos[0], pos[2], despawnDistanceSq))
 		{
-			if (!player)
-				continue;
-
-			distance = vector.DistanceSq(player.GetOrigin(), location);
-
-			if (distance > despawnDistanceSq)
-				continue;
-
-			playersFar = false;
-
-			if (distance > spawnDistanceSq)
-				continue;
-
-			playersNear = true;
-
-			if (distance > SPAWN_RADIUS_BLOCK_SQ)
-				continue;
-
-			playersVeryNear = true;
-			break;
-		}
-
-		bool isAIOverLimit;
-		AIWorld aiWorld = GetGame().GetAIWorld();
-		if (aiWorld)
-		{
-			int maxChars = aiWorld.GetLimitOfActiveAIs();
-
-			if (maxChars <= 0)
-				isAIOverLimit = true;
-			else
-				isAIOverLimit = ((float)aiWorld.GetCurrentNumOfActiveAIs() / (float)maxChars) > spawnpoint.GetAILimitThreshold();
-		}
-
-		if (!isAIOverLimit && !playersVeryNear)
-			spawnpoint.SetIsPaused(false);
-
-		if (playersNear && !spawnpoint.GetIsPaused() && !spawnpoint.IsGroupActive())
-		{
-			// Do not spawn the patrol if the AI threshold setting has been reached
-			if (isAIOverLimit)
-			{
-				spawnpoint.SetIsPaused(true);	// Make sure a patrol is not spawned too close to players when AI limit suddenly allows spawning of this group
-				return;
-			}
-
-			spawnpoint.ActivateGroup();
+			if (DBG_AI_LOGGING)
+				Print(string.Format("[DBG_AI] ProcessSpawnpoint[%1] BLOCKED: no observer within %2m of %3", spawnpointIndex, Math.Sqrt(despawnDistanceSq), pos), LogLevel.NORMAL);
 			return;
 		}
 
-		// Delay is used so dying players don't see the despawn happen
-		if (spawnpoint.GetIsSpawned() && playersFar && spawnpoint.IsGroupActive())
-		{
-			const WorldTimestamp despawnT = spawnpoint.GetDespawnTimestamp();
-			if (despawnT == 0)
-			{
-				spawnpoint.SetDespawnTimestamp(currentTime.PlusMilliseconds(DESPAWN_TIMEOUT));
-			}
-			else if (currentTime.Greater(despawnT))
-			{
-				spawnpoint.DeactivateGroup();
-			}
-		}
-		else
-		{
-			spawnpoint.SetDespawnTimestamp(null);
-		}
+		if (DBG_AI_LOGGING)
+			Print(string.Format("[DBG_AI] ProcessSpawnpoint[%1] OK -> SpawnPatrol at %2 (despawnDist=%3m)", spawnpointIndex, pos, Math.Sqrt(despawnDistanceSq)), LogLevel.NORMAL);
+		spawnpoint.SpawnPatrol();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Exposed for SCR_AmbientPatrolSpawnPointComponent to forward to SCR_AIGroup.SetLifecyclePolicy.
+	float GetSpawnDistance()
+	{
+		return Math.Sqrt(m_iSpawnDistanceSq);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetDespawnDistance()
+	{
+		return Math.Sqrt(m_iDespawnDistanceSq);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -309,15 +235,4 @@ class SCR_AmbientPatrolSystem : GameSystem
 		return patrols.Copy(m_aPatrols);
 	}
 
-	//------------------------------------------------------------------------------------------------
-	void OnPlayerDisconnected(int playerId, KickCauseCode cause = KickCauseCode.NONE, int timeout = -1)
-	{
-		RefreshPlayerList();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void OnPlayerKilled(notnull SCR_InstigatorContextData instigatorContextData)
-	{
-		RefreshPlayerList();
-	}
 }

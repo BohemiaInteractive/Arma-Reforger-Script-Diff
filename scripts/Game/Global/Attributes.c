@@ -887,3 +887,39 @@ class SCR_BaseContainerCustomTitleUIInfo : BaseContainerCustomTitle
 		return true;
 	}
 };
+
+class SCR_BaseContainerCountedResourceNameTitle : BaseContainerCustomTitle
+{
+	protected string m_sResourceNameVarName;
+	protected string m_sCounterNameVarName;
+	protected string m_sFormat;
+	protected bool m_bStripPath;
+
+	void SCR_BaseContainerCountedResourceNameTitle(string counterVarName, string resourceVarName, string format = "%1 x %2", bool stripPath = true)
+	{
+		m_sResourceNameVarName = resourceVarName;
+		m_sCounterNameVarName = counterVarName;
+		m_sFormat = format;
+		m_bStripPath = stripPath;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
+	{
+		ResourceName path;
+		if (!source.Get(m_sResourceNameVarName, path))
+			return false;
+
+		int variantId;
+		if (!source.Get(m_sCounterNameVarName, variantId))
+			return false;
+
+		if (m_bStripPath)
+			title = FilePath.StripPath(path.GetPath());
+		else
+			title = path.GetPath();
+
+		title = string.Format(m_sFormat, variantId, title);
+		return true;
+	}
+}

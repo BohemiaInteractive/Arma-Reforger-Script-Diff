@@ -180,24 +180,6 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void AdjustTransform(vector offset = vector.Zero)
-	{
-		InventoryItemComponent inventoryItemComp = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
-		if (inventoryItemComp)
-		{
-			InventoryStorageSlot slot = inventoryItemComp.GetParentSlot();
-			ItemAnimationAttributes animAttr = ItemAnimationAttributes.Cast(inventoryItemComp.FindAttribute(ItemAnimationAttributes));
-			if (slot && animAttr)
-			{
-				vector matLS[4];
-				animAttr.GetAdditiveTransformLS(matLS);
-				matLS[3] = matLS[3] + m_vEquipmentSlotOffset + offset;
-				slot.SetAdditiveTransformLS(matLS);
-			}
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! SCR_CompartmentAccessComponent event
 	protected void OnOwnerLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
 	{
@@ -347,11 +329,30 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! Write only the translation column of m_Light's local transform, preserving its rotation.
+	//! Update() rewrites the rotation each tick via SetYawPitchRoll, so we must not stomp it here.
+	protected void SetLightLocalOffset(vector offset)
+	{
+		if (!m_Light)
+			return;
+
+		vector mat[4];
+		m_Light.GetLocalTransform(mat);
+		mat[3] = offset;
+		m_Light.SetLocalTransform(mat);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void ActivateGadgetUpdate()
 	{
 		super.ActivateGadgetUpdate();
 
-		AdjustTransform(m_vFlashlightAdjustOffset);
+		// Offset only the child light entity, not the gadget body. The Update() loop rotates m_Light
+		// to follow aim while strapped; this offset compensates so the rotated beam does not appear
+		// to float relative to the model. Touching the slot transform here would visibly shift the
+		// whole flashlight on the character whenever the light is toggled.
+		SetLightLocalOffset(m_vFlashlightAdjustOffset);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -359,8 +360,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	{
 		super.DeactivateGadgetUpdate();
 
-		if (m_iMode == EGadgetMode.IN_SLOT) // reset slot position of the gadget back to its default
-			AdjustTransform();
+		SetLightLocalOffset(vector.Zero);
 	}
 
 	//------------------------------------------------------------------------------------------------

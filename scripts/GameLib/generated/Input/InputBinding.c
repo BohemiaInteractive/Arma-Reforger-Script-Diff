@@ -32,14 +32,14 @@ class InputBinding
 	\brief Resets the binding for the specified action to its default value.
 	\param actionName Action name to reset.
 	\param deviceType (Optional) Input device type. Defaults to INVALID.
-	\param preset     (Optional) Preset name. Defaults to empty string.
+	\param preset    (Optional) Preset name. Defaults to empty string.
 	*/
 	proto external void ResetDefault(string actionName, EInputDeviceType deviceType = EInputDeviceType.INVALID, string preset = string.Empty);
 	/*!
 	\brief Checks if the binding for an action is currently set to its default value.
 	\param actionName Action name to check.
 	\param deviceType (Optional) Input device type. Defaults to KEYBOARD.
-	\param preset     (Optional) Preset name. Defaults to empty string.
+	\param preset    (Optional) Preset name. Defaults to empty string.
 	\return True if binding is default, false otherwise.
 	 */
 	proto external bool IsDefault(string actionName, EInputDeviceType deviceType = EInputDeviceType.KEYBOARD, string preset = string.Empty);
@@ -194,12 +194,12 @@ class InputBinding
 
 	Identifies if the specified action's key bindings conflict with other actions on the given input device type and preset.
 
-	\param actionName                Name of the action to check.
-	\param[out] keyBindIndices       Output array of indices of the conflicting key bindings.
-	\param[out] conflictedActions    Output array of conflicted action names.
+	\param actionName                    Name of the action to check.
+	\param[out] keyBindIndices        Output array of indices of the conflicting key bindings.
+	\param[out] conflictedActions     Output array of conflicted action names.
 	\param[out] conflictedActionPresets Output array of conflicted action presets.
-	\param deviceType                (Optional) Input device type to check. Defaults to KEYBOARD.
-	\param preset                    (Optional) Name of the preset to check. Defaults to empty string.
+	\param deviceType                    (Optional) Input device type to check. Defaults to KEYBOARD.
+	\param preset                       (Optional) Name of the preset to check. Defaults to empty string.
 	\return True if conflicts found, false otherwise.
 	*/
 	proto external bool GetConflicts(string actionName, out notnull array<int> keyBindIndices, out notnull array<string> conflictedActions, out notnull array<string> conflictedActionPresets, EInputDeviceType deviceType = EInputDeviceType.KEYBOARD, string preset = string.Empty);

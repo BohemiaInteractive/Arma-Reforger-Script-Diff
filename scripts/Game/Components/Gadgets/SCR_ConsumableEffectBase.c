@@ -33,11 +33,23 @@ class SCR_ConsumableEffectBase : Managed
 	[Attribute("true", UIWidgets.CheckBox, "Whether consumable should be deleted directly after completing use", category: "General")]
 	protected bool m_bDeleteOnUse;
 	
-	[Attribute("1", UIWidgets.EditBox, "Duration of the animation for using consumable on self", category: "General")]
+	[Attribute("1", UIWidgets.EditBox, "Duration of the looping part of the animation for using consumable on self\nThis has no effect on animation which dont loop any part of it.", category: "General")]
 	protected float m_fApplyToSelfDuration;	
 	
-	[Attribute("1", UIWidgets.EditBox, "Duration of the animation for using consumable on other", category: "General")]
+	[Attribute("1", UIWidgets.EditBox, "Duration of the looping part of the animation for using consumable on other.\nThis has no effect on animation which dont loop any part of it.", category: "General")]
 	protected float m_fApplyToOtherDuration;
+
+	[Attribute(defvalue: SCR_EGroupRole.NONE.ToString(), uiwidget: UIWidgets.ComboBox, enumType: SCR_EGroupRole, desc: "Group roles which determine if user recives usage speed bonus, if his group matches at least one of the roles from this list\nIf character's group role isnt in the list, then penalty value is used.\nIf left empty, then this condition is not evaluated.", category: "General")]
+	protected ref array<SCR_EGroupRole> m_aGroupRoles;
+
+	[Attribute(defvalue: EEditableEntityLabel.NONE.ToString(), uiwidget: UIWidgets.ComboBox, enumType: EEditableEntityLabel, desc: "Character labels which determine if user recives usage speed bonus, if character matches at least one of the labels from this list\nIf character's labels dont match any labels from this list, then penalty value is used.\nIf left empty, then this condition is not evaluated.", category: "General")]
+	protected ref array<EEditableEntityLabel> m_aCharacterLabels;
+
+	[Attribute(defvalue: "0", desc: "Bonus usage speed which is applied if character has at least one matching label, or his group role matches.\nIt is used as a divider of the value from ApplyTo<target>Duration.\n0 means that there is no bonus, and default speed will be used.", params: "0 inf 0.01", category: "General")]
+	protected float m_fRoleSpeedBonus;
+
+	[Attribute(defvalue: "0", desc: "Penalty to the usage speed for character not having at least one label, nor his group matching the role.\nIt is used as a divider of the value from ApplyTo<target>Duration.\n0 means that there is no penalty, and default speed will be used.", params: "0 inf 0.01", category: "General")]
+	protected float m_fRoleSpeedPenalty;
 
 	SCR_EConsumableType m_eConsumableType;
 	
@@ -108,7 +120,48 @@ class SCR_ConsumableEffectBase : Managed
 			
 		return params;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! \return character who is using provided gadget
+	protected SCR_ChimeraCharacter GetItemUser(notnull IEntity item)
+	{
+		SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast(item.FindComponent(SCR_GadgetComponent));
+		if (!gadgetComp)
+			return null;
+
+		return SCR_ChimeraCharacter.Cast(gadgetComp.GetCharacterOwner());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Provides usage animation speed modifier based on character's labels and group role. Which is meant to be a divider of time used looping part of item usage animation
+	//! \param[in] character for which data will be evaluated
+	//! \return factor where value is always larger than 0, with default value being 1
+	float GetUsageSpeedFactor(notnull SCR_ChimeraCharacter character)
+	{
+		bool meetsBonusRequirement = (!m_aGroupRoles.IsEmpty() && character.HasRole(m_aGroupRoles)) || (!m_aCharacterLabels.IsEmpty() && character.HasLabel(m_aCharacterLabels));
+		if (meetsBonusRequirement)
+		{
+			if (m_fRoleSpeedBonus > 0)
+				return m_fRoleSpeedBonus;
+		}
+		else if (m_fRoleSpeedPenalty > 0)
+		{
+			return m_fRoleSpeedPenalty;
+		}
+
+		return 1;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected SCR_EGroupRole GetGroupRole(notnull SCR_ChimeraCharacter character)
+	{
+		SCR_AIGroup group = character.GetCharacterGroup();
+		if (!group)
+			return SCR_EGroupRole.NONE;
+
+		return group.GetGroupRole();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	bool GetDeleteOnUse()

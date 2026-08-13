@@ -12,6 +12,8 @@ class SCR_HideEditorUIComponent : SCR_BaseEditorUIComponent
 	protected float m_fTargetOpacity = 1;
 	protected bool m_bInTransition;
 	protected ref ScriptInvoker Event_OnOpacityChange;
+	protected ref Widget m_wProtectedWidget; 				//this widget should always be visible
+	protected ref Widget m_wProtectedWidgetParent; 			//parent of the protected widget
 	
 	//------------------------------------------------------------------------------------------------
 	//! Set widget visibility.
@@ -23,6 +25,13 @@ class SCR_HideEditorUIComponent : SCR_BaseEditorUIComponent
 		if (!widget)
 			return;
 		
+		if (!visible && !m_wProtectedWidget)
+		{
+			m_wProtectedWidget = widget.FindAnyWidget("ScreenEffect_main");
+			if (m_wProtectedWidget)
+				m_wProtectedWidgetParent = m_wProtectedWidget.GetParent();
+		}
+		
 		widget.SetEnabled(visible);
 		
 		if (visible)
@@ -31,9 +40,20 @@ class SCR_HideEditorUIComponent : SCR_BaseEditorUIComponent
 			m_fTargetOpacity = 0;
 		
 		if (instant)
+		{
+			float opacity;
+			if (m_wProtectedWidget)
+				opacity = m_wProtectedWidget.GetOpacity();
+			
 			SetWidgetOpacity(widget, m_fTargetOpacity);
+			
+			if (m_wProtectedWidget)
+				m_wProtectedWidget.SetOpacity(opacity);
+		}	
 		else
+		{
 			m_bInTransition = true;
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -56,7 +76,7 @@ class SCR_HideEditorUIComponent : SCR_BaseEditorUIComponent
 	//------------------------------------------------------------------------------------------------
 	protected void SetMenuVisible(bool visible)
 	{
-		if (m_EditorMenuManager)
+			if (m_EditorMenuManager)
 			m_EditorMenuManager.SetVisible(visible);
 	}
 	
@@ -74,7 +94,7 @@ class SCR_HideEditorUIComponent : SCR_BaseEditorUIComponent
 	protected void OnMenuUpdate(float tDelta)
 	{
 		Widget widget = GetWidget();
-		if (!widget)
+		if (!widget || !m_bInTransition)
 			return;
 		
 		//--- Disabled, handled by SCR_ToggleInterfaceToolbarAction now
@@ -86,8 +106,52 @@ class SCR_HideEditorUIComponent : SCR_BaseEditorUIComponent
 //				SetVisible(!widget.IsEnabled());
 //		}
 		
-		if (m_bInTransition)
+		if (m_wProtectedWidget)
 		{
+			// changing opacity to the child widgets but skipping the m_wProtectedWidget
+			bool someWidgetInTransition;
+			bool loopOverProtectedWidgetSiblings;
+			Widget otherWidget = widget.GetChildren();
+			while (otherWidget)
+			{
+				if (otherWidget == m_wProtectedWidgetParent)
+				{
+					// one level step deeper in hierarchy
+					loopOverProtectedWidgetSiblings = true;
+					otherWidget = otherWidget.GetChildren();
+				}
+				else if (otherWidget == m_wProtectedWidget)
+				{
+					otherWidget = otherWidget.GetSibling();
+				}
+				else
+				{
+					float opacity = otherWidget.GetOpacity();
+					if (Math.AbsFloat(opacity - m_fTargetOpacity) < 0.01)
+					{
+						otherWidget.SetOpacity(m_fTargetOpacity);
+					}
+					else
+					{
+						otherWidget.SetOpacity(Math.Lerp(opacity, m_fTargetOpacity, m_fTransitionSpeed * tDelta));
+						someWidgetInTransition = true;
+					}
+					otherWidget = otherWidget.GetSibling();
+				}
+				
+				if (loopOverProtectedWidgetSiblings && !otherWidget)
+				{
+					// returning to parent hierarchy
+					loopOverProtectedWidgetSiblings = false;
+					otherWidget = m_wProtectedWidgetParent.GetSibling();
+				}
+			}
+			
+			m_bInTransition = someWidgetInTransition;
+		}
+		else
+		{
+			// changing opacity to the whole HUD menu
 			float opacity = widget.GetOpacity();
 			if (Math.AbsFloat(opacity - m_fTargetOpacity) < 0.01)
 			{

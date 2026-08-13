@@ -328,7 +328,7 @@ class SCR_ImportShapefilePlugin : WorkbenchPlugin
 				worldCoords[0] = geoVertexCollectionJ[k][0] + m_vOffset[0];
 				worldCoords[2] = geoVertexCollectionJ[k][2] + m_vOffset[2];
 				worldCoords[1] = worldEditorAPI.GetTerrainSurfaceY(worldCoords[0], worldCoords[2]) + m_vOffset[1];
-				data.points.Insert(worldCoords);
+				data.m_aPoints.Insert(worldCoords);
 
 				worldEditorAPI.CreateObjectArrayVariableMember(entitySource, null, "Points", "ShapePoint", k);
 				worldEditorAPI.SetVariableValue(entitySource, { new ContainerIdPathEntry("Points", k) }, "Position", (worldCoords - polygonOrigin).ToString(false));
@@ -349,14 +349,14 @@ class SCR_ImportShapefilePlugin : WorkbenchPlugin
 
 			worldEditorAPI.SetVariableValue(entitySource, null, "LineColor", string.Format("%1 %2 %3 1", finalR, finalG, finalB));
 
-			data.source = entitySource;
-			data.entity = worldEditorAPI.SourceToEntity(entitySource);
+			data.m_Source = entitySource;
+			data.m_Entity = worldEditorAPI.SourceToEntity(entitySource);
 			data.GenerateAAB();
 
 			if (hasIdAttribute)
-				data.id = polygon.GetAttributes().GetIntByName(m_sIDColumnName);
+				data.m_iId = polygon.GetAttributes().GetIntByName(m_sIDColumnName);
 			else
-				data.id = RANDOM_PREFAB_ID;
+				data.m_iId = RANDOM_PREFAB_ID;
 
 			result.Insert(data);
 		}
@@ -420,7 +420,7 @@ class SCR_ImportShapefilePlugin : WorkbenchPlugin
 			worldCoords[0] = vertices[k][0] + m_vOffset[0];
 			worldCoords[2] = vertices[k][2] + m_vOffset[2];
 			worldCoords[1] = worldEditorAPI.GetTerrainSurfaceY(worldCoords[0], worldCoords[2]) + m_vOffset[1];
-			data.points.Insert(worldCoords);
+			data.m_aPoints.Insert(worldCoords);
 			data.GenerateAAB();
 
 			worldEditorAPI.CreateObjectArrayVariableMember(entitySource, null, "Points", "ShapePoint", k);
@@ -429,14 +429,14 @@ class SCR_ImportShapefilePlugin : WorkbenchPlugin
 
 		worldEditorAPI.SetVariableValue(entitySource, null, "LineColor", m_vShapeColor.ToString(false) + " 1");
 
-		data.source = entitySource;
-		data.entity = worldEditorAPI.SourceToEntity(entitySource);
+		data.m_Source = entitySource;
+		data.m_Entity = worldEditorAPI.SourceToEntity(entitySource);
 		data.GenerateAAB();
 
 		if (polyline.GetAttributes().HasAttrib(m_sIDColumnName))
-			data.id = polyline.GetAttributes().GetIntByName(m_sIDColumnName);
+			data.m_iId = polyline.GetAttributes().GetIntByName(m_sIDColumnName);
 		else
-			data.id = RANDOM_PREFAB_ID;
+			data.m_iId = RANDOM_PREFAB_ID;
 
 		return { data };
 	}
@@ -484,7 +484,7 @@ class SCR_ImportShapefilePlugin : WorkbenchPlugin
 				continue;
 			}
 
-			vector pos = points[0] + m_vOffset;
+			vector pos = points[0] + m_vOffset; // error? should it be foreach?
 			vector angles;
 			if (m_bRandomYaw)
 				angles[1] = Math.RandomFloat(0, 360);
@@ -498,7 +498,7 @@ class SCR_ImportShapefilePlugin : WorkbenchPlugin
 	protected void CreateComment(string comment, vector pos, ResourceName commentPrefab = string.Empty)
 	{
 		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
-		
+
 		if (commentPrefab.IsEmpty()) // then generic comment
 		{
 			IEntitySource entitySource = worldEditorAPI.CreateEntity(COMMENT_ENTITY_CLASS, "", worldEditorAPI.GetCurrentEntityLayerId(), null, pos, vector.Zero);
@@ -608,7 +608,7 @@ class SCR_ImportShapefilePlugin : WorkbenchPlugin
 		float prevProgress, currProgress;
 		foreach (int i, SCR_GeneratorShapeImportData forestShapeData : forestShapeDataArray)
 		{
-			points = forestShapeData.source.GetObjectArray("Points");
+			points = forestShapeData.m_Source.GetObjectArray("Points");
 			collidedShapes = {};
 
 			for (int y = 0; y < count; y++)
@@ -617,20 +617,20 @@ class SCR_ImportShapefilePlugin : WorkbenchPlugin
 					continue;
 
 				otherForestShapeData = forestShapeDataArray[y];
-				if (forestShapeData.bbox.DetectCollision2D(otherForestShapeData.bbox))
+				if (forestShapeData.m_AABB.DetectCollision2D(otherForestShapeData.m_AABB))
 					collidedShapes.Insert(otherForestShapeData);
 			}
 
 			bool wasPreviousDuplicate = false;
 
-			forestShapeData.points.Insert(forestShapeData.points[0]); // Duplicate first point
+			forestShapeData.m_aPoints.Insert(forestShapeData.m_aPoints[0]); // Duplicate first point
 
-			for (int p = 0, countPoints = forestShapeData.points.Count(); p < countPoints; p++)
+			for (int p = 0, countPoints = forestShapeData.m_aPoints.Count(); p < countPoints; p++)
 			{
 				bool isDuplicate = false;
 				for (int y = 0, otherCount = collidedShapes.Count(); y < otherCount; y++)
 				{
-					if (!IsPointDuplicate(forestShapeData.points[p], collidedShapes[y].points))
+					if (!IsPointDuplicate(forestShapeData.m_aPoints[p], collidedShapes[y].m_aPoints))
 						continue;
 
 					isDuplicate = true;
@@ -655,8 +655,8 @@ class SCR_ImportShapefilePlugin : WorkbenchPlugin
 							new ContainerIdPathEntry("Data", j),
 						};
 
-						worldEditorAPI.SetVariableValue(forestShapeData.source, containerPath, "m_bSmallOutline", "false");
-						worldEditorAPI.SetVariableValue(forestShapeData.source, containerPath, "m_bMiddleOutline", "false");
+						worldEditorAPI.SetVariableValue(forestShapeData.m_Source, containerPath, "m_bSmallOutline", "false");
+						worldEditorAPI.SetVariableValue(forestShapeData.m_Source, containerPath, "m_bMiddleOutline", "false");
 						break;
 					}
 
@@ -670,7 +670,7 @@ class SCR_ImportShapefilePlugin : WorkbenchPlugin
 				wasPreviousDuplicate = false;
 			}
 
-			forestShapeData.points.Remove(forestShapeData.points.Count() - 1); // Remove the duplicate point
+			forestShapeData.m_aPoints.Remove(forestShapeData.m_aPoints.Count() - 1); // Remove the duplicate point
 
 			currProgress = i / count;
 			if (currProgress - prevProgress >= 0.01)	// min 1%
@@ -685,14 +685,14 @@ class SCR_ImportShapefilePlugin : WorkbenchPlugin
 	protected void GeneratePowerLinePointData(notnull array<ref SCR_GeneratorShapeImportData> shapeDataArray)
 	{
 		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
-		
+
 		BaseContainerList shapePoints;
 		foreach (int i, SCR_GeneratorShapeImportData forestShapeData : shapeDataArray)
 		{
-			if (!forestShapeData.source || !forestShapeData.points || forestShapeData.points.IsEmpty())
+			if (!forestShapeData.m_Source || !forestShapeData.m_aPoints || forestShapeData.m_aPoints.IsEmpty())
 				continue;
 
-			shapePoints = forestShapeData.source.GetObjectArray("Points");
+			shapePoints = forestShapeData.m_Source.GetObjectArray("Points");
 			if (!shapePoints)
 				continue;
 
@@ -714,12 +714,12 @@ class SCR_ImportShapefilePlugin : WorkbenchPlugin
 		float prevProgress, currProgress;
 		foreach (int i, SCR_GeneratorShapeImportData shapeData : shapeDataArray)
 		{
-			ResourceName dataPrefab = GetPrefab(shapeData.id);
+			ResourceName dataPrefab = GetPrefab(shapeData.m_iId);
 			if (dataPrefab.IsEmpty()) // id not found? go random
 				dataPrefab = GetPrefab();
 
 			if (!dataPrefab.IsEmpty())
-				worldEditorAPI.CreateEntity(dataPrefab, "", 0, shapeData.source, vector.Zero, vector.Zero);
+				worldEditorAPI.CreateEntity(dataPrefab, "", 0, shapeData.m_Source, vector.Zero, vector.Zero);
 
 			currProgress = i / count;
 			if (currProgress - prevProgress >= 0.01)	// min 1%
@@ -767,17 +767,17 @@ class SCR_SHPPrefabData
 
 class SCR_GeneratorShapeImportData
 {
-	IEntitySource source;
-	IEntity entity;
-	int id;
-	ref SCR_AABB bbox;
-	ref array<vector> points = {};
+	IEntitySource m_Source;
+	IEntity m_Entity;
+	int m_iId;
+	ref SCR_AABB m_AABB;
+	ref array<vector> m_aPoints = {};
 
 	//------------------------------------------------------------------------------------------------
 	//!
 	void GenerateAAB()
 	{
-		bbox = new SCR_AABB(points);
+		m_AABB = new SCR_AABB(m_aPoints);
 	}
 }
 #endif // WORKBENCH

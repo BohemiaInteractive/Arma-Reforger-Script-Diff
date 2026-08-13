@@ -1,6 +1,7 @@
 enum SCR_EPlatform
 {
 	WINDOWS = 1 << EPlatform.WINDOWS,
+	WINDOWS_HANDHELD = 1 << EPlatform.WINDOWS_HANDHELD,
 	LINUX = 1 << EPlatform.LINUX,
 	XBOX_ONE = 1 << EPlatform.XBOX_ONE,
 	XBOX_ONE_S = 1 << EPlatform.XBOX_ONE_S,

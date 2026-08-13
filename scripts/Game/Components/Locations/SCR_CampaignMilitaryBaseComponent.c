@@ -125,12 +125,14 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	protected bool m_bLocalPlayerPresent;
 	protected bool m_bWasHQSet;
 
-	[RplProp()]
+	[RplProp(onRplName: "UpdateCaptureUI")]
 	protected SCR_EBaseCaptureState m_eCaptureState;
 
 	protected SCR_CampaignMilitaryBaseMapDescriptorComponent m_MapDescriptor;
 
 	protected SCR_SpawnPoint m_SpawnPoint;
+
+	protected SCR_CampaignBuildingProviderComponent m_MasterBuildingProvider;
 
 	protected SCR_CampaignFaction m_CapturingFaction;
 	protected SCR_CampaignFaction m_OwningFactionPrevious;
@@ -242,6 +244,27 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 			s_OnBaseCaptured = new ScriptInvokerBase<OnBaseCapturedDelegate>();
 
 		return s_OnBaseCaptured;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_CampaignBuildingProviderComponent GetMasterProvider()
+	{
+		if (!m_MasterBuildingProvider || !m_MasterBuildingProvider.IsMasterProvider())
+		{
+			array<SCR_CampaignBuildingProviderComponent> providers = {};
+			GetBuildingProviders(providers);
+
+			foreach (SCR_CampaignBuildingProviderComponent provider : providers)
+			{
+				if (!provider.IsMasterProvider())
+					continue;
+
+				m_MasterBuildingProvider = provider;
+				break;
+			}
+		}
+
+		return m_MasterBuildingProvider;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -554,7 +577,11 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 				SCR_CampaignBuildingProviderComponent buildingProvider = SCR_CampaignBuildingProviderComponent.Cast(GetOwner().FindComponent(SCR_CampaignBuildingProviderComponent));
 				if (buildingProvider)
+				{
 					m_SpawnPoint.SetSpawnPositionRange(buildingProvider.GetBuildingRadius());
+					if (buildingProvider.IsMasterProvider())
+						m_MasterBuildingProvider = buildingProvider;
+				}
 				else
 					m_SpawnPoint.SetSpawnPositionRange(m_iRadius);
 
@@ -837,7 +864,12 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	//------------------------------------------------------------------------------------------------
 	protected void SetProviderEntity(notnull SCR_ServicePointComponent service)
 	{
-		SCR_CampaignBuildingCompositionComponent buildingComponent = SCR_CampaignBuildingCompositionComponent.Cast(SCR_EntityHelper.GetMainParent(service.GetOwner(), true).FindComponent(SCR_CampaignBuildingCompositionComponent));
+		IEntity serviceOwner = service.GetOwner();
+		if (!serviceOwner)
+			return; // its possible that CallLater will hold onto the component, while in the meantime f.e. persistence system will delete the entity while loading saved game. In any case, service will automatically call OnServiceRemoved when it is deleted, so this should be aborted 
+
+		serviceOwner = serviceOwner.GetRootParent();
+		SCR_CampaignBuildingCompositionComponent buildingComponent = SCR_CampaignBuildingCompositionComponent.Cast(serviceOwner.FindComponent(SCR_CampaignBuildingCompositionComponent));
 
 		if (buildingComponent && !buildingComponent.GetProviderEntity())
 		{
@@ -849,6 +881,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 				if (provider && provider.IsMasterProvider())
 				{
 					buildingComponent.SetProviderEntityServer(provider.GetOwner());
+					m_MasterBuildingProvider = provider;
 					break;
 				}
 			}
@@ -1255,6 +1288,13 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
+	override Faction GetCapturingFaction()
+	{
+		return m_CapturingFaction;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Capturing has been terminated
 	void EndCapture()
 	{
@@ -1289,10 +1329,8 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	//! If the base is being captured or contested and the map is open, update the UI to show the background image indicating this state
 	void UpdateCaptureUI()
 	{
-		if (!m_UIElement)
-			return;
-
-		m_UIElement.SetCaptureWarning(m_eCaptureState == SCR_EBaseCaptureState.CONTESTED || m_eCaptureState == SCR_EBaseCaptureState.CAPTURING);
+		if (m_UIElement && RplSession.Mode() != RplMode.Dedicated)
+			m_UIElement.SetCaptureWarning(m_eCaptureState == SCR_EBaseCaptureState.CONTESTED || m_eCaptureState == SCR_EBaseCaptureState.CAPTURING);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1326,6 +1364,9 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		if (faction == GetFaction())
 			return false;
 
+		if (!faction.CanCaptureBases())
+			return false;
+
 		// Change the capturing faction
 		m_CapturingFaction = faction;
 
@@ -1355,6 +1396,9 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		if (m_RplComponent.Role() != RplRole.Authority)
 			return;
 
+		if (!faction.CanCaptureBases())
+			return;
+		
 		if (BeginCapture(faction, playerId))
 			SetFaction(faction);
 
@@ -1575,17 +1619,19 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 			{
 				foreach (SCR_AmbientPatrolSpawnPointComponent remnants : m_aRemnants)
 				{
-					AIGroup grp = remnants.GetSpawnedGroup();
+					SCR_AIGroup grp = remnants.GetSpawnedGroup();
 
 					// Make sure groups which are not spawned at this point don't spawn in later
-					if (grp && !remnants.IsGroupActive())
+					if (grp && !remnants.IsGroupActiveAndNotDormant())
 					{
-						remnants.SetMembersAlive(0);
+						remnants.SetIsEliminated(true);
 						RplComponent.DeleteRplEntity(grp, false);
 						continue;
 					}
 					else if (!grp)
 					{
+						// group was never spawned, but it still might 
+						remnants.SetIsEliminated(true);
 						continue;
 					}
 

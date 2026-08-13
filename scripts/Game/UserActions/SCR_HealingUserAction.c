@@ -83,7 +83,7 @@ class SCR_HealingUserAction : ScriptedUserAction
 			return;
 		
 		// Medic character
-		ChimeraCharacter userCharacter = ChimeraCharacter.Cast(pUserEntity);
+		SCR_ChimeraCharacter userCharacter = SCR_ChimeraCharacter.Cast(pUserEntity);
 		if (!userCharacter)
 			return;
 		
@@ -125,7 +125,7 @@ class SCR_HealingUserAction : ScriptedUserAction
 		params.SetCommandID(desiredCmd);
 		params.SetCommandIntArg(1);
 		params.SetCommandFloatArg(0.0);
-		params.SetMaxAnimLength(consumableEffect.GetApplyToOtherDuraction());
+		params.SetMaxAnimLength(consumableEffect.GetApplyToOtherDuraction() / consumableEffect.GetUsageSpeedFactor(userCharacter));
 		params.SetIntParam(targetDamageMan.FindAssociatedBandagingBodyPart(m_eHitZoneGroup));
 		
 		consumableEffect.ActivateEffect(pOwnerEntity, pUserEntity, item, params);

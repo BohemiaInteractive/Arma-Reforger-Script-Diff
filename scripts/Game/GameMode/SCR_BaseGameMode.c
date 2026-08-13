@@ -231,7 +231,6 @@ class SCR_BaseGameMode : BaseGameMode
 	//
 	// Required components
 	//
-	protected RplComponent m_RplComponent;
 	protected SCR_GameModeHealthSettings m_pGameModeHealthSettings;
 	protected SCR_RespawnSystemComponent m_pRespawnSystemComponent;
 	protected SCR_BaseScoringSystemComponent m_ScoringSystemComponent;
@@ -366,7 +365,8 @@ class SCR_BaseGameMode : BaseGameMode
 	*/
 	sealed bool IsMaster()
 	{
-		return (!m_RplComponent || m_RplComponent.IsMaster());
+		RplComponent rpl = GetRplComponent();
+		return (!rpl || rpl.IsMaster());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -919,16 +919,10 @@ class SCR_BaseGameMode : BaseGameMode
 	*/
 	protected override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
-		m_OnPlayerDisconnected.Invoke(playerId, cause, timeout);
-		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
-		{
-			comp.OnPlayerDisconnected(playerId, cause, timeout);
-		}
-		m_OnPostCompPlayerDisconnected.Invoke(playerId, cause, timeout);
-
+		IEntity character;
 		if (IsMaster())
 		{
-			IEntity character = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId);
+			character = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId);
 			if (character)
 			{
 				// If driving a vehicle it should be stopped as gracefully as possible to avoid crashing into nearby obstacles with passengers.
@@ -973,15 +967,25 @@ class SCR_BaseGameMode : BaseGameMode
 					character = null; // Avoid deleting it
 				}
 			}
-
+			
 			// RespawnSystemComponent is not a SCR_BaseGameModeComponent, so for now we have to propagate these events manually.
+			// Has to be called prior to other events to read save-game data if desired before any cleanup logic
 			m_pRespawnSystemComponent.OnPlayerDisconnected_S(playerId, cause, timeout);
+		}
 
-			if (character)
-			{
-				m_pRespawnSystemComponent.OnPlayerEntityCleanup_S(character);
-				RplComponent.DeleteRplEntity(character, false);
-			}
+		m_OnPlayerDisconnected.Invoke(playerId, cause, timeout);
+
+		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+		{
+			comp.OnPlayerDisconnected(playerId, cause, timeout);
+		}
+
+		m_OnPostCompPlayerDisconnected.Invoke(playerId, cause, timeout);
+
+		if (character)
+		{
+			m_pRespawnSystemComponent.OnPlayerEntityCleanup_S(character);
+			RplComponent.DeleteRplEntity(character, false);
 		}
 	}
 
@@ -1073,7 +1077,7 @@ class SCR_BaseGameMode : BaseGameMode
 		}
 
 		string victimIdentity = SCR_PlayerIdentityUtils.GetPlayerLogInfo(victimPlayerId);
-		
+
 		int killerPlayerId = instigatorContext.GetKillerPlayerID();
 		string killerIdentity;
 		if (killerPlayerId < 1) // AI
@@ -2196,13 +2200,12 @@ class SCR_BaseGameMode : BaseGameMode
 		}
 
 		// Find required components
-		m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
 		m_pRespawnSystemComponent = SCR_RespawnSystemComponent.Cast(owner.FindComponent(SCR_RespawnSystemComponent));
 		m_RespawnTimerComponent = SCR_RespawnTimerComponent.Cast(owner.FindComponent(SCR_RespawnTimerComponent));
 		m_ScoringSystemComponent = SCR_BaseScoringSystemComponent.Cast(owner.FindComponent(SCR_BaseScoringSystemComponent));
 		m_pGameModeHealthSettings = SCR_GameModeHealthSettings.Cast(owner.FindComponent(SCR_GameModeHealthSettings));
 
-		if (!m_RplComponent)
+		if (!GetRplComponent())
 			Print("SCR_BaseGameMode is missing RplComponent!", LogLevel.ERROR);
 		if (!m_pRespawnSystemComponent)
 			Print("SCR_BaseGameMode is missing SCR_RespawnSystemComponent!", LogLevel.WARNING);
@@ -2326,7 +2329,8 @@ class SCR_BaseGameMode : BaseGameMode
 	private bool IsGameModeStatisticsEnabled()
 	{
 		// not authority
-		if (m_RplComponent && !m_RplComponent.IsMaster())
+		RplComponent rpl = GetRplComponent();
+		if (rpl && !rpl.IsMaster())
 			return false;
 
 		return GetGame().InPlayMode();

@@ -97,55 +97,106 @@ sealed class ServerInfo
 	*/
 	proto external ServerWorkshopData GetWorkshopData();
 	/*!
-	Will request join to the server which will assign slot for player
-	and provide authentication tokens for encrypted communication with the server.
-	This method will also set both JoiningServer and LastServer to this in ServerCatalogueApi.
+	Returns true if this server has any ping site assigned.
+	If it returns false then that means it will never have any ping site available and might not
+	even be joinable from the internet. It might be joinable only from the local network.
+	\note This information is available regardless of whether the client has fetched the list
+	      of available ping sites. Use this to check if it makes sense to call GetPingSite().
+	\warning It should not block the ability to connect to the server but can be used for warning purposes.
+	*/
+	proto external bool HasPingSite();
+	/*!
+	Returns the ping site assigned to this server, or nullptr if:
+	- The available ping sites have not been fetched yet.
+	- The server does not have an assigned ping site.
+	- The server reports a ping site that is not in the client's fetched list.
+	\note Use HasPingSite() to determine if the server has an assigned ping site
+	      before attempting to retrieve it.
+	*/
+	proto external ServerPingSite GetPingSite();
+	//! Returns count of how many queues are known for this server.
+	proto external int GetQueueInfoCount();
+	//! Returns specific queue by type for this server.
+	proto external ServerQueueInfo GetQueueInfoByType(EServerJoinQueueType type);
+	//! Returns all available queues for this server.
+	proto external void GetAllQueueInfo(out notnull array<ServerQueueInfo> queuesOut);
+	/*!
+	Requests to join this server. The server will either approve the join immediately
+	or place the user in a queue if the server is full.
 
-	\param onDetails is optional function which will be invoked when full server details
-	                 are received and can be used to make final validations before join.
-	                 Delete of BackendCallback provided to the request will stop join process.
+	Before calling, ensure the server IsJoinable(), supports the client platform
+	(IsMyPlatformSupported()), and has the password set via SetPassword() if the server
+	IsPasswordProtected().
 
-	\throw VME - If server is not joinable - IsJoinable() returns false.
-	           - If server does not support client platform - IsMyPlatformSupported() returns false.
-	           - If server IsPasswordProtected() but password is missing - SetPassword() not used.
-	           - If another request for this server is currently processed (Join or Details requests).
+	\param callback Receives the result of the join request.
+	\param onDetails Optional function invoked when full server details are received,
+	                 before the join completes. Use this to perform final validations
+	                 (e.g. checking connected players). To cancel the join from inside
+	                 this function, set the callback to null.
 
-	\note API Codes to handle:
-	      - OnError:
-	          - EApiCode::EACODE_ERROR_SERVER_NOT_FOUND
-	          - EApiCode::EACODE_ERROR_SERVER_PASSWORD_MISMATCH
-	          - EApiCode::EACODE_ERROR_SERVER_IS_FULL
+	\throw VME If the server is not joinable, does not support the client platform,
+	           requires a password that was not set, or another request for this server
+	           is already in progress.
+
+	API codes delivered to the callback:
+	 - OnSuccess:
+	   - EApiCode::EACODE_SERVER_JOIN — join approved, request a game state transition
+	     to connect to the server.
+	   - EApiCode::EACODE_SERVER_QUEUE_WAIT — server is full, the user has been placed
+	     in a queue. Use ServerJoinManagerApi.GetQueueData() to access queue info
+	     and set up a polling callback for status updates.
+	 - OnError:
+	   - EApiCode::EACODE_ERROR_SERVER_NOT_FOUND — server no longer exists.
+	   - EApiCode::EACODE_ERROR_SERVER_PASSWORD_MISMATCH — incorrect password.
+	   - EApiCode::EACODE_ERROR_SERVER_IS_FULL — server is full and has no queue.
+
+	\see ServerJoinManagerApi
+	\see ServerQueueData
 
 	\code
-		ref BackendCallback myCallback;
+		ref BackendCallback joinCallback;
 		ServerInfo serverToJoin;
 
-		// simple join with no checks
+		// Simple join
 		void Join()
 		{
-			serverToJoin.RequestJoin(myCallback); // if callback invokes OnSuccess begin GameTransition to the server.
+			serverToJoin.RequestJoin(joinCallback);
 		}
 
-		// join with additional validations
+		// Join with pre-join validation
 		void JoinWithValidation()
 		{
-			serverToJoin.RequestJoin(myCallback, ValidationMethod); // if callback invokes OnSuccess begin GameTransition to the server.
+			serverToJoin.RequestJoin(joinCallback, OnDetailsReceived);
 		}
 
-		// do some desired validation like there is blocked player on the server
-		void ValidationMethod()
+		// Called when server details are received, before join completes
+		void OnDetailsReceived()
 		{
+			// perform any checks, e.g. blocked players
 
-			//...
-
-			if (blockedPlayerConnected)
+			if (shouldCancel)
 			{
-				myCallback = null; // stop joining by deleting the callback
-
-				// schedule some UI dialog or any means to inform that join was interrupted
+				joinCallback = null; // cancels the join
 			}
 
-			// finishing without delete of callback will continue join
+			// returning without nulling the callback continues the join
+		}
+
+		// Handle callback result
+		void OnJoinResult(BackendCallback callback)
+		{
+			EApiCode result = callback.GetApiCode();
+
+			if (result == EApiCode.EACODE_SERVER_JOIN)
+			{
+				// approved — request game state transition to connect
+			}
+			else if (result == EApiCode.EACODE_SERVER_QUEUE_WAIT)
+			{
+				// placed in queue — set up polling callback for updates
+				ServerQueueData queueData = ServerJoinManagerApi.GetQueueData();
+				queueData.SetPollingCallback(joinCallback);
+			}
 		}
 
 	\endcode

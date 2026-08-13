@@ -12,14 +12,14 @@ class SCR_AutotestGroup
 	//! Get all test suites in this group.
 	array<ref SCR_AutotestSuiteBase> GetSuites(bool ungroupedSuitesOnly = false)
 	{
-		if (ungroupedSuitesOnly)
-			return m_aSuites;
-
 		array<ref SCR_AutotestSuiteBase> allSuites = {};
 		foreach (SCR_AutotestSuiteBase suite : m_aSuites)
 		{
 			allSuites.Insert(suite);
 		}
+		
+		if (ungroupedSuitesOnly)
+			return m_aSuites;
 
 		foreach (SCR_AutotestGroup group : m_aGroups)
 		{

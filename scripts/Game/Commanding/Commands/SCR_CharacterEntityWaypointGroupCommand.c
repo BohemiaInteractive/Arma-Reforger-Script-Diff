@@ -3,7 +3,7 @@
 class SCR_CharacterEntityWaypointGroupCommand : SCR_WaypointGroupCommand
 {
 	//------------------------------------------------------------------------------------------------
-	override bool Execute(IEntity cursorTarget, IEntity target, vector targetPosition, int playerID, bool isClient)
+	override bool Execute(IEntity cursorTarget, IEntity groupEnt, vector targetPosition, int playerID, bool isClient)
 	{
 		if (isClient && playerID == SCR_PlayerController.GetLocalPlayerId())
 		{
@@ -12,14 +12,14 @@ class SCR_CharacterEntityWaypointGroupCommand : SCR_WaypointGroupCommand
 		}
 
 		//SpawnWPVisualization(targetPosition, playerID);
-		if (m_sWaypointPrefab.Empty || !target || !targetPosition)
+		if (m_sWaypointPrefab.Empty || !groupEnt || !targetPosition)
 			return false;
 		
 		IEntity targetEntity;
 		if (cursorTarget)
 			targetEntity = cursorTarget.GetRootParent();
 		
-		return CreateCharacterEntityWP(targetEntity, target, targetPosition, playerID);
+		return CreateCharacterEntityWP(targetEntity, groupEnt, targetPosition, playerID);
 	}
 	
 	//------------------------------------------------------------------------------------------------

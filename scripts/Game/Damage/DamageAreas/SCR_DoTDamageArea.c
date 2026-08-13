@@ -50,6 +50,9 @@ class SCR_DotDamageArea : SCR_DamageArea
 	//------------------------------------------------------------------------------------------------
 	override void RemoveEffect(notnull IEntity entity)
 	{
+		if(!m_DamageEffect)
+			return;
+		
 		const SCR_ExtendedDamageManagerComponent dmgMgr = SCR_ExtendedDamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(entity));
 		if (!dmgMgr)
 			return;

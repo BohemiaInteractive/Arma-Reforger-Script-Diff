@@ -174,7 +174,22 @@ class SCR_CharacterDamageManagerEvaluator : DamageEffectEvaluatorWrapper
 		if (!consequence)
 			return;
 
-		SCR_CharacterHitZone hitZone = damageMgr.GetRandomPhysicalHitZone();
+		IEntity wire = effect.GetResponsibleEntity();
+		if (!wire)
+			return;
+
+		vector mins, maxs;
+		wire.GetBounds(mins, maxs);
+		vector wireCoM = (maxs + mins) * 0.5; // center of the razor wire
+		wireCoM = wire.CoordToParent(wireCoM); // local to world position
+
+		array<HitZone> nearestHitZones = {};
+		damageMgr.GetPhysicalHitZones(nearestHitZones);
+		damageMgr.GetNearestHitZones(wireCoM, nearestHitZones, 3);
+		if (nearestHitZones.IsEmpty())
+			return;
+
+		HitZone hitZone = nearestHitZones.GetRandomElement();
 		if (!hitZone)
 			return;
 		
@@ -187,5 +202,38 @@ class SCR_CharacterDamageManagerEvaluator : DamageEffectEvaluatorWrapper
 		context.damageEffect = consequence;
 		
 		dmgManager.HandleDamage(context);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void HandleEffectConsequences(SCR_ExposedFeetDamageEffect effect, ExtendedDamageManagerComponent dmgManager)
+	{
+		super.HandleEffectConsequences(effect, dmgManager);
+
+		if (!effect)
+			return;
+
+		SCR_CharacterDamageManagerComponent charDmgManager = SCR_CharacterDamageManagerComponent.Cast(dmgManager);
+		if (!charDmgManager)
+			return;
+
+		SCR_BlisterDamageEffect consequence = new SCR_BlisterDamageEffect();
+		if (!consequence)
+			return;
+
+		float damage = effect.GetResultingDamage(charDmgManager);
+		if (damage <= 0)
+			return;
+
+		HitZone hitZone = effect.GetAffectedHitZone();
+		if (!hitZone)
+			return;
+
+		consequence.SetAffectedHitZone(hitZone);
+
+		vector hitPosDirNorm[3];
+		SCR_DamageContext context = new SCR_DamageContext(EDamageType.MELEE, damage, hitPosDirNorm, charDmgManager.GetOwner(), hitZone, effect.GetInstigator(), null, -1, -1);
+		context.damageEffect = consequence;
+
+		charDmgManager.HandleDamage(context);
 	}
 }

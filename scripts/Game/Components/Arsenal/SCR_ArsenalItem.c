@@ -17,7 +17,7 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 	protected ref array<ref SCR_ArsenalItemDisplayData> m_aArsenalDisplayData;
 	
 	[Attribute(desc: "Depending on the settings of the arsenal component arsenal items can have an alternative supply cost. So it will take the cost of the alternative rather than the default cost. \n\nIf an Arsenal is not cost type default and the arsenal item does not have that cost type defined than it will still use the default cost.\n\nIf multiple entries have the same value than the last in the array will be used")]
-	protected ref array<ref SCR_ArsenalAlternativeCostData> m_aArsenalAlternativeCostData;
+	protected ref array<ref SCR_ArsenalAlternativeData> m_aArsenalAlternativeCostData;
 	
 	[Attribute(SCR_ECharacterRank.PRIVATE.ToString(), desc: "Player must meet or exceed this rank in order to purchase this item", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(SCR_ECharacterRank))]
 	protected SCR_ECharacterRank m_eRequiredRank;
@@ -29,7 +29,7 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 	protected ref array<SCR_ArsenalItem> m_aAdditionalCosts;
 	protected ref array<SCR_NonArsenalItemCostCatalogData> m_aNonArsenalAdditionalCosts;
 	
-	protected ref map<SCR_EArsenalSupplyCostType, ref SCR_ArsenalAlternativeCostData> m_mArsenalAlternativeCostData;
+	protected ref map<SCR_EArsenalSupplyCostType, ref SCR_ArsenalAlternativeData> m_mArsenalAlternativeCostData;
 	
 	protected SCR_EntityCatalogEntry m_EntryParent;
 	protected ref Resource m_ItemResource;
@@ -134,16 +134,16 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 		
 		if (supplyCostType != SCR_EArsenalSupplyCostType.DEFAULT && m_mArsenalAlternativeCostData != null)
 		{
-			SCR_ArsenalAlternativeCostData alternativeCost; 
+			SCR_ArsenalAlternativeData alternativeCost; 
 			if (m_mArsenalAlternativeCostData.Find(supplyCostType, alternativeCost))
-				return alternativeCost.m_iSupplyCost + additionalCost;
+				return alternativeCost.GetSupplyCost(m_iSupplyCost) + additionalCost;
 		}
 		
 		return m_iSupplyCost + additionalCost;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	int GetSupplyRefundAmount(SCR_EArsenalSupplyCostType supplyCostType, bool addAdditionalCosts = true)
+	int GetSupplyRefundAmount(SCR_EArsenalSupplyCostType supplyCostType, bool addAdditionalCosts = true, IEntity item = null)
 	{
 		int additionalCost;
 		
@@ -167,11 +167,11 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 			}
 		}
 		
-		if (supplyCostType != SCR_EArsenalSupplyCostType.DEFAULT && m_mArsenalAlternativeCostData != null)
+		if (m_mArsenalAlternativeCostData != null)
 		{
-			SCR_ArsenalAlternativeCostData alternativeCost; 
+			SCR_ArsenalAlternativeData alternativeCost; 
 			if (m_mArsenalAlternativeCostData.Find(supplyCostType, alternativeCost))
-				return alternativeCost.GetRefundAmount() + additionalCost;
+				return alternativeCost.GetRefundAmount(GetRefundAmountValue(), item) + additionalCost;
 		}
 		
 		return GetRefundAmountValue() + additionalCost;
@@ -208,11 +208,11 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 			}
 		}
 
-		if (supplyCostType != SCR_EArsenalSupplyCostType.DEFAULT && m_mArsenalAlternativeCostData != null)
+		if (m_mArsenalAlternativeCostData != null)
 		{
-			SCR_ArsenalAlternativeCostData alternativeCost; 
+			SCR_ArsenalAlternativeData alternativeCost; 
 			if (m_mArsenalAlternativeCostData.Find(supplyCostType, alternativeCost))
-				return alternativeCost.m_iSupplyCost + additionalCost;
+				return alternativeCost.GetSupplyCost(m_iSupplyCost) + additionalCost;
 		}
 
 		return m_iSupplyCost + additionalCost;
@@ -234,14 +234,10 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 		//~ Save alternative costs in map and delete the array
 		if (!m_aArsenalAlternativeCostData.IsEmpty())
 		{
-			m_mArsenalAlternativeCostData = new map<SCR_EArsenalSupplyCostType, ref SCR_ArsenalAlternativeCostData>();
+			m_mArsenalAlternativeCostData = new map<SCR_EArsenalSupplyCostType, ref SCR_ArsenalAlternativeData>();
 		
-			foreach (SCR_ArsenalAlternativeCostData data : m_aArsenalAlternativeCostData)
+			foreach (SCR_ArsenalAlternativeData data : m_aArsenalAlternativeCostData)
 			{
-				//~ Ignore default as that is m_iSupplyCost defined in the arsenal item
-				if (data.m_eAlternativeCostType == SCR_EArsenalSupplyCostType.DEFAULT)
-					continue;
-				
 				m_mArsenalAlternativeCostData.Insert(data.m_eAlternativeCostType, data);
 			}
 			
@@ -394,34 +390,5 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 				}
 			}
 		}
-	}
-}
-
-[BaseContainerProps(), BaseContainerCustomEnumWithValue(SCR_EArsenalSupplyCostType, "m_eAlternativeCostType", "m_iSupplyCost", "1", "%1 - Supply cost: %2")]
-class SCR_ArsenalAlternativeCostData
-{
-	[Attribute(SCR_EArsenalSupplyCostType.GADGET_ARSENAL.ToString(), desc: "Cost type if system searches for the cost. Do not use DEFAULT as this will be ignored", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(SCR_EArsenalSupplyCostType))]
-	SCR_EArsenalSupplyCostType m_eAlternativeCostType;
-	
-	[Attribute("1", desc: "Alternative supply cost", params: "0 inf")]
-	int m_iSupplyCost;
-	
-	//------------------------------------------------------------------------------------------------
-	int GetRefundAmount()
-	{
-		return m_iSupplyCost;
-	}
-}
-
-[BaseContainerProps(), BaseContainerCustomEnumWithValue(SCR_EArsenalSupplyCostType, "m_eAlternativeCostType", "m_iSupplyCost", "1", "%1 - Supply cost: %2")]
-class SCR_ArsenalAlternativeCostSellAmountData : SCR_ArsenalAlternativeCostData
-{
-	[Attribute("1", desc: "Alternative supply refund amount. Supply refundmultiplier is still added to it", params: "0 inf")]
-	protected int m_iSupplyRefundAmount;
-	
-	//------------------------------------------------------------------------------------------------
-	override int GetRefundAmount()
-	{
-		return m_iSupplyRefundAmount;
 	}
 }

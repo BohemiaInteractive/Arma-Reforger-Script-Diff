@@ -162,7 +162,15 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 	{
 		if (!GetGame().IsDev())
 			return;
-		
+
+		CheatRank_S(demote);
+	}
+
+	void CheatRank_S(bool demote)
+	{
+		if (!Replication.IsServer())
+			return;
+
 		SCR_PlayerController owner = SCR_PlayerController.Cast(GetOwner());
 		if (!owner)
 			return;
@@ -209,7 +217,7 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 	protected void RpcAsk_CheatXP(int xpChange)
 	{
 		if (!GetGame().IsDev())
-				return;
+			return;
 			
 		SCR_PlayerController owner = SCR_PlayerController.Cast(GetOwner());
 		if (!owner)

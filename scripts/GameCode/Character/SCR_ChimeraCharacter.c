@@ -83,6 +83,81 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Fetches group to which this character belongs. If character is not in a group but it is controlled by a player, then player group will be fetched
+	SCR_AIGroup GetCharacterGroup()
+	{
+		AIControlComponent control = GetAIControlComponent();
+		if (!control)
+			return null;
+
+		AIAgent agent = control.GetControlAIAgent();
+		if (agent)
+		{
+			SCR_AIGroup group = SCR_AIGroup.Cast(agent.GetParentGroup());
+			if (group)
+				return group;
+		}
+
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(this);
+		if (playerId < 1)
+			return null;
+
+		SCR_GroupsManagerComponent groupMgr = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupMgr)
+			return null;
+
+		return groupMgr.GetPlayerGroup(playerId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks if group to whcih this character is assigned has provided role
+	//! \param[in] roles
+	//! \return true if group role matches at least one of the provided roles, otherwise false
+	bool HasRole(notnull array<SCR_EGroupRole> roles)
+	{
+		SCR_AIGroup characterGroup = GetCharacterGroup();
+		if (!characterGroup)
+			return false;
+
+		return roles.Contains(characterGroup.GetGroupRole());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks if this character has any of the provided labels
+	//! \param[in] labels
+	//! \param[in] mustHaveAll true if all provided labels must be present on this character
+	//! \return true if rquired label/s are present, otherwise false
+	bool HasLabel(notnull array<EEditableEntityLabel> labels, bool mustHaveAll = false)
+	{
+		int requiredMatches = labels.Count();
+		array<EEditableEntityLabel> characterLabels = {};
+		GetCharacterLabels(characterLabels);
+		foreach (EEditableEntityLabel label : labels)
+		{
+			if (!characterLabels.Contains(label))
+				continue;
+
+			requiredMatches--;
+			if (!mustHaveAll || requiredMatches <= 0)
+				return true;
+		}
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Fetches all editable entity labels present used by this character
+	//! \param[out] labels array which is not cleared but all entries are unique
+	void GetCharacterLabels(notnull out array<EEditableEntityLabel> labels)
+	{
+		SCR_EditableCharacterComponent editableCharacterComp = SCR_EditableCharacterComponent.Cast(FindComponent(SCR_EditableCharacterComponent));
+		if (!editableCharacterComp)
+			return;
+
+		editableCharacterComp.GetAllCharacterLabels(labels);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Using RPC here because it is only for sound, so we don't care when weapon is streamed in.
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void RPC_SetIllumination_BC(bool state, RplId rplId)
@@ -385,7 +460,7 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 		if (!signalsMgr)
 			return;
 
-		int contactSignalId = signalsMgr.AddOrFindMPSignal(SIGNAL_NAME_SPECIAL_CONTACT, 1, 1);
+		int contactSignalId = signalsMgr.AddOrFindMPSignal(SIGNAL_NAME_SPECIAL_CONTACT, 0, 1);
 		if (contactSignalId < 0 || data.GetContactType() < 1)
 			return;
 
@@ -469,8 +544,6 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 
 		SCR_SpecialCollisionHandlerComponent specialCollisionComponent;
 		SCR_SpecialCollisionHandlerComponentClass data;
-		if (!data)
-			return;
 
 		if (oldContact)
 		{
@@ -509,7 +582,8 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 	//! This system mostly handles finding the strongest acting slow and restricting the character to that amount.
 	//! \param[in] source Origin of the slowing force
 	//! \param[in] limit Percentage amount of base speed the character maxes out to, if set to 1 will remove source automatically
-	void SetSpeedLimit(Managed source, float limit)
+	//! \param[in] instant determines if character max speed is instantly lowered to this value if it is higher
+	void SetSpeedLimit(Managed source, float limit, bool instant = false)
 	{
 		m_mSpeedReferences.Set(source, limit);
 
@@ -526,7 +600,7 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 
 			tempLimit = m_mSpeedReferences.GetElement(idx);
 
-			if (m_mSpeedReferences.GetElement(idx) == 1)
+			if (tempLimit == 1)
 			{
 				m_mSpeedReferences.RemoveElement(idx);
 				continue;
@@ -541,6 +615,9 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 		World world = GetGame().GetWorld();
 		SCR_CharacterSlowdownEasingSystem characterSlowdownSystem = SCR_CharacterSlowdownEasingSystem.Cast(world.FindSystem(SCR_CharacterSlowdownEasingSystem));
 		
+		if (instant && m_fCurrentSpeed > limit)
+			OverrideSpeed(limit);
+
 		if (m_fTargetSpeed < m_fCurrentSpeed)	// speed decrease is more gradual but speed increase is instant
 		{
 			if (characterSlowdownSystem)
@@ -551,7 +628,8 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 			if (characterSlowdownSystem)
 				characterSlowdownSystem.Unregister(this);	// SlowdownSystem checks if it contains this class first
 															// we unregister for extra insurance nothing goes wrong
-			OverrideSpeed(speedLimit);
+			if (m_fCurrentSpeed != speedLimit)
+				OverrideSpeed(speedLimit);
 		}
 	}
 

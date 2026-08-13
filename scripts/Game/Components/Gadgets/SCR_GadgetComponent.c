@@ -68,6 +68,9 @@ class SCR_GadgetComponent : ScriptGameComponent
 	[Attribute("1", desc: "Can this item be held in hand", category: "Gadget")]
 	protected bool m_bCanBeHeld;
 
+	[Attribute("0.6", UIWidgets.Auto, desc: "How much cloth offset is affecting the gadget when attached to clothes\n[s]", category: "Gadget")]
+	protected float m_fClothesOffsetStrength;
+	
 	bool m_bFocused;
 	protected bool m_bActivated = false;					// current state if the gadget can be toggled on	
 	protected EGadgetMode m_iMode = EGadgetMode.ON_GROUND;	// curent gadget mode
@@ -136,19 +139,45 @@ class SCR_GadgetComponent : ScriptGameComponent
 	//! \param[in] charOwner
 	protected void ModeSwitch(EGadgetMode mode, IEntity charOwner)
 	{
-		UpdateVisibility(mode);
-		
-		// if removing from inventory
+		// Set character owner before UpdateVisibility so it can use it for loadout queries.
+		// GetRootParent() would return a vehicle if the character is seated, so we rely on
+		// the explicitly passed owner reference instead.
 		if (mode == EGadgetMode.ON_GROUND)
 			m_CharacterOwner = null;
 		else
 			m_CharacterOwner = ChimeraCharacter.Cast(charOwner);
+
+		UpdateVisibility(mode);
+
+		// Subscribe to loadout changes so the slot offset updates when clothes are worn/removed while gadget is slotted
+		if (charOwner && mode == EGadgetMode.IN_SLOT && IsVisibleEquipped())
+		{
+			BaseLoadoutManagerComponent loadoutManager = BaseLoadoutManagerComponent.Cast(charOwner.FindComponent(BaseLoadoutManagerComponent));
+			if (loadoutManager)
+				loadoutManager.m_OnLoadoutChangedInvoker.Insert(OnLoadoutChanged);
+		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Clear gadget mode
 	//! \param[in] mode is the mode being cleared
-	protected void ModeClear(EGadgetMode mode);
+	protected void ModeClear(EGadgetMode mode)
+	{
+		// Unsubscribe from loadout changes when leaving the slot
+		if (m_CharacterOwner && mode == EGadgetMode.IN_SLOT && IsVisibleEquipped())
+		{
+			BaseLoadoutManagerComponent loadoutManager = BaseLoadoutManagerComponent.Cast(m_CharacterOwner.FindComponent(BaseLoadoutManagerComponent));
+			if (loadoutManager)
+				loadoutManager.m_OnLoadoutChangedInvoker.Remove(OnLoadoutChanged);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Loadout manager callback - re-applies slot position offset when clothes are worn or removed
+	protected void OnLoadoutChanged(notnull BaseLoadoutManagerComponent loadoutManager)
+	{
+		UpdateVisibility(EGadgetMode.IN_SLOT);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Method called when slot to which item is attached to changed its occlusion state
@@ -193,7 +222,21 @@ class SCR_GadgetComponent : ScriptGameComponent
 					vector matLS[4];
 					animAttr.GetAdditiveTransformLS(matLS);
 					matLS[3] = matLS[3] + m_vEquipmentSlotOffset;
-					slot.SetAdditiveTransformLS(matLS); 
+
+					// Push the gadget forward in slot-local space to match clothing thickness,
+					// so it sits flush on the surface of any equipped jacket/vest rather than floating.
+					// Use m_CharacterOwner instead of GetRootParent() — root parent may be a vehicle
+					// when the character is seated, which has no BaseLoadoutManagerComponent.
+					if (m_CharacterOwner)
+					{
+						BaseLoadoutManagerComponent loadoutManager = BaseLoadoutManagerComponent.Cast(m_CharacterOwner.FindComponent(BaseLoadoutManagerComponent));
+						if (loadoutManager)
+						{
+							matLS[3][1] = matLS[3][1] + (loadoutManager.GetClothesOffsetFront() * m_fClothesOffsetStrength);
+						}
+					}
+
+					slot.SetAdditiveTransformLS(matLS);
 				}
 				
 				EquipmentStorageSlot equipSlot = EquipmentStorageSlot.Cast(slot);

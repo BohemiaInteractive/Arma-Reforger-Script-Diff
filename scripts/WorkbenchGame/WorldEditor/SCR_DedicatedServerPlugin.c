@@ -150,8 +150,12 @@ class SCR_DedicatedServerPlugin : WorldEditorPlugin
 		if (!m_bRunPeers)
 			return;
 
-		int profileIndex;
+		StartClients(gproj, addonsDir, addonIDs);
+	}
 
+	protected void StartClients(string gproj, string addonsDir, string addonIDs)
+	{
+		int profileIndex;
 		foreach (PeerConfig conf : m_aPeersConfig)
 		{
 			if (!conf.Enabled)
@@ -228,6 +232,17 @@ class SCR_DedicatedServerPlugin : WorldEditorPlugin
 		// Close the server when returning from play mode
 		if (m_ServerHandle)
 			Workbench.KillProcess(m_ServerHandle);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[ButtonAttribute("Start only clients", false)]
+	protected bool ButtonClients()
+	{
+		string gproj = Workbench.GetCurrentGameProjectFile();
+		string addonsDir = GetAddonsDirCLI();
+		string addonIDs = GetAddonsCLI();
+		StartClients(gproj, addonsDir, addonIDs);
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------

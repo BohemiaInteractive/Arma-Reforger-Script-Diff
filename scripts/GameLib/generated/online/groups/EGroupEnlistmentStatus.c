@@ -17,6 +17,8 @@ enum EGroupEnlistmentStatus
 	APPROVAL,
 	//! Any application to join the group is automatically rejected.
 	FREEZE,
+	//! Only users with an invitation from a group member can join.
+	INVITATION_ONLY,
 }
 
 /*!

@@ -27,13 +27,17 @@ class SCR_Faction : ScriptedFaction
 
 	[Attribute(defvalue: "1", desc: "Will players in the faction be able to capture new bases")]
 	protected bool m_bCanCaptureBases;
+
+	[Attribute(defvalue: "1", desc: "Will AI mark targets they have identified on the map")]
+	protected bool m_bCanAIMarkTargets;
+
 	[Attribute(desc: "This faction will punish people who lost their rank by removing them from the faction\nIf the player gains rank they can (re)join FIA specifically")]
 	protected bool m_bExileRenegadePunishment;
 	
 	[Attribute("1", desc: "Is this a military faction? This affects AI functionality related to combat.")]
 	protected bool m_bIsMilitary;
 	
-	[Attribute("true", desc: "This faction can receive tasks.")]
+	[Attribute("1", desc: "This faction can receive tasks.")]
 	protected bool m_bTasksEnabled;
 	
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Flag icon of this particular faction.", params: "edds")]
@@ -47,6 +51,9 @@ class SCR_Faction : ScriptedFaction
 	
 	[Attribute(defvalue: EOverrideWelcomeScreenFactionDisplay.NONE.ToString(), desc: "An extra override if the spawn menu will show the faction in the welcome screen regardless of it being playable", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EOverrideWelcomeScreenFactionDisplay))]
 	protected EOverrideWelcomeScreenFactionDisplay m_eShowInWelcomeScreenOverride;
+
+	[Attribute(defvalue: SCR_EOverrideTeamkillKickPenalty.DEFAULT.ToString(), desc: "Extra overrides that can prevent teamkills from leading to server kicks.", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(SCR_EOverrideTeamkillKickPenalty))]
+	protected SCR_EOverrideTeamkillKickPenalty m_eTeamKillKickPenaltyOverride;
 	
 	[Attribute("1", desc: "If this is false it would mean that every AI will be hostile towards their own faction members and essentially allow for Deathmatch. Use with caution, only checked on init, you can still set the faction hostile towards itself in runtime. This essentially makes sure it adds itself to FriendlyFactionsIds.")]
 	protected bool m_bFriendlyToSelf;
@@ -336,7 +343,13 @@ class SCR_Faction : ScriptedFaction
 	{
 		return m_bIsPlayable;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	bool CanAIMarkTargets()
+	{
+		return m_bCanAIMarkTargets;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	bool CanCaptureBases()
 	{
@@ -348,18 +361,25 @@ class SCR_Faction : ScriptedFaction
 	{
 		return m_bIsCommanderAvailable;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	bool IsRenegadePunishedExile()
 	{
 		return m_bExileRenegadePunishment;
 	}
+
 	//------------------------------------------------------------------------------------------------
-	//! If faction should be shown in the welcome screen if it is not playable
-	//! \return True if it should show even if not playable otherwise hide
+	//! An override that determines if faction should be shown in the welcome screen.
 	EOverrideWelcomeScreenFactionDisplay ShowInWelcomeScreenOverride()
 	{
 		return m_eShowInWelcomeScreenOverride;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Extra overrides that can prevent teamkills from leading to server kicks.
+	SCR_EOverrideTeamkillKickPenalty TeamkillKickPenaltyOverride()
+	{
+		return m_eTeamKillKickPenaltyOverride;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -908,6 +928,19 @@ class SCR_Faction : ScriptedFaction
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Determines if Faction is available for another player
+	bool IsAvailableForPlayer(int playerCount = -1)
+	{
+		if (m_iPlayerLimit == -1)
+			return true;
+		
+		if (playerCount == -1)
+			playerCount = GetPlayerCount();
+		
+		return m_iPlayerLimit > playerCount;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	int GetPlayerLimit()
 	{
 		return m_iPlayerLimit;
@@ -917,8 +950,9 @@ class SCR_Faction : ScriptedFaction
 	void SetPlayerLimit(int playerLimit)
 	{
 		m_iPlayerLimit = playerLimit;
+		SetIsPlayable(playerLimit != 0);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	array<FactionKey> GetDefaultFriendlyFactions()
 	{
@@ -957,13 +991,12 @@ class SCR_Faction : ScriptedFaction
 	{
 		bool isTasksEnabled;
 		reader.ReadBool(isTasksEnabled);
-
 		SetTasksEnabled(isTasksEnabled);
 		
 		int playerLimit;
 		reader.ReadInt(playerLimit);
-		
 		SetPlayerLimit(playerLimit);
+		
 		return true;
 	}
 }

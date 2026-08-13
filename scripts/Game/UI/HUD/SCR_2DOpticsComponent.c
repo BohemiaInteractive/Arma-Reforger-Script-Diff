@@ -326,6 +326,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 
 	const float NEAR_PLANE_DEFAULT = 0.05;
 	const float NEAR_PLANE_ZOOMED = 0.05;
+	const float FAR_OBSERVER_FALLBACK_RANGE = 500.0;
 
 	protected float m_fCurrentReticleOffsetY;
 	protected float m_fCurrentCameraPitch;
@@ -417,6 +418,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 
 	protected bool m_bIsOpticsHidden;
 	protected bool m_bIsIlluminationOn;
+	protected bool m_bFarObserverActive;
 
 	// Owner and character references
 	protected ChimeraCharacter m_ParentCharacter;
@@ -559,6 +561,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		super.OnSightADSDeactivated();
 
 		HandleSightDeactivation();
+		ClearFarObserver();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -574,6 +577,81 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		m_fCurrentReticleOffsetY = Math.Lerp(m_fCurrentReticleOffsetY, reticleTarget, interp);
 		float pitchTarget = GetCameraPitchTarget();
 		m_fCurrentCameraPitch = Math.Lerp(m_fCurrentCameraPitch, pitchTarget, interp);
+
+		UpdateFarObserver(SCR_PlayerController.GetLocalControlledEntity(), timeSlice);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Keeps distant objects along this optic's sight line simulated while the local player is looking through it
+	void UpdateFarObserver(IEntity observerEntity, float timeSlice)
+	{
+		if (!observerEntity)
+		{
+			ClearFarObserver();
+			return;
+		}
+
+		float range = GetFarObserverRange();
+		if (range <= 0)
+		{
+			ClearFarObserver();
+			return;
+		}
+
+		IEntity owner = GetOwner();
+		World world = owner.GetWorld();
+		ObserversSystem observers = ObserversSystem.Cast(world.FindSystem(ObserversSystem));
+		if (!observers)
+		{
+			ClearFarObserver();
+			return;
+		}
+
+		vector eyeLocalTransform[4];
+		IEntity eyeEntity = GetCameraLocalTransform(eyeLocalTransform);
+		if (!eyeEntity)
+			eyeEntity = owner;
+
+		vector eyeTransform[4];
+		eyeEntity.GetWorldTransform(eyeTransform);
+		Math3D.MatrixMultiply4(eyeTransform, eyeLocalTransform, eyeTransform);
+
+		vector direction = eyeTransform[2].Normalized();
+		observers.AddFarObserver(observerEntity, owner, eyeTransform[3], direction, range, timeSlice);
+		m_bFarObserverActive = true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void ClearFarObserver()
+	{
+		if (!m_bFarObserverActive)
+			return;
+
+		IEntity owner = GetOwner();
+		World world = owner.GetWorld();
+		ObserversSystem observers = ObserversSystem.Cast(world.FindSystem(ObserversSystem));
+		if (observers)
+			observers.DelFarObserver();
+
+		m_bFarObserverActive = false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected float GetFarObserverRange()
+	{
+		float range = GetCurrentSightsRange()[1];
+		if (range > 0)
+			return range;
+
+		return FAR_OBSERVER_FALLBACK_RANGE;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{
+		ClearFarObserver();
+
+		super.OnDelete(owner);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -188,7 +188,7 @@ class SCR_ToolboxComponent : SCR_SelectionWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool SetCurrentItem(int i, bool playSound = false, bool animate = false)
+	override bool SetCurrentItem(int i, bool playSound = false, bool animate = false, bool invokeOnChanged = true)
 	{
 		int oldIndex = m_iSelectedItem;
 		int itemsCount = m_aSelectionElements.Count();

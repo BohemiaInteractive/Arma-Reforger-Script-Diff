@@ -26,6 +26,8 @@ class CinematicEntity: GenericEntity
 	proto external void PlayCameraAnimationExt(ResourceName animFile, string boneName, float startTimeOffset, vector upVec, vector asideVec);
 	proto external void StopCameraAnimation();
 	proto external void SetOnFinishedCallback(func fn);
+	proto external void SetLooping(bool enabled);
+	proto external bool IsLooping();
 }
 
 /*!

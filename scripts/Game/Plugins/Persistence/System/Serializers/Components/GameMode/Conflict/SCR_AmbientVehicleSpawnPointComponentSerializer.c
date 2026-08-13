@@ -1,5 +1,8 @@
 class SCR_AmbientVehicleSpawnPointComponentSerializer : ScriptedComponentSerializer
 {
+	[Attribute("120.0", desc: "Seconds of lifetime added to a vehicle after loading a save, to give players a chance to connect before it despawns.", params: "0 3600 1")]
+	protected float m_fDespawnGracePeriod;
+
 	//------------------------------------------------------------------------------------------------
 	override static typename GetTargetType()
 	{
@@ -14,7 +17,14 @@ class SCR_AmbientVehicleSpawnPointComponentSerializer : ScriptedComponentSeriali
 		const WorldTimestamp currentTime = world.GetServerTimestamp();
 
 		const bool depleted = ambientVehicle.GetIsDepleted();
-		const UUID vehicleId = GetSystem().GetId(ambientVehicle.GetSpawnedVehicle());
+
+		const IEntity vehicle = ambientVehicle.GetSpawnedVehicle();
+		const bool spawned = vehicle != null;
+		UUID vehicleId;
+		if (spawned)
+			vehicleId = GetSystem().GetId(vehicle);
+		else
+			vehicleId = ambientVehicle.GetDespawnedDataId();
 
 		const WorldTimestamp despawnTimestamp = ambientVehicle.GetDespawnTimestamp();
 		float despawnTime = 0;
@@ -34,8 +44,9 @@ class SCR_AmbientVehicleSpawnPointComponentSerializer : ScriptedComponentSeriali
 			return ESerializeResult.DEFAULT;
 		}
 
-		context.WriteValue("version", 1);
+		context.WriteValue("version", 2);
 		context.WriteDefault(depleted, false);
+		context.WriteDefault(spawned, false);
 		context.WriteDefault(vehicleId, UUID.NULL_UUID);
 		context.WriteDefault(despawnTime, 0.0);
 		context.WriteDefault(respawnTime, 0.0);
@@ -56,17 +67,28 @@ class SCR_AmbientVehicleSpawnPointComponentSerializer : ScriptedComponentSeriali
 		if (context.Read(depleted))
 			ambientVehicle.SetIsDepleted(depleted);
 
+		bool spawned = true;
+		if (version >= 2)
+			context.ReadDefault(spawned, false);
+
 		UUID vehicleId;
 		if (context.Read(vehicleId) && !vehicleId.IsNull())
 		{
-			Tuple1<SCR_AmbientVehicleSpawnPointComponent> ctx(ambientVehicle);
-			PersistenceWhenAvailableTask task(OnVehicleAvailable, ctx);
-			GetSystem().WhenAvailable(vehicleId, task);
+			if (spawned)
+			{
+				Tuple1<SCR_AmbientVehicleSpawnPointComponent> ctx(ambientVehicle);
+				PersistenceWhenAvailableTask task(OnVehicleAvailable, ctx);
+				GetSystem().WhenAvailable(vehicleId, task);
+			}
+			else
+			{
+				ambientVehicle.SetDespawnedDataId(vehicleId);
+			}
 		}
 
 		float despawnTime;
-		if (context.Read(despawnTime))
-			ambientVehicle.SetDespawnTimestamp(currentTime.PlusSeconds(despawnTime));
+		context.Read(despawnTime);
+		ambientVehicle.SetDespawnTimestamp(currentTime.PlusSeconds(despawnTime + Math.Max(m_fDespawnGracePeriod, 0)));
 
 		float respawnTime;
 		if (context.Read(respawnTime))

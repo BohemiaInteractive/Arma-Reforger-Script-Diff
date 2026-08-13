@@ -178,7 +178,7 @@ class SCR_MapUIElement : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------
-	protected void SetImage(string image)
+	protected void SetImage(string image, string imageset = "")
 	{
 	}
 

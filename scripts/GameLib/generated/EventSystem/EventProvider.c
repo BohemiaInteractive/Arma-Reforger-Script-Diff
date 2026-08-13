@@ -23,7 +23,7 @@ Internally, connections are managed through weak references. However, it is good
 receivers upon destruction to avoid orphaned connections and potential memory issues.
 
 \see EventAttribute
-\see \ref Page_EventSystem
+\see Page_EventSystem
 */
 sealed class EventProvider: ScriptAndConfig
 {
@@ -46,6 +46,13 @@ sealed class EventProvider: ScriptAndConfig
 	*/
 	static proto bool ConnectEventFiltered(func eventSender, func eventReceiver, void filter);
 	/*!
+	Connects receiver callback to provider event
+	\param eventSender Event method on provider
+	\param eventReceiver Callback method on receiver
+	\param filter string, used to compare with the event's first argument
+	*/
+	static proto bool ConnectEventStringFiltered(func eventSender, func eventReceiver, string filter);
+	/*!
 	Disconnect single event connection
 	\param eventSender Event method on provider
 	\param eventReceiver Callback method on receiver
@@ -58,6 +65,13 @@ sealed class EventProvider: ScriptAndConfig
 	\param filter Integer or Managed
 	*/
 	static proto bool DisconnectEventFiltered(func eventSender, func eventReceiver, void filter);
+	/*!
+	Disconnect single event connection. Only event connection with same filter value is removed.
+	\param eventSender Event method on provider
+	\param eventReceiver Callback method on receiver
+	\param filter string
+	*/
+	static proto bool DisconnectEventStringFiltered(func eventSender, func eventReceiver, string filter);
 	/*!
 	Disconnect all connections between provider and receiver
 	*/

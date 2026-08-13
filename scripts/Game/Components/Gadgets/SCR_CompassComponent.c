@@ -173,7 +173,7 @@ class SCR_CompassComponent : SCR_GadgetComponent
 			
 		// Initial set
 		vector angles = GetOwner().GetYawPitchRoll();
-		m_fNeedleAngle = -angles[0] + Math.RandomInt(-10, 10);
+		m_fNeedleAngle = -angles[0] + (Math.RandomInt(0, 20) - 10);
 		
 		if (m_SignalManager)
 			m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalNeedle, m_fNeedleAngle);

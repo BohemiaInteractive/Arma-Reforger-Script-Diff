@@ -16,14 +16,13 @@ class AIWorldClass: GenericEntityClass
 class AIWorld: GenericEntity
 {
 	//AIBudget
-	proto external int GetCurrentAmountOfLimitedAIs();
-	proto external int GetAILimit();
-	proto external void SetAILimit(int max);
-	proto external bool CanLimitedAIBeAdded();
 	proto external int GetCurrentNumOfActiveAIs();
 	proto external int GetLimitOfActiveAIs();
 	proto external void SetLimitOfActiveAIs(int max);
 	proto external bool CanAIBeActivated();
+	// the per-tier soft cap for the queried group's importance.
+	proto external bool CanActivateGroup(AIGroup group);
+	proto external int GetActiveGroupIntendedCount();
 	proto external void GetAIAgents(out notnull array<AIAgent> agents);
 	proto external void RequestBroadcastDangerEvent(AIDangerEvent pEvent);
 	// get formation definitions

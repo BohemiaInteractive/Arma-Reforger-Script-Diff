@@ -4,7 +4,7 @@ Do not modify, this script is generated
 ===========================================
 */
 
-enum KickCauseGroup
+enum KickCauseGroup: RplKickCauseGroup
 {
 	//! Kick reason comes from BattlEyeInitError.
 	BATTLEYE_INIT,

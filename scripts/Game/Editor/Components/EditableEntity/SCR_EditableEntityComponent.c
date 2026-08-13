@@ -2388,7 +2388,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 
 class SCR_EditableEntityAuthor
 {
-	string m_sAuthorUID; // Author's Player UUID
+	UUID m_sAuthorUID; // Author's Player UUID
 	string m_sAuthorPlatformID; // Author's Platform ID
 	PlatformKind m_ePlatform;
 	int m_iAuthorID; // Author's Player ID (PlayerManager PlayerID), if the value is -1 it means it was loaded from a save.

@@ -66,11 +66,11 @@ class SCR_CursorEditorUIComponent : SCR_BaseEditorUIComponent
 			mouseY = workspace.DPIScale(mouseY);
 		}
 
-		m_InputManager.SetCursorPosition(mouseX, mouseY);
+		m_InputManager.GetMouseDeviceHandler().SetCursorPosition(mouseX, mouseY);
 		
 		m_iCursorPosX = mouseX;
 		m_iCursorPosY = mouseY;
-		m_vCursorPos = Vector(m_wWorkspace.DPIUnscale(m_iCursorPosX), m_wWorkspace.DPIUnscale(m_iCursorPosY), 0);
+		m_vCursorPos = { m_wWorkspace.DPIUnscale(m_iCursorPosX), m_wWorkspace.DPIUnscale(m_iCursorPosY), 0 };
 		m_iFrameUpdate = m_iFrameIndex + 1;
 	}
 
@@ -89,7 +89,7 @@ class SCR_CursorEditorUIComponent : SCR_BaseEditorUIComponent
 		if (m_InputManager && m_InputManager.IsUsingMouseAndKeyboard())
 		{
 			WidgetManager.GetMousePos(m_iCursorPosX, m_iCursorPosY);
-			m_vCursorPos = Vector(m_wWorkspace.DPIUnscale(m_iCursorPosX), m_wWorkspace.DPIUnscale(m_iCursorPosY), 0);
+			m_vCursorPos = { m_wWorkspace.DPIUnscale(m_iCursorPosX), m_wWorkspace.DPIUnscale(m_iCursorPosY), 0 };
 		}
 		else
 		{
@@ -98,7 +98,7 @@ class SCR_CursorEditorUIComponent : SCR_BaseEditorUIComponent
 			if (m_CurrentCursor && m_CurrentCursor.GetWidget())
 				m_CurrentCursor.GetWidget().GetScreenPos(cursorX, cursorY);
 
-			m_vCursorPos = Vector(m_wWorkspace.DPIUnscale(cursorX), m_wWorkspace.DPIUnscale(cursorY), 0) + m_vGamepadCursorSize;
+			m_vCursorPos = { m_wWorkspace.DPIUnscale(cursorX), m_wWorkspace.DPIUnscale(cursorY), 0 } + m_vGamepadCursorSize;
 			m_iCursorPosX = cursorX;
 			m_iCursorPosY = cursorY;
 		}

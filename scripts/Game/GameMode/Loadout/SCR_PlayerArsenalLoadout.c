@@ -6,6 +6,34 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 	static const string ARSENALLOADOUT_FACTION_KEY = "faction";
 	static ref array<typename> ARSENALLOADOUT_COMPONENTS_TO_CHECK;
 
+	[Attribute("", UIWidgets.ResourceNamePicker, "Preview image used when the character has camouflage applied", params: "edds")]
+	ResourceName m_sLoadoutImageCamo;
+
+	//------------------------------------------------------------------------------------------------
+	override ResourceName GetLoadoutImageResource()
+	{
+		if (m_sLoadoutImageCamo.IsEmpty())
+			return super.GetLoadoutImageResource();
+
+		const int playerId = SCR_PlayerController.GetLocalPlayerId();
+		if (playerId <= 0)
+			return super.GetLoadoutImageResource();
+
+		const SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager)
+			return super.GetLoadoutImageResource();
+
+		const SCR_AIGroup group = groupsManager.GetPlayerGroup(playerId);
+		if (!group)
+			return super.GetLoadoutImageResource();
+
+		const SCR_EGroupRole groupRole = group.GetGroupRole();
+		if (groupRole == SCR_EGroupRole.SF_ASSAULT || groupRole == SCR_EGroupRole.SF_RECON)
+			return m_sLoadoutImageCamo;
+
+		return super.GetLoadoutImageResource();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override bool IsLoadoutAvailable(int playerId)
 	{
@@ -122,6 +150,50 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 		// Deserialisation failed, delete saved arsenal loadout
 		if (!loadSuccess)
 			arsenalManager.SetPlayerArsenalLoadout(playerId, null, null, SCR_EArsenalSupplyCostType.RESPAWN_COST);
+
+		if (ShouldApplyCamouflage(playerId))
+			ApplyCamouflageToCharacter(playerEntity);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns true if camouflage should be applied for the given player - either because this
+	//! loadout is always-camo (CO:K) or because the player is in an SF group (Campaign/HQC).
+	bool ShouldApplyCamouflage(int playerId)
+	{
+		const SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager)
+			return false;
+
+		const SCR_AIGroup group = groupsManager.GetPlayerGroup(playerId);
+		if (!group)
+			return false;
+
+		const SCR_EGroupRole groupRole = group.GetGroupRole();
+		return groupRole == SCR_EGroupRole.SF_ASSAULT || groupRole == SCR_EGroupRole.SF_RECON;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Applies a camo head to the given character entity using its faction's visual identity data.
+	void ApplyCamouflageToCharacter(IEntity entity)
+	{
+		CharacterIdentityComponent identityComp = CharacterIdentityComponent.Cast(entity.FindComponent(CharacterIdentityComponent));
+		if (!identityComp)
+			return;
+
+		Identity identity = identityComp.GetIdentity();
+		if (!identity)
+			return;
+
+		VisualIdentity visualIdentity = identity.GetVisualIdentity();
+		if (!visualIdentity)
+			return;
+
+		ResourceName camoHead = visualIdentity.GetHeadCamo(0);
+		if (camoHead.IsEmpty())
+			return;
+
+		visualIdentity.SetHead(camoHead);
+		identityComp.CommitChanges();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -276,6 +348,16 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 	//! Is written and read back after all components and storage slots are handled so it allows interacting with otherwise finished char.
 	protected static bool ReadCharacterDataLoadoutString(IEntity owner, SaveContext context)
 	{
+		SCR_EditableCharacterComponent editableCharacterComp = SCR_EditableCharacterComponent.Cast(owner.FindComponent(SCR_EditableCharacterComponent));
+		if (editableCharacterComp)
+		{
+			array<EEditableEntityLabel> loadoutLabels = {};
+			editableCharacterComp.GetAllCharacterLabels(loadoutLabels);
+			// save character labels to preserve things like character roles/class
+			if (!context.Write(loadoutLabels))
+				return false;
+		}
+
 		// By default just the chars active weapon is stored as additional meta data
 		int activeWeaponIdx = -1;
 		const BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast(owner.FindComponent(BaseWeaponManagerComponent));
@@ -285,6 +367,7 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 			if (currentSlot)
 				activeWeaponIdx = currentSlot.GetWeaponSlotIndex();
 		}
+
 		return context.WriteDefault(activeWeaponIdx, -1);
 	}
 
@@ -450,6 +533,16 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 	//------------------------------------------------------------------------------------------------
 	protected static bool ApplyCharacterDataLoadoutString(IEntity owner, LoadContext context)
 	{
+		SCR_EditableCharacterComponent editableCharacterComp = SCR_EditableCharacterComponent.Cast(owner.FindComponent(SCR_EditableCharacterComponent));
+		if (editableCharacterComp)
+		{
+			array<EEditableEntityLabel> loadoutLabels = {};
+			if (!context.Read(loadoutLabels))
+				return false;
+
+			editableCharacterComp.SetCustomCharacterLabels_S(loadoutLabels);
+		}
+
 		int activeWeaponIdx;
 		context.ReadDefault(activeWeaponIdx, -1);
 		const BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast(owner.FindComponent(BaseWeaponManagerComponent));

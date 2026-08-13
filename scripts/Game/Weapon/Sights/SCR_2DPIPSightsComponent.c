@@ -523,11 +523,11 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		parent = GetCameraLocalTransform(mat);
 
 		pipCamera.SetCameraIndex(cameraIndex);
+		pipCamera.SetLensFlareSet(CameraLensFlareSetType.FirstPerson, string.Empty);
 		pipCamera.SetVerticalFOV(fov);
 		pipCamera.SetNearPlane(nearPlane);
 		pipCamera.SetFarPlane(farPlane);
 		pipCamera.ApplyProps(cameraIndex);
-		baseWorld.SetCameraLensFlareSet(cameraIndex, CameraLensFlareSetType.FirstPerson, string.Empty);
 
 		// Set camera to hierarchy
 		parent.AddChild(pipCamera, -1, EAddChildFlags.AUTO_TRANSFORM);

@@ -122,13 +122,17 @@ class MeasureTool : WorldEditorTool
 		//Cancel measuring
 		if (key == KeyCode.KC_ESCAPE && isAutoRepeat == false)
 		{
+			if(m_iLinePointsCount > 0)
+				m_Polyline = Shape.CreateLines(ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP, m_aLinePoints, m_iLinePointsCount + 1);
+			else
+				m_Polyline = null;
+			
 			m_Text.SetText("");
 			m_aSegmentLengths.Clear();
 			m_fDistancePrevious = 0.0;
 			m_fDistanceCurrent = 0.0;
 			m_vPrevious3DPoint = "0 0 0";
 			m_iLinePointsCount = 0;
-			m_Polyline = Shape.CreateLines(ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP, m_aLinePoints, m_iLinePointsCount + 1);
 		}
 	}
 

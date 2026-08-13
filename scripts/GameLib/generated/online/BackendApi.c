@@ -57,6 +57,7 @@ sealed class BackendApi
 	\brief Set session callback to recieve all session related events
 	\param callback - check all events and respective description upon object
 	*/
+	[Obsolete()]
 	proto external void SetSessionCallback(DSSessionCallback callback);
 	/*!
 	\brief Return count of services
@@ -104,6 +105,10 @@ sealed class BackendApi
 	\brief Triggers OnSuccess when check for news image finished
 	*/
 	proto external void OnNewsReady(BackendCallback callback);
+	/*!
+	\brief Execute file download from specified URL - WB only feature
+	*/
+	proto external void OnDownloadFile(BackendCallback callback, string strSourceURL, string strHeaders, string strData, string strDestPath);
 	/*!
 	\brief Return specific Link by it's name
 	*/
@@ -224,10 +229,12 @@ sealed class BackendApi
 	/*!
 	\brief Get Session Storage
 	*/
+	[Obsolete()]
 	proto external SessionStorage GetStorage();
 	/*!
 	\brief Get DS server instance
 	*/
+	[Obsolete()]
 	proto external DSSession GetDSSession();
 	/*!
 	\brief Get Player Identity ID by Player ID

@@ -14,6 +14,12 @@ sealed class NotificationCatalogueApi
 	private void NotificationCatalogueApi();
 	private void ~NotificationCatalogueApi();
 
+	/*!
+	Register function to be invoked when a new notification is received via WebSocket.
+	\note Signature of the script callback: void Callback(int notificationId),
+	      where notificationId is ID of the new notification
+	*/
+	static proto void SetOnNewNotification(NewNotificationFunc callback);
 	//! Fetch profile settings from the backend. This includes profile ID and disabled categories.
 	static proto void RequestProfileSettings(notnull BackendCallback pCallback);
 	//! Mark all unread notifications as read

@@ -298,7 +298,7 @@ class SCR_RadialMenuDisplay : SCR_SelectionMenuDisplay
 		float x = posX + sizeX * 0.5;
 		float y = posY + sizeY * 0.5;
 		m_RadialMenu.SetMenuCenterPos(Vector(x, y, 0));
-		GetGame().GetInputManager().SetCursorPosition(x, y);
+		GetGame().GetInputManager().GetMouseDeviceHandler().SetCursorPosition(x, y);
 	}
 
 	//------------------------------------------------------------------------------------------------

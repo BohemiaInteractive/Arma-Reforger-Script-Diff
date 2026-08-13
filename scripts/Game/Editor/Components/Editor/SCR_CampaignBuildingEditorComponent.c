@@ -14,6 +14,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	protected SCR_CampaignBuildingProviderComponent m_ForcedProviderComponent;
 	protected bool m_bViewObstructed;
 	protected ScriptedGameTriggerEntity m_BuildingAreaTrigger;
+	protected static const int TEST_DELAY = 3000;
 
 	protected ref ScriptInvoker m_OnProviderChanged;
 	protected ref ScriptInvokerBool m_OnObstructionEventTriggered;
@@ -259,9 +260,6 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 				m_BuildingAreaTrigger.SetFlags(EntityFlags.VISIBLE, false);
 			}
 		}
-		
-		if (providerComponent.ObstrucViewWhenEnemyInRange())
-			SetOnEnterEvent();
 
 		m_ContentBrowserManager = SCR_ContentBrowserEditorComponent.Cast(SCR_ContentBrowserEditorComponent.GetInstance(SCR_ContentBrowserEditorComponent));
 
@@ -298,6 +296,11 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		}
 
 		ToggleBuildingTool(false);
+
+		// if we were to call it immediately the editor wouldnt technically be opened yet hence we need to delay the call
+		// we also want to check periodically to look for if a new enemy has entered the range.
+		if (providerComponent.ObstrucViewWhenEnemyInRange())
+			GetGame().GetCallqueue().CallLater(TestForEnemies, TEST_DELAY, true);
 
 		SCR_CampaignBuildingProviderComponent nonMasterProviderComponent = GetProviderComponent(false);
 		if (!nonMasterProviderComponent)
@@ -385,69 +388,43 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		else
 			gadgetComponent.ToolToInventory();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	//! Set event to obstruct view when enemy character enters a building radius
-	protected void SetOnEnterEvent()
+	//! Tests for enemy characters in the range of the provider. Called periodically if the provider gets blocked by enemies.
+	protected void TestForEnemies()
 	{
-		SCR_FreeRoamBuildingClientTriggerEntity trigger = SCR_FreeRoamBuildingClientTriggerEntity.Cast(GetTrigger());
-		if (!trigger)
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
+		TagSystem tagSystem = TagSystem.Cast(world.FindSystem(TagSystem));
+
+		SCR_CampaignBuildingProviderComponent providerComponent = GetProviderComponent(true);
+		if (!providerComponent)
 			return;
-		
-		trigger.GetOnEntityEnterTrigger().Insert(EntityEnterTrigger);
-		trigger.GetOnEntityLeaveTrigger().Insert(EntityLeaveTrigger);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void EntityEnterTrigger(IEntity ent)
-	{
-		if (CanBlockView(ent))
+
+		array<IEntity> presentEntities = {};
+
+		int presentEntitiesCount = tagSystem.GetTagsInRange(presentEntities, providerComponent.GetOwner().GetOrigin(), providerComponent.GetBuildingRadius(), ETagCategory.Character);
+
+		foreach (IEntity entity : presentEntities)
 		{
-			SetOnEntityKilled(ent);
-			
-			// show the notification and rise an event only when this is for the first time.
-			if (!m_bViewObstructed && m_OnObstructionEventTriggered)
+			if (CanBlockView(entity))
 			{
-				m_OnObstructionEventTriggered.Invoke(true);
-				SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_ENEMY_IN_AREA);
+				if (!m_bViewObstructed && m_OnObstructionEventTriggered)
+				{
+					// show the notification and rise an event since this just got raised
+					m_OnObstructionEventTriggered.Invoke(true);
+					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_ENEMY_IN_AREA);
+				}
+
 				m_bViewObstructed = true;
+				return;
 			}
 		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	// Called when entity leaves the trigger. Can be also when the entity is killed or deleted.
-	//! \param[in] ent entity removed from the trigger. Can be null when event is triggered from deleted or killed entity.
-	protected void EntityLeaveTrigger(IEntity ent)
-	{			
-		if (!ent)
-			return;
-		
-		if (CanBlockView(ent))
-			RemoveOnEntityKilled(ent);
-		
-		ScriptedGameTriggerEntity trigger = GetTrigger();
-		if (!trigger)
-			return;
-		
-		trigger.QueryEntitiesInside();
-		array<IEntity> entitiesInside = {};
-		trigger.GetEntitiesInside(entitiesInside);
-		
-		// Check if in trigger is still present any entity that can block the view. If so, don't continue.
-		foreach (IEntity entity : entitiesInside)
+
+		if (m_bViewObstructed)
 		{
-			// The entity that triggers an event as the leaving one is still on the list of entities present in trigger, skip it.
-			if (ent == entity)
-				continue;
-			
-			if (entity && CanBlockView(entity))
-				return;
-		}
-		
-		if (m_OnObstructionEventTriggered)
 			m_OnObstructionEventTriggered.Invoke(false);
-		
+		}
+
 		m_bViewObstructed = false;
 	}
 	
@@ -483,30 +460,6 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		return false;
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	//! Set an event called when entity which can block view in Free Roam Building enters the area of Free Roam Building.
-	void SetOnEntityKilled(IEntity ent)
-	{
-		SCR_EditableCharacterComponent editableCharacter = SCR_EditableCharacterComponent.Cast(ent.FindComponent(SCR_EditableCharacterComponent));
-		if (!editableCharacter)
-			return;
-		
-		editableCharacter.GetOnDestroyed().Insert(EntityLeaveTrigger);
-		editableCharacter.GetOnDeleted().Insert(EntityLeaveTrigger);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Remove an event called when entity which can block view in Free Roam Building is killed / leave the area of Free Roam Building.
-	void RemoveOnEntityKilled(IEntity ent)
-	{
-		SCR_EditableCharacterComponent editableCharacter = SCR_EditableCharacterComponent.Cast(ent.FindComponent(SCR_EditableCharacterComponent));
-		if (!editableCharacter)
-			return;
-		
-		editableCharacter.GetOnDestroyed().Remove(EntityLeaveTrigger);
-		editableCharacter.GetOnDeleted().Remove(EntityLeaveTrigger);
-	}
-
 	//------------------------------------------------------------------------------------------------
 	SCR_ECharacterRank GetUserRank()
 	{
@@ -707,7 +660,9 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 			if (buildingFaction)
 				AddRemoveFactionLabel(SCR_CampaignFaction.Cast(buildingFaction), false);
 		}
-		
+
+		GetGame().GetCallqueue().Remove(TestForEnemies);
+
 		ToggleBuildingTool(true);
 
 		SCR_CampaignBuildingProviderComponent providerComponent = GetProviderComponent(false);
@@ -816,6 +771,18 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	//------------------------------------------------------------------------------------------------
 	private void RequestRecreationOfEditors()
 	{
+		IEntity owner = GetOwner();
+		if (!owner || owner.IsDeleted())
+			return;
+
+		if (!m_Manager)
+		{
+			// EditorModeEntities are created as child entities of a manager
+			m_Manager = SCR_EditorManagerEntity.Cast(owner.GetParent());
+			if (!m_Manager || m_Manager.IsDeleted())
+				return;
+		}
+
 		m_Manager.Close();
 		m_Manager.RecreateEditorModes();
 	}

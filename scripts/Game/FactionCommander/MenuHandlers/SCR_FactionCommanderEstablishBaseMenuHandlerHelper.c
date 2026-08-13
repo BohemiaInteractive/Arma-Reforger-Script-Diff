@@ -13,6 +13,10 @@ class SCR_FactionCommanderEstablishBaseMenuHandlerHelper
 		SCR_CampaignMilitaryBaseComponent campaignBase;
 		int threshold;
 
+		SCR_CampaignFactionCommanderHandlerComponent commanderHandlerComp = SCR_CampaignFactionCommanderHandlerComponent.Cast(SCR_FactionCommanderHandlerComponent.GetInstance());
+		if (!commanderHandlerComp)
+			return false;
+
 		foreach (SCR_MilitaryBaseComponent base : bases)
 		{
 			campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
@@ -20,7 +24,7 @@ class SCR_FactionCommanderEstablishBaseMenuHandlerHelper
 			if (!campaignBase || !campaignBase.IsInitialized())
 				continue;
 
-			threshold = SCR_CampaignFactionCommanderHandlerComponent.Cast(SCR_FactionCommanderHandlerComponent.GetInstance()).GetBaseMinDistance(campaignBase);
+			threshold = commanderHandlerComp.GetBaseMinDistance(campaignBase.GetType());
 
 			if (vector.DistanceSqXZ(base.GetOwner().GetOrigin(), position) < (threshold * threshold))
 				return true;

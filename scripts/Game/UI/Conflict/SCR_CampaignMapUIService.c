@@ -94,70 +94,10 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------
-	void SetServiceImage()
+	void SetServiceImage(notnull SCR_BaseServiceIconInfo info)
 	{
-		switch (m_eServiceType)
-		{
-			case SCR_EServicePointType.BARRACKS:
-			{
-				SetImage(m_sBarracks);
-				m_sServiceName = "#AR-Campaign_Building_Barracks";
-			} break;
-
-			case SCR_EServicePointType.FIELD_HOSPITAL:
-			{
-				SetImage(m_sFieldHospital);
-				m_sServiceName = "#AR-Campaign_Building_FieldHospital";
-			} break;
-
-			case SCR_EServicePointType.LIGHT_VEHICLE_DEPOT:
-			{
-				SetImage(m_sLightVehicleDepot);
-				m_sServiceName = "#AR-Comm_Variable_Miscellaneous_LightVehicleDepot";
-			} break;
-			
-			case SCR_EServicePointType.HEAVY_VEHICLE_DEPOT:
-			{
-				SetImage(m_sHeavyVehicleDepot);
-				m_sServiceName = "#AR-Comm_Variable_Miscellaneous_HeavyVehicleDepot";
-			} break;
-			
-			case SCR_EServicePointType.RADIO_ANTENNA:
-			{
-				SetImage(m_sRadioAntenna);
-				m_sServiceName = "#AR-Comm_Variable_Miscellaneous_RadioAntenna";
-			} break;
-
-			case SCR_EServicePointType.SUPPLY_DEPOT:
-			{
-				SetImage(m_sSupplyDepot);
-				m_sServiceName = "#AR-Comm_Variable_Miscellaneous_Supplydepot_US";
-			} break;
-
-			case SCR_EServicePointType.ARMORY:
-			{
-				SetImage(m_sArmory);
-				m_sServiceName = "#AR-Campaign_Building_Armory";
-			} break;
-
-			case SCR_EServicePointType.FUEL_DEPOT:
-			{
-				SetImage(m_sFuelDepot);
-				m_sServiceName = "#AR-Comm_Variable_Miscellaneous_Fueldepot_US";
-			} break;
-
-			case SCR_EServicePointType.HELIPAD:
-			{
-				SetImage(m_sHelipad);
-				m_sServiceName = "#AR-EditableEntity_Helipad_L_US_01_Name";
-			} break;
-
-			/*case SCR_EServicePointType.VEHICLE_DEPOT:
-			{
-				SetImage(m_sVehicleDepot);
-				m_sServiceName = "#AR-Campaign_Building_MotorPool";
-			} break;*/
-		}
+		SetImage(info.GetIconName(), info.GetImageSet());
+		m_sServiceName = info.GetServiceName();
 	}
 
 	//------------------------------------------------------------------------------
@@ -167,11 +107,13 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------
-	void SetService(EEditableEntityLabel type, SCR_ServicePointDelegateComponent service)
+	//! Setting the Service icon in ServiceContainer.layout bases on the SCR_BaseServiceIconInfo gotten from BaseServiceIcons.conf
+	//! Setting the state of the icons based on whether an entity with the corresponding SCR_ServicePointDelegateComponent is at the base
+	void SetService(notnull SCR_BaseServiceIconInfo info, SCR_ServicePointDelegateComponent service)
 	{
 		m_bEnabled = service != null;
-		m_eServiceType = type;
-		SetServiceImage();
+		m_eServiceType = info.GetServicePointType();
+		SetServiceImage(info);
 		
 		if (!service)
 			return;
@@ -194,7 +136,7 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------
-	override void SetImage(string image)
+	override void SetImage(string image, string imageset)
 	{
 		m_sServiceIcon = image;
 		string suffix = string.Empty;
@@ -202,7 +144,7 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 		SCR_ButtonImageComponent img = SCR_ButtonImageComponent.Cast(m_wRoot.FindHandler(SCR_ButtonImageComponent));
 		if (img)
 		{
-			img.SetImage(m_sImageSet, image + suffix);
+			img.SetImage(imageset, image + suffix);
 			img.SetEnabled(m_bEnabled);
 		}
 	}

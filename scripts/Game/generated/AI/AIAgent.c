@@ -49,8 +49,8 @@ class AIAgent: GenericController
 	proto external AIBaseMovementComponent GetMovementComponent();
 	//GetAimingComponent() returns nullptr as base AIAgent doesn't provide aiming
 	proto external AIBaseAimingComponent GetAimingComponent();
-	// enabling, disabling, switching to player control on controlComponent
-	proto external void ActivateAI();
+	// returns whether AI is activated
+	proto external bool ActivateAI(bool forced = true);
 	proto external void DeactivateAI();
 	proto external bool IsAIActivated();
 

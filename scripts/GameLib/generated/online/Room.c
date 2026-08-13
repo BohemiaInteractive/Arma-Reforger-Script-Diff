@@ -85,6 +85,10 @@ sealed class Room
 	\brief Returns current count of players on the server.
 	*/
 	proto external int PlayerCount();
+	/*!
+	\returns type of queue in which user is currently joined in.
+	*/
+	proto external string GetQueueType();
 	/*
 	\returns maximum size of the join queue.
 	*/

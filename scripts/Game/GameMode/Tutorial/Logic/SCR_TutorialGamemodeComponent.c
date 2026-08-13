@@ -1186,8 +1186,7 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] modeEntity
-	void OnEditorClosed(SCR_EditorModeEntity modeEntity)
+	void OnEditorClosed()
 	{
 		if (!SCR_HintManagerComponent.GetInstance())
 			return;
@@ -1301,7 +1300,7 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] fadeOut - if true, screen will fadeout to black, false does the opposite
-	WidgetAnimationOpacity Fadeout(bool fadeOut, float duration = 1, float soundDuration = duration)
+	WidgetAnimationOpacity Fadeout(bool fadeOut, float duration = 1, float soundDuration = 1)
 	{
 		if (!m_wFadeOut)
 		{

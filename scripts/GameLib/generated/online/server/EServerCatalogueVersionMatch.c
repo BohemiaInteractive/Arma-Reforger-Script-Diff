@@ -16,7 +16,7 @@ sealed enum EServerCatalogueVersionMatch
 	ANY,
 	//! Will list only servers with same version as the client.
 	ONLY_MATCHING,
-	//! Will list only server with different version that the client.
+	//! Will list only servers with a different version than the client.
 	ONLY_MISMATCHING,
 }
 

@@ -32,9 +32,8 @@ class SCR_CampaignBuildingPlacingHQBaseEditorComponent : SCR_BaseEditorComponent
 		if (!m_FactionCommanderHandler)
 			return;
 
-		int baseMinDistance = m_FactionCommanderHandler.GetBaseMinDistance(SCR_ECampaignBaseType.BASE);
 		m_iBaseEstablishingRadius = m_FactionCommanderHandler.GetBaseEstablishingRadius();
-		int minDistanceFromHQ = baseMinDistance - m_iBaseEstablishingRadius;
+		int minDistanceFromHQ = m_FactionCommanderHandler.GetBaseMinDistance(SCR_ECampaignBaseType.BASE);
 		if (minDistanceFromHQ < 0)
 			minDistanceFromHQ = 0;
 
@@ -182,7 +181,7 @@ class SCR_CampaignBuildingPlacingHQBaseEditorComponent : SCR_BaseEditorComponent
 			if (!campaignBase || !campaignBase.IsInitialized())
 				continue;
 
-			minDistanceFromBase = m_FactionCommanderHandler.GetBaseMinDistance(campaignBase) - m_iBaseEstablishingRadius;
+			minDistanceFromBase = m_FactionCommanderHandler.GetBaseMinDistance(campaignBase);
 			if (minDistanceFromBase < 0)
 				minDistanceFromBase = 0;
 

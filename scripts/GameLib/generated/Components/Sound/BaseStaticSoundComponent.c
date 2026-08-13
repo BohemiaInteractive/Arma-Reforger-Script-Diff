@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-/*! Static Sound Components are a light weight version of the SndComponent for sound which will not update its position past creation.
+/*! Static Sound Components are a lightweight version of the SndComponent for sound which will not update its position past creation.
 Inherit from this component & module to create game specific changes (signals etc.) to the sound.
 
 Static Sounds are update by Static Sound Module functions:

@@ -17,8 +17,8 @@ class SCR_WorldSetupPluginBasePlugin : WorkbenchPlugin
 		if (fileName.IsEmpty())
 		{
 			string extension;
-			FilePath.StripExtension(prefab, extension);
-			fileName = SCR_StringHelper.Filter(fileName, "/\\;", true) + extension;
+			fileName = FilePath.StripPath(FilePath.StripExtension(prefab, extension));
+			fileName = SCR_StringHelper.Filter(fileName, "/\\;", true) + "." + extension;
 		}
 		else
 		{

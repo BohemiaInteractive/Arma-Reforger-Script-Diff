@@ -530,7 +530,7 @@ class SCR_CampaignBuildingPlacingObstructionEditorComponent : SCR_BaseEditorComp
 		float traceCoef = world.TraceMove(trace, null);
 		position[1] = Math.Max(trace.Start[1] - traceCoef * m_vTraceOffset[1] + 0.01, world.GetSurfaceY(position[0], position[2]) + HEIGHT_ABOVE_GROUND_BUFFER);
 
-		if (TraceCylinder(position + m_vCylinderVectorOffset, safeZoneRadius, m_fCylinderHeight, TraceFlags.ENTS, world))
+		if (TraceCilinderUtil(position + m_vCylinderVectorOffset, safeZoneRadius, m_fCylinderHeight, TraceFlags.ENTS, world))
 			return false;
 
 		m_eBlockingReason = ECantBuildNotificationType.BLOCKED;
@@ -548,7 +548,7 @@ class SCR_CampaignBuildingPlacingObstructionEditorComponent : SCR_BaseEditorComp
 	\param world World which is being traced
 	\return False if an intersection was found, true if the cylinder is devoid of obstacles
 	*/
-	bool TraceCylinder(vector pos, float radius = 0.5, float height = 2, TraceFlags flags = TraceFlags.ENTS | TraceFlags.OCEAN, BaseWorld world = null)
+	bool TraceCilinderUtil(vector pos, float radius = 0.5, float height = 2, TraceFlags flags = TraceFlags.ENTS | TraceFlags.OCEAN, BaseWorld world = null)
 	{
 		if (!world)
 			world = GetGame().GetWorld();

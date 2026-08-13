@@ -39,14 +39,21 @@ class SCR_BaseContainerTools
 		return managed;
 	}
 
+#ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Save an instance to Prefab/config file, register it if needed
+	//! \param[in] instance
+	//! \param[in] resourceName can be empty, but filePath must then be provided
+	//! \param[in] filePath can be empty, but resourceName must then be provided
+	//! \param[in] printError
 	//! \return
-	static bool SaveInstanceToResourceName(notnull Managed instance, ResourceName resourceName, string filePath = "", bool printError = false)
+	static bool SaveInstanceToResourceName(notnull Managed instance, ResourceName resourceName = "", string filePath = "", bool printError = false)
 	{
 		if (!resourceName && !filePath) // .IsEmpty()
 		{
-			Print("[SCR_BaseContainerTools.SaveInstanceToPrefab] Provided resourceName is an empty ResourceName and filePath is an empty string", level: LogLevel.ERROR);
+			if (printError)
+				Print("[SCR_BaseContainerTools.SaveInstanceToPrefab] Provided resourceName is an empty ResourceName and filePath is an empty string", level: LogLevel.ERROR);
+
 			return false;
 		}
 
@@ -67,8 +74,16 @@ class SCR_BaseContainerTools
 			return false;
 		}
 
+		if (!FileIO.FileExists(filePath + ".meta"))
+		{
+			ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
+			if (!resourceManager.RegisterResourceFile(filePath, false) && printError)
+				PrintFormat("[SCR_BaseContainerTools.SaveInstanceToPrefab] Cannot register " + filePath + ", please do it manually", level: LogLevel.WARNING);
+		}
+
 		return true;
 	}
+#endif // WORKBENCH
 
 	//------------------------------------------------------------------------------------------------
 	//! Get class name of the prefab.
@@ -230,6 +245,9 @@ class SCR_BaseContainerTools
 		for (int i, componentsCount = prefabEntity.GetComponentCount(); i < componentsCount; i++)
 		{
 			componentSource = prefabEntity.GetComponent(i);
+			if (componentSource == null)
+				continue;
+			
 			if (componentSource.GetClassName().ToType() &&
 				componentSource.GetClassName().ToType().IsInherited(componentClass))
 				return componentSource;

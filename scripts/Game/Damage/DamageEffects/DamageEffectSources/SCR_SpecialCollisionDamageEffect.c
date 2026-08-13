@@ -4,8 +4,11 @@ class SCR_SpecialCollisionDamageEffect : SCR_PersistentDamageEffect
 	protected IEntity m_ResponsibleEntity;
 	
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, desc: "Max speed of the character in this collider", params: "0 1 0.001")]
-	protected float m_fSpecialCollisionMaxSpeedLimitScaled;	
-	
+	protected float m_fSpecialCollisionMaxSpeedLimitScaled;
+
+	[Attribute(defvalue: "1", desc: "Determines if max speed limit is applied the moment player receives this effect, or should it be applied gradually over time")]
+	protected bool m_bInstantlyApplySpeedLimit;
+
 	[Attribute(defvalue: "0", desc: "Allow jumping or climbing when in this collider")]
 	protected bool m_bSpecialCollisionAllowJumpingClimbing;
 
@@ -81,7 +84,7 @@ class SCR_SpecialCollisionDamageEffect : SCR_PersistentDamageEffect
 		
 		if (dmgManager.GetAllPersistentEffectsOfType(SCR_SpecialCollisionDamageEffect, true).Contains(this))
 		{
-			character.SetSpeedLimit(this, GetMaxSpeedLimitScaled());
+			character.SetSpeedLimit(this, GetMaxSpeedLimitScaled(), IsSpeedLimitInstantlyApplied());
 			return;
 		}
 		
@@ -98,6 +101,12 @@ class SCR_SpecialCollisionDamageEffect : SCR_PersistentDamageEffect
 	bool GetJumpingAndClimbingAllowed()
 	{
 		return m_bSpecialCollisionAllowJumpingClimbing;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsSpeedLimitInstantlyApplied()
+	{
+		return m_bInstantlyApplySpeedLimit;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -142,6 +151,7 @@ class SCR_SpecialCollisionDamageEffect : SCR_PersistentDamageEffect
 		super.Save(w);
 
 		w.WriteBool(m_bSpecialCollisionAllowJumpingClimbing);
+		w.WriteBool(m_bInstantlyApplySpeedLimit);
 		w.WriteFloat01(m_fSpecialCollisionMaxSpeedLimitScaled);
 
 		// If the responsible entity is not replicated, we don't transfer info about it.
@@ -163,6 +173,7 @@ class SCR_SpecialCollisionDamageEffect : SCR_PersistentDamageEffect
 		super.Load(r);
 
 		r.ReadBool(m_bSpecialCollisionAllowJumpingClimbing);
+		r.ReadBool(m_bInstantlyApplySpeedLimit);
 		r.ReadFloat01(m_fSpecialCollisionMaxSpeedLimitScaled);
 
 		bool hasRplReponsibleEnt = false;

@@ -41,6 +41,11 @@ class SCR_PlayerFactionAffiliationComponentSerializer : ScriptedComponentSeriali
 
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		const Faction faction = factionManager.GetFactionByKey(factionKey);
+
+		const SCR_Faction scriptedFaction = SCR_Faction.Cast(faction);
+		if (!scriptedFaction.IsAvailableForPlayer())
+			return false;
+
 		const Faction currentFaction = SCR_FactionManager.SGetPlayerFaction(playerController.GetPlayerId());
 		if (faction != currentFaction)
 			playerFactionAffiliation.SetFaction_S(faction);

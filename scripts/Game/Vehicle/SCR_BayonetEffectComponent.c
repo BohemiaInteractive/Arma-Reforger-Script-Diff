@@ -34,15 +34,32 @@ class SCR_BayonetEffectComponent : SCR_ImpactEffectComponent
 		trace.Start = contactPos + contactNormal;
 		trace.End = contactPos - contactNormal;
 		trace.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
-		
+		array<IEntity> excludedArray = GetExcludedEntities();
+		trace.ExcludeArray = excludedArray;
+
 		GetOwner().GetWorld().TraceMove(trace, TraceFilter);
 		
 		GameMaterial contactMat = trace.SurfaceProps;
 		HitEffectInfo effectInfo = contactMat.GetHitEffectInfo();		
 		ResourceName resourceName = effectInfo.GetBayonetHitParticleEffect();
-		
+
+#ifdef SCR_MELEE_DEBUG
+		PrintFormat("SCR_MELEE_DEBUG->SCR_BayonetEffectComponent.RPC_OnImpactParticlesBroadcast: Client detected %1 as hit entity", trace.TraceEnt);
+		if (contactMat)
+			PrintFormat("SCR_MELEE_DEBUG->SCR_BayonetEffectComponent.RPC_OnImpactParticlesBroadcast: Hit material is %2 ", contactMat);
+
+		if (!resourceName.IsEmpty())
+			PrintFormat("SCR_MELEE_DEBUG->SCR_BayonetEffectComponent.RPC_OnImpactParticlesBroadcast: As a result client will spawn \"%1\"", resourceName);
+#endif
+
 		if (resourceName.IsEmpty())
+		{
 			resourceName = GetDefaultParticles()[magnitude];
+
+#ifdef SCR_MELEE_DEBUG
+			PrintFormat("SCR_MELEE_DEBUG->SCR_BayonetEffectComponent.RPC_OnImpactParticlesBroadcast: No siutable particle was found, thus game will spawn default particles \"%1\"", resourceName);
+#endif
+		}
 		
 		EmitParticles(transform, resourceName);
 	}

@@ -21,9 +21,9 @@ sealed class BImage: Managed
 	*/
 	proto external void Download(notnull BackendCallback pCallback);
 	/*!
-	Sets texture data in your ImageWidget by calling \ref ImageWidget.SetImageTexture.
+	Sets texture data in your ImageWidget by calling ImageWidget::SetImageTexture.
 	When image of this 'iNum' is already loaded, then is replaced by new one.
-	The image must be ready to use - \ref BImage.IsReady
+	The image must be ready to use - see IsReady
 	\param iNum Number of image (0...7)
 	\param pWidget Widget to set the texture in
 	*/
@@ -33,8 +33,8 @@ sealed class BImage: Managed
 	//! Returns currently set fit method
 	proto external EBImageFitMethod GetFitMethod();
 	/*!
-	Set scale of this image. If the new scale is already downloaded, the image is ready to use ( \ref BImage.IsReady ) and you can
-	update your widget by calling \ref BImage.SetImageTexture. Otherwise \ref BImage.Download must be called and you can update your widget after the download.
+	Set scale of this image. If the new scale is already downloaded, the image is ready to use (see IsReady) and you can
+	update your widget by calling SetImageTexture. Otherwise Download must be called and you can update your widget after the download.
 	*/
 	proto external void SetScale(int iWidth, int iHeight);
 	//! Returns width of the image

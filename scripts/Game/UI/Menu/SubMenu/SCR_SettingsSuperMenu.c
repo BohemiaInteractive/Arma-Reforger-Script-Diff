@@ -29,20 +29,29 @@ class SCR_SettingsSuperMenu : SCR_SuperMenuBase
 		}
 		
 		bool isDebug = DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_UI_SHOW_ALL_SETTINGS, false);
+		EPlatform platform = System.GetPlatform();
 
-		if (!isDebug && System.GetPlatform() == EPlatform.WINDOWS)
+		if (!isDebug && platform == EPlatform.WINDOWS)
 		{
 			m_SuperMenuComponent.GetTabView().RemoveTabByIdentifier("SettingsVideoConsole");
+			m_SuperMenuComponent.GetTabView().RemoveTabByIdentifier("SettingsVideoHandheld");
 			m_SuperMenuComponent.GetTabView().ShowTabByIdentifier(identifier: "SettingsVideoPC", playSound: false);
 		}
-
+		else if (!isDebug && platform == EPlatform.WINDOWS_HANDHELD)
+		{
+			m_SuperMenuComponent.GetTabView().RemoveTabByIdentifier("SettingsVideoConsole");
+			m_SuperMenuComponent.GetTabView().RemoveTabByIdentifier("SettingsVideoPC");
+			m_SuperMenuComponent.GetTabView().ShowTabByIdentifier(identifier: "SettingsVideoHandheld", playSound: false);
+		}
+		
 // Remove video settings for consoles, if not in settings debug mode
 #ifdef PLATFORM_CONSOLE
 		if (isDebug)
 			return;
 		
 		m_SuperMenuComponent.GetTabView().RemoveTabByIdentifier("SettingsVideoPC");
-		m_SuperMenuComponent.GetTabView().ShowTabByIdentifier(identifier: "SettingsVideoConsole", playSound: false);	
+		m_SuperMenuComponent.GetTabView().RemoveTabByIdentifier("SettingsVideoHandheld");
+		m_SuperMenuComponent.GetTabView().ShowTabByIdentifier(identifier: "SettingsVideoConsole", playSound: false);
 #endif
 	}
 	

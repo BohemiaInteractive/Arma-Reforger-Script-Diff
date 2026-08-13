@@ -817,8 +817,14 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			
 			if ( !pStorageFrom )
 				canInsert = TryInsertItemInStorage( pItem, pStorageTo, -1, cb );	// if we move item from ground to opened storage
-			else
+			else if ( CanUseStorageForMove(pStorageFrom) && CanUseStorageForMove(pStorageTo) )
 				canInsert = TryMoveItemToStorage( pItem, pStorageTo, -1, cb );		// if we move item between storages
+			else
+			{
+				canInsert = false;
+				if (cb)
+					cb.InternalFailed();
+			}
 		}
 		
 		if (!canInsert)
@@ -871,6 +877,16 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			return false;
 		
 		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool CanUseStorageForMove(BaseInventoryStorageComponent storage)
+	{
+		if (!storage)
+			return false;
+		
+		RplId storageId = Replication.FindItemId(storage);
+		return storageId.IsValid();
 	}
 	
 //	//------------------------------------------------------------------------------------------------
@@ -1248,7 +1264,12 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	
 			return TryRemoveItemFromStorage(m_TargetSlot.GetAttachedEntity(), m_TargetSlot.GetStorage(), chainedCallback);
 		}
-		
+
+		// we will need to swap, but we should see if its even possible as some attachments may be incompatable
+		if (!sourceStorage.CanStoreItem(m_TargetSlot.GetAttachedEntity(), sourceSlot.GetID())
+			|| !storage.CanStoreItem(sourceSlot.GetAttachedEntity(), m_TargetSlot.GetID()))
+			return false;
+
 		// we return the result of swap opoeration were item from slotA will be transfered to slotB and item from slotB to slotA
 		return TrySwapItemStorages(item, m_TargetSlot.GetAttachedEntity(), cb);
 	} 

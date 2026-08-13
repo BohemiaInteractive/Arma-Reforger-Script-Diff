@@ -35,6 +35,9 @@ class SCR_ScenarioFrameworkSlotTaskAI : SCR_ScenarioFrameworkSlotTask
 	[Attribute(defvalue: "{000CD338713F2B5A}Prefabs/AI/Groups/Group_Base.et", category: "Common")]
 	ResourceName m_sGroupPrefab;
 
+	[Attribute("2", UIWidgets.ComboBox, "Importance tier for the spawned group. Default HIGH - task AI is mission-critical; promote to CRITICAL for objective-defining groups or drop to NORMAL for secondary tasks.", enums: ParamEnumArray.FromEnum(SCR_EAISpawnImportance), category: "Common")]
+	protected SCR_EAISpawnImportance m_eImportance;
+
 	ref array<AIWaypoint> m_aWaypoints = {};
 	SCR_AIGroup m_AIGroup;
 	ref array<ResourceName> m_aAIPrefabsForRemoval = {};
@@ -609,6 +612,10 @@ class SCR_ScenarioFrameworkSlotTaskAI : SCR_ScenarioFrameworkSlotTask
 	{
 		if (group.GetAgentsCount() == 0)
 		{
+			// Dormant groups are intentionally empty; don't terminate the scenario slot on them.
+			if (group.IsDormant())
+				return;
+
 			if (m_bEnableRepeatedSpawn)
 			{
 				if (m_iRepeatedSpawnNumber != -1 && m_iRepeatedSpawnNumber <= 0)
@@ -655,6 +662,9 @@ class SCR_ScenarioFrameworkSlotTaskAI : SCR_ScenarioFrameworkSlotTask
 		m_AIGroup = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(groupResource, GetGame().GetWorld(), paramsPatrol));
 		if (!m_AIGroup)
 			return false;
+
+		// Apply author-defined importance tier. Defaults to HIGH for task AI.
+		m_AIGroup.SetImportance(m_eImportance);
 
 		FactionAffiliationComponent facComp = FactionAffiliationComponent.Cast(m_Entity.FindComponent(FactionAffiliationComponent));
 		if (!facComp)

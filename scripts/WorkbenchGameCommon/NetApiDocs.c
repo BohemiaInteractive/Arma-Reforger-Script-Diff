@@ -143,6 +143,33 @@ Following list contains all the built-in function you can use in the `APIFunc`.
 	  "Success": false
 	}
 	\endcode
+- **ReloadScripts**
+	- required parameters for input:
+	\code{.json}
+	{
+		"APIFunc": "ReloadScripts",
+	}
+	\endcode
+	- response:
+	\code{.json}
+	{
+		// none, error code indicates the result ("Ok" on success, "Compilation failed" on failure)
+	}
+	\endcode
+- **EvaluateScript**
+	- required parameters for input:
+	\code{.json}
+	{
+		"APIFunc": "EvaluateScript",
+		"Script": "string", // Enforce Script source code to evaluate, argument-less function declaration is expected as entry point
+	}
+	\endcode
+	- response:
+	\code{.json}
+	{
+		"ReturnValue": "string", // return value of the entry point function, compiler errors when the script contains invalid Enforce syntax, or an error message if execution fails
+	}
+	\endcode
 
 
 \subsection Page_NetApiDocs_Response Response

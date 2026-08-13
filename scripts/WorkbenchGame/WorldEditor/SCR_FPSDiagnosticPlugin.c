@@ -11,10 +11,10 @@ class SCR_FPSDiagnosticPlugin : WorldEditorPlugin
 	//	Camera
 	//
 
-	[Attribute(category: "Camera", defvalue: "0 " + CAMERA_DEFAULT_ALTITUDE + " 0", desc: "Camera offset from terrain/ocean position (default " + CAMERA_DEFAULT_ALTITUDE + "m above terrain/ocean)")]
+	[Attribute(category: "Camera", defvalue: "0 " + EYE_LEVEL + " 0", desc: "Camera offset from terrain/ocean position (default " + EYE_LEVEL + "m above terrain/ocean mimicking approximate eye level)")]
 	protected vector m_vPositionOffset;
 
-	[Attribute(category: "Camera", defvalue: "0", desc: "If surface is ocean, skip the check")]
+	[Attribute(category: "Camera", defvalue: "0", desc: "Also measure FPS on ocean (land only by default)")]
 	protected bool m_bAnalyseOnOcean;
 
 	[Attribute(category: "Camera", defvalue: "0",
@@ -22,7 +22,8 @@ class SCR_FPSDiagnosticPlugin : WorldEditorPlugin
 			+ "\nDoes not work if the total amount of positions is greater than " + SCR_Math.MAX_RANDOM)]
 	protected bool m_bRandomisePositions;
 
-	[Attribute(category: "Camera", uiwidget: UIWidgets.Slider, desc: "Camera angles in degrees from which to get FPS\nX: 0 = horizon, 90 = look straight up, -30 = look down 30°, etc\nY: 0 = North, -90/270 = West, etc\nZ: banking angle"
+	[Attribute(category: "Camera", uiwidget: UIWidgets.Slider, desc: "Camera angles in degrees from which to get FPS"
+		+ "\nX: 0 = horizon, 90 = look straight up, -30 = look down 30°, etc\nY: 0 = North, -90/270 = West, etc\nZ: banking angle"
 		+ "\n\nIf left empty, 4 cardinal direction cameras with " + CAMERA_DEFAULT_PITCH + " degrees pitch will be used", params: "-180 360")]
 	protected ref array<vector> m_aOrientations;
 
@@ -72,7 +73,7 @@ class SCR_FPSDiagnosticPlugin : WorldEditorPlugin
 	//
 
 	[Attribute(category: "Misc", defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "Open the heatmap/directory once generated", enums: SCR_ParamEnumArray.FromString("Open heatmap;Open heatmap directory;Open heatmap and directory"))]
-	protected int m_iOpenHeatmap;
+	protected int m_iOpeningMode;
 
 	[Attribute(category: "Misc", defvalue: "30", uiwidget: UIWidgets.Slider, desc: "Force progress bar estimate refresh and print a time estimate in the log console every X seconds - 0 = disabled (if used, progress bar still updates its estimate every percent)", params: "0 3600 30")]
 	protected int m_iTimeEstimateFrequency;
@@ -87,9 +88,10 @@ class SCR_FPSDiagnosticPlugin : WorldEditorPlugin
 	protected bool m_bInternalUseGameMode;
 	protected int m_iLastEstimateTick;
 
-	protected static const float CAMERA_DEFAULT_ALTITUDE = 7.5;
+	protected static const float EYE_LEVEL = 1.7;				// eye level in metres
 	protected static const float CAMERA_DEFAULT_PITCH = -10;
-	protected static const int CAMERA_DEFAULT_ANGLE_COUNT = 4; // N, E, S, W
+	protected static const vector DEFAULT_CAMERA_ANGLES = { CAMERA_DEFAULT_PITCH, 0, 0 };
+	protected static const int CAMERA_DEFAULT_ORIENTATIONS_COUNT = 4;	// N, E, S, W
 
 	protected static const int DEFINITION_DEFAULT = 64;
 
@@ -145,6 +147,13 @@ class SCR_FPSDiagnosticPlugin : WorldEditorPlugin
 			return;
 		}
 
+		if (m_aOrientations.IsEmpty()) // pre-fill orientation array with default value if empty - first launch only (or clear array + cancel)
+			m_aOrientations.Insert(DEFAULT_CAMERA_ANGLES);
+
+		//
+		//	Settings UI
+		//
+
 		if (Workbench.ScriptDialog("FPS Diagnostic", "", this) == 0)
 			return;
 
@@ -178,6 +187,8 @@ class SCR_FPSDiagnosticPlugin : WorldEditorPlugin
 			oceanIndices = {};
 
 		map<int, vector> positionsMap = new map<int, vector>();
+		array<int> keys = {};
+		keys.Reserve(m_iHeatmapDefinition * m_iHeatmapDefinition);
 		int pixelIndex;
 		for (int z = m_iHeatmapDefinition - 1; z >= 0; --z)
 		{
@@ -191,6 +202,7 @@ class SCR_FPSDiagnosticPlugin : WorldEditorPlugin
 					oceanIndices.Insert(pixelIndex);
 
 				positionsMap.Insert(pixelIndex, { xPos, yPos, zPos });
+				keys.Insert(pixelIndex);
 				++pixelIndex;
 			}
 		}
@@ -216,25 +228,51 @@ class SCR_FPSDiagnosticPlugin : WorldEditorPlugin
 		int orientationsCount = m_aOrientations.Count();
 		if (orientationsCount < 1)
 		{
-			if (CAMERA_DEFAULT_ANGLE_COUNT < 1)
+			if (CAMERA_DEFAULT_ORIENTATIONS_COUNT < 1)
 			{
 				SCR_WorkbenchHelper.PrintDialog("No orientations provided - add at least one camera orientation.");
 				return;
 			}
 
-			for (int i; i < CAMERA_DEFAULT_ANGLE_COUNT; ++i)
+			for (int i; i < CAMERA_DEFAULT_ORIENTATIONS_COUNT; ++i)
 			{
-				m_aOrientations.Insert({ CAMERA_DEFAULT_PITCH, i * 360 / CAMERA_DEFAULT_ANGLE_COUNT, 0 });
-				++orientationsCount;
+				m_aOrientations.Insert({ CAMERA_DEFAULT_PITCH, i * 360 / CAMERA_DEFAULT_ORIENTATIONS_COUNT, 0 });
 			}
+
+			orientationsCount = CAMERA_DEFAULT_ORIENTATIONS_COUNT;
 		}
 
 		int relevantScenesCount = relevantPositionsCount * orientationsCount;
 		if (relevantScenesCount < 1)
 		{
 			SCR_WorkbenchHelper.PrintDialog("No scenes created - no proper positions found.");
-			return; // safety
+			return;
 		}
+
+		string colourMode;
+		if (m_iHeatmapColourMode == SCR_HeatmapHelper.COLOUR_MODE_ALPHA)
+			colourMode = "Alpha";
+		else
+		if (m_iHeatmapColourMode == SCR_HeatmapHelper.COLOUR_MODE_THERMAL)
+			colourMode = "RGB";
+		else
+//		if (m_iHeatmapColourMode == SCR_HeatmapHelper.COLOUR_MODE_GREYSCALE) // default
+			colourMode = "BW";
+
+		if (m_bHeatmapValueInversion)
+			colourMode += "inv";
+
+		string fileName = string.Format(OUTPUT_HEATMAP_NAME, SCR_WorldEditorToolHelper.GetWorldName(), colourMode, m_iHeatmapDefinition);
+		string absoluteFilePath;
+		if (!Workbench.GetAbsolutePath(fileName, absoluteFilePath, false))
+		{
+			SCR_WorkbenchHelper.PrintDialog("Cannot find absolute file path for " + fileName);
+			return;
+		}
+
+		//
+		//	Confirmation UI
+		//
 
 		string captionPrefix;
 		if (m_bUseFakeData)
@@ -257,12 +295,14 @@ class SCR_FPSDiagnosticPlugin : WorldEditorPlugin
 				"\n\n%1 estimated duration with %2s waiting time per scene (theoretical duration ×%3)"
 				+ "\n\nDo NOT touch or close the Workbench during that time"
 				+ "\nDo NOT unfocus the Workbench (unless -forceUpdate is used or you want to abort the benchmark)"
-				+ "\n\nA waiting time of %4s will happen before the benchmark begins.",
+				+ "\n\nA waiting time of %4s will happen before the benchmark begins, allowing to set the final touches like resolution."
+				+ "\n\nFile will be saved as %5",
 				SCR_FormatHelper.FormatTime(m_fStartDelay + relevantScenesCount * m_fScenePause * ESTIMATE_FACTOR),
 				m_fScenePause,
 				ESTIMATE_FACTOR,
-				m_fStartDelay),
-				new SCR_OKCancelWorkbenchDialog()) == 0)
+				m_fStartDelay,
+				absoluteFilePath),
+				new WorkbenchDialog_OKCancel()) == 0)
 			return;
 
 		float lowestFPS = float.MAX;
@@ -278,10 +318,9 @@ class SCR_FPSDiagnosticPlugin : WorldEditorPlugin
 		int validPositionsDone;
 
 		// randomisation
-		array<int> keys = SCR_MapHelperT<int, vector>.GetKeys(positionsMap);
 		if (m_bRandomisePositions)
 		{
-			 if (positionsCount <= SCR_Math.MAX_RANDOM)
+			if (positionsCount <= SCR_Math.MAX_RANDOM)
 				SCR_ArrayHelperT<int>.Shuffle(keys);
 			else
 				PrintFormat("Too many (%1 > %2) positions to randomise", positionsCount, SCR_Math.MAX_RANDOM, level: LogLevel.WARNING);
@@ -303,11 +342,11 @@ class SCR_FPSDiagnosticPlugin : WorldEditorPlugin
 
 		WBProgressDialog progress;
 
-		m_bInternalUseGameMode = m_bUseGameMode && !m_bUseFakeData;		
+		m_bInternalUseGameMode = m_bUseGameMode && !m_bUseFakeData;
 
 		vector cameraPos, traceEnd, cameraDir;
 		int screenWidth = worldEditorAPI.GetScreenWidth();
-		int screenHeight = worldEditorAPI.GetScreenHeight();;
+		int screenHeight = worldEditorAPI.GetScreenHeight();
 		if (!m_bInternalUseGameMode) // WorkbenchCamera
 			worldEditorAPI.TraceWorldPos(screenWidth * 0.5, screenHeight * 0.5, TraceFlags.WORLD, cameraPos, traceEnd, cameraDir);
 
@@ -524,7 +563,7 @@ class SCR_FPSDiagnosticPlugin : WorldEditorPlugin
 							PlaceCamera(worldEditorAPI, camera, cameraPos, cameraDir);
 							Sleep(1);
 							progress = null;
-							SCR_WorkbenchHelper.PrintDialog("Workbench was unfocused - capture cancelled");							
+							SCR_WorkbenchHelper.PrintDialog("Workbench was unfocused - capture cancelled");
 							if (m_bInternalUseGameMode)
 								worldEditor.SwitchToEditMode();
 
@@ -604,35 +643,19 @@ class SCR_FPSDiagnosticPlugin : WorldEditorPlugin
 			PrintFormat("Resolution: %1×%2", width, height, level: LogLevel.NORMAL);
 		}
 
-		string colourMode;
-		if (m_iHeatmapColourMode == SCR_HeatmapHelper.COLOUR_MODE_ALPHA)
-			colourMode = "Alpha";
-		else
-		if (m_iHeatmapColourMode == SCR_HeatmapHelper.COLOUR_MODE_THERMAL)
-			colourMode = "RGB";
-		else
-//		if (m_iHeatmapColourMode == SCR_HeatmapHelper.COLOUR_MODE_GREYSCALE) // default
-			colourMode = "BW";
-
-		if (m_bHeatmapValueInversion)
-			colourMode += "inv";
-
-		string worldName = SCR_WorldEditorToolHelper.GetWorldName();
-		string fileName = string.Format(OUTPUT_HEATMAP_NAME, worldName, colourMode, m_iHeatmapDefinition);
-		string absoluteFileName;
-		if (!Workbench.GetAbsolutePath(fileName, absoluteFileName, false) || !CreateImage(absoluteFileName, m_iHeatmapDefinition, fpsArray))
+		if (!CreateImage(absoluteFilePath, m_iHeatmapDefinition, fpsArray))
 		{
-			Print("Heatmap cannot be created at " + absoluteFileName, LogLevel.ERROR);
+			Print("Heatmap cannot be created at " + absoluteFilePath, LogLevel.ERROR);
 			return;
 		}
 
-		Print("Heatmap successfully created at " + absoluteFileName, LogLevel.NORMAL);
-		absoluteFileName.Replace("/", "\\");
-		if (m_iOpenHeatmap == 1 || m_iOpenHeatmap == 2)
-			Workbench.RunCmd("explorer \"" + FilePath.StripFileName(absoluteFileName) + "\"");
+		Print("Heatmap successfully created at " + absoluteFilePath, LogLevel.NORMAL);
+		absoluteFilePath.Replace("/", "\\");
+		if (m_iOpeningMode == 1 || m_iOpeningMode == 2)
+			Workbench.RunCmd("explorer \"" + FilePath.StripFileName(absoluteFilePath) + "\"");
 
-		if (m_iOpenHeatmap == 0 || m_iOpenHeatmap == 2)
-			Workbench.RunCmd("explorer \"file:/" + SCR_StringHelper.DOUBLE_SLASH + absoluteFileName + "\"");
+		if (m_iOpeningMode == 0 || m_iOpeningMode == 2)
+			Workbench.RunCmd("explorer \"file:///" + absoluteFilePath + "\"");
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -751,20 +774,17 @@ class SCR_FPSDiagnosticPlugin : WorldEditorPlugin
 					int datum = imageData[i + j];
 					if (datum > maxValue)
 						maxValue = datum;
-	
+
 					if (j == 0)
 						toPrint += datum.ToString(2);
 					else
 						toPrint += "," + datum.ToString(2);
-	
-					
 				}
-	
-				Print("" + toPrint);
+
+				Print("Data: " + toPrint, LogLevel.NORMAL);
 			}
-	
-			Print("Image made of " + fpsArrayCount + " pixels");
-			Print("Min = 0, Max = " + maxValue);
+
+			Print("Fake image made of " + fpsArrayCount + " pixels; min = 0, max = " + maxValue, LogLevel.NORMAL);
 		}
 
 		return SCR_HeatmapHelper.CreateHeatmapImageFromData(

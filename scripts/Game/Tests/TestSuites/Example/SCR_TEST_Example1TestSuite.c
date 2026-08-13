@@ -28,13 +28,13 @@ class SCR_TEST_Example1Subject_Counter_CountsToFive : SCR_AutotestCaseBase
 	// TODO should we change that behaviour? I feel like this is a bit unexpected.
 	int m_iExecutedTimes = 0;
 
-	[Step(EStage.Setup)]
+	[TestStep(TestStage.Setup)]
 	void Setup()
 	{
 		m_iCounter = 0;
 	}
 
-	[Step(EStage.Main)]
+	[TestStep(TestStage.Main)]
 	bool Execute()
 	{
 		PrintFormat("Execute: %1, %2", GetName(), m_iCounter.ToString());
@@ -45,11 +45,11 @@ class SCR_TEST_Example1Subject_Counter_CountsToFive : SCR_AutotestCaseBase
 			return false; // keep running
 		}
 
-		SetResult(SCR_AutotestResult.AsSuccess());
+		AssertTrue(GetFailure() == null, "Expected test to have no failure, thus be successful");
 		return true; // finish the test
 	}
 
-	[Step(EStage.TearDown)]
+	[TestStep(TestStage.TearDown)]
 	void TearDown()
 	{
 		m_iExecutedTimes++;
@@ -60,7 +60,7 @@ class SCR_TEST_Example1Subject_Counter_CountsToFive : SCR_AutotestCaseBase
 [Test(suite: SCR_TEST_Example1SubjectSuite)]
 class SCR_TEST_Example1Subject_GetFive_ReturnsFive : SCR_AutotestCaseBase
 {
-	[Step(EStage.Main)]
+	[TestStep(TestStage.Main)]
 	bool Execute()
 	{
 		SCR_Example1Subject subject = new SCR_Example1Subject();
@@ -70,11 +70,12 @@ class SCR_TEST_Example1Subject_GetFive_ReturnsFive : SCR_AutotestCaseBase
 
 		if (result == 5)
 		{
-			SetResult(SCR_AutotestResult.AsSuccess());
+			AssertTrue(GetFailure() == null, "Expected test to have no failure, thus be successful");
 		}
 		else
 		{
-			SetResult(SCR_AutotestResult.AsFailure("Expected 5, got %1", result.ToString()));
+			
+			SetFailure(SCR_AutotestFailure.Create("Expected 5, got %1", result.ToString()));
 		}
 
 		// AssertTrue can be used instead of above construct for more concise code.
@@ -88,7 +89,7 @@ class SCR_TEST_Example1Subject_GetFive_ReturnsFive : SCR_AutotestCaseBase
 [Test(suite: SCR_TEST_Example1SubjectSuite, timeoutMs: 10)]
 class SCR_TEST_Example1Subject_TimeoutExample : SCR_AutotestCaseBase
 {
-	[Step(EStage.Main)]
+	[TestStep(TestStage.Main)]
 	bool Execute()
 	{
 		PrintOnce("Waiting for timeout");
@@ -99,7 +100,7 @@ class SCR_TEST_Example1Subject_TimeoutExample : SCR_AutotestCaseBase
 [Test(suite: SCR_TEST_Example1SubjectSuite)]
 class SCR_TEST_Example1Subject_NoResultExample : SCR_AutotestCaseBase
 {
-	[Step(EStage.Main)]
+	[TestStep(TestStage.Main)]
 	bool Execute()
 	{
 		return true;

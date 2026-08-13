@@ -309,7 +309,7 @@ class SCR_RandomSpawnManagerComponent : SCR_BaseGameModeComponent
 
 			testPos[1] = Math.Max(hitY + 0.01, surfaceY);
 
-			if (SCR_WorldTools.TraceCylinder(testPos + m_vCylinderVectorOffset, PLAYER_CYLINDER_RADIUS, PLAYER_CYLINDER_HEIGHT, m_TraceFlags, m_World))
+			if (SCR_WorldTools.TraceCilinderUtil(testPos + m_vCylinderVectorOffset, PLAYER_CYLINDER_RADIUS, PLAYER_CYLINDER_HEIGHT, m_TraceFlags, m_World))
 			{
 				outPos = testPos;
 				return true;

@@ -23,8 +23,8 @@ NetApi Call Lifecycle:
 5. The handler's GetResponse() method is called, using the populated request structure.
 6. The method returns a JsonApiStruct response, which is sent back to the caller.
 
-\see \ref Page_NetApi
-\see \ref Page_NetApiDocs_ExampleScript
+\see Page_NetApi
+\see Page_NetApiDocs_ExampleScript
 */
 class NetApiHandler
 {

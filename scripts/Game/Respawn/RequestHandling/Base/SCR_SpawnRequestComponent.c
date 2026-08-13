@@ -114,6 +114,9 @@ class SCR_SpawnRequestComponent : ScriptComponent
 				Type().ToString(), SCR_PlayerController, SCR_RespawnComponent),
 				LogLevel.ERROR);
 		}
+
+		if (m_PlayerController && Replication.IsServer())
+			m_PlayerController.m_OnControlledEntityChanged.Insert(OnControlledEntityChanged_S);
 		
 		m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
 		if (!m_RplComponent)
@@ -531,8 +534,12 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	void StartSpawnPreload(vector position)
 	{
 		NotifyPreloadStarted_S();
-		if (m_PlayerController)		
-			RplComponent.InsertMPObserver(m_PlayerController.GetRplIdentity(), position[0], position[2]);
+		if (m_PlayerController)
+		{
+			ObserversSystem observersSystem = GetObserversSystem();
+			if (observersSystem)
+				observersSystem.InsertObserverMP(m_PlayerController.GetRplIdentity(), position[0], position[2], null);
+		}
 		Rpc(Rpc_StartPreload_O, position);
 	}
 
@@ -563,7 +570,7 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	{
 		m_bIsPreloading = false;
 		if (m_PlayerController)
-			RplComponent.RemoveMPObserver(m_PlayerController.GetRplIdentity());
+			UpdateObserverMP_S(m_PlayerController.GetControlledEntity());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -622,8 +629,48 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	// destructor
 	void ~SCR_SpawnRequestComponent()
 	{
-		if(m_PlayerController)
-			RplComponent.RemoveMPObserver(m_PlayerController.GetRplIdentity());
+		if (m_PlayerController)
+		{
+			m_PlayerController.m_OnControlledEntityChanged.Remove(OnControlledEntityChanged_S);
+
+			ObserversSystem observersSystem = GetObserversSystem();
+			if (observersSystem)
+				observersSystem.RemoveObserverMP(m_PlayerController.GetRplIdentity());
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns the ObserversSystem, or null if unavailable.
+	protected ObserversSystem GetObserversSystem()
+	{
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
+		if (!world)
+			return null;
+		return ObserversSystem.Cast(world.FindSystem(ObserversSystem));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Server: insert or update the per-player MP observer.
+	//! When entity is valid, the observer follows the entity; otherwise it is removed.
+	protected void UpdateObserverMP_S(IEntity entity)
+	{
+		if (!m_PlayerController)
+			return;
+		ObserversSystem observersSystem = GetObserversSystem();
+		if (!observersSystem)
+			return;
+		RplIdentity identity = m_PlayerController.GetRplIdentity();
+		if (entity)
+			observersSystem.InsertObserverMP(identity, 0, 0, entity);
+		else
+			observersSystem.RemoveObserverMP(identity);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Server: called when the player's controlled entity changes so the MP observer follows the new entity.
+	protected void OnControlledEntityChanged_S(IEntity from, IEntity to)
+	{
+		UpdateObserverMP_S(to);
 	}
 
 	#ifdef ENABLE_DIAG

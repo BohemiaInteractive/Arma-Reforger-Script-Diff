@@ -1,31 +1,6 @@
 /*
 	EXPORT
 */
-enum BlendMode 
-{
-	None = 0,
-	ColorModulate = 4,
-	AlphaBlend = 7,
-	Additive =  5
-}
-
-enum Cull
-{
-	ccw = 0,
-	none = 1
-}
-
-enum GlobalMCRMode
-{
-	Overlay = 0,
-	Multiply = 1
-}
-
-enum CamoBlendMode
-{
-	Blend = 0,
-	Multiply = 1
-}
 
 // Copied over from TextureImportTool
 bool IsImage(string className)
@@ -40,32 +15,42 @@ bool IsImage(string className)
 		className == "JPGResourceClass";
 }
 
-class ContainerJSONSerializer
+MetaFile GetMetaFileFromString(string str)
 {
-	//----------------------------------------------------------------------------------------------
-	static string ResolveEnumValue(typename type, int enumValue)
+	
+	ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
+	
+	// Try Absolute Path
+	if (FilePath.IsAbsolutePath(str))
 	{
-		switch (type)
+		if (!FileIO.FileExists(str))
 		{
-			case BlendMode:
-			{
-				return typename.EnumToString(BlendMode, enumValue);
-			}
-			case Cull:
-			{
-				return typename.EnumToString(Cull, enumValue);
-			}
-			case GlobalMCRMode:
-			{
-				return typename.EnumToString(GlobalMCRMode, enumValue);
-			}
-			case CamoBlendMode:
-				return typename.EnumToString(CamoBlendMode, enumValue);
+			return null;
 		}
-		return "";
 		
+		return resourceManager.GetMetaFile(str);
 	}
 	
+	// Try Relative Path (relative to current project)
+	auto meta = resourceManager.GetMetaFile(str);
+	
+	if (meta != null) {
+		return meta;
+	}
+		
+	// Try ResourceName, will return null in case of invalid resource name.
+	ResourceName resourceName = str;
+	
+	string resourcePath = resourceName.GetPath();
+	
+	return resourceManager.GetMetaFile(resourcePath);
+}
+	
+	
+
+
+class ContainerJSONSerializer
+{	
 	static string ignoredFields[8] = {"userScript", "constructor", "destructor", "editorData", "RplLoad", "RplSave", "Preload", "OnTransformResetImpl"};
 	
 	//----------------------------------------------------------------------------------------------
@@ -136,7 +121,7 @@ class ContainerJSONSerializer
 					{
 						if (expand)
 						{
-							ResourceInfo resourceInfo = ResourceInfo.CreateFromResourceName(value, expand);
+							ResourceInfo resourceInfo = ResourceInfo.CreateFromString(value, expand);
 							 jsonStruct.StoreObject(varName, resourceInfo);
 							 break;
 						}
@@ -181,7 +166,7 @@ class ContainerJSONSerializer
 						value = spltValue[0];
 						if (expand)
 						{
-							ResourceInfo resourceInfo = ResourceInfo.CreateFromResourceName(value, expand);
+							ResourceInfo resourceInfo = ResourceInfo.CreateFromString(value, expand);
 							jsonStruct.StoreObject(varName, resourceInfo);
 							break;
 						}
@@ -220,16 +205,7 @@ class ContainerJSONSerializer
 					int value;
 					container.Get(varName, value);
 					
-					typename type = varName.ToType();
-					
-					if (!type)
-					{
-						jsonStruct.StoreInteger(varName, value);
-						break;
-					}
-					
-					string enumFieldName = ResolveEnumValue(type, value);
-					jsonStruct.StoreString(varName, enumFieldName);
+					jsonStruct.StoreInteger(varName, value);
 					break;
 				}
 				case DataVarType.VECTOR3:
@@ -249,7 +225,7 @@ class ContainerJSONSerializer
 					BaseContainer object = container.GetObject(varName);
 					if (object)
 					{
-						jsonStruct.StoreObject(varName, new GenericJSONContainer(object, false, expand));
+						jsonStruct.StoreObject(varName, new GenericJSONContainer(object, expand));
 						break;
 					}
 					
@@ -264,7 +240,7 @@ class ContainerJSONSerializer
 					jsonStruct.StartArray(varName);
 					for (int objIdx = 0; objIdx < objects.Count(); objIdx++)
 					{
-						jsonStruct.ItemObject(new GenericJSONContainer(objects.Get(objIdx), true, expand));
+						jsonStruct.ItemObject(new GenericJSONContainer(objects.Get(objIdx), expand));
 					}
 					jsonStruct.EndArray();
 					break;
@@ -311,14 +287,13 @@ Dummy class to be used with StoreObject and ItemObject that expect a JsonApiStru
 class GenericJSONContainer : JsonApiStruct
 {
 	BaseContainer m_Container;
-	bool m_bAsArrayItem = false;
 	bool m_bExpandResource = false;
 
 	//----------------------------------------------------------------------------------------------
-	void GenericJSONContainer(BaseContainer container, bool asArrayItem = false, bool expand = false)
+	void GenericJSONContainer(BaseContainer container, bool expand = false)
 	{
 		m_Container = container;
-		m_bAsArrayItem = asArrayItem;
+		
 		m_bExpandResource = expand;
 	}
 
@@ -326,18 +301,10 @@ class GenericJSONContainer : JsonApiStruct
 	override void OnPack()
 	{
 		string objectName = string.Format("%1", m_Container.GetClassName());
-		if (m_bAsArrayItem)
-		{
-			StoreString("ClassName", objectName);
-			StoreString("Name", m_Container.GetName());
-			ContainerJSONSerializer.WriteVars(this, m_Container, m_bExpandResource);
-		}
-		else
-		{
-			StartObject(objectName);
-				ContainerJSONSerializer.WriteVars(this, m_Container, m_bExpandResource);
-			EndObject();
-		}
+		
+		StoreString("ClassName", objectName);
+		StoreString("Name", m_Container.GetName());
+		ContainerJSONSerializer.WriteVars(this, m_Container, m_bExpandResource);
 	}
 }
 
@@ -444,7 +411,7 @@ class GenericResourceInfo : JsonApiStruct
 
 class ResourceInfo : JsonApiStruct
 {
-	private string status;
+	private InfoStatus status;
 	private string message;
 	private string resourceName;
 	private string absolutePath; 
@@ -453,7 +420,7 @@ class ResourceInfo : JsonApiStruct
 	//----------------------------------------------------------------------------------------------
 	void ResourceInfo(InfoStatus _status, ResourceName _resourceName, string _absolute_path, string _message, JsonApiStruct _data)
 	{
-		status = typename.EnumToString(InfoStatus, _status);
+		status = _status;
 		resourceName = _resourceName;
 		message = _message;
 		data = _data;
@@ -471,14 +438,9 @@ class ResourceInfo : JsonApiStruct
 	}
 
 	//----------------------------------------------------------------------------------------------
-	/*!
-	ResourceInfo Factory. Expects relative path.
-	*/
-	static ResourceInfo CreateFromResourceName(ResourceName _resourceName, bool expand = false)
+	static ResourceInfo CreateFromString(string path, bool expand = false)
 	{
-		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
-		string resourcePath = _resourceName.GetPath();
-		MetaFile meta = resourceManager.GetMetaFile(resourcePath);
+		auto meta = GetMetaFileFromString(path);
 	
 		if (!meta)
 		{
@@ -486,11 +448,19 @@ class ResourceInfo : JsonApiStruct
 			InfoStatus.ERROR, 
 			string.Empty,
 			string.Empty,
-			string.Format("Resource not found: %1", _resourceName), 
+			string.Format("Resource not found: %1", path), 
 			null);
 		}
 		
+		return ResourceInfo.CreateFromMetaFile(meta, expand);
+	}
+	
+	static ResourceInfo CreateFromMetaFile(MetaFile meta, bool expand = false)
+	{
 		BaseContainer configurationContainer = meta.GetObjectArray("Configurations")[0];
+		
+		auto _resourceName = meta.GetResourceID();
+		string resourcePath = _resourceName.GetPath();
 		
 		if (!configurationContainer)
 		{
@@ -577,6 +547,31 @@ class ResourceInfo : JsonApiStruct
 	 		return ResourceInfo(InfoStatus.OK, _resourceName, absolute_path, "", new GenericResourceInfo(_resourceName, expand));
 		}
 		
+		if(className == "CONFResourceClass")
+		{			
+			Resource resource = BaseContainerTools.LoadContainer(_resourceName);
+			
+			if (resource == null || !resource.IsValid())	
+	 		{
+	 			return ResourceInfo(
+					InfoStatus.ERROR, 
+					_resourceName,
+					string.Empty,
+					string.Format("Resource could not be loaded: %1", _resourceName),
+					null);
+			}
+			
+			string file_path = resource.GetResource().GetResourceName().GetPath();
+			string absolute_path;
+			
+			bool result = Workbench.GetAbsolutePath(file_path, absolute_path, true);
+			
+			if (!result){ 
+				absolute_path = string.Empty;
+			}
+			
+	 		return ResourceInfo(InfoStatus.OK, _resourceName, absolute_path, "", new GenericResourceInfo(_resourceName, expand));
+		}
 		
 		if (IsImage(className))
 		{
@@ -609,41 +604,24 @@ class ResourceInfo : JsonApiStruct
 	 		return ResourceInfo(InfoStatus.OK, _resourceName, textureSourcePath, string.Empty, textureProperty);
 		}
 		
+		if (className == "TXAResourceClass")
+		{
+			string absolute_path;
+			bool result = Workbench.GetAbsolutePath(resourcePath, absolute_path, true);
+			
+			if (!result){ 
+				absolute_path = string.Empty;
+			}
+			
+			return ResourceInfo(InfoStatus.OK, _resourceName, absolute_path, "", null);
+		}
+		
 		return ResourceInfo(
 			InfoStatus.ERROR, 
 			_resourceName,
 			string.Empty,
 			string.Format("Unsuported resource type: %1 for resource: %2", className, _resourceName),
 			null); 
-	}
-	
-	//----------------------------------------------------------------------------------------------
-	static ResourceInfo CreateFromResourceAbsolutePath(string absPath, bool expand = false)
-	{
-		if (!FileIO.FileExists(absPath))
-		{
-			return ResourceInfo(
-			InfoStatus.ERROR, 
-			string.Empty,
-			string.Empty,
-			string.Format("Resource with absolute path: %1 not found. ", absPath), 
-			null);
-		}
-		
-		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
-		MetaFile meta = resourceManager.GetMetaFile(absPath);
-		
-		if (!meta)
-		{
-			return ResourceInfo(
-			InfoStatus.ERROR, 
-			string.Empty,
-			string.Empty,
-			string.Format("Resource with absolute path: %1 is not registered with current runing project. ", absPath), 
-			null);
-		}
-		
-		return CreateFromResourceName(meta.GetResourceID(), expand);
 	}
 }
 
@@ -672,12 +650,7 @@ class GetResourceInfo : NetApiHandler
 	{
 		GetResourceInfoRequest req = GetResourceInfoRequest.Cast(request);
 		
-		if (FilePath.IsAbsolutePath(req.path))
-		{
-			return ResourceInfo.CreateFromResourceAbsolutePath(req.path, req.expandResource);
-		}
-		
-		return ResourceInfo.CreateFromResourceName(req.path, req.expandResource);
+		return ResourceInfo.CreateFromString(req.path, req.expandResource);
 	}
 }
 
@@ -701,6 +674,8 @@ class GetPrefabChildRequest: JsonApiStruct
 
 class GetPrefabChildInfo: NetApiHandler
 {
+	private ref Resource mResource;
+	
 	//----------------------------------------------------------------------------------------------
 	override JsonApiStruct GetRequest()
 	{
@@ -725,8 +700,8 @@ class GetPrefabChildInfo: NetApiHandler
 			null);
 		}
 		
-		Resource resource = Resource.Load(req.resourceName);
-		BaseContainer baseContainer = resource.GetResource().ToBaseContainer();
+		mResource = Resource.Load(req.resourceName);
+		BaseContainer baseContainer = mResource.GetResource().ToBaseContainer();
 		
 		BaseContainer childContainer = baseContainer;
 		
@@ -746,15 +721,38 @@ class GetPrefabChildInfo: NetApiHandler
 			null);
 		}
 		
-		GenericJSONContainer data = new GenericJSONContainer(childContainer, false, req.expandResource);
+		GenericJSONContainer data = new GenericJSONContainer(childContainer, req.expandResource);
 		
 		return ResourceInfo(InfoStatus.OK, "", string.Empty, string.Empty, data);
+	}
+}
+
+
+enum ExportStatus
+{
+	OK,
+	ERROR
+}
+
+class ExportResult: JsonApiStruct
+{
+	private ExportStatus status;
+	private string resourcePath;
+	private string message;
+	
+	void ExportResult(ExportStatus _status, string _resourcePath, string _message = "")
+	{
+		status = _status;
+		resourcePath = _resourcePath;
+		message = _message;
+		RegAll();
 	}
 }
 
 /*
 	GAME MATERIALS
 */
+
 
 class GetGameMaterialsResponse : JsonApiStruct
 {
@@ -937,14 +935,7 @@ class ExportMaterialResource : NetApiHandler
 		{
 			resource = BaseContainerTools.CreateContainer(req.type);
 			if (!resource)
-			{
-				return ResourceInfo(
-				InfoStatus.ERROR, 
-				string.Empty,
-				string.Empty,
-				string.Format("Error creating BaseContainer with type: %1", req.type), 
-				null);
-			}
+				return ExportResult(ExportStatus.ERROR, string.Empty, string.Format("Error creating BaseContainer with type: %1", req.type));
 			
 			container = resource.GetResource().ToBaseContainer();
 			resourcePath = req.resourcePath;
@@ -955,14 +946,7 @@ class ExportMaterialResource : NetApiHandler
 			MetaFile meta = resourceManager.GetMetaFile(resourcePath);
 		
 			if (!meta)
-			{
-				return ResourceInfo(
-				InfoStatus.ERROR, 
-				string.Empty,
-				string.Empty,
-				string.Format("Resource not found: %1", req.resourceName), 
-				null);
-			}
+				return ExportResult(ExportStatus.ERROR, string.Empty, string.Format("Resource not found: %1", req.resourceName));
 			
 			resource = Resource.Load(req.resourceName);
 			container = resource.GetResource().ToBaseContainer();
@@ -975,7 +959,7 @@ class ExportMaterialResource : NetApiHandler
 		if (req.create)
 			resourceManager.RegisterResourceFile(resourcePath, false);
 		
-		return ResourceInfo.CreateFromResourceAbsolutePath(resourcePath);
+		return ExportResult(ExportStatus.OK, resourcePath);
 	}
 }
 
@@ -1041,19 +1025,12 @@ class ExportFBXResource : NetApiHandler
 		if (!meta)
 		{
 			if (resourceManager.RegisterResourceFile(req.resourcePath, false))
-				meta = resourceManager.GetMetaFile(req.resourcePath);
-					
-			if (!meta)	
-			{
-				return ResourceInfo(
-				InfoStatus.ERROR, 
-				string.Empty,
-				string.Empty,
-				string.Format("Resource could not be registered: %1", req.resourcePath), 
-				null);
-			}
+				meta = resourceManager.GetMetaFile(req.resourcePath);			
 		}
-		
+
+		if (!meta)
+			return ExportResult(ExportStatus.ERROR, req.resourcePath, string.Format("Resource could not be registered: %1", req.resourcePath));
+
 		BaseContainer cfg = meta.GetObjectArray("Configurations").Get(0);
 		
 		SetWithClear(cfg, "ExportMorphs", req.exportMorphs);
@@ -1066,8 +1043,7 @@ class ExportFBXResource : NetApiHandler
 		if (req.materialOverrides.Count() > 0)
 		{
 			BaseContainerList materialAssigns = cfg.SetObjectArray("MaterialAssigns");
-		
-			
+					
 			foreach(MaterialOverride oRide : req.materialOverrides)
 			{
 				bool materialSourceFound;
@@ -1103,7 +1079,7 @@ class ExportFBXResource : NetApiHandler
 		meta.Save();
 
 		resourceManager.RebuildResourceFile(req.resourcePath, "PC", false);
-		return ResourceInfo.CreateFromResourceAbsolutePath(req.resourcePath);	
+		return ExportResult(ExportStatus.OK, req.resourcePath);
 	}
 }
 
@@ -1137,29 +1113,11 @@ class ExportTextureResource : NetApiHandler
 		string resourcePath = "";
 	    
 		if (req.sourcePath == "")
-		{
-			return ResourceInfo(
-			InfoStatus.ERROR, 
-			string.Empty,
-			string.Empty,
-			string.Format("Resource could not be registered (Missing source path!): %1", resourcePath), 
-			null);
-		}
-		
+			return ExportResult(ExportStatus.ERROR, "", "Resource could not be registered. Missing source path.");
 		else if (req.destinationPath == "")
-		{
-			return ResourceInfo(
-			InfoStatus.ERROR, 
-			string.Empty,
-			string.Empty,
-			string.Format("Resource could not be registered (Missing destination path!): %1", resourcePath), 
-			null);
-		}
-		
+			return ExportResult(ExportStatus.ERROR, "", "Resource could not be registered. Missing destination path.");
 		else if (req.sourcePath == req.destinationPath)
-	    {
 	        resourcePath = req.sourcePath;
-	    }
 	    else
 	    {
 	        FileIO.CopyFile(req.sourcePath, req.destinationPath);
@@ -1175,24 +1133,112 @@ class ExportTextureResource : NetApiHandler
 		{
 			if (resourceManager.RegisterResourceFile(resourcePath, false))
 				meta = resourceManager.GetMetaFile(resourcePath);
-					
-			if (!meta)	
-			{
-				return ResourceInfo(
-				InfoStatus.ERROR, 
-				string.Empty,
-				string.Empty,
-				string.Format("Resource could not be registered: %1", resourcePath), 
-				null);
-			}
 		}
+		
+		if (!meta)	
+			return ExportResult(ExportStatus.ERROR, resourcePath, string.Format("Resource could not be registered: %1", resourcePath));
 	
 		TextureTypes textureTypes = new TextureTypes();
 		textureTypes.DoChecks(TextureIssueOp.Fix, meta.GetResourceID(), meta);
 		meta.Save();
 
 		resourceManager.RebuildResourceFile(resourcePath, "PC", false);
-		return ResourceInfo.CreateFromResourceAbsolutePath(resourcePath);	
+		return ExportResult(ExportStatus.OK, resourcePath);
+	}
+}
+
+/*
+	TXA IMPORT
+*/
+
+enum TxaErrorCode
+{
+	OK = 0,
+	WARNING = 1,
+	ERROR = 2,
+};
+
+
+class ExportTXAResourceRequest : JsonApiStruct
+{
+	string  ProfileDirectory; 
+	string	SourceFile;
+	string 	TargetFile;
+	string	Profile;
+	int		NumChannels;
+	int		NumKeyframes;
+	int		Fps;
+	ref array<float> 	KeyData = {};
+	ref array<float>	DiffData = {};
+	
+	//----------------------------------------------------------------------------------------------
+	void ExportTXAResourceRequest()
+	{
+		RegAll();
+	}
+}
+
+
+class ExportTXAResource : NetApiHandler
+{
+	override JsonApiStruct GetRequest()
+	{
+		return new ExportTXAResourceRequest();
+	}
+	
+	override JsonApiStruct GetResponse(JsonApiStruct request)
+	{
+		ExportTXAResourceRequest req = ExportTXAResourceRequest.Cast(request);
+		
+		TxaExporter txaExporter = new TxaExporter();
+		
+		
+		MetaFile meta = GetMetaFileFromString(req.TargetFile);
+		ResourceName resourceName;
+		string absolutePath;
+		
+		if (meta)
+		{
+			resourceName = meta.GetResourceName();
+			Workbench.GetAbsolutePath(resourceName.GetPath(), absolutePath, true);
+		}
+		
+		TxaErrCode err = txaExporter.LoadProfiles(req.ProfileDirectory);
+		if (err == TxaErrorCode.ERROR)
+			return ExportResult(ExportStatus.ERROR, req.TargetFile, txaExporter.ErrMsg());
+		
+		int profileIdx = txaExporter.GetProfileIndex(req.Profile);
+		
+		if (profileIdx == -1)
+			return ExportResult(ExportStatus.ERROR, req.TargetFile, "Missing export profile");
+		
+		err = txaExporter.TrackReset(profileIdx, req.NumKeyframes, req.Fps, req.SourceFile, req.TargetFile);
+		
+		if (err == TxaErrorCode.ERROR)
+			return ExportResult(ExportStatus.ERROR, req.TargetFile, txaExporter.ErrMsg());
+		
+		err = txaExporter.TrackSetChannels(req.NumChannels, req.NumKeyframes, req.KeyData, req.DiffData);
+		if (err == TxaErrorCode.ERROR)
+			return ExportResult(ExportStatus.ERROR, req.TargetFile, txaExporter.ErrMsg());
+		
+		err = txaExporter.TrackExport();
+		if (err == TxaErrorCode.ERROR)
+			return ExportResult(ExportStatus.ERROR, req.TargetFile, txaExporter.ErrMsg());
+		
+		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
+		
+		if (!meta)
+		{
+			resourceManager.RegisterResourceFile(req.TargetFile, false);
+			meta = GetMetaFileFromString(req.TargetFile);
+		}
+			
+		
+		if (!meta)
+			return ExportResult(ExportStatus.ERROR, req.TargetFile, "Could not register TXA resource");
+		
+		resourceManager.RebuildResourceFile(req.TargetFile, "PC", false);
+		return ExportResult(ExportStatus.OK,req.TargetFile);
 	}
 }
 
@@ -1228,6 +1274,7 @@ class RegisterResource : NetApiHandler
 		return new RegisterResourceRequest();
 	}
 	
+	//----------------------------------------------------------------------------------------------
 	bool Register(string absPath)
 	{
 		ResourceManager rm = Workbench.GetModule(ResourceManager);

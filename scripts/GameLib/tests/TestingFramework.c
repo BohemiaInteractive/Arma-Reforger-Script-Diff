@@ -87,29 +87,14 @@ class Test
 	int MaxAttempts;
 
 	//! Defines a suite the test belongs to and its timeout value.
-	void Test(string suiteStr = "", typename suite = void, int timeoutS = 0, int timeoutMs = 0, int maxAttempts = 1)
+	void Test(typename suite, int timeoutS = 0, int timeoutMs = 0, int maxAttempts = 1)
 	{
-		if (suite != void)
-		{
-			Suite = suite;
-		}
-		else
-		{
-			PrintFormat(
-				"Test referring to TestSuite using string '%1' instead of typename. This is deprecated and should be replaced by explicitly setting passing 'suite' parameter",
-				suiteStr, level: LogLevel.WARNING
-			);
-			Suite = suiteStr.ToType();
-		}
+		Suite = suite;
 		TimeoutS = timeoutS;
 		TimeoutMs = timeoutMs;
 		MaxAttempts = maxAttempts;
 	}
 }
-
-//-----------------------------------------------------------------------------
-//! \deprecated Use TestStage instead.
-typedef TestStage EStage;
 
 //-----------------------------------------------------------------------------
 //! Attribute which marks a method as part of the testing process.
@@ -127,8 +112,12 @@ class TestStep
 	}
 }
 
-//! \deprecated Use TestStep instead.
-typedef TestStep Step;
+//! \deprecated Use TestFailureBase instead.
+[Obsolete("Use TestFailureBase instead.")]
+class TestResultBase : TestFailureBase
+{
+	bool Failure() { return true; }
+}
 
 /*!
 \}
@@ -137,19 +126,20 @@ typedef TestStep Step;
 #ifdef DOXYGEN
 
 //-----------------------------------------------------------------------------
-//! Basic test result.
-class TestBoolResult : TestResultBase
+//! Basic test failure with message.
+class TestFailureMsg : TestFailureBase
 {
-	bool Value;
+	private string m_Msg;
 
-	void TestBoolResult(bool val) { Value = val; }
-
-	override bool Failure() { return !Value; }
+	void TestFailureMsg(string msg) { m_Msg = msg; }
 
 	override string FailureText()
 	{
 		// junit kind of error report. (simple)
-		return "<failure type=\"TestBoolResult\" message=\"Failed.\" />";
+		return string.Format(
+			"<failure type=\"TestFailureMsg\" message=\"%1\" />",
+			TestHarness.EscapeForXml(m_Msg)
+		);
 	}
 }
 
@@ -206,7 +196,7 @@ class MyAsyncTest : TestBase
 		if (m_Count == 0)
 		{
 			Print("MyAsyncTest.Poll Result");
-			SetResult(new TestBoolResult(false));
+			SetFailure(new TestFailureMsg("Intentionally failed."));
 			m_Count = 3;
 			return true;
 		}

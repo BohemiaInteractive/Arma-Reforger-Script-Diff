@@ -1,6 +1,6 @@
 class ScriptedSelectionMenuEntry : BaseScriptedSelectionMenuEntry
 {
-	const string LAYOUT_ENTRY_DEFAULT = "{121C45A1F59DC1AF}UI/layouts/Common/RadialMenu/RadialEntryElement.layout";
+	const string LAYOUT_ENTRY_DEFAULT = "";
 	
 	// Entry widget
 	protected ResourceName m_EntryLayout = LAYOUT_ENTRY_DEFAULT;

@@ -3,7 +3,7 @@ class SCR_AIPlayAnimation : AITaskScripted
 	static const string PORT_ENTITY_IN				= "RootEntityIn";
 	static const string PORT_AGENT_SCRIPT_IN		= "AgentScriptIn";
 	static const string PORT_ANIMATION_INDEX_IN		= "AnimationIndexIn";
-	static const string PORT_ABORT_SLOW				= "AbortSlowIn";
+	static const string PORT_ABORT_FAST				= "AbortFastIn";
 	static const string PORT_RELATED_INVOKER		= "RelatedInvoker";
 	
 	protected SCR_AIAnimation_Base m_AIAnimation;
@@ -54,11 +54,11 @@ class SCR_AIPlayAnimation : AITaskScripted
 	{
 		if (!m_bAbortDone && m_AIAnimation && m_bInPlayed)
 		{
-			bool abortSlow;
-			GetVariableIn(PORT_ABORT_SLOW, abortSlow);
+			bool abortFast;
+			GetVariableIn(PORT_ABORT_FAST, abortFast);
 			if (m_OnAnimationBehaviorAction)
 				m_OnAnimationBehaviorAction.Invoke(owner, false, m_iAnimationIndex);
-			m_AIAnimation.StopAnimation(owner.GetControlledEntity(), !abortSlow);
+			m_AIAnimation.StopAnimation(owner.GetControlledEntity(), abortFast);
 		}	
 		m_bAbortDone = true;
 	}
@@ -71,7 +71,7 @@ class SCR_AIPlayAnimation : AITaskScripted
 		PORT_ENTITY_IN,
 		PORT_AGENT_SCRIPT_IN, 
 		PORT_ANIMATION_INDEX_IN,
-		PORT_ABORT_SLOW,
+		PORT_ABORT_FAST,
 		PORT_RELATED_INVOKER,
 	};
 	

@@ -66,6 +66,11 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 	
 	protected bool m_bViewBob = true;
 	float m_fUpDownAngleCurrent;
+	
+	protected bool m_bCanFly = false;
+	protected VehicleBaseSimulation m_VehicleSim;
+	
+	protected bool m_bIsTurret = false;
 
 	//------------------------------------------------------------------------------------------------
 	void CharacterCamera3rdPersonVehicle(CameraHandlerComponent pCameraHandler)
@@ -127,6 +132,13 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 					m_fCamDist = m_fDist_Desired;
 					m_fCamDistTarget = m_fDist_Desired;
 					m_fZoomTargetWidth = m_fCamDist * 2 * Math.Tan(0.5 * m_fFOV * Math.DEG2RAD);
+					
+					VehicleControllerComponent vehCtrl = VehicleControllerComponent.Cast(m_OwnerVehicle.FindComponent(VehicleControllerComponent));
+					if (vehCtrl)
+					{
+						m_bCanFly = vehicleCamData.m_bCanFly;
+						m_VehicleSim = vehCtrl.GetBaseSimulation();
+					}
 				}
 				
 				if (m_pCameraPivot)
@@ -309,9 +321,16 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		
 		// raise camera when zooming in
 		float focusLevel = 0;
-		if (m_CharacterCameraHandler)
+		if (m_CharacterCameraHandler && !m_bIsTurret)
 			focusLevel = m_CharacterCameraHandler.GetFocusMode();
+		
 		float camHeight = m_fHeight + focusLevel;
+		if (m_bCanFly && !m_VehicleSim.HasAnyGroundContact())
+		{
+			vector camAnglesBefore = Math3D.MatrixToAngles(pOutResult.m_CameraTM);
+			if ((camAnglesBefore[1] - m_fAngleThirdPerson*Math.RAD2DEG) < 0)
+				camHeight = -camHeight*3;
+		}
 		
 		//! Roll
 		if (bCharacterAttached)
@@ -385,7 +404,7 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		}
 		
 		//angle camera slightly when focus
-		if (focusLevel > 0)
+		if (!m_bCanFly && focusLevel > 0)
 		{
 			vector camAngles = Math3D.MatrixToAngles(pOutResult.m_CameraTM);
 			camAngles[1] = camAngles[1] - camAngles[1]*0.65 * focusLevel;

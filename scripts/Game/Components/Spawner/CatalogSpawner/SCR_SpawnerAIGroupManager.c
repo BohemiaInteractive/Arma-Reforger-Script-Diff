@@ -7,25 +7,18 @@ class SCR_SpawnerAIGroupManagerComponent : SCR_BaseGameModeComponent
 	[Attribute(defvalue: "1.5", params: "0.1 inf", desc: "Delay between spawning group members.")]
 	protected float m_fGroupMemberSpawnDelay;
 
-	[RplProp()]
-	protected bool m_bIsAtAILimit;
-	
 	protected ref array<ref SCR_SpawnerAIRequest> m_aAIQueue;
 	protected float m_fCurrentGroupMemberSpawnDelay;
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] value
-	void SetIsAtAILimit(bool value)
-	{
-		m_bIsAtAILimit = value;
-		Replication.BumpMe();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! Live check against the active-AI budget - "at limit" means CanActivateGroup refuses a
+	//! group-less query.
 	bool IsAtAILimit()
 	{
-		return m_bIsAtAILimit;
+		AIWorld aiWorld = GetGame().GetAIWorld();
+		if (!aiWorld)
+			return false;
+		return !aiWorld.CanActivateGroup(null);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -56,25 +49,6 @@ class SCR_SpawnerAIGroupManagerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnAgentsUpdated(AIAgent agent)
-	{
-		AIWorld aiWorld = GetGame().GetAIWorld();
-		if (!aiWorld && m_bIsAtAILimit)
-		{
-			SetIsAtAILimit(false);
-			return;
-		}
-		
-		bool change = (aiWorld.GetCurrentAmountOfLimitedAIs() + 1) >= aiWorld.GetAILimit();
-			
-		//No need to replicate something that didn't change
-		if (change == m_bIsAtAILimit)
-			return;
-		
-		SetIsAtAILimit(change);
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
 		m_fCurrentGroupMemberSpawnDelay += timeSlice;
@@ -92,30 +66,9 @@ class SCR_SpawnerAIGroupManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void EOnInit(IEntity owner)
-	{
-		if (!SCR_AIWorld.Cast(GetGame().GetAIWorld()))
-			return;
-			
-		SCR_AIWorld.s_OnAgentSpawned.Insert(OnAgentsUpdated);
-		SCR_AIWorld.s_OnAgentRemoved.Insert(OnAgentsUpdated);
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	// destructor
-	void ~SCR_SpawnerAIGroupManagerComponent()
-	{		
-		if (!SCR_AIWorld.Cast(GetGame().GetAIWorld()))
-			return;
-			
-		SCR_AIWorld.s_OnAgentSpawned.Remove(OnAgentsUpdated);
-		SCR_AIWorld.s_OnAgentRemoved.Remove(OnAgentsUpdated);
 	}
 }
 

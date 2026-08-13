@@ -26,6 +26,14 @@ sealed class Workbench
 	static proto bool SearchResources(WorkbenchSearchResourcesCallback callback, array<string> fileExtensions = null, array<string> searchStrArray = null, string rootPath = string.Empty, bool recursive = true);
 	static proto int RunCmd(string command, bool wait = false);
 	/*!
+	Open ScriptEditor and try to find given symbol.
+
+	\code
+		Workbench.JumpToScriptSymbol("IEntity.GetID");
+	\endcode
+	*/
+	static proto bool JumpToScriptSymbol(string symbol);
+	/*!
 	Attempts to start up a process with given CLI command. Returns process handle.
 	*/
 	static proto ProcessHandle RunProcess(string command);

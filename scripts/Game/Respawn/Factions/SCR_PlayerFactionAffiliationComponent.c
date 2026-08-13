@@ -404,8 +404,10 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 		if (GetAffiliatedFaction() == faction)
 			return false;
 
-		// Any arbitrary logic
-		return true;
+		// Do not allow to set faction to a faction that is on its player limit
+		SCR_Faction scriptedFaction = SCR_Faction.Cast(faction);
+		
+		return !scriptedFaction || scriptedFaction.IsAvailableForPlayer();
 	}
 
 	//------------------------------------------------------------------------------------------------

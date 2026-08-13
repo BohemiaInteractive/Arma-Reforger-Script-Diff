@@ -12,7 +12,7 @@ Do not modify, this script is generated
 class GamepadEffectsManagerComponent: GameComponent
 {
 	proto external bool IsEnabled();
-	//! Disabled managers are ignored as so are GamepadEffect(s) registered to it.
+	//! Disabled managers clear their runtime effects and are ignored by gamepad output.
 	proto external void SetEnabled(bool val, bool bMakeEffectsHandlerDirty = true);
 	proto external IEntity GetOwner();
 	proto external bool IsContextEnabled(string ctxName);

@@ -45,11 +45,15 @@ class SCR_LocalPlayerPenalty : Managed
 	{
 		if (instigator.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER || (m_iFriendlyAIKillPenalty == 0 && m_iFriendlyPlayerKillPenalty == 0))
 			return;
-		
-		//~ Kill is not a teamkill and is not a warcrime
+
+		// Kill is not a teamkill and is not a warcrime
 		if (!instigatorContextData.DoesPlayerKillCountAsTeamKill() && !instigatorContextData.IsEnemyKillPunished(SCR_EDisguisedKillingPunishment.WARCRIME))
 			return;
-		
+
+		// For specific factions we have overrides where teamkilling shouldnt result in a penalty, we check these here.
+		if (!instigatorContextData.ShouldCountForKickPenalty())
+			return;
+
 		SCR_ECharacterControlType victimControlType = instigatorContextData.GetVictimCharacterControlType();
 		int killerPlayerId = instigator.GetInstigatorPlayerID();
 				

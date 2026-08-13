@@ -37,8 +37,7 @@ class SCR_WorldEntitiesStatisticsPlugin : WorkbenchPlugin
 	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "Heat Map Type:\n- density = entity count per pixel\n- variety = different model (not entities/Prefabs) count per pixel", enums: SCR_ParamEnumArray.FromString("Entity density,Number of entities per pixel;Model variety,Number of different models per pixel"), category: "Heatmap")]
 	protected int m_iHeatmapType;
 
-	// not working, IDK why yet
-//	[Attribute(defvalue: "0", desc: "Generate a density map for each layer (requires Output To File)", category: "Heatmap")]
+	[Attribute(defvalue: "0", desc: "Generate a density map for each layer (requires Output To File)", category: "Heatmap")]
 	protected bool m_bOutputHeatmapForAllLayers;
 
 	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "- Greyscale: from black to white\n- Thermal: from blue to green to red\n- Alpha: from transparent to white", enums: SCR_ParamEnumArray.FromString("Greyscale,From black to white;Thermal,From blue to green to red;Alpha,From transparent to white"), category: "Heatmap")]
@@ -69,8 +68,6 @@ class SCR_WorldEntitiesStatisticsPlugin : WorkbenchPlugin
 	[Attribute(defvalue: "0", desc: "Visual shapes debug - display e.g land surface vs water surface", category: "Debug")]
 	protected bool m_bDebug;
 
-	protected ref SCR_DebugShapeManager m_DebugShapeManager;
-
 	protected static const string WORLD_DIRECTORY_FORMAT = "WorldStatistics_%1";
 	protected static const string LAYERS_SUBDIR = "Layers";
 	protected static const string OUTPUT_FILE_NAME = "PrefabStatistics.txt";
@@ -79,13 +76,10 @@ class SCR_WorldEntitiesStatisticsPlugin : WorkbenchPlugin
 	protected static const string LAYER_OUTPUT_MAP_NAME = "%1_%2_Heatmap_%3_%4.dds"; //!< %1 = subScene ID, %2 = layer name, %3 = data type (density, variety), %4 = colour mode (BW, RGB)
 
 	protected static const string NO_MAP_CONTENT_FORMAT = "No %1 found"; //!< %1 = resultMap provided description
-	protected static const int MIN_TERRAIN_DEBUG_RESOLUTION = 50; // min 50m
 	protected static const float SQM_TO_SQKM = 0.000001; // 1km = 1000×1000 m² = 1M m²
 
 	protected static const int TYPE_DENSITY = 0;
 	protected static const int TYPE_VARIETY = 1;
-
-	protected static const int MIN_ENTITIES_RGB = 8; //!< minimum entities per pixel in RGB mode; if less than that, prints a warning
 
 	//------------------------------------------------------------------------------------------------
 	protected override void Run()
@@ -135,11 +129,13 @@ class SCR_WorldEntitiesStatisticsPlugin : WorkbenchPlugin
 		float terrainZ = terrainX;
 		vector terrainSize = { terrainX, 0, terrainZ };
 
-		float landRatio = GetLandAboveWaterRatio(worldEditorAPI, terrainOrigin, terrainSize, terrainUnitScale);
+		float landArea = SCR_WorldEditorToolHelper.GetTerrainLandArea();
+		float landRatio = landArea / (terrainX * terrainZ);
 
 		PrintFormat(
-			"%1km² (%2%% land, %3%% water)",
+			"%1km² (%2 km²/%3%% land, %4%% water)",
 			(terrainX * terrainZ * SQM_TO_SQKM).ToString(lenDec: 2),
+			(landArea * SQM_TO_SQKM).ToString(lenDec: 2),
 			(landRatio * 100).ToString(lenDec: 2),
 			((1 - landRatio) * 100).ToString(lenDec: 2));
 
@@ -297,43 +293,72 @@ class SCR_WorldEntitiesStatisticsPlugin : WorkbenchPlugin
 		string layersDirectory = FilePath.Concat(worldDirectory, LAYERS_SUBDIR);
 //		layersDirectory = worldDirectory;
 
-		string filePath;
+		string colourMode = SCR_HeatmapHelper.GetFileSuffix(m_iHeatmapColourMode, m_bHeatmapValueInversion);
+		string heatmapType;
+		if (m_bOutputToFile && m_bOutputHeatmap)
+		{
+			if (m_iHeatmapType == TYPE_DENSITY)
+				heatmapType = "density";
+			else // TYPE_VARIETY
+				heatmapType = "variety";
+		}
+
+		string reportFilePath;
+		string heatmapFilePath;
 		foreach (int subSceneId, map<int, ref SCR_WorldEntitiesStatisticsPlugin_Report> layersReports : subSceneLayerReports)
 		{
 			foreach (int layerId, SCR_WorldEntitiesStatisticsPlugin_Report layerReport : layersReports)
 			{
 				if (m_bOutputToFile)
 				{
-					filePath = FilePath.Concat(layersDirectory, string.Format(LAYER_OUTPUT_FILE_NAME, layerReport.m_iSubSceneId, layerReport.m_sLayerName));
-					string fileDir = FilePath.StripFileName(filePath);
+					reportFilePath = FilePath.Concat(layersDirectory, string.Format(LAYER_OUTPUT_FILE_NAME, layerReport.m_iSubSceneId, layerReport.m_sLayerName));
+					string fileDir = FilePath.StripFileName(reportFilePath);
 					if (!FileIO.MakeDirectory(fileDir))
 					{
 						Print("Cannot create " + fileDir, LogLevel.WARNING);
 						continue;
 					}
 
-//					if (m_bOutputHeatmapForAllLayers)
-//					{
-////						filePath = FilePath.Concat(layersDirectory, string.Format(LAYER_OUTPUT_MAP_NAME, layerReport.m_iSubSceneId, layerReport.m_sLayerName));
-//						filePath = FilePath.Concat(worldDirectory, string.Format(LAYER_OUTPUT_MAP_NAME, layerReport.m_iSubSceneId, layerReport.m_sLayerName));
-//						if (!CreateDensityImage(
-//							filePath,
-//							m_iHeatmapDefinition,
-//							layerReport.m_WorldInfo.m_vTerrainMin,
-//							layerReport.m_WorldInfo.m_vTerrainMax,
-//							layerReport.m_aAllEntityPositions))
-//						{
-//							Print("Cannot create image " + filePath, LogLevel.WARNING);
-//						}
-//					}
+					if (m_bOutputHeatmapForAllLayers)
+					{
+						heatmapFilePath = FilePath.Concat(
+							layersDirectory,
+							string.Format(
+								LAYER_OUTPUT_MAP_NAME,
+								layerReport.m_iSubSceneId,
+								layerReport.m_sLayerName,
+								heatmapType,
+								colourMode));
+
+						bool imageCreated;
+						if (m_iHeatmapType == TYPE_DENSITY)
+							imageCreated = CreateDensityImage(
+								heatmapFilePath,
+								m_iHeatmapDefinition,
+								layerReport.m_WorldInfo.m_vTerrainMin,
+								layerReport.m_WorldInfo.m_vTerrainMax,
+								layerReport.m_aAllEntityPositions);
+						else
+//						if (m_iHeatmapType == TYPE_VARIETY)
+							imageCreated = CreateVarietyImage(
+								heatmapFilePath,
+								m_iHeatmapDefinition,
+								layerReport.m_WorldInfo.m_vTerrainMin,
+								layerReport.m_WorldInfo.m_vTerrainMax,
+								layerReport.m_aModels,
+								layerReport.m_aModelPositions);
+
+						if (!imageCreated)
+							Print("Cannot create image " + heatmapFilePath, LogLevel.WARNING);
+					}
 				}
 
-				OutputLines(GetReportLines(layerReport), filePath);
+				OutputLines(GetReportLines(layerReport), reportFilePath);
 
-				if (m_bActiveLayerOnly && filePath) // !.IsEmpty()
+				if (m_bActiveLayerOnly && reportFilePath) // !.IsEmpty()
 				{
 					string absPath;
-					if (Workbench.GetAbsolutePath(filePath, absPath, true))
+					if (Workbench.GetAbsolutePath(reportFilePath, absPath, true))
 						Workbench.RunCmd(string.Format("notepad \"%1\"", absPath));
 				}
 			}
@@ -341,12 +366,12 @@ class SCR_WorldEntitiesStatisticsPlugin : WorkbenchPlugin
 
 		if (mainReport)
 		{
-			filePath = FilePath.Concat(worldDirectory, OUTPUT_FILE_NAME);
-			OutputLines(GetReportLines(mainReport), filePath);
-			if (filePath) // !.IsEmpty()
+			reportFilePath = FilePath.Concat(worldDirectory, OUTPUT_FILE_NAME);
+			OutputLines(GetReportLines(mainReport), reportFilePath);
+			if (reportFilePath) // !.IsEmpty()
 			{
 				string absPath;
-				if (Workbench.GetAbsolutePath(filePath, absPath, true))
+				if (Workbench.GetAbsolutePath(reportFilePath, absPath, true))
 				{
 					string cmd = string.Format("explorer \"%1\"", FilePath.StripFileName(absPath));
 					cmd.Replace(SCR_StringHelper.SLASH, SCR_StringHelper.ANTISLASH); // explorer does not support slashes, notepad does -_-
@@ -356,133 +381,31 @@ class SCR_WorldEntitiesStatisticsPlugin : WorkbenchPlugin
 
 			if (m_bOutputToFile && m_bOutputHeatmap)
 			{
-				string type;
+				heatmapFilePath = FilePath.Concat(worldDirectory, string.Format(OUTPUT_MAP_NAME, heatmapType, colourMode));
+				bool imageCreated;
 				if (m_iHeatmapType == TYPE_DENSITY)
-					type = "density";
-				else
-//				if (m_iHeatmapType == TYPE_VARIETY)
-					type = "variety";
-
-				string colourMode;
-				if (m_iHeatmapColourMode == SCR_HeatmapHelper.COLOUR_MODE_GREYSCALE)
-					colourMode = "BW";
-				else
-				if (m_iHeatmapColourMode == SCR_HeatmapHelper.COLOUR_MODE_THERMAL)
-					colourMode = "RGB";
-				else
-//				if (m_iHeatmapColourMode == SCR_HeatmapHelper.COLOUR_MODE_ALPHA)
-					colourMode = "Alpha";
-
-				if (m_bHeatmapValueInversion)
-					colourMode += "inv";
-
-				filePath = FilePath.Concat(worldDirectory, string.Format(OUTPUT_MAP_NAME, type, colourMode));
-				if (m_iHeatmapType == TYPE_DENSITY)
-				{
-					if (!CreateDensityImage(
-						filePath,
+					imageCreated = CreateDensityImage(
+						heatmapFilePath,
 						m_iHeatmapDefinition,
 						mainReport.m_WorldInfo.m_vTerrainMin,
 						mainReport.m_WorldInfo.m_vTerrainMax,
-						mainReport.m_aAllEntityPositions))
-					{
-						Print("Cannot create image " + filePath, LogLevel.WARNING);
-					}
-				}
+						mainReport.m_aAllEntityPositions);
 				else
 //				if (m_iHeatmapType == TYPE_VARIETY)
-				{
-					if (!CreateVarietyImage(
-						filePath,
+					imageCreated = CreateVarietyImage(
+						heatmapFilePath,
 						m_iHeatmapDefinition,
 						mainReport.m_WorldInfo.m_vTerrainMin,
 						mainReport.m_WorldInfo.m_vTerrainMax,
 						mainReport.m_aModels,
-						mainReport.m_aModelPositions))
-					{
-						Print("Cannot create image " + filePath, LogLevel.WARNING);
-					}
-				}
+						mainReport.m_aModelPositions);
+
+				if (!imageCreated)
+					Print("Cannot create image " + heatmapFilePath, LogLevel.WARNING);
 			}
 		}
 
 		return editorEntitiesCount;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] worldEditorAPI
-	//! \param[in] terrainOrigin
-	//! \param[in] terrainSize
-	//! \param[in] terrainUnitScale
-	//! \return land ratio 0..1 land coverage ratio (dry terrain / total terrain)
-	protected float GetLandAboveWaterRatio(notnull WorldEditorAPI worldEditorAPI, vector terrainOrigin, vector terrainSize, float terrainUnitScale)
-	{
-		if (m_bDebug)
-		{
-			if (m_DebugShapeManager)
-				m_DebugShapeManager.Clear();
-			else
-				m_DebugShapeManager = new SCR_DebugShapeManager();
-		}
-		else
-		{
-			m_DebugShapeManager = null;
-		}
-
-		float oceanLevel = worldEditorAPI.GetWorld().GetOceanBaseHeight();
-
-		float stepX;
-		float stepZ;
-		if (m_bDebug && terrainUnitScale < MIN_TERRAIN_DEBUG_RESOLUTION)
-		{
-			stepX = MIN_TERRAIN_DEBUG_RESOLUTION;
-			stepZ = MIN_TERRAIN_DEBUG_RESOLUTION;
-			PrintFormat("Debug is enabled - terrain surface tracing is every %1m instead of %2m, losing precision", MIN_TERRAIN_DEBUG_RESOLUTION, terrainUnitScale, level: LogLevel.WARNING);
-		}
-		else
-		{
-			stepX = terrainUnitScale;
-			stepZ = terrainUnitScale;
-		}
-
-		int aslMeasures;
-		int totalMeasures;
-		for (float x = terrainOrigin[0]; x < terrainSize[0]; x += stepX)
-		{
-			for (float z = terrainOrigin[2]; z < terrainSize[2]; z += stepZ)
-			{
-				float y = worldEditorAPI.GetTerrainSurfaceY(x, z);
-				bool isAboveOrEqualWaterLevel = y >= oceanLevel;
-				if (isAboveOrEqualWaterLevel)
-					++aslMeasures;
-
-				++totalMeasures;
-
-				if (m_DebugShapeManager)
-				{
-					vector pos2D = { x, 0, z };
-					vector pos3D = { x, y, z };
-
-//					if (isAboveOrEqualWaterLevel)
-//						m_DebugShapeManager.AddRectangleXZ(pos, 0, stepX, stepZ, Color.GREEN);
-//					else
-//						m_DebugShapeManager.AddRectangleXZ(pos, 0, stepX, stepZ, Color.BLUE);
-
-					if (isAboveOrEqualWaterLevel)
-						m_DebugShapeManager.AddLine(pos2D, pos3D, Color.GREEN);
-					else
-						m_DebugShapeManager.AddLine(pos2D, pos3D, Color.BLUE);
-				}
-			}
-		}
-
-		if (totalMeasures < 1 || aslMeasures == totalMeasures)
-			return 1;	// 100%
-
-		if (aslMeasures < 1)
-			return 0;	// 0%
-
-		return aslMeasures / totalMeasures;
 	}
 
 	//------------------------------------------------------------------------------------------------

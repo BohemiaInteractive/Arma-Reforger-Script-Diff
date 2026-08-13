@@ -381,6 +381,20 @@ class SCR_ImpactEffectComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected array<IEntity> GetExcludedEntities()
+	{
+		array<IEntity> excludedArray = {};
+		IEntity ent = GetOwner();
+		while (ent)
+		{
+			excludedArray.Insert(ent);
+			ent = ent.GetParent();
+		}
+
+		return excludedArray;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Unreliable, RplRcver.Broadcast)]
 	protected void RPC_OnImpactParticlesBroadcast(vector contactPos, vector contactNormal, int magnitude)
 	{
@@ -395,6 +409,8 @@ class SCR_ImpactEffectComponent : ScriptComponent
 		trace.Start = contactPos + contactNormal;
 		trace.End = contactPos - contactNormal;
 		trace.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
+		array<IEntity> excludedArray = GetExcludedEntities();
+		trace.ExcludeArray = excludedArray;
 
 		GetOwner().GetWorld().TraceMove(trace, TraceFilter);
 
@@ -431,6 +447,8 @@ class SCR_ImpactEffectComponent : ScriptComponent
 		trace.Start = impactPosition + contactNormal;
 		trace.End = impactPosition - contactNormal;
 		trace.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
+		array<IEntity> excludedArray = GetExcludedEntities();
+		trace.ExcludeArray = excludedArray;
 
 		GetOwner().GetWorld().TraceMove(trace, TraceFilter);
 

@@ -71,8 +71,8 @@ sealed class FileHandle: Managed
 
 	/*!
 	Read raw data.
-	\param data supported types: int, float, string
-	\param length number of bytes to read. For int type is clamped [0,4]. For float its not used (always 4). For string it's not limited.
+	\param[out] data supported types: int, float, string
+	\param length number of bytes to read (for int type is clamped [0,4], for float its not used (always 4), for string it's not limited)
 	\return the total number of bytes successfully read.
 	*/
 	proto int Read(out void data, int length);
@@ -83,16 +83,16 @@ sealed class FileHandle: Managed
 	proto int ReadLine(out string data);
 	/*!
 	Read raw data.
-	\param dataArray supported types: array<int>, array<float> (array content will be overwritten)
-	\param elementLength number of bytes from each array element to read (e.g. for reading array of bytes use 1, for shorts use 2, for int-s use 4). For int type its clamped [0,4] For float its not used (always 4).
-	\param numElements number of array elements to read.
+	\param[out] dataArray supported types: array<int>, array<float> (array content will be overwritten)
+	\param elementLength number of bytes from each array element to read (e.g. for reading array of bytes use 1, for shorts use 2, for int-s use 4; for int type its clamped [0,4], for float its not used (always 4))
+	\param numElements number of array elements to read
 	\return the total number of bytes successfully read.
 	*/
 	proto int ReadArray(out notnull Managed dataArray, int elementLength, int numElements);
 	/*!
 	Write raw data.
 	\param data supported types: int, float, string
-	\param length number of bytes to write. For int type its clamped [0,4] For float its not used. For string its clamped [0, size of string]. If -1 value is used, the whole content of data is written.
+	\param length number of bytes to write (for int type its clamped [0,4], for float its not used, for string its clamped [0, size of string]; if -1 value is used, the whole content of data is written)
 	\return the total number of bytes successfully written.
 	*/
 	proto int Write(void data, int length = -1);
@@ -103,9 +103,9 @@ sealed class FileHandle: Managed
 	proto void WriteLine(string data);
 	/*!
 	Write raw data.
-	\param dataArray supported types: array<int>, array<float>
-	\param elementLength number of bytes from each array element to write. For int type its clamped [0,4] For float its not used (always 4).
-	\param numElements number of array elements to write. If -1 value is used, all elements from array are written.
+	\param[out] dataArray supported types: array<int>, array<float>
+	\param elementLength number of bytes from each array element to write (for int type its clamped [0,4], for float its not used (always 4))
+	\param numElements number of array elements to write (if -1 value is used, all elements from array are written)
 	\return the total number of bytes successfully written.
 	*/
 	proto int WriteArray(out notnull Managed dataArray, int elementLength = 4, int numElements = -1);

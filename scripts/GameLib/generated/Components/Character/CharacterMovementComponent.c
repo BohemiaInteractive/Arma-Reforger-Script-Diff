@@ -12,16 +12,18 @@ Do not modify, this script is generated
 class CharacterMovementComponent: PawnMovementComponent
 {
 	proto external float GetHeadingAngle();
-	proto external bool HasRootMotion();
-	proto external bool SetRootMotion(bool rootMotion);
+	proto external bool HasRootMotionTranslation();
+	proto external bool HasRootMotionRotation();
+	proto external bool SetRootMotion(bool translation, bool rotation);
 	proto external vector GetVelocityWS();
 	proto external vector GetRawVelocityWS();
 	proto external vector GetVelocityMS();
 	proto external vector GetAngularVelocity();
-	proto external void SetMovementMode(ECharacterMovementMode mode);
+	proto external void SetMovementMode(ECharacterMovementMode mode, int customMode = 0);
 	proto external ECharacterMovementMode GetMovementMode();
 	proto external void SetRotationMode(ECharacterRotationMode mode);
 	proto external ECharacterRotationMode GetRotationMode();
+	proto external void SetAlignNormalSpeed(float speed);
 	proto external void SetMovementMaxSpeed(float movementSpeed);
 	proto external float GetMovementMaxSpeed();
 	proto external void SetFlyingMaxSpeed(float flyingSpeed);
@@ -54,6 +56,7 @@ class CharacterMovementComponent: PawnMovementComponent
 	proto external void SetMaintainGroundVelocity(bool enable);
 	//! Resets the maintain ground velocity to the state on prefab.
 	proto external void ResetMaintainGroundVelocityFlag();
+	proto external void GetFutureLocalTransform(out vector outMat[4]);
 }
 
 /*!

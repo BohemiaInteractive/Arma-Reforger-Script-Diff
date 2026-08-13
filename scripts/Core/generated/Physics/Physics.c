@@ -169,6 +169,8 @@ sealed class Physics: NativeComponent
 	proto external void GetGeomDirectBounds(int index, out vector min, out vector max);
 	//! Returns all surface properties of a geometry element
 	proto external void GetGeomSurfaces(int index, notnull out array<SurfaceProperties> surfaces);
+	//! Returns the name of a geometry element
+	proto external string GetGeomName(int index);
 	/*!
 	Creates a static physics body from geometry embedded in attached VObject. If there is not any, false is returned.
 	\param ent Entity that will be associated with the physics body

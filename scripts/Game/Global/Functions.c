@@ -58,25 +58,16 @@ class SCR_Global
 	{
 		string name;
 
-		if (GetGame().GetBackendApi().IsLocalPlatformAssigned())
-		{
-			Print("Profile - Using Local Platform Name!");
-			name = BohemiaAccountApi.GetName();
-			return name;
-		}
-
 		BaseContainer gameplaySettings = GetGame().GetGameUserSettings().GetModule("SCR_GameplaySettings");
 		if (gameplaySettings)
-		{
 			gameplaySettings.Get("m_sProfileName", name);
-		}
 
-		if (name == string.Empty)
+		if (!name)
 		{
 			name = System.GetProfileName();
-			if (name == string.Empty)
+			if (!name)
 			{
-				Print("Profile - Using MachineName!");
+				Print("Profile - Using MachineName!", LogLevel.NORMAL);
 				name = System.GetMachineName();
 			}
 		}
@@ -1655,7 +1646,7 @@ class SCR_Global
 		
 		vector startingPosition = player.GetOrigin();
 
-		//--- When in a vehcile, teleport the vehicle instead
+		//--- When in a vehicle, teleport the vehicle instead
 		SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(player.FindComponent(SCR_CompartmentAccessComponent));
 		if (compartmentAccess)
 		{

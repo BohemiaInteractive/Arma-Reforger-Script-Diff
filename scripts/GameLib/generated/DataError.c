@@ -4,6 +4,7 @@ Do not modify, this script is generated
 ===========================================
 */
 
+[KickCauseGroupLink("DATA")]
 enum DataError
 {
 	//! Game version used by client does not match versions supported by server.

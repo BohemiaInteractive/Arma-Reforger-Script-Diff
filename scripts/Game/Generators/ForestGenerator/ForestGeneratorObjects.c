@@ -56,11 +56,16 @@ class SCR_ForestGeneratorTreeBase : ForestGeneratorTreeBase
 	[Attribute(defvalue: "0", desc: "Fixed vertical offset at which to place this object [m]")]
 	float m_fVerticalOffset;
 
+	[Attribute(defvalue: MAX_TERRAIN_SLOPE.ToString(), uiwidget: UIWidgets.Slider, desc: "Maximum terrain slope on which this Prefab can be spawned [degrees]", params: "0 " + MAX_TERRAIN_SLOPE)]
+	float m_fMaxTerrainSlope;
+
 	[ForestGeneratorGroupIndexAttribute()]
 	int m_iGroupIndex;
 
 	float m_fScale = 2;
 	SCR_ETreeType m_eType;
+
+	static const float MAX_TERRAIN_SLOPE = 90;
 
 	//------------------------------------------------------------------------------------------------
 	//!

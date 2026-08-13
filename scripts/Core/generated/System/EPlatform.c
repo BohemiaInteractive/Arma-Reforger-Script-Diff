@@ -12,6 +12,7 @@ Do not modify, this script is generated
 enum EPlatform
 {
 	WINDOWS,
+	WINDOWS_HANDHELD,
 	LINUX,
 	XBOX_ONE,
 	XBOX_ONE_S,

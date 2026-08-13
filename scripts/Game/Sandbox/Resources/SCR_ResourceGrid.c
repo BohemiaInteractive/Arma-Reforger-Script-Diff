@@ -129,10 +129,14 @@ class SCR_ResourceGrid : AABGridMap
 	//! \param[in] item The resource component to unregister.
 	void UnregisterResourceItem(notnull SCR_ResourceComponent item)
 	{
+		// Unregistering must also cancel pending flagged registration. Otherwise ProcessFlaggedItems()
+		// can reinsert this component later in the same frame after it was explicitly removed.
+		item.UnflagForProcessing();
+
+		// Invalidate the update id
 		item.SetGridUpdateId(int.MIN);
 		
 		const IEntity owner = item.GetOwner();
-		
 		if (!owner)
 			return;
 		

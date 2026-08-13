@@ -12,7 +12,10 @@ class SCR_DestructibleEntityClass: DestructibleEntityClass
 
 	[Attribute("0", uiwidget: UIWidgets.CheckBox, "Total destruction: If a destructible takes too much damage from a single source while this is enabled, instead of advancing to the next phase, it will be deleted from the world without any effects. Total destruction overrides \"Destroy at no health\"", "")]
 	bool m_bTotalDestructionEnabled;
-	
+
+	[Attribute("1", uiwidget: UIWidgets.CheckBox, "Remove children on destruction of the object", "")]
+	bool m_bRemoveChildrenOnDestroy;
+
 	[Attribute(defvalue: "0", uiwidget: UIWidgets.Slider, desc: "Amount of damage to take from a single source to trigger total destruction", params: "0 64000 1")]
 	float m_fTotalDestructionThreshold;
 }
@@ -42,6 +45,14 @@ class SCR_DestructibleEntity: DestructibleEntity
 			return prefabData.GetDamageReduction();
 
 		return 0;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Helper method that instantly forces the complete destruction of the entity. Call by authority.
+	void ForceKill_S()
+	{
+		vector m_vHitPosDirNorm[3];
+		HandleDamage(EDamageType.TRUE, GetMaxHealth(), m_vHitPosDirNorm);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -76,7 +87,6 @@ class SCR_DestructibleEntity: DestructibleEntity
 		if (previousState == newState)
 			return;
 
-		float maxHealth = GetMaxHealth();
 		SCR_DestructionData destructionData = new SCR_DestructionData();
 		destructionData.m_vHitPosition = damageContext.hitPosition;
 		destructionData.m_vHitDirection = damageContext.hitDirection.Normalized();
@@ -178,6 +188,9 @@ class SCR_DestructibleEntity: DestructibleEntity
 		SCR_BaseDestructionPhase previousPhase = SCR_BaseDestructionPhase.Cast(prefabData.GetDestructionPhase(previousDamagePhaseIndex));
 		if (!previousPhase)
 			return; // Should never happen, unless some memory issue happens
+
+		if (lastPhase && prefabData.m_bRemoveChildrenOnDestroy)
+			SCR_DestructionUtility.DestroyAllChildren(this);
 
 		SCR_DestructionUtility.SpawnDestroyObjects(this, previousPhase.m_aPhaseDestroySpawnObjects, SCR_DestructionHitInfo.FromDestructionData(destructionData));
 	}

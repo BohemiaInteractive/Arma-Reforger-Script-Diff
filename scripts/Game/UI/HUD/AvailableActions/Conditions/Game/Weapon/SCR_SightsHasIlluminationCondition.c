@@ -20,11 +20,11 @@ class SCR_SightsHasIlluminationCondition : SCR_AvailableActionCondition
 		}
 
 		if (!sights)
-			return false;
+			return GetReturnResult(false);
 
 		SCR_2DOpticsComponentClass sightsData = SCR_2DOpticsComponentClass.Cast(sights.GetComponentData(sights.GetOwner()));
 		if (!sightsData)
-			return false;
+			return GetReturnResult(false);
 
 		// Has illumination
 		return GetReturnResult(sightsData.HasIllumination());
@@ -33,19 +33,7 @@ class SCR_SightsHasIlluminationCondition : SCR_AvailableActionCondition
 	//------------------------------------------------------------------------------------------------
 	protected SCR_2DOpticsComponent CurrentWeaponSights(SCR_AvailableActionsConditionData data)
 	{
-		IEntity controlledEntity = SCR_PlayerController.GetLocalControlledEntity();
-		if (!controlledEntity)
-			return null;
-
-		ChimeraCharacter character = ChimeraCharacter.Cast(controlledEntity);
-		if (!character)
-			return null;
-
-		BaseWeaponManagerComponent weaponManager = character.GetCharacterController().GetWeaponManagerComponent();
-		if (!weaponManager)
-			return null;
-
-		BaseSightsComponent currentSights = weaponManager.GetCurrentSights();
+		BaseSightsComponent currentSights = data.GetCurrentSights();
 		if (!currentSights)
 			return null;
 
@@ -55,21 +43,11 @@ class SCR_SightsHasIlluminationCondition : SCR_AvailableActionCondition
 	//------------------------------------------------------------------------------------------------
 	protected SCR_2DOpticsComponent CurrentTurretSight(SCR_AvailableActionsConditionData data)
 	{
-		// Current vehicle controller
-		BaseControllerComponent controller = data.GetCurrentVehicleController();
-		if (!controller)
-			return null;
-
-		// Turret
-		IEntity turretEntity = controller.GetOwner();
-		if (!turretEntity)
-			return null;
-
-		TurretComponent turret = TurretComponent.Cast(turretEntity.FindComponent(TurretComponent));
+		TurretComponent turret = data.GetCurrentTurret();
 		if (!turret)
 			return null;
 
 		// Sights
-		return SCR_2DOpticsComponent.Cast(turret.FindComponent(SCR_2DOpticsComponent));
+		return SCR_2DOpticsComponent.Cast(turret.GetSights());
 	}
 }

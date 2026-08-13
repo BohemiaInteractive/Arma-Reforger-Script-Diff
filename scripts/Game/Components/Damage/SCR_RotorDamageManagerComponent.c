@@ -25,7 +25,7 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 	[Attribute(defvalue: "1.0")]
 	protected float m_fCharacterDamageMultiplier;
 
-	[Attribute(defvalue: "50.0")]
+	[Attribute(defvalue: "10.0")]
 	protected float m_fCharacterImpulseMultiplier;
 
 	[Attribute(defvalue: "10.0")]
@@ -43,9 +43,11 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 	[Attribute(desc: "Blade collision sound event")]
 	protected string m_sImpactSoundEvent;
 
+	// !! Deemed to be no longer needed, as the rotor hitbox has been made smaller making the hitchance unnecessary 
+	// !! though we keep it here in this form so modders can reenable if wanted.
 	//------------------------------------------------------------------------------------------------
 	//! Calculate whether bullets actually hit the rotor with RotorHitChance
-	override bool ShouldCountAsHit(notnull BaseDamageContext damageContext)
+	/*override bool ShouldCountAsHit(notnull BaseDamageContext damageContext)
 	{
 		SCR_RotorHitZone hitZone = SCR_RotorHitZone.Cast(damageContext.struckHitZone);
 		if (!hitZone)
@@ -55,7 +57,7 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 			return false;
 	
 		return true;
-	}
+	}*/
 	//------------------------------------------------------------------------------------------------
 	protected void DamageRotors(float damage)
 	{		
@@ -67,93 +69,121 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void DamageOther(notnull IEntity other, float damage, notnull Contact contact, float rotorRPM)
+	protected bool DamageOther(notnull IEntity object, float damage, notnull Contact contact, float rotorRPM)
 	{
-		ChimeraCharacter character = ChimeraCharacter.Cast(other);		
-		if (!character)
-			return;
+		vector hitPosDirNorm[3] = {contact.Position, vector.Forward, contact.Normal};
+		DestructibleEntity dstEntity = DestructibleEntity.Cast(object);
+		if (dstEntity)
+		{
+			dstEntity.HandleDamage(EDamageType.COLLISION, damage, hitPosDirNorm);
+			return true;
+		}
+
+		DamageManagerComponent dmgMgr = DamageManagerComponent.Cast(object.FindComponent(DamageManagerComponent));
+		if (!dmgMgr)
+			return false;
+
+		HitZone defaultHZ = dmgMgr.GetDefaultHitZone();
+		if (!defaultHZ || defaultHZ.GetDamageMultiplier(EDamageType.COLLISION) == 0)
+			return false; // if its not meant to be destroyed by collision, then dont bother doing that
+
+		Vehicle vehicle = Vehicle.Cast(GetOwner().GetRootParent());
+		if (!vehicle)
+			return false;
+
+		Instigator instigator = Instigator.CreateInstigator(vehicle.GetPilot());
+
+		SCR_DamageContext damageContext = new SCR_DamageContext(EDamageType.COLLISION, damage, hitPosDirNorm, vehicle, null, instigator, null, contact.ShapeIndex2, 0);
+		dmgMgr.HandleDamage(damageContext);
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool DamageOther(notnull ChimeraCharacter character, float damage, notnull Contact contact, float rotorRPM)
+	{
+		SCR_CharacterDamageManagerComponent characterDamageManager = SCR_CharacterDamageManagerComponent.Cast(character.GetDamageManager());
+		if (!characterDamageManager)
+			return false;
 		
-		SCR_DamageManagerComponent characterDamageManager = character.GetDamageManager();
 		CharacterAnimationComponent characterAnimationComponent = character.GetAnimationComponent();
-		if (!characterDamageManager || !characterAnimationComponent)
-			return;
-		
+		if (!characterAnimationComponent)
+			return false;
+
 		vector transformDir[4], rotorMat[4];
 		m_RotorHitZone.GetPointInfo().GetWorldTransform(rotorMat);
 		
+		const float ragrollEffectRadius = 0.5;
+		const float ragrollEffectMaxTime = 2;
+		vector forwardVec = vector.Direction(rotorMat[3], contact.Position).Normalized();
+		vector upVec = rotorMat[1];
+		vector impactOrientationMat[4];
+		Math3D.DirectionAndUpMatrix(forwardVec, upVec, impactOrientationMat);
+		vector worldImpactDir = impactOrientationMat[0];	
+		if (m_HelicopterSimulation.RotorGetSpinDirection(m_RotorHitZone.GetRotorIndex()) == SpinDirection.CLOCKWISE)
+			worldImpactDir = -worldImpactDir;
+	
+		vector hitPosLocal = character.CoordToLocal(contact.Position);
+		vector directionLocal = character.VectorToLocal(worldImpactDir).Normalized();
+		float force = rotorRPM * m_fCharacterImpulseMultiplier;
 		if (characterDamageManager.IsDestroyed())
 		{
-			const float ragrollEffectRadius = 0.5;
-			const float ragrollEffectMaxTime = 2;
-			vector forwardVec = vector.Direction(rotorMat[3], contact.Position).Normalized();
-			vector upVec = rotorMat[1];
-			vector impactOrientationMat[4];
-			Math3D.DirectionAndUpMatrix(forwardVec, upVec, impactOrientationMat);
-			vector worldImpactDir = impactOrientationMat[0];	
-			if (m_HelicopterSimulation.RotorGetSpinDirection(m_RotorHitZone.GetRotorIndex()) == SpinDirection.CLOCKWISE)
-				worldImpactDir = -worldImpactDir;
-		
-			vector hitPosLocal = character.CoordToLocal(contact.Position);
-			vector directionLocal = character.VectorToLocal(worldImpactDir).Normalized();
-			float force = rotorRPM * m_fCharacterImpulseMultiplier;
 			characterAnimationComponent.AddRagdollEffectorDamage(hitPosLocal, directionLocal, force, ragrollEffectRadius, ragrollEffectMaxTime);
 			
-			return;
+			return false;
 		}
 		
 		damage = Math.Clamp(damage * m_fCharacterDamageMultiplier, m_fMinCharacterDamage, m_fMaxCharacterDamage);
 
-		Physics otherPhysics = other.GetPhysics();
+		Physics characterPhysics = character.GetPhysics();
 		array<HitZone> characterHitZones = {};
-		characterDamageManager.GetAllHitZones(characterHitZones);
+		characterDamageManager.GetPhysicalHitZones(characterHitZones);
+		characterDamageManager.GetNearestHitZones(contact.Position, characterHitZones, 1);
+		if (characterHitZones.IsEmpty())
+			return false;
 
-		SCR_DamageContext context;
-		SCR_CollisionDamageEffect collisionEffect = new SCR_CollisionDamageEffect();
 		Vehicle vehicle = Vehicle.Cast(GetOwner().GetRootParent());
 		if (!vehicle)
-			return;
+			return false;
 
-		Instigator instigator = Instigator.CreateInstigator(vehicle.GetPilot());
-		GameMaterial gameMaterial;
-		array<int> colliderIDs = {};
-		array<SurfaceProperties> surfaces = {};
-		vector direction;
-		int nodeID;
+		Instigator instigator;
+		if (contact.VelocityBefore1.Length() < 1)
+			instigator = Instigator.CreateInstigator(character); // if it is not moving, then you run into it
+		else
+			instigator = Instigator.CreateInstigator(vehicle.GetPilot()); // if it was moving, then pilot clapped you with it
+
 		MeshObject meshObject = character.GetVObject().ToMeshObject();
+		int colliderID;
 
-		foreach (HitZone characterHitZone : characterHitZones)
-		{
-			if (!characterHitZone.HasColliderNodes() || characterHitZone.GetDamageState() == EDamageState.DESTROYED)
-				continue;
+		HitZone characterHitZone = characterHitZones[0];
+		if (!characterHitZone)
+			return false;
 
-			colliderIDs.Clear();
-			characterHitZone.GetColliderIDs(colliderIDs);
+		array<int> colliderIDs = {};
+		characterHitZone.GetColliderIDs(colliderIDs);
+		colliderID = colliderIDs.GetRandomElement(); // use random one, as the one found in contact will be the capsule collider which isnt tied to any hit zones
 
-			foreach (int colliderID : colliderIDs)
-			{
-				if (!m_RotorHitZone.HasCollision(otherPhysics.GetGeomWorldPosition(colliderID)))
-					continue;
+		array<SurfaceProperties> surfaces = {};
+		characterPhysics.GetGeomSurfaces(colliderID, surfaces);
+		if (surfaces.IsEmpty())
+			return false;
 
-				surfaces.Clear();
-				otherPhysics.GetGeomSurfaces(colliderID, surfaces);
-				if (surfaces.IsEmpty())
-					continue;
+		vector direction = vector.Direction(rotorMat[3], characterPhysics.GetGeomWorldPosition(colliderID));
+		Math3D.DirectionAndUpMatrix(direction, rotorMat[0], transformDir);
+		int nodeID = PhysicsUtils.GetNodeIndex(meshObject, colliderID);
+		SCR_DamageContext context = new SCR_DamageContext(
+			EDamageType.COLLISION, damage, transformDir,
+			character, characterHitZone, instigator,
+			surfaces[0], colliderID, nodeID
+		);
 
-				direction = vector.Direction(rotorMat[3], otherPhysics.GetGeomWorldPosition(colliderID));
-				Math3D.DirectionAndUpMatrix(direction, rotorMat[0], transformDir);
-				nodeID = PhysicsUtils.GetNodeIndex(meshObject, colliderID);
-				context = new SCR_DamageContext(
-					EDamageType.COLLISION, damage, transformDir,
-					character, characterHitZone, instigator,
-					surfaces[0], colliderID, nodeID
-				);
+		context.damageEffect = new SCR_CollisionDamageEffect();
 
-				context.damageEffect = collisionEffect;
+		characterDamageManager.HandleDamage(context);
 
-				characterDamageManager.HandleDamage(context);
-				break;
-			}
-		}
+		if (!characterAnimationComponent.IsRagdollActive()) // try to apply force now, as when character will be dead, we might not detect another collision
+			characterAnimationComponent.AddRagdollEffectorDamage(hitPosLocal, directionLocal, force, ragrollEffectRadius, ragrollEffectMaxTime);
+
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -292,7 +322,11 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 	{
 		if (!m_RotorHitZone)
 			return false;
-		
+
+		ChimeraCharacter character = ChimeraCharacter.Cast(other);
+		if (character && character.GetCharacterController().GetLifeState() == ECharacterLifeState.DEAD)
+			return false;
+
 		return super.FilterContact(owner, other, contact);
 	}
 
@@ -306,11 +340,19 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 		// GetComponentsDelayed may not have enough time to initialise members. To avoid a VME, initialise m_HelicopterSimulation
 		if(!m_HelicopterSimulation)
 		{
-			m_HelicopterSimulation = VehicleHelicopterSimulation.Cast(GetOwner().GetRootParent().FindComponent(VehicleHelicopterSimulation));
+			Vehicle vehicle = Vehicle.Cast(GetOwner().GetRootParent());
+			if (!vehicle)
+				return;
+
+			VehicleControllerComponent controller = vehicle.GetVehicleController();
+			if (!controller)
+				return;
+
+			m_HelicopterSimulation = VehicleHelicopterSimulation.Cast(controller.GetBaseSimulation());
 			if(!m_HelicopterSimulation)
 				return;
 		}
-		
+
 		float rotorRPM = m_HelicopterSimulation.RotorGetRPM(m_RotorHitZone.GetRotorIndex()) * 0.1;
 		float rotorRadius = m_RotorHitZone.GetRotorRadius();				
 		float rotorCenterToContact = vector.Distance(rotorTransform[3], contact.Position);
@@ -329,17 +371,31 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 		ChimeraCharacter character = ChimeraCharacter.Cast(other);
 		if (!character && m_RootDamageManager && contact.Impulse >= m_RootDamageManager.GetMinImpulse())
 			m_RootDamageManager.ProcessCollision(new SCR_CollisionDamageContainer(GetOwner(), other, contact.Impulse, contact.VelocityBefore1, contact.VelocityAfter1, contact.VelocityBefore2, contact.VelocityAfter2, contact.Position, contact.Normal));
-		
-		if (m_RotorHitZone.IsSpinning())
+
+		bool damageRotor = true;
+		if (m_RotorHitZone.IsSpinning() || rotorRPM > 0) // also check RPM as during startup IsSpinning will return false
 		{
 			if (character)
-				DamageOther(other, damage, contact, rotorRPM);
+			{
+				if (!DamageOther(character, damage, contact, rotorRPM))
+					return;
+
+				damageRotor = false;
+			}
+			else
+			{
+				int otherResponseIndex = contact.Physics2.GetResponseIndex();
+				damageRotor = otherResponseIndex != SCR_EPhysicsResponseIndex.TINY_MOMENTUM && otherResponseIndex != SCR_EPhysicsResponseIndex.TINY_DESTRUCTIBLE;
+				if (!damageRotor && !DamageOther(other, damage, contact, rotorRPM))
+					return;
+			}
 			
 			RPC_OnContactBroadcast(contact.Position, contact.Normal, contact.ShapeIndex1);
 			Rpc(RPC_OnContactBroadcast, contact.Position, contact.Normal, contact.ShapeIndex1);
 		}
-		
-		DamageRotors(damage);
+
+		if (damageRotor)
+			DamageRotors(damage);
 
 		super.OnFilteredContact(owner, other, contact);
 	}

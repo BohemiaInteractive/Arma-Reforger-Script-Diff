@@ -1,3 +1,4 @@
+[SCR_BaseContainerCountedResourceNameTitle("m_iNumberOfPrefabs", "m_sPrefab")]
 class SCR_WeaponDeployablePart : SCR_AdditionalDeployablePart
 {
 	[Attribute(defvalue: "1", desc: "Delete magazines when spawned. Iterates throught all muzzle components and deletes all magazines that are found")]
@@ -6,7 +7,7 @@ class SCR_WeaponDeployablePart : SCR_AdditionalDeployablePart
 	//------------------------------------------------------------------------------------------------
 	//! Override if you would like to do something to the entity that was spawned after deployment
 	//! \param[in] spawnedEntity
-	override void PostPrefabSpawn(notnull IEntity spawnedEntity)
+	override void PostPrefabSpawn(notnull IEntity spawnedEntity, int authorPlayerId, IEntity user)
 	{
 		if (!m_bDeleteMagazines)
 			return;

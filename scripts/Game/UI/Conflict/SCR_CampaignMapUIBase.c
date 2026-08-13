@@ -1,6 +1,8 @@
-//------------------------------------------------------------------------------------------------
 class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 {
+	[Attribute("{0DBF4B0B6DFDF109}Configs/Map/BaseServiceIcons.conf", params: "conf class=SCR_BaseServiceIconList")]
+	protected ResourceName m_sServiceIconsConfig;
+
 	[Attribute("{14E86B20D0ED993F}UI/layouts/Campaign/ServiceContainer.layout")]
 	protected ResourceName m_sServiceElement;
 
@@ -25,6 +27,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	[Attribute("NextShipmentText")]
 	protected string m_sNextShipmentTextName;
 
+	protected const string SERVICEICON_BUTTON_NAME = "Service";
+	
 	protected static const float OPACITY_DISABLED = 0.5;
 	protected static const float OPACITY_UNSELECTED = 0.9;
 
@@ -107,6 +111,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 
 	protected SCR_SpawnPoint m_SpawnPoint;
 
+	protected ref array<ref SCR_BaseServiceIconInfo> m_aOrderedServiceIcons = {};
+
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \return
@@ -150,6 +156,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			m_bIsAnyElementClicked = false;
 			m_wHighlightImg.SetVisible(false);
 		}
+		
 		return false;
 	}
 
@@ -294,8 +301,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		
 		if (m_wInfoText)
 		{
-		m_wInfoText.SetVisible(false);
-		m_wRoot.SetZOrder(0);
+			m_wInfoText.SetVisible(false);
+			m_wRoot.SetZOrder(0);
 		}
 		
 		if (m_Base)
@@ -309,8 +316,6 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			if (mapDesc)
 				mapDesc.OnIconHovered(false);
 		}
-
-		m_wInfoText.SetVisible(false);
 
 		GetGame().GetCallqueue().Remove(SetNextShipmentText);
 
@@ -489,7 +494,6 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		
 		m_wBaseNameDialog = TextWidget.Cast(w.FindAnyWidget("m_w_NameDialog"));
 		m_wCallsignNameDialog = TextWidget.Cast(w.FindAnyWidget("Callsign-Dialog"));
-
 
 		m_wInfoText = w.FindAnyWidget("Info");
 		m_wAntennaImg = w.FindAnyWidget("AntenaOff");
@@ -776,7 +780,25 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	protected void InitServiceIcons()
+	{
+		Resource holder = BaseContainerTools.LoadContainer(m_sServiceIconsConfig);
+		if (!holder || !holder.IsValid())
+			return;
+		
+		BaseContainer container = holder.GetResource().ToBaseContainer();
+		if (!container)
+			return;
+		
+		SCR_BaseServiceIconList list = SCR_BaseServiceIconList.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
+		if (!list)
+			return;
+		
+		list.GetIconList(m_aOrderedServiceIcons);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Setting the Service buttons in ServiceContainer.layout to match the services listed in BaseServiceIcons.conf
 	void InitServices()
 	{
 		Widget w = m_wServices.FindAnyWidget("ServicesSizeOverlay"); //GetGame().GetWorkspace().CreateWidgets(m_sServiceElement, m_wServices);
@@ -786,13 +808,17 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		m_wServices.SetVisible(false);
 		m_wServices.SetOpacity(0);
 
-		int cnt = m_mServices.Count();
-		for (int serviceId = 0; serviceId < 8; ++serviceId)
-		{
-			string btnName = "Service" + serviceId.ToString();
-			Widget serviceBtn = w.FindAnyWidget(btnName);
+		int count = m_aOrderedServiceIcons.Count();
+		int i = 0;
 
-			if (serviceId >= cnt)
+		foreach (SCR_BaseServiceIconInfo info : m_aOrderedServiceIcons)
+		{
+			string btnName = SERVICEICON_BUTTON_NAME + i.ToString();
+			Widget serviceBtn = w.FindAnyWidget(btnName);
+			if (!serviceBtn)
+				continue;
+
+			if (i >= count)
 			{
 				serviceBtn.SetVisible(false);
 				continue;
@@ -802,8 +828,10 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			if (handler)
 			{
 				handler.SetParent(this);
-				handler.SetService(m_mServices.GetKey(serviceId), m_mServices.GetElement(serviceId));
+				handler.SetService(info, m_mServices.Get(info.GetServicePointType()));
 			}
+
+			i++;
 		}
 	}
 
@@ -929,6 +957,9 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	{
 		m_Base = base;
 
+		if (m_aOrderedServiceIcons.IsEmpty())
+			InitServiceIcons();
+
 		SetBaseServices(m_Base);
 		InitBaseIcon();
 		SetIconInfoText();
@@ -1052,6 +1083,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			m_wBaseNameDialog.SetText(name);
 			m_sName = name;
 		}
+		
 		if (m_wCallsignName)
 		{
 			string callsign;
@@ -1137,16 +1169,13 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	{
 		array<SCR_ServicePointComponent> available = {};
 		array<SCR_ServicePointDelegateComponent> built = {};
-		array<int> allServices = {};
-
-		SCR_Enum.GetEnumValues(SCR_EServicePointType, allServices);
 
 		if (base)
 			base.GetServiceDelegates(built);
 
-		foreach (SCR_EServicePointType type : allServices)
+		foreach (SCR_BaseServiceIconInfo info : m_aOrderedServiceIcons)
 		{
-			m_mServices.Set(type, null);
+			m_mServices.Set(info.GetServicePointType(), null);
 		}
 
 		foreach (SCR_ServicePointDelegateComponent delegate : built)
@@ -1311,7 +1340,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void SetImage(string image)
+	override void SetImage(string image, string imageset)
 	{
 		if (!m_wImage)
 			return;
@@ -1351,6 +1380,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 				m_w_NameDialog.SetColor(Color.FromRGBA(0,177,79,255));
 				break;
 			}
+			
 			case campaign.GetFactionKeyByEnum(SCR_ECampaignFaction.OPFOR):
 			{
 				baseIcon.SetIdentity(EMilitarySymbolIdentity.OPFOR);
@@ -1360,6 +1390,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 				m_w_NameDialog.SetColor(Color.FromRGBA(238,49,47,255));
 				break;
 			}
+			
 			case campaign.GetFactionKeyByEnum(SCR_ECampaignFaction.BLUFOR):
 			{
 				baseIcon.SetIdentity(EMilitarySymbolIdentity.BLUFOR);
@@ -1370,6 +1401,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 				m_w_NameDialog.SetColor(Color.FromRGBA(31,195,243,255));
 				break;
 			}
+			
 			case "Unknown":
 			{
 				baseIcon.SetIdentity(EMilitarySymbolIdentity.UNKNOWN);
@@ -1392,6 +1424,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 				m_wAntennaImg.SetVisible(false);
 				break;
 			}
+			
 			case "Mobile":
 			{
 				baseIcon.SetIcons(EMilitarySymbolIcon.MOBILEHQ | EMilitarySymbolIcon.RELAY);
@@ -1401,6 +1434,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 				m_wImageOverlay.SetHeightOverride(m_iDefRelaySize);
 				break;
 			}
+			
 			case "SourceBase":
 			{
 				TStringArray highlightSplit = new TStringArray;
@@ -1413,9 +1447,11 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 				m_wAntennaImg.SetVisible(false);
 				break;
 			}
+			
 			default:
 			{
 				spawnPoint = m_Base.GetSpawnPoint();
+				
 				if (strs.Get(0) != "Unknown")
 				{
 					if (m_Base.GetType() != SCR_ECampaignBaseType.SOURCE_BASE && !m_Base.IsHQRadioTrafficPossible(m_Base.GetCampaignFaction(), SCR_ERadioCoverageStatus.BOTH_WAYS) && m_Base.GetFaction() == m_PlayerFaction)
@@ -1427,6 +1463,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 						m_wAntennaImg.SetVisible(false);
 					}
 				}
+				
 				if (strs.Get(2) == "Small")
 				{
 					m_wImageOverlay.SetWidthOverride(38);

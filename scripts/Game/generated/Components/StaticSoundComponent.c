@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-class StaticSoundComponent: GenericComponent
+class StaticSoundComponent: BaseStaticSoundComponent
 {
 }
 

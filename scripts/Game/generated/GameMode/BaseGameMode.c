@@ -15,6 +15,11 @@ class BaseGameModeClass: GenericEntityClass
 
 class BaseGameMode: GenericEntity
 {
+	//! Returns the cached instance of RplComponent attached to the entity, if any.
+	proto external protected RplComponent GetRplComponent();
+
+	// callbacks
+
 	//! Gets called after world is initialized but before first ticks
 	event protected void OnGameStart();
 	/*

@@ -19,6 +19,9 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 	[Attribute("0", desc: "If true, only assets with ALL of provided included labels will be used.")]
 	protected bool m_bRequireAllIncludedLabels;
 
+	[Attribute("1", desc: "If true, vehicles will be saved into persistence system on despawn (if available).")]
+	protected bool m_bSaveOnDespawn;
+
 	protected static const int SPAWNING_RADIUS = 5;				//m, check empty space on a spawnpoint with this radius
 	protected static const int IGNORE_CHANGES_DELAY_MS = 1000;	//ms, how long after vehicle spawn should changes to fuel or damage be ignored before despawn is disabled
 
@@ -37,6 +40,7 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 	protected Vehicle m_Vehicle;
 
 	protected Faction m_SavedFaction;
+	protected UUID m_sVehicleDataId = UUID.NULL_UUID;
 
 	//------------------------------------------------------------------------------------------------
 	//! \return
@@ -65,20 +69,20 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 	{
 		return m_bFirstSpawnDone;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	bool GetIsSpawnProcessed()
 	{
 		return m_bSpawnProcessed;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	bool IsDespawnAllowed()
 	{
 		return m_bAllowDespawn;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetAllowDespawn(bool allow)
 	{
@@ -114,6 +118,18 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void SetDespawnedDataId(UUID dataId)
+	{
+		m_sVehicleDataId = dataId;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	UUID GetDespawnedDataId()
+	{
+		return m_sVehicleDataId;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! \return
 	Vehicle GetSpawnedVehicle()
 	{
@@ -129,13 +145,11 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \return the created vehicle
-	Vehicle SpawnVehicle()
+	void SpawnVehicle()
 	{
 		SCR_FactionAffiliationComponent comp = SCR_FactionAffiliationComponent.Cast(GetOwner().FindComponent(SCR_FactionAffiliationComponent));
 		if (!comp)
-			return null;
+			return;
 
 		SCR_Faction faction = SCR_Faction.Cast(comp.GetAffiliatedFaction());
 		if (!faction)
@@ -145,7 +159,7 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 			Update(faction);
 
 		if (m_sPrefab.IsEmpty())
-			return null;
+			return;
 
 		vector pos;
 		const bool spawnEmpty = SCR_WorldTools.FindEmptyTerrainPosition(pos, GetOwner().GetOrigin(), SPAWNING_RADIUS, SPAWNING_RADIUS);
@@ -160,50 +174,89 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 			if (!m_bFirstSpawnDone)
 				m_bDepleted = true;
 
-			return null;
+			return;
 		}
-
-		EntitySpawnParams params();
-		params.TransformMode = ETransformMode.WORLD;
-		GetOwner().GetTransform(params.Transform);
 
 		if (m_Vehicle)
 			RemoveInteractionHandlers(m_Vehicle);
 
-		m_Vehicle = Vehicle.Cast(GetGame().SpawnEntityPrefabEx(m_sPrefab, false, params: params));
 		m_fRespawnTimestamp = null;
 		m_bFirstSpawnDone = true;
 		m_bSpawnProcessed = true;
 
-		if (!m_Vehicle)
-			return null;
+		if (!m_sVehicleDataId.IsNull())
+		{
+			auto persistence = PersistenceSystem.GetInstance();
+			if (persistence)
+			{
+				PersistenceSpawnRequest request();
+				request.Collection = persistence.FindCollection("Vehicle");
+				request.Include = {m_sVehicleDataId};
 
+				PersistenceResultCallback callback(OnVehicleLoaded);
+				persistence.RequestSpawn(request, callback);
+				return;
+			}
+		}
+
+		DoSpawnVehicle();
+		OnVehicleReady(m_Vehicle);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void DoSpawnVehicle()
+	{
+		EntitySpawnParams params();
+		params.TransformMode = ETransformMode.WORLD;
+		GetOwner().GetTransform(params.Transform);
+		m_Vehicle = Vehicle.Cast(GetGame().SpawnEntityPrefabEx(m_sPrefab, false, params: params));
+
+		SCR_AmbientVehicleSystem manager = SCR_AmbientVehicleSystem.GetInstance();
+		if (manager)
+			manager.OnVehicleSpawned(this, m_Vehicle);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnVehicleLoaded(EPersistenceStatusCode statusCode, Managed result, bool isLast)
+	{
+		m_Vehicle = Vehicle.Cast(result);
+		if (!m_Vehicle)
+			DoSpawnVehicle();
+
+		OnVehicleReady(m_Vehicle);
+		m_sPrefab = SCR_ResourceNameUtils.GetPrefabName(m_Vehicle);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnVehicleReady(notnull IEntity vehicle)
+	{
 		m_fSpawnTimestamp = GetGame().GetWorld().GetWorldTime();
 
 		// Activate handbrake so the vehicles don't go downhill on their own when spawned
-		CarControllerComponent carController = CarControllerComponent.Cast(m_Vehicle.FindComponent(CarControllerComponent));		
+		CarControllerComponent carController = CarControllerComponent.Cast(vehicle.FindComponent(CarControllerComponent));
 		if (carController)
 			carController.SetPersistentHandBrake(true);
 
 		// Snap to terrain
-		Physics physicsComponent = m_Vehicle.GetPhysics();
+		Physics physicsComponent = vehicle.GetPhysics();
 		if (physicsComponent)
 			physicsComponent.SetVelocity("0 -1 0");
 
-		EventHandlerManagerComponent handler = EventHandlerManagerComponent.Cast(m_Vehicle.FindComponent(EventHandlerManagerComponent));
+		EventHandlerManagerComponent handler = EventHandlerManagerComponent.Cast(vehicle.FindComponent(EventHandlerManagerComponent));
 		if (handler)
 			handler.RegisterScriptHandler("OnDestroyed", this, OnVehicleDestroyed);
 
 		if (m_bStopDespawnOnInteraction)
-			AddInteractionHandlers(m_Vehicle);
-
-		return m_Vehicle;
+			AddInteractionHandlers(vehicle);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] vehicle
 	protected void OnVehicleDestroyed(IEntity vehicle)
 	{
+		if (m_Vehicle != vehicle)
+			return;
+
 		m_Vehicle = null;
 		m_bAllowDespawn = true;
 
@@ -274,9 +327,25 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 	//!
 	void DespawnVehicle()
 	{
+		if (m_Vehicle && m_bSaveOnDespawn)
+		{
+			auto persistence = PersistenceSystem.GetInstance();
+			if (persistence)
+			{
+				m_sVehicleDataId = persistence.GetId(m_Vehicle);
+				if (!m_sVehicleDataId.IsNull())
+				{
+					persistence.Save(m_Vehicle, ESaveGameType.SCRIPTED);
+					persistence.StopTracking(m_Vehicle, false);
+				}
+			}
+		}
+
 		m_fDespawnTimestamp = null;
 		m_bSpawnProcessed = false;
-		RplComponent.DeleteRplEntity(m_Vehicle, false);
+		auto vehicle = m_Vehicle;
+		m_Vehicle = null; // Clear early to suppress destory event
+		RplComponent.DeleteRplEntity(vehicle, false);
 	}
 
 	//------------------------------------------------------------------------------------------------

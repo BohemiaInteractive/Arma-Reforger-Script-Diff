@@ -64,15 +64,15 @@ class SCR_EditorLinkComponentSerializer : ScriptedComponentSerializer
 			float scale;
 			container.Get("m_fScale", scale);
 
-			SerializerDefaultSpawnData defaults();
+			EntitySerializerDefaultSpawnData defaults();
 			defaults.Prefab = prefab;
 			Math3D.AnglesToMatrix(prefabAngles, defaults.Transform);
 			Math3D.MatrixScale(defaults.Transform, scale);
 			defaults.Transform[3] = prefabPos;
 
-			const ESerializeResult result = GetSystem().SerializeEntity(child, item.Context, defaults);
+			const ESerializeResult result = GetSystem().Serialize(child, item.Context, defaults);
 			if (result == ESerializeResult.ERROR)
-				return ESerializeResult.ERROR;
+				return result;
 
 			if (result == ESerializeResult.DEFAULT)
 				continue;
@@ -127,6 +127,7 @@ class SCR_EditorLinkComponentSerializer : ScriptedComponentSerializer
 			linkedChildrenLookup.Insert(storeName, child);
 		}
 
+		bool success = true;
 		int changedCount = 0;
 		if (context.StartMap("changed", changedCount))
 		{
@@ -138,9 +139,12 @@ class SCR_EditorLinkComponentSerializer : ScriptedComponentSerializer
 				IEntity changeEntitiy = linkedChildrenLookup.Get(keyBuffer);
 				if (changeEntitiy)
 				{
-					const IEntity resultEnt = GetSystem().DeserializeLoadEntity(changeEntitiy, context, false);
+					const IEntity resultEnt = IEntity.Cast(GetSystem().DeserializeLoad(changeEntitiy, context));
 					if (resultEnt != changeEntitiy)
-						return false;
+					{
+						success = false;
+						GetSystem().HandleDelete(resultEnt);
+					}
 				}
 				context.EndObject();
 			}
@@ -155,6 +159,6 @@ class SCR_EditorLinkComponentSerializer : ScriptedComponentSerializer
 			SCR_EntityHelper.DeleteEntityAndChildren(removeEntity);
 		}
 
-		return true;
+		return success;
 	}
 }

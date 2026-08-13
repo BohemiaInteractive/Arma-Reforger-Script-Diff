@@ -1,3 +1,4 @@
+[SCR_BaseContainerCountedResourceNameTitle("m_iNumberOfRequiredPrefabs", "m_sPrefab")]
 class SCR_RequiredDeployablePart : ScriptAndConfig
 {
 	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, desc: "Prefab which is going to be required in order to deploy the main entity", params: "et")]
@@ -118,7 +119,10 @@ class SCR_RequiredDeployablePart : ScriptAndConfig
 
 		foreach (int id, IEntity foundElement : m_aFoundEntities)
 		{
-			if (vector.DistanceSq(foundElement.GetOrigin(), origin) <= distanceSqToFoundEntity)
+			if (ChimeraCharacter.Cast(foundElement.GetRootParent()))
+				continue; // items from player inventory should have top priority and should be always first to be used for assembling
+
+			if (distanceSqToFoundEntity != 0 && vector.DistanceSq(foundElement.GetOrigin(), origin) <= distanceSqToFoundEntity)
 				continue;
 
 			ReplaceFoundEntity(foundEntity, id);

@@ -19,11 +19,16 @@ class SCR_CampaignBuildingCompositionComponentSerializer : ScriptedComponentSeri
 		{
 			current = layout.GetCurrentBuildValue();
 			max = layout.GetToBuildValue();
+			
+			// It will spawn with no progress due to BuildableEntitySerializer.DeserializeSpawnData(), so we can abort if that is the desired outcome.
+			if (float.AlmostEqual(current, 0.0))
+				return ESerializeResult.DEFAULT;
 		}
-
-		// It will spawn by with no progress due to BuildableEntitySerializer.DeserializeSpawnData(), so we can abort if that is the desired outcome.
-		if (float.AlmostEqual(current, 0.0))
+		else if (!buildableCompostion.GetPrefabId() && !owner.FindComponent(SCR_EditorLinkComponent))
+		{
+			// No layout, ever existed, no editor link spawning logic needed, so no data needs to be saved.
 			return ESerializeResult.DEFAULT;
+		}
 
 		const float progress = current / max;
 

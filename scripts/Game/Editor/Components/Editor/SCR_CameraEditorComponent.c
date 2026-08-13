@@ -236,6 +236,25 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 		m_vPreActivateCameraTransform[3] = position;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	void TeleportEditorCamera(vector pos)
+	{
+		Rpc(RpcDo_TeleportEditorCamera, pos);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(channel: RplChannel.Reliable, rcver: RplRcver.Owner)]
+	protected void RpcDo_TeleportEditorCamera(vector pos)
+	{
+		SCR_ManualCamera camera = GetCamera();
+		if (!camera)
+			return;
+
+		SCR_TeleportToCursorManualCameraComponent teleportComponent = SCR_TeleportToCursorManualCameraComponent.Cast(camera.FindCameraComponent(SCR_TeleportToCursorManualCameraComponent));
+		if (teleportComponent)
+			teleportComponent.TeleportCamera(pos, true, false);
+	}
+
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Default functions
 	override void ResetEditorComponent()

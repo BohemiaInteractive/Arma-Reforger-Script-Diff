@@ -23,7 +23,7 @@ class ScriptedEntitySerializer: PersistenceSerializerBase
 	event protected bool DeserializeSpawnData(out ResourceName prefab, notnull out EntitySpawnParams params, notnull LoadContext context) { return DeserializeSpawnDataNative(prefab, params, context); }
 
 	//! Native spawn data serialization logic that can be called explictly if script overrides SerializeSpawnData.
-	proto external protected ESerializeResult SerializeSpawnDataNative(notnull IEntity entity, notnull SaveContext context, SerializerDefaultSpawnData defaultData);
+	proto external protected ESerializeResult SerializeSpawnDataNative(notnull IEntity entity, notnull SaveContext context, EntitySerializerDefaultSpawnData defaultData = null);
 	//! Native serialization logic used by the game. Can be called by scripts before or after custom data or not all.
 	proto external protected ESerializeResult SerializeNative(notnull IEntity entity, notnull SaveContext context, ESerializeMode mode = ESerializeMode.NATIVE);
 	/*!
@@ -39,7 +39,7 @@ class ScriptedEntitySerializer: PersistenceSerializerBase
 	// callbacks
 
 	//! Custom entity spawn data serialization logic if needed. Must match the data that DeserializeSpawnData will attempt to read
-	event protected ESerializeResult SerializeSpawnData(notnull IEntity entity, notnull SaveContext context, SerializerDefaultSpawnData defaultData) { return SerializeSpawnDataNative(entity, context, defaultData); };
+	event protected ESerializeResult SerializeSpawnData(notnull IEntity entity, notnull SaveContext context, EntitySerializerDefaultSpawnData defaultData) { return SerializeSpawnDataNative(entity, context, defaultData); };
 	/*!
 	Custom implementation for writing the entity data into into the save context.
 	\return True for success. False for data/state errors which will abort the process and use configured fault handling

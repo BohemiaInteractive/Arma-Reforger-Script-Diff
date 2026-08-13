@@ -256,7 +256,7 @@ class SCR_MapCursorModule : SCR_MapModuleBase
 	{
 		float screenX, screenY;
 		m_MapWidget.GetScreenSize(screenX, screenY);
-		m_InputManager.SetCursorPosition(screenX * 0.5, screenY * 0.5);
+		m_InputManager.GetMouseDeviceHandler().SetCursorPosition(screenX * 0.5, screenY * 0.5);
 
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
 		m_CursorInfo.x = workspace.DPIUnscale(screenX * 0.5);
@@ -277,7 +277,7 @@ class SCR_MapCursorModule : SCR_MapModuleBase
 		{
 			WorkspaceWidget workspace = GetGame().GetWorkspace();
 			if (m_CursorInfo.isGamepad && workspace)
-				m_InputManager.SetCursorPosition(workspace.DPIScale(m_CursorInfo.x), workspace.DPIScale(m_CursorInfo.y));
+				m_InputManager.GetMouseDeviceHandler().SetCursorPosition(workspace.DPIScale(m_CursorInfo.x), workspace.DPIScale(m_CursorInfo.y));
 
 
 			if (~m_CursorState & EMapCursorState.CS_MOVE)

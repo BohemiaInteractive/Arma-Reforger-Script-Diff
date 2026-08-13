@@ -2,72 +2,147 @@
 [EntityEditorProps(category: "GameLib/Scripted/Generator", description:"RoadGeneratorEntity", dynamicBox: true, visible: false)]
 class RoadGeneratorEntityClass: GeneratorBaseEntityClass
 {
+#ifdef WORKBENCH
+	//-----------------------------------------------------------------------
+	static override bool _WB_IsTraceable(WorldEditorAPI api, IEntitySource src)
+	{
+		return false;
+	}
+
+	//-----------------------------------------------------------------------
+	static override void _WB_OnDelete(WorldEditorAPI api, IEntitySource src)
+	{
+		RoadGeneratorEntity ent = RoadGeneratorEntity.Cast(api.SourceToEntity(src));
+		if (ent)
+			api.RemoveTerrainFlatterEntity(ent, true);
+	}
+
+	//-----------------------------------------------------------------------
+	static override bool _WB_OnKeyChanged(WorldEditorAPI api, IEntitySource src, string key, BaseContainerList ownerContainers, IEntitySource parent)
+	{
+		if (!api.AreGeneratorEventsEnabled())
+			return false;
+
+		RoadGeneratorEntity ent = RoadGeneratorEntity.Cast(api.SourceToEntity(src));
+		if (!ent)
+			return false;
+
+		BaseContainerTools.WriteToInstance(ent, src);
+
+		// if there is no legit spline entity
+		if (!ent.m_ShapeEntity)
+		{
+			Print("RoadGeneratorEntity requires a SplineShapeEntity!", LogLevel.ERROR);
+			return false;
+		}
+
+		array<vector> updateMins = new array<vector>();
+		array<vector> updateMaxes = new array<vector>();
+
+		ent.m_ShapeEntity.GetAllInfluenceBBoxes(ent.m_ShapeSrc, updateMins, updateMaxes);
+
+		bool bForceUpdate = false;
+
+		if (key == "AdjustHeightMap")
+		{
+			if (ent.AdjustHeightMap)
+			{
+				bForceUpdate = true;
+			}
+			else
+			{
+				api.RemoveTerrainFlatterEntity(ent, true);
+			}
+		}
+
+		ent.UpdateTerrain(ent.m_ShapeEntity, bForceUpdate, updateMins, updateMaxes);
+		ent.UpdateRoad(ent.m_ShapeSrc);
+
+		return true;
+	}
+
+	//-----------------------------------------------------------------------
+	static override void _WB_OnCreate(WorldEditorAPI api, IEntitySource src)
+	{
+		RoadGeneratorEntity ent = RoadGeneratorEntity.Cast(api.SourceToEntity(src));
+		if (!ent || !ent.m_ShapeEntity)
+			return;
+
+		array<vector> updateMins = new array<vector>();
+		array<vector> updateMaxes = new array<vector>();
+		ent.m_ShapeEntity.GetAllInfluenceBBoxes(ent.m_ShapeSrc, updateMins, updateMaxes);
+
+		ent.UpdateRoad(ent.m_ShapeSrc, false);
+		ent.UpdateTerrain(ent.m_ShapeEntity, false, updateMins, updateMaxes);
+	}
+#endif
 }
 
 //-----------------------------------------------------------------------
+[Friend(RoadGeneratorEntityClass)]
 class RoadGeneratorEntity : GeneratorBaseEntity
 {
 	[Attribute(defvalue: "0", uiwidget: UIWidgets.CheckBox, desc: "If enabled, adjust terrain height map to road", category: "Terrain")]
-	private bool AdjustHeightMap; //!< Read by c++ RoadTerrainLayer
+	protected bool AdjustHeightMap; //!< Read by c++ RoadTerrainLayer
 
 	[Attribute(defvalue: "0", desc: "Priority of terrain heightmap adjust", category: "Terrain")]
-	private int AdjustHeightMapPriority; //!< Read by c++ RoadTerrainLayer
+	protected int AdjustHeightMapPriority; //!< Read by c++ RoadTerrainLayer
 
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "If enabled, generate RoadEntity", category: "Road")]
-	private bool GenerateRoad;
-	
+	protected bool GenerateRoad;
+
 	[Attribute(defvalue: "2", uiwidget: UIWidgets.EditBox, desc: "Width of the clearance by the road", category: "Road")]
-	private float RoadClearance; //!< Used by ForestGeneratorEntity
+	protected float RoadClearance; //!< Used by ForestGeneratorEntity
 
 	[Attribute(defvalue: "10", uiwidget: UIWidgets.EditBox, desc: "Width of the road", category: "Road", params: "0.1 100.0 0.1")]
-	private float RoadWidth; //!< Read by c++ RoadTerrainLayer
+	protected float RoadWidth; //!< Read by c++ RoadTerrainLayer
 
 	[Attribute(defvalue: "2", uiwidget: UIWidgets.EditBox, desc: "Distance between road edge and start of fall-off", category: "Terrain")]
-	private float FalloffStartWidth; //!< Read by c++ RoadTerrainLayer
+	protected float FalloffStartWidth; //!< Read by c++ RoadTerrainLayer
 
 	[Attribute(defvalue: "20", uiwidget: UIWidgets.EditBox, desc: "Width of the road fall-off", category: "Terrain")]
-	private float RoadFalloffWidth; //!< Read by c++ RoadTerrainLayer
+	protected float RoadFalloffWidth; //!< Read by c++ RoadTerrainLayer
 
-#ifdef WORKBENCH	
-	private ShapeEntity m_ShapeEntity; //!< Read by c++ RoadTerrainLayer
-	private IEntitySource m_ShapeSrc;
-	private IEntitySource m_RoadGenSrc;
+#ifdef WORKBENCH
+	protected ShapeEntity m_ShapeEntity; //!< Read by c++ RoadTerrainLayer
+	protected IEntitySource m_ShapeSrc;
+	protected IEntitySource m_RoadGenSrc;
 
 	//-----------------------------------------------------------------------
 	float GetRoadClearance()
 	{
 		return RoadClearance;
 	}
-	
+
 	//-----------------------------------------------------------------------
 	float GetRoadWidth()
 	{
 		return RoadWidth;
 	}
-	
+
 	//-----------------------------------------------------------------------
 	protected void RoadGeneratorEntity(IEntitySource src, IEntity parent)
 	{
 		if (_WB_GetEditorAPI())
 		{
 			SetEventMask(EntityEvent.INIT);
-	
+
 			m_RoadGenSrc = src;
-			
+
 			IEntitySource parentSrc = m_RoadGenSrc.GetParent();
 			ShapeEntity shapeEnt = ShapeEntity.Cast(parent);
 			if (parentSrc && shapeEnt)
 			{
 				OnShapeInit(parentSrc, shapeEnt);
 			}
-		}		
+		}
 	}
-	
+
 	//-----------------------------------------------------------------------
 	protected void ~RoadGeneratorEntity()
 	{
 		WorldEditorAPI api = _WB_GetEditorAPI();
-		
+
 		if (api)
 		{
 			api.RemoveTerrainFlatterEntity(this, false);
@@ -75,93 +150,19 @@ class RoadGeneratorEntity : GeneratorBaseEntity
 	}
 
 	//-----------------------------------------------------------------------
-	override bool _WB_IsTraceable(IEntitySource src)
-	{
-		return false;
-	}
-	
-	//-----------------------------------------------------------------------
-	override void _WB_OnDelete(IEntitySource src)
-	{
-		WorldEditorAPI api = _WB_GetEditorAPI();
-		if (api)
-		{
-			api.RemoveTerrainFlatterEntity(this, true);
-		}
-	}
-	
-	//-----------------------------------------------------------------------
-	override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
-	{
-		WorldEditorAPI api = _WB_GetEditorAPI();
-		if (!api.AreGeneratorEventsEnabled())
-			return false;
-		
-		BaseContainerTools.WriteToInstance(this, src);
-
-		// if there is no legit spline entity
-		if( !m_ShapeEntity )
-		{
-			Print("RoadGeneratorEntity requires a SplineShapeEntity!", LogLevel.ERROR);
-			return false;
-		}
-		
-		array<vector> updateMins = new array<vector>();
-		array<vector> updateMaxes = new array<vector>();
-		
-		m_ShapeEntity.GetAllInfluenceBBoxes(m_ShapeSrc, updateMins, updateMaxes);
-		
-		bool bForceUpdate = false;
-				
-		if (key == "AdjustHeightMap")
-		{
-			if (AdjustHeightMap)
-			{
-				bForceUpdate = true;	
-			}
-			else
-			{
-				api.RemoveTerrainFlatterEntity(this, true);
-			}
-		}
-		
-		UpdateTerrain(m_ShapeEntity, bForceUpdate, updateMins, updateMaxes);
-		UpdateRoad(m_ShapeSrc);
-		
-		return true;
-	}
-	
-	//-----------------------------------------------------------------------
-	override void _WB_OnCreate(IEntitySource src)
-	{
-		WorldEditorAPI api = _WB_GetEditorAPI();
-		
-		if (api && m_ShapeEntity)
-		{
-			IEntitySource shapeEntitySrc = src.GetParent();
-			array<vector> updateMins = new array<vector>();
-			array<vector> updateMaxes = new array<vector>();
-			m_ShapeEntity.GetAllInfluenceBBoxes(m_ShapeSrc, updateMins, updateMaxes);
-			
-			UpdateRoad(m_ShapeSrc, false);
-			UpdateTerrain(m_ShapeEntity, false, updateMins, updateMaxes);
-		}
-	}
-	
-	//-----------------------------------------------------------------------
 	protected override void OnShapeInitInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity)
 	{
 		m_ShapeEntity = shapeEntity;
 		m_ShapeSrc = shapeEntitySrc;
-		
+
 		WorldEditorAPI api = _WB_GetEditorAPI();
-		
+
 		if (api)
 		{
 			array<vector> updateMins = new array<vector>();
 			array<vector> updateMaxes = new array<vector>();
 			shapeEntity.GetAllInfluenceBBoxes(m_ShapeSrc, updateMins, updateMaxes);
-			
+
 			UpdateTerrain(m_ShapeEntity, false, updateMins, updateMaxes);
 		}
 	}
@@ -170,20 +171,20 @@ class RoadGeneratorEntity : GeneratorBaseEntity
 	protected override void OnShapeTransformInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, array<vector> mins, array<vector> maxes)
 	{
 		UpdateTerrain(shapeEntity, false, mins, maxes);
-		UpdateRoad(shapeEntitySrc);		
-		
+		UpdateRoad(shapeEntitySrc);
+
 	}
 
 	//-----------------------------------------------------------------------
 	protected override void OnShapeChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, array<vector> mins, array<vector> maxes)
 	{
 		UpdateTerrain(shapeEntity, false, mins, maxes);
-		UpdateRoad(shapeEntitySrc);		
+		UpdateRoad(shapeEntitySrc);
 	}
 
 	//-----------------------------------------------------------------------
-	
-	protected void UpdateRoad(IEntitySource shapeEntitySrc, bool requireRoad = true)
+
+	void UpdateRoad(IEntitySource shapeEntitySrc, bool requireRoad = true)
 	{
 		if (GenerateRoad)
 		{
@@ -192,14 +193,14 @@ class RoadGeneratorEntity : GeneratorBaseEntity
 	}
 
 	//-----------------------------------------------------------------------
-	protected void UpdateTerrain(ShapeEntity shapeEntity, bool bForceUpdate, array<vector> updateMins, array<vector> updateMaxes)
+	void UpdateTerrain(ShapeEntity shapeEntity, bool bForceUpdate, array<vector> updateMins, array<vector> updateMaxes)
 	{
 		WorldEditorAPI api = _WB_GetEditorAPI();
 
 		// update terrain
 		if (!api || !AdjustHeightMap)
 			return;
-		
+
 		vector mins = vector.One * 100000;
 		vector maxs = -mins;
 
@@ -230,7 +231,7 @@ class RoadGeneratorEntity : GeneratorBaseEntity
 	{
 		if (api.UndoOrRedoIsRestoring() || !api.IsModifyingData())
 			return;
-		
+
 		// spline
 		SplineShapeEntity splineEntity = SplineShapeEntity.Cast(api.SourceToEntity(splineSrc));
 		if (!splineEntity)
@@ -265,21 +266,21 @@ class RoadGeneratorEntity : GeneratorBaseEntity
 		}
 
 		// All good, update the road entity!
-		
+
 		//optimization. Entity roadSrc will not be re-initialized until the api.EndEditSequence(roadSrc) bellow will be called
 		api.BeginEditSequence(roadSrc);
 
 		// set some properties
 		bool isClosed;
 		splineSrc.Get("IsClosed", isClosed);
-		
+
 		if (isClosed)
 			api.SetVariableValue(roadSrc, null, "IsClosedSpline", "true");
 		else
 			api.SetVariableValue(roadSrc, null, "IsClosedSpline", "false");
 		api.SetVariableValue(roadSrc, null, "Width", roadWidth.ToString());
 		api.SetVariableValue(roadSrc, null, "Points", "@@@"); // clear obsolete Points property
-		
+
 		// Copy the points:
 
 		// spline world transform
@@ -363,9 +364,8 @@ class RoadGeneratorEntity : GeneratorBaseEntity
 		// remove the abundant points in road entity (if any)
 		while (i < roadPoints.Count())
 			api.RemoveObjectArrayVariableMember(roadSrc, null, "SplinePoints", roadPoints.Count() - 1);
-			
+
 		api.EndEditSequence(roadSrc);
 	}
 	#endif
 }
-

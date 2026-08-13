@@ -13,6 +13,7 @@ class GenericGraphModel: IGraphModel
 {
 	void GenericGraphModel(notnull GraphNodeScene scene, notnull BaseContainer sceneSource) {}
 
+	proto external BaseContainer GetSceneSource();
 	proto external bool CanRemoveConnection(notnull GraphNodeConnectionBase connection);
 	proto external bool CanConnectPorts(notnull GraphNodePortBase portFrom, notnull GraphNodePortBase portTo);
 	//! Add node to the model, parameter nodeType should inherit from ScriptedGraphNode

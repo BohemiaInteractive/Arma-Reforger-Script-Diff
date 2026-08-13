@@ -29,14 +29,19 @@ class GraphNodeScene: ScriptAndConfig
 	void GraphNodeScene() {}
 
 	// --- Model
-	proto external void SetModel(IGraphModel graphModel);
-	proto external IGraphModel GetModel();
+	proto external void SetModel(GenericGraphModel graphModel);
+	proto external GenericGraphModel GetModel();
 	//! Delete every selected items
 	proto external void DeleteSelectedItems();
+	proto external void ClearSelection();
+	//! Select specific item. clear is true when we want to clear already selected items
+	proto external void SelectItem(GraphGraphicsItem item, bool clear = true);
 	//! Start drawing temporary connection from pPort, clear define if we should clear other current temporary connection
 	proto external void BeginDrawConnection(notnull GraphNodePortBase pPort, bool clear = true);
 	//! Set node name
 	proto external void SetNodeName(notnull GraphNode node, string newNodeName);
+	proto external ref GraphSceneState StoreState();
+	proto external void RestoreState(notnull GraphSceneState state);
 	//! Returns a position snapped to the grid
 	proto external vector SnapToGrid(vector scenePos);
 	//! Returns every items

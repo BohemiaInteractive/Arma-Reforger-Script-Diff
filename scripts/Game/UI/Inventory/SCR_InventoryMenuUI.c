@@ -1653,6 +1653,14 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			if (!storageUI)
 				continue;
 
+			// Storage is gone (f.e. sold), close it
+			BaseInventoryStorageComponent storage = storageUI.GetStorage();
+			if (!storage)
+			{
+				RemoveOpenStorage(storageUI);
+				continue;
+			}
+			
 			//~ If root entity is a vehicle than always take bounds of the vehicle this is because the cargo could be further away than the vehicle but the vehicle is the only one showing in the inventory
 			Vehicle vehicleRoot = Vehicle.Cast(storageUI.GetStorage().GetOwner().GetRootParent());
 			if (vehicleRoot)
@@ -2252,6 +2260,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				m_OnItemHoverEnd.Invoke();
 
 			pFocusedSlot.CheckCompatibility(null);
+			NavigationBarUpdate();
 		}
 	}
 
@@ -2406,7 +2415,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			return;
 		}
 
-		if (isItemInCharacter && !m_pSelectedSlotUI)
+		if (isItemInCharacter && (!m_bIsUsingGamepad || !m_pSelectedSlotUI))
 		{
 			m_pNavigationBar.SetButtonEnabled(BUTTON_USE, m_StorageManager.CanUseItem_Inventory(item));
 
@@ -4009,8 +4018,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		{
 			SCR_ArsenalComponent arsenalComp = SCR_ArsenalComponent.Cast(arsenalEntity.FindComponent(SCR_ArsenalComponent));
 			
-			//~ Arsenal is disabled so cannot refund
-			if (arsenalComp && !arsenalComp.IsArsenalEnabled())
+			//~ Arsenal is disabled or cannot refund
+			if (arsenalComp && (!arsenalComp.IsArsenalEnabled() || !arsenalComp.IsRefundEnabled()))
 				return true;
 		}
 		
@@ -4046,12 +4055,17 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				return false;
 			
 			//! Perform refund logic.
-			BaseInventoryStorageComponent storageComponent = m_pStorageLootUI.GetCurrentNavigationStorage();
-
-			if (!storageComponent) //! Relevant for OpenStorage classes
-				storageComponent = m_pActiveHoveredStorageUI.GetStorage();
+			BaseInventoryStorageComponent storageComponent = null;
 			
-			if (!storageComponent || !IsStorageArsenal(storageComponent) )	
+			// Storage that's hovered over is the priority always
+			if (m_pActiveHoveredStorageUI)
+				storageComponent = m_pActiveHoveredStorageUI.GetCurrentNavigationStorage();
+			
+			// If failed - general storage
+			if (!storageComponent && m_pStorageLootUI)
+				storageComponent = m_pStorageLootUI.GetCurrentNavigationStorage();
+			
+			if (!storageComponent || !IsStorageArsenal(storageComponent))	
 				return false;
 			
 			IEntity arsenalEntity = storageComponent.GetOwner();
@@ -4059,8 +4073,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			{
 				SCR_ArsenalComponent arsenalComp = SCR_ArsenalComponent.Cast(arsenalEntity.FindComponent(SCR_ArsenalComponent));
 				
-				//~ Arsenal is disabled so cannot refund
-				if (arsenalComp && !arsenalComp.IsArsenalEnabled())
+				//~ Arsenal is disabled or cannot refund
+				if (arsenalComp && (!arsenalComp.IsArsenalEnabled() || !arsenalComp.IsRefundEnabled()))
 				{
 					operationFailed = true;
 					return true;
@@ -4165,12 +4179,21 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				return false;
 			
 			//! Perform refund logic.
-			BaseInventoryStorageComponent storageComponent = m_pStorageLootUI.GetCurrentNavigationStorage();
+			BaseInventoryStorageComponent storageComponent = null;
 			
-			if (!storageComponent) //! Relevant for OpenStorage classes
-				storageComponent = m_pActiveHoveredStorageUI.GetStorage();
+			// Getting exact storage of a slot mouse hovers over
+			if (m_pFocusedSlotUI.GetStorageUI())
+				storageComponent = m_pFocusedSlotUI.GetStorageUI().GetCurrentNavigationStorage();
 			
-			if (!storageComponent || !IsStorageArsenal(storageComponent) )	
+			// Getting storage mouse hovers over in case previous check failed
+			if (!storageComponent && m_pActiveHoveredStorageUI)
+				storageComponent = m_pActiveHoveredStorageUI.GetCurrentNavigationStorage();
+			
+			// General fallback for OpenStorage classes
+			if (!storageComponent && m_pStorageLootUI)
+				storageComponent = m_pStorageLootUI.GetCurrentNavigationStorage();
+			
+			if (!storageComponent || !IsStorageArsenal(storageComponent))	
 				return false;
 			
 			IEntity arsenalEntity = storageComponent.GetOwner();
@@ -4178,8 +4201,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			{
 				SCR_ArsenalComponent arsenalComp = SCR_ArsenalComponent.Cast(arsenalEntity.FindComponent(SCR_ArsenalComponent));
 				
-				//~ Arsenal is disabled so cannot refund
-				if (arsenalComp && !arsenalComp.IsArsenalEnabled())
+				//~ Arsenal is disabled or cannot refund
+				if (arsenalComp && (!arsenalComp.IsArsenalEnabled() || !arsenalComp.IsRefundEnabled()))
 				{
 					operationFailed = true;
 					return true;
@@ -4222,6 +4245,13 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				operationFailed = true;
 				return true;
 			}
+		}
+
+		// dropping an item from arsenal onto the arsenal is not allowed as item will be in limbo and supplies will be lost
+		if (IsStorageArsenal(storageTo))
+		{
+			operationFailed = true;
+			return true;
 		}
 
 		if (m_InventoryManager.CanInsertItemInStorage(arsenalInventorySlotUI.GetInventoryItemComponent().GetOwner(), storageTo))
@@ -4974,7 +5004,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if ( !m_pFocusedSlotUI )
 			return;
 		IEntity pItem = m_pFocusedSlotUI.GetInventoryItemComponent().GetOwner();
-		if (m_InventoryManager.CanMoveItem(pItem))
+		if (!m_InventoryManager.CanMoveItem(pItem))
 			return;
 
 		m_pCallBack.m_pItem = pItem;

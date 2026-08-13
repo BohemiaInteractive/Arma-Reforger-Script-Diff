@@ -39,7 +39,7 @@ class GenericEntity: IEntity
 	/*!
 	Attempts to run a remote procedure call (RPC) of this instance with parameters
 	specified in method RplRpc attribute.
-	\param      method  Member function to be invoked as an RPC.
+	\param method Member function to be invoked as an RPC.
 	*/
 	proto protected void Rpc(func method, void p0 = NULL, void p1 = NULL, void p2 = NULL, void p3 = NULL, void p4 = NULL, void p5 = NULL, void p6 = NULL, void p7 = NULL);
 	//! This returns world editor API, which is safe to use from editor events bellow
@@ -60,8 +60,25 @@ class GenericEntity: IEntity
 	\param params See the TransformResetParams documentation.
 	*/
 	proto external private void OnTransformResetImplNative(TransformResetParams params);
+	/*!
+	\deprecated Prefer using new API with \ref ConnectToDiag and \ref DisconnectFromDiag
+	*/
 	proto external protected void ConnectToDiagSystem();
+	/*!
+	\deprecated Prefer using new API with \ref ConnectToDiag and \ref DisconnectFromDiag
+	*/
 	proto external protected void DisconnectFromDiagSystem();
+	/*!
+	Register a script callback to be invoked when a specific diag menu entry is active.
+	\param diagId Diag menu identifier.
+	\param callback Member function to invoke.
+	*/
+	proto external protected void ConnectToDiag(int diagId, DiagEntityCallback callback);
+	/*!
+	Disconnect this entity from a specific diag menu entry.
+	\param diagId Diag menu identifier.
+	*/
+	proto external protected void DisconnectFromDiag(int diagId);
 	/*!
 	Notifies the entity that its transformation has been discontinuously changed.
 
@@ -83,6 +100,9 @@ class GenericEntity: IEntity
 
 	// callbacks
 
+	/*!
+	\deprecated Use new API with \ref ConnectToDiag and \ref DisconnectFromDiag
+	*/
 	event protected void EOnDiag(IEntity owner, float timeSlice);
 	/*!
 	* Event when entity is activated.

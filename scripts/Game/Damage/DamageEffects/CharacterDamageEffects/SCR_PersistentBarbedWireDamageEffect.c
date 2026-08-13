@@ -1,6 +1,6 @@
 class SCR_PersistentBarbedWireDamageEffect : SCR_SpecialCollisionDamageEffect
 {
-	[Attribute(defvalue: "3", uiwidget: UIWidgets.EditBox, desc: "At this velocity max damage is incurred by the character \n x = m/s", category: "Barbed wire damage")]
+	[Attribute(defvalue: "3", uiwidget: UIWidgets.EditBox, desc: "At this velocity max damage is incurred by the character \n x = m/s", params: "0.01 inf 0.01", category: "Barbed wire damage")]
 	protected float m_fMaxDamageSpeed;
 	
 	[Attribute("0 1 1 0", uiwidget: UIWidgets.CurveDialog, desc: "How damage will scale with distance", params: "1 1 0 0")]

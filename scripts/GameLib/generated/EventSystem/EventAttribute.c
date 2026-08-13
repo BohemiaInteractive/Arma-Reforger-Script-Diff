@@ -18,7 +18,7 @@ These event methods are invocable through \c ThrowEvent and represent the event'
 Only methods in classes derived from EventProvider and marked with this attribute are available
 for binding to receiver callbacks.
 
-\see \ref Page_EventSystem
+\see Page_EventSystem
 */
 class EventAttribute: UniqueAttribute
 {

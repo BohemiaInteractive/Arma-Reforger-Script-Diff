@@ -13,11 +13,20 @@ class SCR_EditorImagePositionEntity : GenericEntity
 {
 	protected const float ANIM_TIME_STEP = 30.0;
 	protected const string ANIM_ARM_IK = "ArmIK";
+	// Default: exact AABB fit (margin 1.0). Safe for tight-BB objects (vehicles, bunkers,
+	// characters) with no clipping risk. Loose-BB compositions (where AABB corners are
+	// empty) will have some visible empty space — unavoidable without per-prefab tuning.
+	protected const float FIT_VIEW_MARGIN = 1.0;
+	// Small-object padding: below this BB diagonal, add padding so tiny items don't fill frame edge-to-edge
+	protected const float FIT_VIEW_SMALL_THRESHOLD = 2.0; // BB diagonal below this gets padding
+	protected const float FIT_VIEW_SMALL_PADDING = 0.80;  // Margin scale at 0m diagonal (0.8 = 20% padding)
+	// Debug: log mesh population and drops in FilterAndUnionMeshes. Turn off when satisfied.
+	protected const bool DEBUG_OUTLIER_FILTER = true;
 
-	[Attribute("0", uiwidget: UIWidgets.SearchComboBox, "Use this location fo entities with these labels.", "", ParamEnumArray.FromEnum(EEditableEntityLabel), category: "Configuration")]
+	[Attribute("0", uiwidget: UIWidgets.SearchComboBox, "Labels used for matching group prefabs to this position.", "", ParamEnumArray.FromEnum(EEditableEntityLabel), category: "Configuration")]
 	protected ref array<EEditableEntityLabel> m_Labels;
 
-	[Attribute("2", uiwidget:UIWidgets.Slider, "Delay between creating the entity and taking a screenshot.", params: "1 5 0.5", category: "Configuration")]
+	[Attribute("2", uiwidget:UIWidgets.Slider, "Delay between creating the entity and taking a screenshot.", params: "0.1 5 0.5", category: "Configuration")]
 	protected float m_fDelay;
 
 	[Attribute("0", desc: "Order in which the position will be evaluated.\nHigher numbers are processed first.", category: "Configuration")]
@@ -32,11 +41,29 @@ class SCR_EditorImagePositionEntity : GenericEntity
 	[Attribute(desc: "Position the entity by center of its bounding box, not by center of the prefab.", category: "Configuration")]
 	protected bool m_bUseBoundingCenter;
 
-	[Attribute(desc: "When enabled, the prefab must fit into camera view. When that's not the game, another camera tied to the position will be searched for.", category: "Configuration")]
+	[Attribute(desc: "When enabled, the camera will automatically move backward to fit the prefab in view.", category: "Configuration")]
 	protected bool m_bMustFitInView;
 
-	[Attribute(desc: "Names of camera entities belonging to this position. Multiple positions could refer to the same camera.", category: "Configuration")]
-	protected ref array<string> m_aCameraNames;
+	[Attribute("0", uiwidget:UIWidgets.Slider, "Geometric step base (meters) for snapping camera distance. When > 0, distances snap to a geometric series (ratio √2) for consistent framing across similar-sized assets — but introduces up to ±20%% framing variance.\n0 = exact fit (recommended for most cases).", params: "0 10 0.5", category: "Configuration")]
+	protected float m_fFitViewStep;
+
+	[Attribute("0", uiwidget:UIWidgets.Slider, "Distance offset (meters) applied after auto-fit.\nNegative = move camera closer, positive = move further away.", params: "-40 40 0.5", category: "Configuration")]
+	protected float m_fFitViewOffset;
+
+	[Attribute("0", uiwidget:UIWidgets.Slider, "Vertical offset (meters) applied after auto-fit.\nPositive = move camera up, negative = move down.", params: "-10 10 0.1", category: "Configuration")]
+	protected float m_fFitViewVerticalOffset;
+
+	[Attribute("1", desc: "When enabled, DoF material parameters (FocusDistance, FocalLength) are automatically scaled based on the adjusted camera distance.\nDisable to use the emat's authored values as-is.", category: "Configuration")]
+	protected bool m_bAdjustDoF;
+
+	[Attribute("0", uiwidget:UIWidgets.Slider, "Max aspect ratio for auto-fit bounds. Any dimension larger than ratio × max(other dimensions) is clamped, centered on midpoint.\nLegacy override — per-mesh outlier rejection now handles thin outliers automatically. Set > 0 only as escape hatch.\n0 = disabled.", params: "0 10 0.1", category: "Configuration")]
+	protected float m_fFitViewMaxAspect;
+
+	[Attribute("0", uiwidget:UIWidgets.Slider, "Max bounds extent (meters) in any dimension for auto-fit. Any dimension larger than this is clamped, centered on midpoint.\nUse for wide/spread-out compositions where the camera backs up too far.\n0 = disabled.", params: "0 100 0.5", category: "Configuration")]
+	protected float m_fFitViewMaxExtent;
+
+	[Attribute("1", desc: "When enabled, bounds below the spawn point Y are clipped.\nPrevents underground foundations/bases from inflating bounds into hidden space.", category: "Configuration")]
+	protected bool m_bIgnoreUnderground;
 
 	// hidden (unused)
 
@@ -94,12 +121,16 @@ class SCR_EditorImagePositionEntity : GenericEntity
 	protected ref array<ref SCR_EditorImagePositionCharacterPose> m_aFactionPoses;
 
 #ifdef WORKBENCH
-	protected ref array<SCR_CameraBase> m_aCameras = {};
+	protected ref array<CameraBase> m_aCameras = {};
+	protected ref array<string> m_aCameraChildNames = {};
 	protected SCR_EditorImagePositionEntity m_Parent;
 	protected ref SCR_SortedArray<SCR_EditorImagePositionEntity> m_aSubPositions = new SCR_SortedArray<SCR_EditorImagePositionEntity>();
 	protected IEntity m_Entity;
 	protected ref array<IEntity> m_aCurrentNearbyEntities = {};
 	protected ref array<IEntity> m_aOriginalNearbyEntities = {};
+	protected CameraBase m_AdjustedCamera;
+	protected vector m_vOriginalCameraPos;
+	protected vector m_vBoundsOrigin;
 	protected string m_sNewWeaponMesh;
 	protected string m_sCurrentWeaponMesh;
 
@@ -118,13 +149,19 @@ class SCR_EditorImagePositionEntity : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] labels
-	//! \return
+	//! \return True if this position has any labels (used for group matching).
+	bool HasLabels()
+	{
+		return !m_Labels.IsEmpty();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if all of this position's labels are present in the given label set.
+	//! Used for matching group prefabs to suitable positions.
 	bool IsSuitable(array<EEditableEntityLabel> labels)
 	{
 		foreach (EEditableEntityLabel label : m_Labels)
 		{
-			//--- All position labels must be compatible with the editable entity. If even one is missing, ignore the position.
 			if (!labels.Contains(label))
 				return false;
 		}
@@ -132,10 +169,7 @@ class SCR_EditorImagePositionEntity : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] subPositions
-	//! \param[in] labels
-	//! \return
+	//! Find a sub-position suitable for a group member with the given labels.
 	SCR_EditorImagePositionEntity FindSuitableSubPosition(SCR_SortedArray<SCR_EditorImagePositionEntity> subPositions, array<EEditableEntityLabel> labels)
 	{
 		for (int i = subPositions.Count() - 1; i >= 0; i--)
@@ -152,6 +186,23 @@ class SCR_EditorImagePositionEntity : GenericEntity
 	//! \return
 	bool ActivatePosition(ResourceName prefab)
 	{
+		//--- Resolve cameras by name (discovered from entity source in constructor)
+		if (m_aCameras.IsEmpty())
+		{
+			foreach (string cameraName : m_aCameraChildNames)
+			{
+				CameraBase camera = CameraBase.Cast(GetWorld().FindEntityByName(cameraName));
+				if (camera && !m_aCameras.Contains(camera))
+					m_aCameras.Insert(camera);
+			}
+
+			if (m_aCameras.IsEmpty())
+			{
+				Debug.Error2(Type().ToString(), string.Format("No camera entity found for position '%1'! (searched %2 name(s))", GetPositionName(), m_aCameraChildNames.Count()));
+				return false;
+			}
+		}
+
 		//--- Prevent AI groups from creating members themselves, do it manually here
 		SCR_AIGroup.IgnoreSpawning(true);
 
@@ -234,52 +285,104 @@ class SCR_EditorImagePositionEntity : GenericEntity
 			}
 		}
 
-		//--- Activate physics
-		if (m_bEnablePhysics)
-		{
-			Physics phys = m_Entity.GetPhysics();
-			if (phys)
-				phys.SetActive(true);
-		}
+		//--- Handle physics: explicitly disable to prevent settling/movement
+		//--- unless m_bEnablePhysics is set (e.g., for entities that need to drop)
+		Physics phys = m_Entity.GetPhysics();
+		if (phys)
+			phys.SetActive(m_bEnablePhysics);
 
 		//--- Activate camera
-		SCR_CameraBase camera;
-		if (m_bMustFitInView)
+		CameraBase camera = m_aCameras[0];
+
+		vector bbCenter;
+		if (m_bMustFitInView && camera)
 		{
 			vector min, max;
-			SCR_Global.GetWorldBoundsWithChildren(m_Entity, min, max);
-			array<vector> corners = {
-				min,
-				Vector(min[0], min[1], max[2]),
-				Vector(min[0], max[1], min[2]),
-				Vector(max[0], min[1], min[2]),
-				Vector(max[0], max[1], min[2]),
-				Vector(max[0], min[1], max[2]),
-				Vector(min[0], max[1], max[2]),
-				max
-			};
 
-			foreach (SCR_CameraBase cameraCandidate : m_aCameras)
+			//--- Characters: use only root entity bounds (body mesh), skip children
+			//--- to avoid outliers like radio antennas inflating the bounds.
+			//--- Compositions with linked children: gather bounds from linked entities.
+			//--- Everything else: default depth walk.
+			SCR_EditableCharacterComponent characterComponent = SCR_EditableCharacterComponent.Cast(m_Entity.FindComponent(SCR_EditableCharacterComponent));
+			if (characterComponent)
 			{
-				bool isInView = true;
-				for (int i = 0; i < 8; i++)
+				// Try depth 0 first (non-cloned character has body mesh at root)
+				GetVisualBounds(m_Entity, min, max, 0);
+				// Fallback: cloned preview entities may wrap the body deeper in the hierarchy
+				if (min[0] >= max[0])
+					GetVisualBounds(m_Entity, min, max, 2);
+			}
+			else
+			{
+				SCR_EditorLinkComponent linkComponent = SCR_EditorLinkComponent.Cast(m_Entity.FindComponent(SCR_EditorLinkComponent));
+				if (linkComponent && linkComponent.IsSpawned())
 				{
-					if (!cameraCandidate.IsInView(corners[i]))
+					// Collect meshes from the parent and every linked child, then filter+union once
+					// so the outlier test sees the whole composition as one population.
+					m_vBoundsOrigin = m_Entity.GetOrigin();
+					array<vector> mins = {};
+					array<vector> maxs = {};
+					array<string> names = {};
+					CollectMeshBoundsRecursive(m_Entity, mins, maxs, names, 1);
+					array<IEntity> linkedChildren = linkComponent.GetLinkedChildren();
+					if (linkedChildren)
 					{
-						isInView = false;
-						break;
+						foreach (IEntity linkedChild : linkedChildren)
+						{
+							if (linkedChild)
+								CollectMeshBoundsRecursive(linkedChild, mins, maxs, names, 1);
+						}
 					}
+					FilterAndUnionMeshes(mins, maxs, names, min, max);
 				}
-				if (isInView)
+				else
 				{
-					camera = cameraCandidate;
-					break;
+					GetVisualBounds(m_Entity, min, max);
 				}
 			}
-		}
-		else
-		{
-			camera = m_aCameras[0];
+
+			// Validate bounds — no meshes found means min/max stayed at initialization values
+			if (min[0] >= max[0])
+			{
+				PrintFormat("FitView: no valid meshes found for '%1', using default camera", prefab, level: LogLevel.WARNING);
+			}
+			else
+			{
+				// Clamp bounds aspect ratio to prevent thin outliers (antennas, flag poles)
+				// from forcing the camera too far back.
+				if (m_fFitViewMaxAspect > 0)
+					ClampBoundsAspectRatio(min, max, m_fFitViewMaxAspect);
+
+				// Clip bounds to a max_extent cube centered on the POSITION ENTITY's origin.
+				// This anchors framing to where the user placed the position entity (the visual
+				// center of the composition), rather than to the BB's geometric midpoint which
+				// can land in empty space with asymmetric mesh distribution.
+				if (m_fFitViewMaxExtent > 0)
+				{
+					vector center = GetOrigin();
+					float half = m_fFitViewMaxExtent * 0.5;
+					for (int i = 0; i < 3; i++)
+					{
+						float lo = center[i] - half;
+						float hi = center[i] + half;
+						if (min[i] < lo)
+							min[i] = lo;
+						if (max[i] > hi)
+							max[i] = hi;
+					}
+				}
+
+				// Clip bounds below spawn plane — foundations/bases are hidden under fake ground
+				if (m_bIgnoreUnderground)
+				{
+					float spawnY = GetOrigin()[1];
+					if (min[1] < spawnY)
+						min[1] = spawnY;
+				}
+
+				bbCenter = (min + max) * 0.5;
+				FitCameraToEntity(camera, min, max);
+			}
 		}
 
 		if (camera)
@@ -287,9 +390,15 @@ class SCR_EditorImagePositionEntity : GenericEntity
 			CameraManager cameraManager = GetGame().GetCameraManager();
 			if (cameraManager)
 				cameraManager.SetCamera(camera);
+
+			//--- Adjust DoF parameters to match the new camera distance
+			if (m_bMustFitInView && m_bAdjustDoF)
+				AdjustDepthOfField(camera, bbCenter);
 		}
 		else
-			Debug.Error2(Type().ToString(), string.Format("No camera which would fit '%1' found on position '%2'!", prefab, GetPositionName()));
+		{
+			Debug.Error2(Type().ToString(), string.Format("No camera found on position '%1'!", GetPositionName()));
+		}
 
 		return true;
 	}
@@ -298,12 +407,440 @@ class SCR_EditorImagePositionEntity : GenericEntity
 	//!
 	void DeactivatePosition()
 	{
+		RestoreCamera();
+
 		UpdateNearbyEntities();
 		foreach (IEntity entity : m_aCurrentNearbyEntities)
 		{
 			if (!m_aOriginalNearbyEntities.Contains(entity))
 				delete entity;
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Automatically position camera so the entity fits the view.
+	//! - Aims at the BB center (or position origin if user used m_fFitViewMaxExtent to clip)
+	//! - Margin scales with BB size: small objects use tight fit, larger compositions
+	//!   use overshoot to clip empty AABB corners
+	//! - No step snapping by default — every entity frames consistently
+	protected void FitCameraToEntity(notnull CameraBase cam, vector bbMin, vector bbMax)
+	{
+		float halfFovV = cam.GetVerticalFOV() * 0.5;
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
+		float aspectRatio = workspace.GetWidth() / (float)workspace.GetHeight();
+
+		// Exact AABB fit by default. Very small objects get padding so they don't
+		// fill frame edge-to-edge (looks cramped).
+		float margin = FIT_VIEW_MARGIN;
+		float bbDiagonal = vector.Distance(bbMin, bbMax);
+		if (bbDiagonal < FIT_VIEW_SMALL_THRESHOLD)
+		{
+			float sizeScale = FIT_VIEW_SMALL_PADDING + (1.0 - FIT_VIEW_SMALL_PADDING) * (bbDiagonal / FIT_VIEW_SMALL_THRESHOLD);
+			margin *= sizeScale;
+		}
+
+		float tanV = Math.Tan(halfFovV * Math.DEG2RAD) * margin;
+		float tanH = tanV * aspectRatio;
+
+		// Save original position for restoration
+		vector camTransform[4];
+		cam.GetTransform(camTransform);
+		m_vOriginalCameraPos = camTransform[3];
+		m_AdjustedCamera = cam;
+
+		// Step 1: Aim camera at the BB center. Shift laterally so the aim point projects
+		// to the frame center. For wide/asymmetric compositions, use m_fFitViewMaxExtent
+		// to clip the BB around the position origin (which shifts the aim toward origin).
+		vector aimPoint = (bbMin + bbMax) * 0.5;
+		vector localAim = cam.CoordToLocal(aimPoint);
+		camTransform[3] = camTransform[3] + camTransform[0] * localAim[0] + camTransform[1] * localAim[1];
+		cam.SetTransform(camTransform);
+
+		// Step 2: Build 8 corners of the bounding box
+		array<vector> corners = {
+			bbMin,
+			Vector(bbMin[0], bbMin[1], bbMax[2]),
+			Vector(bbMin[0], bbMax[1], bbMin[2]),
+			Vector(bbMax[0], bbMin[1], bbMin[2]),
+			Vector(bbMax[0], bbMax[1], bbMin[2]),
+			Vector(bbMax[0], bbMin[1], bbMax[2]),
+			Vector(bbMin[0], bbMax[1], bbMax[2]),
+			bbMax
+		};
+
+		// Step 3: Calculate exact forward/backward offset to fit all BB corners.
+		// Positive = move backward (entity too large), negative = move forward (entity too small).
+		float maxOffset;
+		for (int i = 0; i < 8; i++)
+		{
+			vector localPos = cam.CoordToLocal(corners[i]);
+			float absX = Math.AbsFloat(localPos[0]);
+			float absY = Math.AbsFloat(localPos[1]);
+			float z = localPos[2];
+
+			float requiredZ = Math.Max(absX / tanH, absY / tanV);
+			float offset = requiredZ - z;
+			if (i == 0 || offset > maxOffset)
+				maxOffset = offset;
+		}
+
+		// Optional geometric step snapping (disabled by default).
+		// Only use if you need discrete distance steps across similar-sized assets —
+		// this sacrifices exact fit for stepping consistency.
+		if (m_fFitViewStep > 0)
+		{
+			cam.GetTransform(camTransform);
+			float currentDist = cam.CoordToLocal(aimPoint)[2];
+			float idealDist = currentDist + maxOffset;
+			if (idealDist > 0)
+			{
+				const float ratio = 1.41421; // sqrt(2)
+				float n = Math.Log2(idealDist / m_fFitViewStep) / Math.Log2(ratio);
+				float snappedDist = m_fFitViewStep * Math.Pow(ratio, Math.Round(n));
+				maxOffset = snappedDist - currentDist;
+			}
+		}
+
+		// Apply user offset (negative = closer, positive = further)
+		maxOffset = maxOffset + m_fFitViewOffset;
+
+		// Clamp: don't let the camera move forward past the aim point.
+		cam.GetTransform(camTransform);
+		float maxForward = vector.Dot(aimPoint - camTransform[3], camTransform[2]);
+		if (maxOffset < -maxForward)
+			maxOffset = -maxForward;
+
+		// Step 4: Move camera along its forward direction + apply vertical offset
+		if (maxOffset != 0)
+			camTransform[3] = camTransform[3] - camTransform[2] * maxOffset;
+		if (m_fFitViewVerticalOffset != 0)
+			camTransform[3][1] = camTransform[3][1] + m_fFitViewVerticalOffset;
+		cam.SetTransform(camTransform);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Clamp any bounds dimension that exceeds ratio × max(other dimensions).
+	//! Clamping is centered on the midpoint so the visual core stays framed.
+	protected void ClampBoundsAspectRatio(inout vector min, inout vector max, float ratio)
+	{
+		vector size = max - min;
+		vector center = (min + max) * 0.5;
+
+		for (int i = 0; i < 3; i++)
+		{
+			float otherMax;
+			for (int j = 0; j < 3; j++)
+			{
+				if (j != i && size[j] > otherMax)
+					otherMax = size[j];
+			}
+
+			float limit = otherMax * ratio;
+			if (size[i] > limit)
+			{
+				float half = limit * 0.5;
+				min[i] = center[i] - half;
+				max[i] = center[i] + half;
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get world bounds of entity hierarchy, including only entities with renderable meshes.
+	//! Collects each mesh's bounds individually, runs outlier filter, then unions.
+	//! Limits recursion depth to avoid inflated bounds from deep sub-children (physics, slots).
+	protected void GetVisualBounds(IEntity entity, out vector min, out vector max, int maxDepth = 2)
+	{
+		m_vBoundsOrigin = entity.GetOrigin();
+		array<vector> mins = {};
+		array<vector> maxs = {};
+		array<string> names = {};
+		CollectMeshBoundsRecursive(entity, mins, maxs, names, maxDepth);
+		FilterAndUnionMeshes(mins, maxs, names, min, max);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Walk entity hierarchy and append each renderable mesh's world bounds + resource name.
+	protected void CollectMeshBoundsRecursive(IEntity entity, inout array<vector> mins, inout array<vector> maxs, inout array<string> names, int depth)
+	{
+		if (!entity)
+			return;
+
+		VObject vObject = entity.GetVObject();
+		if (vObject && vObject.ToMeshObject() && !vObject.GetResourceName().IsEmpty())
+		{
+			vector entityMin, entityMax;
+			entity.GetWorldBounds(entityMin, entityMax);
+
+			// Skip entities whose bounds are far from the root (e.g., inventory items at world origin)
+			vector boundsCenter = (entityMin + entityMax) * 0.5;
+			if (vector.DistanceSq(boundsCenter, m_vBoundsOrigin) <= 2500) // 50m
+			{
+				mins.Insert(entityMin);
+				maxs.Insert(entityMax);
+				names.Insert(vObject.GetResourceName());
+			}
+		}
+
+		if (depth <= 0)
+			return;
+
+		IEntity child = entity.GetChildren();
+		while (child)
+		{
+			CollectMeshBoundsRecursive(child, mins, maxs, names, depth - 1);
+			child = child.GetSibling();
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Iterative greedy outlier filter, then union remaining meshes.
+	//!
+	//! Each iteration runs two passes:
+	//! - Single-drop: for each mesh, "what if we remove it?" The mesh whose removal shrinks
+	//!   the union the most is dropped if the shrink exceeds SINGLE_THRESHOLD.
+	//! - Pair-drop fallback: if no single mesh qualifies, try every pair (i, j) for shrinkage.
+	//!   Catches matched foundations (two dirt mounds, mirrored bases) where each mesh shields
+	//!   the other from the single-drop test.
+	//!
+	//! Shrinkage is summed across X/Y/Z so wide foundations (multi-dim outliers) are preferred
+	//! over tall subjects (single-dim).
+	//!
+	//! Skip when mesh count < 3 — no reliable "crowd" to compare against.
+	//! Cap drops at floor(N/2) so we never strip more than half the meshes.
+	protected void FilterAndUnionMeshes(array<vector> mins, array<vector> maxs, array<string> names, out vector min, out vector max)
+	{
+		min = Vector(float.MAX, float.MAX, float.MAX);
+		max = -Vector(float.MAX, float.MAX, float.MAX);
+
+		int count = mins.Count();
+		if (count == 0)
+			return;
+
+		// Mark dropped meshes so we don't have to mutate the input arrays.
+		array<bool> dropped = {};
+		dropped.Resize(count);
+
+		const float SINGLE_THRESHOLD = 0.30; // 30% of current union extent sum
+		const float PAIR_THRESHOLD = 0.20;   // catches matched foundations (e.g. two dirt covers) where each mesh shields the other from single-drop
+		int maxDrops = count / 2;
+		int dropCount = 0;
+
+		// Compute initial union over all meshes.
+		ComputeUnion(mins, maxs, dropped, min, max);
+
+		if (DEBUG_OUTLIER_FILTER)
+		{
+			PrintFormat("[FitView] mesh count=%1, initial extent=(%2, %3, %4)", count, max[0] - min[0], max[1] - min[1], max[2] - min[2], level: LogLevel.NORMAL);
+			for (int k = 0; k < count; k++)
+			{
+				vector ms = maxs[k] - mins[k];
+				PrintFormat("[FitView]   #%1 size=(%2, %3, %4) center=(%5, %6, %7) %8", k, ms[0], ms[1], ms[2], (mins[k][0] + maxs[k][0]) * 0.5, (mins[k][1] + maxs[k][1]) * 0.5, (mins[k][2] + maxs[k][2]) * 0.5, names[k], level: LogLevel.NORMAL);
+			}
+		}
+
+		while (count >= 3 && dropCount < maxDrops)
+		{
+			vector size = max - min;
+			float extentSum = size[0] + size[1] + size[2];
+			if (extentSum <= 0)
+				break;
+
+			// Pass 1: best single-drop candidate.
+			int singleIdx = -1;
+			float singleShrink;
+
+			for (int i = 0; i < count; i++)
+			{
+				if (dropped[i])
+					continue;
+
+				vector minWithout, maxWithout;
+				dropped[i] = true;
+				ComputeUnion(mins, maxs, dropped, minWithout, maxWithout);
+				dropped[i] = false;
+
+				if (minWithout[0] >= maxWithout[0])
+					continue;
+
+				float shrink = ShrinkAmount(min, max, minWithout, maxWithout);
+
+				if (singleIdx < 0 || shrink > singleShrink)
+				{
+					singleIdx = i;
+					singleShrink = shrink;
+				}
+			}
+
+			if (singleIdx >= 0 && singleShrink > SINGLE_THRESHOLD * extentSum)
+			{
+				if (DEBUG_OUTLIER_FILTER)
+					PrintFormat("[FitView] DROP single #%1 shrink=%2 (%3%% of %4) %5", singleIdx, singleShrink, singleShrink / extentSum * 100, extentSum, names[singleIdx], level: LogLevel.NORMAL);
+				dropped[singleIdx] = true;
+				dropCount++;
+				ComputeUnion(mins, maxs, dropped, min, max);
+				continue;
+			}
+
+			if (DEBUG_OUTLIER_FILTER && singleIdx >= 0)
+				PrintFormat("[FitView] best single #%1 shrink=%2 (%3%% of %4) below threshold %5%%", singleIdx, singleShrink, singleShrink / extentSum * 100, extentSum, SINGLE_THRESHOLD * 100, level: LogLevel.NORMAL);
+
+			// Pass 2: best pair-drop fallback. Only run when we still have headroom for two drops.
+			if (dropCount + 2 > maxDrops)
+			{
+				if (DEBUG_OUTLIER_FILTER)
+					PrintFormat("[FitView] pair-drop skipped: would exceed maxDrops=%1 (dropCount=%2)", maxDrops, dropCount, level: LogLevel.NORMAL);
+				break;
+			}
+
+			int pairA = -1, pairB = -1;
+			float pairShrink;
+
+			for (int i = 0; i < count; i++)
+			{
+				if (dropped[i])
+					continue;
+
+				for (int j = i + 1; j < count; j++)
+				{
+					if (dropped[j])
+						continue;
+
+					vector minWithout, maxWithout;
+					dropped[i] = true;
+					dropped[j] = true;
+					ComputeUnion(mins, maxs, dropped, minWithout, maxWithout);
+					dropped[i] = false;
+					dropped[j] = false;
+
+					if (minWithout[0] >= maxWithout[0])
+						continue;
+
+					float shrink = ShrinkAmount(min, max, minWithout, maxWithout);
+
+					if (pairA < 0 || shrink > pairShrink)
+					{
+						pairA = i;
+						pairB = j;
+						pairShrink = shrink;
+					}
+				}
+			}
+
+			if (pairA < 0 || pairShrink <= PAIR_THRESHOLD * extentSum)
+			{
+				if (DEBUG_OUTLIER_FILTER && pairA >= 0)
+					PrintFormat("[FitView] best pair (#%1, #%2) shrink=%3 (%4%% of %5) below threshold %6%%", pairA, pairB, pairShrink, pairShrink / extentSum * 100, extentSum, PAIR_THRESHOLD * 100, level: LogLevel.NORMAL);
+				break;
+			}
+
+			if (DEBUG_OUTLIER_FILTER)
+				PrintFormat("[FitView] DROP pair (#%1, #%2) shrink=%3 (%4%% of %5)\n        #%1: %6\n        #%2: %7", pairA, pairB, pairShrink, pairShrink / extentSum * 100, extentSum, names[pairA], names[pairB], level: LogLevel.NORMAL);
+
+			dropped[pairA] = true;
+			dropped[pairB] = true;
+			dropCount = dropCount + 2;
+			ComputeUnion(mins, maxs, dropped, min, max);
+		}
+
+		if (DEBUG_OUTLIER_FILTER)
+			PrintFormat("[FitView] final extent=(%1, %2, %3) drops=%4", max[0] - min[0], max[1] - min[1], max[2] - min[2], dropCount, level: LogLevel.NORMAL);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Sum of inward movement of all six AABB faces when the candidate union shrinks from
+	//! (min, max) to (minWithout, maxWithout).
+	protected float ShrinkAmount(vector min, vector max, vector minWithout, vector maxWithout)
+	{
+		float shrink = 0;
+		for (int d = 0; d < 3; d++)
+		{
+			shrink = shrink + Math.Max(0, minWithout[d] - min[d]);
+			shrink = shrink + Math.Max(0, max[d] - maxWithout[d]);
+		}
+		return shrink;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Compute the AABB union over all meshes whose dropped flag is false.
+	protected void ComputeUnion(array<vector> mins, array<vector> maxs, array<bool> dropped, out vector min, out vector max)
+	{
+		min = Vector(float.MAX, float.MAX, float.MAX);
+		max = -Vector(float.MAX, float.MAX, float.MAX);
+
+		int count = mins.Count();
+		for (int i = 0; i < count; i++)
+		{
+			if (dropped[i])
+				continue;
+
+			vector m = mins[i];
+			vector M = maxs[i];
+			min[0] = Math.Min(min[0], m[0]);
+			min[1] = Math.Min(min[1], m[1]);
+			min[2] = Math.Min(min[2], m[2]);
+			max[0] = Math.Max(max[0], M[0]);
+			max[1] = Math.Max(max[1], M[1]);
+			max[2] = Math.Max(max[2], M[2]);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Adjust DoF parameters (FocusDistance, FocalLength, FocalLengthNear) proportionally
+	//! to the new camera distance. Reads original values from the emat resource and scales
+	//! them by the ratio of new/original distance to the bounding box center.
+	protected void AdjustDepthOfField(CameraBase cam, vector bbCenter)
+	{
+		SCR_PostProcessCameraComponent ppComponent = SCR_PostProcessCameraComponent.Cast(cam.FindComponent(SCR_PostProcessCameraComponent));
+		if (!ppComponent)
+			return;
+
+		SCR_CameraPostProcessEffect dofEffect = ppComponent.FindEffect(PostProcessEffectType.DepthOfFieldBokeh);
+		if (!dofEffect)
+			return;
+
+		float newFocusDistance = vector.Distance(cam.GetOrigin(), bbCenter);
+
+		//--- Read original values from the emat resource
+		ResourceName matPath = dofEffect.GetMaterialPath();
+		if (matPath.IsEmpty())
+			return;
+
+		Resource matRes = Resource.Load(matPath);
+		if (!matRes || !matRes.IsValid())
+			return;
+
+		BaseContainer matContainer = matRes.GetResource().ToBaseContainer();
+		if (!matContainer)
+			return;
+
+		float originalFocusDistance, originalFocalLength, originalFocalLengthNear;
+		matContainer.Get("FocusDistance", originalFocusDistance);
+		matContainer.Get("FocalLength", originalFocalLength);
+		matContainer.Get("FocalLengthNear", originalFocalLengthNear);
+
+		if (originalFocusDistance <= 0)
+			return;
+
+		float ratio = newFocusDistance / originalFocusDistance;
+
+		dofEffect.SetParam("FocusDistance", newFocusDistance);
+		dofEffect.SetParam("FocalLength", originalFocalLength * ratio);
+		dofEffect.SetParam("FocalLengthNear", 0);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Restore camera to its original position after FitCameraToEntity adjusted it.
+	protected void RestoreCamera()
+	{
+		if (!m_AdjustedCamera)
+			return;
+
+		vector camTransform[4];
+		m_AdjustedCamera.GetTransform(camTransform);
+		camTransform[3] = m_vOriginalCameraPos;
+		m_AdjustedCamera.SetTransform(camTransform);
+		m_AdjustedCamera = null;
 	}
 
 	protected void AddSubPosition(SCR_EditorImagePositionEntity subPosition)
@@ -354,34 +891,8 @@ class SCR_EditorImagePositionEntity : GenericEntity
 		}
 		else
 		{
-			//--- Main position
-			SCR_CameraBase camera;
-
-			//--- Find referenced camera entities
-			for (int i = 0, count = m_aCameraNames.Count(); i < count; i++)
-			{
-				camera = SCR_CameraBase.Cast(GetWorld().FindEntityByName(m_aCameraNames[i]));
-				if (camera && !m_aCameras.Contains(camera))
-					m_aCameras.Insert(camera);
-			}
-
-			//--- Find child camera entities
-			IEntity child = GetChildren();
-			while (child)
-			{
-				camera = SCR_CameraBase.Cast(child);
-				if (camera && !m_aCameras.Contains(camera))
-					m_aCameras.Insert(camera);
-
-				child = child.GetSibling();
-			}
-
-			if (m_aCameras.IsEmpty())
-			{
-				Print("SCR_EditorImagePositionEntity is missing child entity of type SCR_CameraBase!", LogLevel.WARNING);
-				return;
-			}
-
+			//--- Main position — register with the manager; cameras are found later
+			//--- in ActivatePosition when the entity tree is fully built.
 			manager.AddPosition(this);
 		}
 
@@ -413,6 +924,15 @@ class SCR_EditorImagePositionEntity : GenericEntity
 			}
 
 			return;
+		}
+
+		//--- Discover camera child names from entity source
+		//--- (GetChildren() doesn't work for layer-defined hierarchies at runtime)
+		for (int i = 0, count = src.GetNumChildren(); i < count; i++)
+		{
+			IEntitySource childSrc = src.GetChild(i);
+			if (childSrc.GetClassName().ToType().IsInherited(CameraBase))
+				m_aCameraChildNames.Insert(childSrc.GetName());
 		}
 
 		SetEventMask(EntityEvent.INIT);
@@ -470,6 +990,8 @@ class SCR_EditorImagePositionEntity : GenericEntity
 	{
 		// Check faction and get pose
 		SCR_EditorImagePositionCharacterPose pose = CurrentPose(m_Entity);
+		if (!pose)
+			return; // No pose defined — spawn character as-is without pose/weapon customization
 
 		Resource characterResource = Resource.Load(prefab);
 		ResourceName weaponIK = CharacterWeaponIK(characterResource, pose);
@@ -515,7 +1037,7 @@ class SCR_EditorImagePositionEntity : GenericEntity
 
 	//------------------------------------------------------------------------------------------------
 	//! Return pose used for current character
-	protected SCR_EditorImagePositionCharacterPose CurrentPose(notnull IEntity entity, SCR_EditorImagePositionEntity position = this)
+	protected SCR_EditorImagePositionCharacterPose CurrentPose(notnull IEntity entity, SCR_EditorImagePositionEntity position = null)
 	{
 		if (!position)
 			position = this;
@@ -741,19 +1263,23 @@ class SCR_EditorImagePositionEntity : GenericEntity
 		{
 			member = agents[i].GetControlledEntity();
 
-			//--- Get member labels
+			//--- Get member labels and find suitable sub-position
 			SCR_EditableEntityComponent editableMember = SCR_EditableEntityComponent.GetEditableEntity(member);
 			SCR_EditableEntityUIInfo info = SCR_EditableEntityUIInfo.Cast(editableMember.GetInfo());
 			array<EEditableEntityLabel> memberLabels = {};
 			if (info)
 				info.GetEntityLabels(memberLabels);
 
-			//--- Find suitable sub-position, taking member labels into consideration
 			subPosition = FindSuitableSubPosition(subPositions, memberLabels);
 			if (subPosition)
 			{
 				// Prepare position values
 				SCR_EditorImagePositionCharacterPose pose = CurrentPose(member, subPosition);
+				if (!pose)
+				{
+					PrintFormat("Skipping group member @\"%1\" — no pose defined on sub-position '%2'", member.GetPrefabData().GetPrefabName(), subPosition.GetPositionName(), level: LogLevel.WARNING);
+					continue;
+				}
 
 				Resource characterResource = BaseContainerTools.CreateContainerFromInstance(member);
 				ResourceName weaponIK = CharacterWeaponIK(characterResource, pose);

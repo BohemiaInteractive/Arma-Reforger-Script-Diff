@@ -5,7 +5,7 @@ class SCR_ContextGetIngroupCommand : SCR_WaypointGroupCommand
 	protected ResourceName m_sSpecificEntityWP;
 	
 	//------------------------------------------------------------------------------------------------
-	override bool Execute(IEntity cursorTarget, IEntity target, vector targetPosition, int playerID, bool isClient)
+	override bool Execute(IEntity cursorTarget, IEntity groupEnt, vector targetPosition, int playerID, bool isClient)
 	{
 		if (isClient && playerID == SCR_PlayerController.GetLocalPlayerId())
 		{
@@ -14,14 +14,14 @@ class SCR_ContextGetIngroupCommand : SCR_WaypointGroupCommand
 		}
 
 		//SpawnWPVisualization(targetPosition, playerID);
-		if (!m_sWaypointPrefab || !m_sSpecificEntityWP || !target || !targetPosition)
+		if (!m_sWaypointPrefab || !m_sSpecificEntityWP || !groupEnt || !targetPosition)
 			return false;
 		
-		return DecideAndSetWP(cursorTarget, target, targetPosition, playerID);
+		return DecideAndSetWP(cursorTarget, groupEnt, targetPosition, playerID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	bool DecideAndSetWP(IEntity cursorTarget, IEntity target, vector targetPosition, int playerID)
+	bool DecideAndSetWP(IEntity cursorTarget, IEntity groupEnt, vector targetPosition, int playerID)
 	{				
 		IEntity playerEntity = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID);
 		if (!playerEntity)
@@ -41,18 +41,18 @@ class SCR_ContextGetIngroupCommand : SCR_WaypointGroupCommand
 			if (!vehicleIn)
 				return false;
 			
-			return CreateBoardingEntityWP(target, vehicleIn, vehicleIn.GetOrigin());
+			return CreateBoardingEntityWP(groupEnt, vehicleIn, vehicleIn.GetOrigin());
 		}
 		
 		if (cursorTarget)
 		{
 			Vehicle cursorVehicle = Vehicle.Cast(cursorTarget.GetRootParent());
 			if (cursorVehicle)
-				return CreateBoardingEntityWP(target, cursorVehicle, cursorVehicle.GetOrigin());
+				return CreateBoardingEntityWP(groupEnt, cursorVehicle, cursorVehicle.GetOrigin());
 		}
 		
 		//handle default logic
-		return SetWaypointForAIGroup(target, targetPosition, playerID);
+		return SetWaypointForAIGroup(groupEnt, targetPosition, playerID);
 	}
 	
 	//------------------------------------------------------------------------------------------------

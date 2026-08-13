@@ -13,7 +13,6 @@ sealed class RichTextWidget: TextWidget
 {
 	proto external float GetContentHeight();
 	proto external float GetLineWidth(int line);
-	proto external int GetNumLines();
 	/*!
 	Sets certain lines visible/hidden.
 	\param lineFrom starting line. inclusive.

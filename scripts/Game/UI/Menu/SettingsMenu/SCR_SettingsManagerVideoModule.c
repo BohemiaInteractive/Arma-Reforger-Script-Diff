@@ -104,6 +104,17 @@ class SCR_SettingsManagerVideoModule : SCR_SettingsManagerModuleBase
 			videoUserSettings.Set("Vsync", true);
 			videoSettings.Set("m_iLastUsedPreset", EVideoQualityPreset.PS5_PRO_PERFORMANCE);
 		}
+		else if (presetIndex == EVideoQualityPreset.HANDHELD_PRESET)
+		{
+			displayUserSettings.Set("OverallQuality", EVideoQualityPreset.HANDHELD_PRESET);
+			videoUserSettings.Set("ResolutionScale", 0.7);
+			videoUserSettings.Set("Fsaa", 2);
+			videoSettings.Set("m_bNearDofEffect", false);
+			videoSettings.Set("m_iDofType", DepthOfFieldTypes.SIMPLE);
+			videoUserSettings.Set("MaxFps", 30);
+			videoUserSettings.Set("Vsync", true);
+			videoSettings.Set("m_iLastUsedPreset", EVideoQualityPreset.HANDHELD_PRESET);
+		}
 		
 		GetGame().ApplySettingsPreset();
 		GetGame().UserSettingsChanged();
@@ -160,7 +171,7 @@ class SCR_SettingsManagerVideoModule : SCR_SettingsManagerModuleBase
 				break;
 		}
 		
-		videoUserSettings.Set("ResolutionScale",resolutionScale);		
+		videoUserSettings.Set("ResolutionScale",resolutionScale);
 	}
 }
 
@@ -173,5 +184,6 @@ enum EVideoQualityPreset
 	PS5_QUALITY = 8,
 	PS5_PERFORMANCE = 9,
 	PS5_PRO_QUALITY = 10,
-	PS5_PRO_PERFORMANCE = 11
+	PS5_PRO_PERFORMANCE = 11,
+	HANDHELD_PRESET = 12
 }

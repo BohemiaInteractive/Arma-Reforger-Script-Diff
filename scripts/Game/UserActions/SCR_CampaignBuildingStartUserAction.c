@@ -15,6 +15,7 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 	protected bool m_bUseRankLimitedAccess;
 	protected bool m_bTemporarilyBlockedAccess;
 	protected bool m_bAccessCanBeBlocked;
+	protected TagSystem m_TagSystem;
 
 	protected const int PROVIDER_SPEED_TO_REMOVE_BUILDING_SQ = 1;
 	protected const int TEMPORARY_BLOCKED_ACCESS_RESET_TIME = 1000;
@@ -30,8 +31,7 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 		if (GetGame().GetPlayerController())
 			m_ResourceInventoryPlayerComponentRplId = Replication.FindItemId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
 
-		if (m_ProviderComponent && m_ProviderComponent.ObstrucViewWhenEnemyInRange())
-			m_bAccessCanBeBlocked = true;
+		m_bAccessCanBeBlocked = m_ProviderComponent && m_ProviderComponent.ObstrucViewWhenEnemyInRange();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -51,7 +51,7 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{
-		if (!m_ProviderComponent || m_bTemporarilyBlockedAccess)
+		if (!m_ProviderComponent)
 			return false;
 
 		if (SCR_XPHandlerComponent.IsXpSystemEnabled() && m_ProviderComponent.GetAccessRank() > GetUserRank(user))
@@ -68,6 +68,8 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 			SetCannotPerformReason(rankName);
 			return false;
 		}
+
+		m_bAccessCanBeBlocked = m_ProviderComponent && m_ProviderComponent.ObstrucViewWhenEnemyInRange();
 
 		if (m_bAccessCanBeBlocked)
 		{
@@ -226,19 +228,29 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 		if (!masterProviderComponent)
 			return;
 
-		GetGame().GetWorld().QueryEntitiesBySphere(GetOwner().GetOrigin(), masterProviderComponent.GetBuildingRadius(), EvaluateEntity, null, EQueryEntitiesFlags.DYNAMIC);
-		GetGame().GetCallqueue().CallLater(ResetTemporaryBlockedAccess, TEMPORARY_BLOCKED_ACCESS_RESET_TIME, false);
-	}
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
 
-	//------------------------------------------------------------------------------------------------
-	//! Set temporary blocked access back to default false value.
-	void ResetTemporaryBlockedAccess()
-	{
+		if (!m_TagSystem)
+			m_TagSystem = TagSystem.Cast(world.FindSystem(TagSystem));
+
+		if (!m_TagSystem)
+			return;
+
+		array<IEntity> presentEntities = {};
+		int presentEntitiesCount = m_TagSystem.GetTagsInRange(presentEntities, GetOwner().GetOrigin(), masterProviderComponent.GetBuildingRadius(), ETagCategory.Character);
+
+		foreach (IEntity entity : presentEntities)
+		{
+			if (!EvaluateEntity(entity))
+				return;
+		}
+
 		m_bTemporarilyBlockedAccess = false;
 	}
 
+
 	//------------------------------------------------------------------------------------------------
-	//! Check if this entity can block player to enter a building mode. If such anentity is found, return false to stop evaluating next enttiy found by query.
+	//! Check if this entity can block player to enter a building mode. If such an entity is found, return false to stop evaluating next enttiy found by query.
 	//\param[in] ent Entity to evaluate by this filter.
 	bool EvaluateEntity(IEntity ent)
 	{
@@ -249,15 +261,11 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 		if (!char)
 			return true;
 
-		SCR_CharacterDamageManagerComponent charDamageManager = SCR_CharacterDamageManagerComponent.Cast(char.FindComponent(SCR_CharacterDamageManagerComponent));
-		if (!charDamageManager || charDamageManager.GetState() == EDamageState.DESTROYED)
+		CharacterControllerComponent charControl = char.GetCharacterController();
+		if (!charControl || charControl.GetLifeState() == ECharacterLifeState.DEAD)
 			return true;
 
 		if (!m_ProviderComponent.IsEnemyFaction(char))
-			return true;
-
-		CharacterControllerComponent charControl = char.GetCharacterController();
-		if (!charControl)
 			return true;
 
 		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(ent);

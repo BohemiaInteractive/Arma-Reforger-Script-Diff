@@ -15,17 +15,18 @@ class SCR_SupplyInventorySlotUI : SCR_InventorySlotUI
 	protected Widget m_AvailableResourcesHolder;
 	protected TextWidget m_AvailableResourcesText;
 	
-	//~ What supplies type are displayed
+	// What supplies type are displayed
 	protected EResourceType m_eResourceType = EResourceType.SUPPLIES;
 
 	//~ ArsenalInventorySlotUI is the cost one
 	
 	protected LocalizedString m_sCurrentAndMaxResourceFormat = "#AR-Campaign_BaseSuppliesAmount";
 	
+	protected ref array<RplId> m_aStackedItems = {};
+	
 	protected SCR_ResourceComponent m_ResourceComponent;
 	protected SCR_ResourceConsumer m_ResourceConsumer;
 	protected ref SCR_ResourceSystemSubscriptionHandleBase m_ResourceSubscriptionHandle;
-	protected ref array<RplId> m_aStackedItems = {};
 
 	//------------------------------------------------------------------------------------------------
 	SCR_ResourceComponent GetResourceComponent()
@@ -125,6 +126,14 @@ class SCR_SupplyInventorySlotUI : SCR_InventorySlotUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override void Refresh()
+	{
+		super.Refresh();
+		
+		UpdateConsumer();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void SetSlotVisible(bool bVisible)
 	{
 		super.SetSlotVisible(bVisible);
@@ -140,41 +149,29 @@ class SCR_SupplyInventorySlotUI : SCR_InventorySlotUI
 		if (m_AvailableResourcesHolder)
 			m_AvailableResourcesText = TextWidget.Cast(m_AvailableResourcesHolder.FindAnyWidget(RESOURCES_TEXT_WIDGET_NAME));
 		
-		//~ Never show cost
+		// Never show cost
 		Widget resourceCost = m_widget.FindAnyWidget(COST_RESOURCES_WIDGET_NAME);
 		if (resourceCost)
 			resourceCost.SetVisible(false);
 		
 		Refresh();
-      }
-	
-	//------------------------------------------------------------------------------------------------
-	override void Refresh()
-	{
-		super.Refresh();
-	}
+    }
 	
 	//------------------------------------------------------------------------------------------------
 	void UpdateConsumer()
 	{
-		if (!m_ResourceComponent)
+		if (!m_ResourceConsumer)
 			return;
 		
 		float totalResources, maxResources;
 		
-		//~ Stored supplies
+		// Stored supplies
 		bool showUI = SCR_ResourceSystemHelper.GetStoredAndMaxResources(m_ResourceComponent, totalResources, maxResources, m_eResourceType);
 		UpdateStoredResources(showUI, totalResources, maxResources);
 		
-		//~ Available Supplies
+		// Available Supplies
 		showUI = m_ResourceComponent.IsResourceTypeEnabled() && SCR_ResourceSystemHelper.GetAvailableResources(m_ResourceComponent, totalResources, m_eResourceType);
 		UpdateAvailableResources(showUI, totalResources);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnOwnedSlotsUpdated() 
-	{
-		UpdateConsumer();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -184,59 +181,15 @@ class SCR_SupplyInventorySlotUI : SCR_InventorySlotUI
 			return;
 		
 		if (!showUI)
-		{
-			m_StoredResourcesHolder.SetVisible(false);
-			return;
-		}
-		
-		//~ Update supplies
-		float additionalTotalResources, additionalMaxResources;
-		
-		GetAdditionalResourceValuesFromStack(additionalTotalResources, additionalMaxResources);
+			return m_StoredResourcesHolder.SetVisible(false);
 		
 		m_StoredResourcesText.SetTextFormat(
 			m_sCurrentAndMaxResourceFormat, 
-			SCR_ResourceSystemHelper.SuppliesToString(totalResources + additionalTotalResources), 
-			SCR_ResourceSystemHelper.SuppliesToString(maxResources + additionalMaxResources));
+			SCR_ResourceSystemHelper.SuppliesToString(totalResources), 
+			SCR_ResourceSystemHelper.SuppliesToString(maxResources));
 		m_StoredResourcesHolder.SetVisible(true);
 	}
-
-	//------------------------------------------------------------------------------------------------
-	void GetAdditionalResourceValuesFromStack(out float addTotalResources, out float addMaxResources)
-	{
-		foreach (RplId id : m_aStackedItems)
-		{
-			if (!id.IsValid())
-				continue;
-
-			RplComponent rpl = RplComponent.Cast(Replication.FindItem(id));
-			if (!rpl)
-				continue;
-
-			IEntity ent = rpl.GetEntity();
-			if (!ent)
-				continue;
-			
-			SCR_ResourceComponent resComp = SCR_ResourceComponent.Cast(ent.FindComponent(SCR_ResourceComponent));
-			if (!resComp)
-				continue;
-			
-			float addTotal, addMax;
-			if (SCR_ResourceSystemHelper.GetStoredAndMaxResources(resComp, addTotal, addMax))
-			{
-				addTotalResources += addTotal;
-				addMaxResources += addMax;
-			}
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void IncreaseStackNumberWithRplId(RplId id)
-	{
-		m_iStackNumber++;
-		m_aStackedItems.Insert(id);
-	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	void UpdateAvailableResources(bool showUI, float totalResources)
 	{
@@ -249,7 +202,7 @@ class SCR_SupplyInventorySlotUI : SCR_InventorySlotUI
 			return;
 		}
 		
-		//~ Update supplies
+		// Update supplies
 		m_AvailableResourcesText.SetText(SCR_ResourceSystemHelper.SuppliesToString(totalResources));
 		m_AvailableResourcesHolder.SetVisible(true);
 	}
@@ -259,35 +212,17 @@ class SCR_SupplyInventorySlotUI : SCR_InventorySlotUI
 	{
 		super.HandlerAttached(w);
 		
-		Refresh();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void HandlerDeattached(Widget w)
-	{
-		super.HandlerDeattached(w);
-		
-		m_ResourceSubscriptionHandle = null;	
-		
-		if (m_ResourceComponent)
-			m_ResourceComponent.TEMP_GetOnInteractorReplicated().Remove(UpdateConsumer);
-	}
-	
-	void SCR_SupplyInventorySlotUI(InventoryItemComponent pComponent = null, SCR_InventoryStorageBaseUI pStorageUI = null, bool bVisible = true, int iSlotIndex = -1, SCR_ItemAttributeCollection pAttributes = null)
-	{
-		if (!m_pItem)
-			return;
-		
 		m_ResourceComponent = SCR_ResourceComponent.FindResourceComponent(m_pItem.GetOwner());
+		
 		if (!m_ResourceComponent)
-			return;
-	
-		m_ResourceComponent.TEMP_GetOnInteractorReplicated().Insert(UpdateConsumer);
-		UpdateConsumer();
+			return Debug.Error(string.Format("%1 is being used on an entity without SCR_ResourceComponent", Type().ToString()));
 		
 		m_ResourceConsumer = SCR_ResourceSystemHelper.GetFirstValidConsumer(m_ResourceComponent);
+		
 		if (!m_ResourceConsumer)
-			return;
+			return Debug.Error(string.Format("%1 is being used on an entity without an SCR_ResourceComponent with no valid SCR_ResourceConsumer", Type().ToString()));
+		
+		m_ResourceComponent.TEMP_GetOnInteractorReplicated().Insert(OnResourceComponentUpdated);
 		
 		SCR_ResourcePlayerControllerInventoryComponent resourceInventoryPlayerComponent = SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent));
 		
@@ -300,6 +235,27 @@ class SCR_SupplyInventorySlotUI : SCR_InventorySlotUI
 			return;
 		
 		m_ResourceSubscriptionHandle = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandle(m_ResourceConsumer, resourceInventoryPlayerComponentRplId);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		super.HandlerDeattached(w);
 		
+		if (m_ResourceConsumer)
+			m_ResourceComponent.TEMP_GetOnInteractorReplicated().Remove(OnResourceComponentUpdated);
+		
+		m_ResourceSubscriptionHandle = null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Event that triggers when the resource component tied to the UI slot updates/replicates.
+	protected void OnResourceComponentUpdated()
+	{
+		// We need to gather the consumer again due to it being recreated by replication when 
+		// replicated through the RplProp. Meaning that the previous reference is lost.
+		m_ResourceConsumer = SCR_ResourceSystemHelper.GetFirstValidConsumer(m_ResourceComponent);
+		
+		Refresh();
 	}
 };

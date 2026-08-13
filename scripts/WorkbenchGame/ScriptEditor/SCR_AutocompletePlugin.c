@@ -2,33 +2,40 @@
 //! This plugin allows for autocompletion for common structure / code excerpts and boilerplate code.
 //!
 //! Features:
-//! if → adds an if structure
-//! ife → adds an if-else structure
-//! for → adds a for loop
-//! forr → adds a for loop, reversed (i--)
-//! foreach → adds a foreach loop
-//! foreachi → adds a foreach loop with i index
-//! switch → adds a switch case with one case and default
-//! while → adds a while loop
-//! class → adds a class with its constructor structure
-//! method/func → adds a method with separator and Doxygen doc skeleton
+//! - if → adds an if structure
+//! - ife → adds an if-else structure
+//! - for → adds a for loop
+//! - forr → adds a for loop, reversed (i--)
+//! - foreach → adds a foreach loop
+//! - foreachi → adds a foreach loop with i index
+//! - switch → adds a switch case with one case and default
+//! - while → adds a while loop
+//! - class → adds a class with its constructor structure
+//! - method/func → adds a method with separator and Doxygen doc skeleton
 //!
-//! ctor → adds a constructor
-//! dtor → adds a destructor
-//! findcomp → adds SCR_ComponentClass component = SCR_ComponentClass.Cast(entity.FindComponent(SCR_ComponentClass));
-//! print → adds a Print with normal LogLevel
-//! Type something = new → Type something = new Type();
+//! - ctor → adds a constructor
+//! - dtor → adds a destructor
+//! - findcomp → adds SCR_ComponentClass component = SCR_ComponentClass.Cast(entity.FindComponent(SCR_ComponentClass));
+//! - print → adds a Print with normal LogLevel
+//! - Type something = new → Type something = new Type();
 //!
-//! nullcheck on cast (e.g "Class a = Class.Cast(b)") → adds an "if (!a) return;" check below if not present
-//! validity check on Resource.Load → adds an "if (!resource.IsValid())" check below (or fixes, in case of "if (!resource)") if not present
-//! potential attribute (e.g "ResourceName m_sResourceName;") → adds an [Attribute()] if not present
-//! adds missing or incorrect LogLevel to Print/PrintFormat
-//! adds missing () to incomplete instantiation
-[WorkbenchPluginAttribute(name: "Autocomplete", description: "Helps autocompleting keywords, adding [Attribute()] decorators, cast nullchecks etc.", shortcut: "Ctrl+Return" /* "Ctrl+Space" */, wbModules: { "ScriptEditor" }, awesomeFontCode: 0xE2CA)]
+//! - nullcheck on cast (e.g "Class a = Class.Cast(b)") → adds an "if (!a) return;" check below if not present
+//! - validity check on Resource.Load → adds an "if (!resource.IsValid())" check below (or fixes, in case of "if (!resource)") if not present
+//! - potential attribute (e.g "ResourceName m_sResourceName;") → adds an [Attribute()] if not present (including default enum value)
+//! - adds missing or incorrect LogLevel to Print/PrintFormat
+//! - adds missing () to incomplete instantiation
+//! - completes/formats a separator (//--- from three to over 96 dashes to proper separator format)
+//! - allows for completely custom keywords with potential space-separated parameters (see cast keyword entry)
+[WorkbenchPluginAttribute(
+	name: PLUGIN_NAME,
+	description: PLUGIN_DESCRIPTION,
+	shortcut: "Ctrl+Return",
+	wbModules: { "ScriptEditor" },
+	awesomeFontCode: 0xE2CA)]
 class SCR_AutocompletePlugin : WorkbenchPlugin
 {
 	/*
-		Category: General
+		General
 	*/
 
 	[Attribute(defvalue: "1", desc: "Add class constructor on \"" + CONSTRUCTOR_KEYWORD + "\" keyword", category: "General")]
@@ -52,6 +59,9 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 		+ "\n- array<string> instance = new array<string>(); → array<string> instance = {};", category: "General")]
 	protected bool m_bFixInstantiation;
 
+	[Attribute(defvalue: "1", desc: "Fix separator (from \"//---\" (and more dashes) to proper separator)", category: "General")]
+	protected bool m_bFixSeparator;
+
 	[Attribute(defvalue: "1", desc: "Add a nullcheck below a \"Class a = Class.Cast(b)\" statement if not present", category: "General")]
 	protected bool m_bAddCastNullcheck;
 
@@ -67,11 +77,11 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 	}, uiwidget: UIWidgets.ComboBox, category: "General")]
 	protected LogLevel m_eAddPrintLogLevel;
 
-//	[Attribute(defvalue: "1", desc: "Keep comment indentation on commented keyword's usage (e.g \" ctor		// TODO\")")]
-	protected bool m_bKeepCommentIndentation = true;
+	[Attribute(defvalue: "1", desc: "Keep comment indentation on commented keyword's usage (e.g \" ctor		// TODO\"), otherwise uses one space", category: "General")]
+	protected bool m_bKeepCommentIndentation;
 
 	/*
-		Category: Keywords
+		Keywords
 	*/
 
 	[Attribute(defvalue: "1", desc: "Use the tool's keyword list below", category: "Keywords")]
@@ -83,11 +93,14 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 	[Attribute(defvalue: "1", desc: "Use the user-defined keyword list below - this list will never be touched or reset in any way by the tool", category: "Keywords")]
 	protected bool m_bUseUserKeywords;
 
-	[Attribute(desc: "User-defined keyword-replacement pairs", category: "Keywords")]
+	[Attribute(desc: "User-defined keyword-replacement pairs.\nWhen keyword is the first word on the line ", category: "Keywords")]
 	protected ref array<ref SCR_AutocompletePlugin_KeywordData> m_aUserKeywords;
 
+	[Attribute(defvalue: "1", desc: "If not enough keywords were typed replace them with arg#, otherwise popup a warning message", category: "Keywords")]
+	protected bool m_bAllowMissingKeywordParameters;
+
 	/*
-		Category: Attributes
+		Attributes
 	*/
 
 	[Attribute(defvalue: "1", desc: "Use Tool Attributes", category: "Attribute Decorators")]
@@ -105,15 +118,22 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 	protected ref map<string, SCR_AutocompletePlugin_KeywordData> m_mKeywords = new map<string, SCR_AutocompletePlugin_KeywordData>();
 	protected ref map<string, SCR_AutocompletePlugin_AttributeData> m_mAttributeDecorators = new map<string, SCR_AutocompletePlugin_AttributeData>();
 
-	protected static const string SEP_NL = SCR_StringHelper.DOUBLE_SLASH + "------------------------------------------------------------------------------------------------\n";
+	protected static const string SEP = "//------------------------------------------------------------------------------------------------";
+	protected static const string SEP_NL = SEP + "\n";
 	protected static const string CONSTRUCTOR_KEYWORD = "ctor";
 	protected static const string DESTRUCTOR_KEYWORD = "dtor";
 	protected static const string ENTITY_SUFFIX = "Entity"; // used to detect IEntity's ctor(IEntitySource src, IEntity parent)
 
 	protected static const ref array<string> NATIVE_TYPES = {
 		"bool", "float", "int", "string", "typename", "vector",
-		"FactionKey", "LocalizedString", "ResourceName",
+		"FactionKey", "ResourceName",
 	};
+
+	protected static const int MAX_STRING_FORMAT_PARAMETERS = 9;
+	protected static const string MISSING_ARGUMENT_FORMAT = "arg%1";
+
+	protected static const string PLUGIN_NAME = "Autocomplete";
+	protected static const string PLUGIN_DESCRIPTION = "Helps autocompleting keywords, adding [Attribute()] decorators, cast nullchecks etc.";
 
 	//------------------------------------------------------------------------------------------------
 	override void Run()
@@ -148,11 +168,16 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 		}
 
 		string indentation;
-		SCR_BasicCodeFormatterPlugin.GetIndentAndLineContent(currentLine, indentation, currentLine);
-
+		SCR_CodeHelper.GetIndentAndLineContent(currentLine, indentation, currentLine);
 		int commentIndex = currentLine.IndexOf(SCR_StringHelper.DOUBLE_SLASH);
+
 		if (commentIndex == 0) // the whole line is a comment
+		{
+			if (m_bFixSeparator)
+				FixSeparator(scriptEditor, indentation, currentLine);
+
 			return;
+		}
 
 		string indentedComment;
 		if (commentIndex > 0)
@@ -245,10 +270,7 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 
 		CheckToolKeywords();
 		FillKeywordsMap();
-
-		SCR_AutocompletePlugin_KeywordData data = m_mKeywords.Get(currentLine); // case-sensitive!
-		if (data)
-			scriptEditor.SetLineText(AddIndentation(string.Format(data.m_sValue, indentedComment), indentation));
+		TryKeywords(scriptEditor, indentation, currentLine, indentedComment);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -287,6 +309,7 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 		tokens.RemoveItemOrdered("protected");
 		tokens.RemoveItemOrdered("private");
 		tokens.RemoveItemOrdered("static");
+		tokens.RemoveItemOrdered("const");
 		if (tokens.IsEmpty())
 			return false;
 
@@ -342,6 +365,7 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 	//! \param[in] scriptEditor
 	//! \param[in] indentation
 	//! \param[in] currentLine
+	//! \param[in] comment
 	//! \return
 	protected bool FixInstantiation(notnull ScriptEditor scriptEditor, string indentation, string currentLine, string comment)
 	{
@@ -422,12 +446,28 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 		}
 
 		if (keywords && !keywords.IsEmpty())
-			newLine = SCR_StringHelper.Join(SCR_StringHelper.SPACE, keywords) + SCR_StringHelper.SPACE + newLine;
+			newLine = SCR_StringHelper.Join(SCR_StringHelper.SPACE, keywords, true) + SCR_StringHelper.SPACE + newLine;
 
 		if (currentLine == newLine)
 			return false;
 
 		scriptEditor.SetLineText(string.Format("%1%2%3", indentation, newLine, comment));
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] scriptEditor
+	//! \param[in] indentation
+	//! \param[in] currentLine
+	//! \return
+	protected bool FixSeparator(notnull ScriptEditor scriptEditor, string indentation, string currentLine)
+	{
+		if (currentLine == SEP
+			|| !currentLine.StartsWith("//---")
+			|| SCR_StringHelper.Filter(currentLine.Substring(2, currentLine.Length() - 2), "-", true)) // line has more than just // + dashes
+			return false;
+
+		scriptEditor.SetLineText(indentation + SEP);
 		return true;
 	}
 
@@ -546,7 +586,6 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 					currentLine.Substring(0, currentLine.Length() - 2),
 					typename.EnumToString(LogLevel, m_eAddPrintLogLevel),
 					comment));
-
 			return true;
 		}
 
@@ -634,7 +673,7 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 
 		// no exact type match found, dig deeper
 
-		typename type = typeStr.ToType();
+		typename type = typeStr.ToType(); // type CAN be null
 
 		// no map/set support
 		if (type && (type.IsInherited(map) || type.IsInherited(set)))
@@ -660,20 +699,44 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 		{
 			int length = typeStr.Length();
 			bool isEnum = length > 2 && typeStr[0] == "E" && SCR_StringHelper.UPPERCASE.Contains(typeStr[1]); // e.g EFuelType
+			string firstValue;
 			if (!isEnum) // tag-prefixed?
 			{
 				int index = typeStr.IndexOf("_E");
 				if (index > 1 && index < 9 && index + 2 < typeStr.Length() && SCR_StringHelper.UPPERCASE.Contains(typeStr[index + 2])) // if has _E + uppercase within the first 11 chars (tag = 2 to 8 chars)
 					isEnum = true;
+
+				if (!isEnum) // let's try by var name
+				{
+					if (type)
+					{
+						firstValue = type.GetVariableName(0);
+						if (firstValue && SCR_StringHelper.Filter(firstValue, SCR_StringHelper.UPPERCASE + SCR_StringHelper.DIGITS + "_"))
+							isEnum = true;
+					}
+				}
 			}
 
 			if (isEnum)
 			{
 				data = m_mAttributeDecorators.Get("enum");
 				if (data)
-					scriptEditor.InsertLine(indentation + string.Format(data.m_sValue, friendlyName, typeStr));
+				{
+					if (!firstValue)
+					{
+						if (type)
+							firstValue = type.GetVariableName(0);
+					}
+
+					if (!firstValue)
+						firstValue = "FIRST_VALUE";
+
+					scriptEditor.InsertLine(indentation + string.Format(data.m_sValue, friendlyName, typeStr, firstValue));
+				}
 				else
+				{
 					scriptEditor.InsertLine(indentation + string.Format("[Attribute(desc: \"%1\", uiwidget: UIWidgets.CheckBox, enumType: %2)]", friendlyName, typeStr));
+				}
 
 				return true;
 			}
@@ -709,6 +772,36 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 		}
 
 		return SCR_StringHelper.Join(SCR_StringHelper.LINE_RETURN, lines, true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] lines
+	//! \param[in] indentedComment
+	//! \return
+	protected string AddComment(string lines, string indentedComment)
+	{
+		if (!indentedComment)
+			return lines;
+
+		array<string> linesArr = {};
+		lines.Split("\n", linesArr, false);
+		int linesArrCount = linesArr.Count();
+
+		// insert to the right of the first non-comment line if any
+		for (int i; i < linesArrCount; ++i)
+		{
+			if (linesArr[i].StartsWith("//"))
+				continue;
+
+			linesArr[i] = linesArr[i] + indentedComment;
+			return SCR_StringHelper.Join("\n", linesArr, true);
+		}
+
+		// only comment lines, insert below
+		linesArr.Insert(indentedComment.Trim());
+		return SCR_StringHelper.Join("\n", linesArr, true);
+
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -762,27 +855,33 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 		}
 
 		// structure
-		if (!keywords.Contains("if"))				m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("if", "if (condition)%1\n{\n\t\n}"));
-		if (!keywords.Contains("ife"))				m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("ife", "if (condition)%1\n{\n\t\n}\nelse\n{\n\t\n}"));
-		if (!keywords.Contains("for"))				m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("for", "for (int i, count = arr.Count(); i < count; i++)%1\n{\n\t\n}"));
-		if (!keywords.Contains("forr"))				m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("forr", "for (int i = arr.Count() - 1; i >= 0; i--)%1\n{\n\t\n}")); // for, reversed
-		if (!keywords.Contains("foreach"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("foreach", "foreach (string item : items)%1\n{\n\t\n}"));
-		if (!keywords.Contains("foreachi"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("foreachi", "foreach (int i, SCR_Class item : items)%1\n{\n\t\n}")); // foreach with index
-		if (!keywords.Contains("switch"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("switch", "switch (value)%1\n{\n\tcase 0:\n\t\tbreak;\n\n\tdefault:\n\t\tbreak;\n}"));
-		if (!keywords.Contains("while"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("while", "while (condition)%1\n{\n\t\n}"));
+		if (!keywords.Contains("if"))				m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("if", "if (condition)\n{\n\t\n}"));
+		if (!keywords.Contains("ife"))				m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("ife", "if (condition)\n{\n\t\n}\nelse\n{\n\t\n}"));
+		if (!keywords.Contains("for"))				m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("for", "for (int i, count = arr.Count(); i < count; i++)\n{\n\t\n}"));
+		if (!keywords.Contains("forr"))				m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("forr", "for (int i = arr.Count() - 1; i >= 0; i--)\n{\n\t\n}")); // for, reversed
+		if (!keywords.Contains("foreach"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("foreach", "foreach (SCR_Class item : items)\n{\n\t\n}"));
+		if (!keywords.Contains("foreachi"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("foreachi", "foreach (int i, SCR_Class item : items)\n{\n\t\n}")); // foreach with index
+		if (!keywords.Contains("switch"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("switch", "switch (value)\n{\n\tcase 0:\n\t\tbreak;\n\n\tdefault:\n\t\tbreak;\n}"));
+		if (!keywords.Contains("while"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("while", "while (condition)\n{\n\t\n}"));
 
 		// big structure
-		if (!keywords.Contains("class"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("class", "class SCR_MyClass%1\n{\n\tprotected string m_sValue = \"Generated class\";\n\n\t" + SEP_NL + "\t/" + "/! constructor\n\tvoid SCR_MyClass()\n\t{\n\t\t\n\t}\n}"));
-		if (!keywords.Contains("func"))				m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("func", SEP_NL + SCR_StringHelper.DOUBLE_SLASH + "! \\param[in] parameter\n" + "protected void Method(int parameter)%1\n{\n\t\n}")); // meh alias
-		if (!keywords.Contains("method"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("method", SEP_NL + SCR_StringHelper.DOUBLE_SLASH + "! \\param[in] parameter\n" + "protected void Method(int parameter)%1\n{\n\t\n}"));
+		if (!keywords.Contains("class"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("class", "class SCR_MyClass\n{\n\tprotected string m_sValue = \"Generated class\";\n\n\t" + SEP_NL + "\t//! constructor\n\tvoid SCR_MyClass()\n\t{\n\t\t\n\t}\n}"));
+		if (!keywords.Contains("func"))				m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("func", SEP_NL + SCR_StringHelper.DOUBLE_SLASH + "! \\param[in] parameter\n" + "protected void Method(int parameter)\n{\n\t\n}")); // meh alias
+		if (!keywords.Contains("method"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("method", SEP_NL + SCR_StringHelper.DOUBLE_SLASH + "! \\param[in] parameter\n" + "protected void Method(int parameter)\n{\n\t\n}"));
 
 		// syntactic sugar
 //		if (!keywords.Contains("const"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("const", "protected static const int CONST_VALUE = 42;"));
 //		if (!keywords.Contains("array"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("array", "protected ref array<string> m_aArray = {};"));
 //		if (!keywords.Contains("map"))				m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("map", "protected ref map<int, string> m_mMap = new map<int, string>();"));
 //		if (!keywords.Contains("set"))				m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("set", "protected ref set<string> m_mMap = new set<string>();"));
-		if (!keywords.Contains("findcomp"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("findcomp", "SCR_ComponentClass component = SCR_ComponentClass.Cast(entity.FindComponent(SCR_ComponentClass));%1\nif (!comp)\n\treturn;"));
+		if (!keywords.Contains("findcomp"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("findcomp", "SCR_ComponentClass component = SCR_ComponentClass.Cast(entity.FindComponent(SCR_ComponentClass));\nif (!comp)\n\treturn;"));
 		if (!keywords.Contains("print"))			m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("print", "Print(\"fill\", LogLevel.NORMAL);"));
+
+		//
+		// parametered keywords
+		//
+
+		if (!keywords.Contains("cast"))				m_aToolKeywords.Insert(SCR_AutocompletePlugin_KeywordData.Create("cast", "%1 %2 = %1.Cast(%3);\nif (!%2)\n\treturn;"));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -812,6 +911,95 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] scriptEditor
+	//! \param[in] indentation
+	//! \param[in] currentLine
+	//! \param[in] indentedComment
+	//! \return true if a replacement happened, false otherwise
+	protected bool TryKeywords(notnull ScriptEditor scriptEditor, string indentation, string currentLine, string indentedComment)
+	{
+		array<string> tokens = {};
+		currentLine.Split(" ", tokens, true);
+		SCR_AutocompletePlugin_KeywordData data = m_mKeywords.Get(tokens[0]); // case-sensitive!
+		if (!data) // no such keyword
+			return false;
+
+		int paramsCount = tokens.Count();
+		string value = data.m_sValue;
+		if (!m_bAllowMissingKeywordParameters)
+		{
+			for (int i = MAX_STRING_FORMAT_PARAMETERS; i > 0; --i)
+			{
+				if (value.Contains("%" + i))
+				{
+					if (i > paramsCount - 1)
+					{
+						SCR_WorkbenchHelper.PrintDialog(
+							string.Format("Missing values: provided %3/%2 arguments for \"%1\" keyword", tokens[0], i, paramsCount - 1),
+							PLUGIN_NAME,
+							LogLevel.WARNING);
+						return false;
+					}
+
+					break;
+				}
+			}
+		}
+
+		array<string> parameters;
+		bool valueHasParams = value.Contains("%1");
+
+		if (valueHasParams)
+		{
+			if (!parameters)
+				parameters = {};
+
+			// if the template has less than the expected parameters, replace with generic text
+			for (int i = paramsCount; i < MAX_STRING_FORMAT_PARAMETERS + 1; ++i)
+			{
+				if (value.Contains("%" + i))
+					parameters.Insert(string.Format(MISSING_ARGUMENT_FORMAT, i));
+			}
+		}
+
+		if (paramsCount > 1)
+		{
+			if (!valueHasParams) // no param replacement – we don't want to format an if keyword over and over
+				return false;
+
+			if (!parameters)
+				parameters = {};
+
+			parameters.Copy(tokens);
+			parameters.RemoveOrdered(0);
+			--paramsCount;
+
+//			for (int i = MAX_STRING_FORMAT_PARAMETERS; i >= 1; --i) // from %9 to %1
+//			{
+//				if (paramsCount < i)
+//					value.Replace("%" + i, ""); // allow for max parameters and avoid string.Format warning!
+//				else
+//					break;
+//			}
+
+			value = SCR_StringHelper.Format(value, parameters);
+		}
+		else
+		{
+			if (valueHasParams)
+				value = SCR_StringHelper.Format(value, parameters);
+		}
+
+		if (indentedComment)
+			scriptEditor.SetLineText(AddIndentation(AddComment(value, indentedComment), indentation));
+		else
+			scriptEditor.SetLineText(AddIndentation(value, indentation));
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void CheckToolAttributeDecorators()
 	{
 		set<string> attributeDecorators = new set<string>();
@@ -825,16 +1013,16 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 				attributeDecorators.Insert(tmpData.m_sType);
 		}
 
-		if (!attributeDecorators.Contains("array"))				m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("array",			"a", "[Attribute(defvalue: \"" + "\", desc: \"%1\")]"));
-		if (!attributeDecorators.Contains("bool"))				m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("bool",			"b", "[Attribute(defvalue: \"1\", desc: \"%1\")]"));
-		if (!attributeDecorators.Contains("Color"))				m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("Color",			"", "[Attribute(defvalue: \"1 1 1 1\", desc: \"%1\")]"));
-		if (!attributeDecorators.Contains("enum"))				m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("enum",			"e", "[Attribute(defvalue: \"0\", desc: \"%1\", uiwidget: UIWidgets.ComboBox, enumType: %2)]"));
-		if (!attributeDecorators.Contains("float"))				m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("float",			"f", "[Attribute(defvalue: \"0\", desc: \"%1\", params: \"0 inf 0.01\")]"));
-		if (!attributeDecorators.Contains("int"))				m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("int",			"i", "[Attribute(defvalue: \"0\", desc: \"%1\", params: \"0 inf\")]"));
+		if (!attributeDecorators.Contains("array"))			m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("array",			"a",	"[Attribute(defvalue: \"\", desc: \"%1\")]"));
+		if (!attributeDecorators.Contains("bool"))			m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("bool",			"b",	"[Attribute(defvalue: \"1\", desc: \"%1\")]"));
+		if (!attributeDecorators.Contains("Color"))			m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("Color",			"",		"[Attribute(defvalue: \"1 1 1 1\", desc: \"%1\")]"));
+		if (!attributeDecorators.Contains("enum"))			m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("enum",			"e",	"[Attribute(defvalue: %2.%3.ToString(), desc: \"%1\", uiwidget: UIWidgets.ComboBox, enumType: %2)]"));
+		if (!attributeDecorators.Contains("float"))			m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("float",			"f",	"[Attribute(defvalue: \"0\", desc: \"%1\", params: \"0 inf 0.01\")]"));
+		if (!attributeDecorators.Contains("int"))			m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("int",			"i",	"[Attribute(defvalue: \"0\", desc: \"%1\", params: \"0 inf\")]"));
 		if (!attributeDecorators.Contains("LocalizedString"))	m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("string",			"s", "[Attribute(defvalue: \"#AR-Something\", desc: \"%1\")]"));
-		if (!attributeDecorators.Contains("ResourceName"))		m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("ResourceName",	"s", "[Attribute(defvalue: \"" + "\", desc: \"%1\", uiwidget: UIWidgets.ResourcePickerThumbnail, params: \"edds et wav\")]"));
-		if (!attributeDecorators.Contains("string"))			m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("string",			"s", "[Attribute(defvalue: \"Default value\", desc: \"%1\")]"));
-		if (!attributeDecorators.Contains("vector"))			m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("vector",			"v", "[Attribute(defvalue: \"0 0 0\", desc: \"%1\")]"));
+		if (!attributeDecorators.Contains("ResourceName"))	m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("ResourceName",	"s",	"[Attribute(defvalue: \"\", desc: \"%1\", uiwidget: UIWidgets.ResourcePickerThumbnail, params: \"edds et wav\")]"));
+		if (!attributeDecorators.Contains("string"))		m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("string",			"s",	"[Attribute(defvalue: \"Default value\", desc: \"%1\")]"));
+		if (!attributeDecorators.Contains("vector"))		m_aToolAttributeDecorators.Insert(SCR_AutocompletePlugin_AttributeData.Create("vector",			"v",	"[Attribute(defvalue: \"0 0 0\", desc: \"%1\")]"));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -886,7 +1074,7 @@ class SCR_AutocompletePlugin_KeywordData
 	[Attribute(defvalue: "keyword", desc: "Keyword to be detected - case-sensitive")]
 	string m_sKeyword;
 
-	[Attribute(defvalue: "protected string m_sKeyword = \"keyword\";", desc: "Text replacing the detected keyword\n- \\n for line return\n- \\t for tabulation\n- %1 for the in-line comment that was after the keyword (if any)", uiwidget: UIWidgets.EditBoxMultiline)]
+	[Attribute(defvalue: "protected string m_sKeyword = \"keyword\";", desc: "Text replacing the detected keyword (indentation is adjusted automatically)\n- %1..%9 parameters (if any)", uiwidget: UIWidgets.EditBoxMultiline)]
 	string m_sValue;
 
 	//------------------------------------------------------------------------------------------------

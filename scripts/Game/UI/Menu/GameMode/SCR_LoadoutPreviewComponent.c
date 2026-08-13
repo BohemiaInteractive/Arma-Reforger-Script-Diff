@@ -57,8 +57,9 @@ class SCR_LoadoutPreviewComponent : ScriptedWidgetComponent
 			}
 		}
 
-		ResourceName resName = loadout.GetLoadoutResource();
-		if (SCR_PlayerArsenalLoadout.Cast(loadout))
+		const ResourceName resName = loadout.GetLoadoutResource();
+		const SCR_PlayerArsenalLoadout arsenalLoadout = SCR_PlayerArsenalLoadout.Cast(loadout);
+		if (arsenalLoadout)
 		{
 			IEntity previewedEntity = m_PreviewManager.ResolvePreviewEntityForPrefab(resName);
 			if (!previewedEntity)
@@ -166,6 +167,11 @@ class SCR_LoadoutPreviewComponent : ScriptedWidgetComponent
 			}
 
 			m_PreviewManager.SetPreviewItem(m_wPreview, previewedEntity, attributes, true);
+
+			const int localPlayerId = SCR_PlayerController.GetLocalPlayerId();
+			if (arsenalLoadout.ShouldApplyCamouflage(localPlayerId))
+				arsenalLoadout.ApplyCamouflageToCharacter(previewedEntity);
+
 			return previewedEntity;
 		}
 		else

@@ -505,6 +505,21 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Server method used to force character into the ragdoll state
+	//! \param[in] time after which character will transition out of ragdoll state
+	void MakeOwnerRagdoll_S(int time)
+	{
+		Rpc(RpcDo_Ragdoll, time);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void RpcDo_Ragdoll(int time)
+	{
+		Ragdoll(time);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool GetCanMeleeAttack()
 	{
 		if (!m_MeleeComponent)
@@ -1489,7 +1504,12 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 
 		if (!scrCmdHandler.GetCommandMove())
 			return;
-		
+
+		if (!customAnimData)
+			customAnimData = SCR_LoiterCustomAnimData.Default;
+		else
+			customAnimData.RandomizeSeed();
+
 		m_pScrInputContext.SetLoiteringEntity(loiterEntity);
 		m_pScrInputContext.m_iLoiteringType = loiteringType;
 		m_pScrInputContext.m_bLoiteringShouldHolsterWeapon = holsterWeapon;
@@ -1653,6 +1673,47 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			return false;
 		else
 			return handler.IsLoitering();		
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool CanPlayLoiterAnimation(ELoiteringType loiterType)
+	{
+		if (IsDead())
+			return false;
+
+		if (IsFalling())
+			return false;
+
+		if (IsClimbing())
+			return false;
+
+		if (IsSwimming())
+			return false;
+
+		if (IsChangingStance())
+			return false;
+
+		if (IsPlayingGesture())
+			return false;
+
+		if (IsChangingItem())
+			return false;
+
+		if (IsUsingItem())
+			return false;
+
+		if (IsWeaponADS())
+			return false;
+
+		if (GetCharacter().IsInVehicle())
+			return false;
+
+		if (IsOpeningVehicleDoor() || IsClosingVehicleDoor())
+			return false;
+
+		ELoiteringType currentLoiterType;
+		SCR_CharacterCommandHandlerComponent handler = SCR_CharacterCommandHandlerComponent.Cast(GetAnimationComponent().GetCommandHandler());
+		return !handler || !handler.IsLoitering(currentLoiterType) || currentLoiterType == loiterType;
 	}
 	
 	//------------------------------------------------------------------------------------------------

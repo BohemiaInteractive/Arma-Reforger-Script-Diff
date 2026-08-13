@@ -33,6 +33,7 @@ class SCR_DestructionBaseHandler
 
 	protected IEntity m_pOwner; // TODO: Remove once we can get the owner dynamically
 	protected bool m_bIsDestructionDelayed;
+	protected bool m_bIsModelChanged;
 
 	//------------------------------------------------------------------------------------------------
 	//! Destroy
@@ -70,10 +71,22 @@ class SCR_DestructionBaseHandler
 	{
 		if (!m_pOwner || m_pOwner.IsDeleted())
 			return;
-
-		ResourceName object = SCR_Global.GetPrefabAttributeResource(m_pOwner, "MeshObject", "Object");
-		SetModel(object);
-
+		
+		if (m_bIsModelChanged)
+		{
+			ResourceName originalPrefab = EntityUtils.GetEntityPrefabName(m_pOwner);
+			if (!originalPrefab.IsEmpty())
+			{
+				EntityUtils.SetVObjectFromPrefab(m_pOwner, originalPrefab);
+				m_bIsModelChanged = false;
+			}
+			else
+			{
+				ResourceName object = SCR_Global.GetPrefabAttributeResource(m_pOwner, "MeshObject", "Object");
+				SetModel(object);
+			}
+		}
+		
 		// Some objects have no valid destruction physics
 		if (!m_bDisablePhysicsAfterDestroyed)
 			return;
@@ -245,9 +258,12 @@ class SCR_DestructionBaseHandler
 				model = resource.GetResource().ToVObject();
 			
 			if (model || allowEmpty)
+			{
 				m_pOwner.SetObject(model, string.Empty);
+				m_bIsModelChanged = true;
+			}
 		}
-
+		
 		m_pOwner.Update();
 
 		// If there is no model, ignore the rest

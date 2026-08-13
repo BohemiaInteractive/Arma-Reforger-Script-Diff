@@ -102,16 +102,19 @@ class SCR_FactionRequestUIComponent : SCR_DeployRequestUIBaseComponent
 				btnComp.SetEnabled(playerFaction == scriptedFaction);
 			}
 
-			factionPlayerLimit = scriptedFaction.GetPlayerLimit();
-			if (factionPlayerLimit >= 0 && scriptedFaction.GetPlayerCount() >= factionPlayerLimit)
+			bool isFactionAvailableForPlayer = scriptedFaction.IsAvailableForPlayer();
+			
+			if (!isFactionAvailableForPlayer && playerFaction)
 			{
 				btnComp.SetShouldUnlock(playerFaction == scriptedFaction);
 				btnComp.SetEnabled(playerFaction == scriptedFaction);
 			}
 
-			btnComp.SetVisible(scriptedFaction.IsPlayable() && scriptedFaction.ShowInWelcomeScreenOverride() != EOverrideWelcomeScreenFactionDisplay.NEVERSHOW , false);
+			bool playableAndAvailable = scriptedFaction.IsPlayable() && isFactionAvailableForPlayer;
+			
+			btnComp.SetVisible(playableAndAvailable && scriptedFaction.ShowInWelcomeScreenOverride() != EOverrideWelcomeScreenFactionDisplay.NEVERSHOW, false);
 
-			if (scriptedFaction.IsPlayable())
+			if (playableAndAvailable)
 			{
 				m_aActiveFactionButtons.Insert(btnComp);
 				playableFactionCount++;
@@ -205,7 +208,7 @@ class SCR_FactionRequestUIComponent : SCR_DeployRequestUIBaseComponent
 
 		if (m_PlyFactionAffilComp)
 			factionBtn.SetTooltipAvailable(m_PlyFactionAffilComp.GetAffiliatedFaction() != factionBtn.GetFaction());
-		m_OnButtonFocused.Invoke(factionBtn.GetFaction());
+		m_OnButtonFocused.Invoke(factionBtn.GetFaction(), true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -362,6 +365,7 @@ class SCR_FactionButton : SCR_DeployButtonBase
 		if (m_Faction && m_wPlayerCount)
 		{
 			m_iPlayerCount = m_Faction.GetPlayerCount();
+			SetEnabled(m_Faction.IsAvailableForPlayer(m_iPlayerCount));
 			m_iPlayerLimit = m_Faction.GetPlayerLimit();
 			if (m_iPlayerLimit >= 0)
 				m_wPlayerCount.SetTextFormat("#AR-SupportStation_ActionFormat_ItemAmount", m_iPlayerCount, m_iPlayerLimit);

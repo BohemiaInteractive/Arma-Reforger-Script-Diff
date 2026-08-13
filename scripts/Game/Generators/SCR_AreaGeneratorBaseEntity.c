@@ -51,13 +51,13 @@ class SCR_AreaGeneratorBaseEntity : SCR_GeneratorBaseEntity
 		if (!m_ParentShapeSource)
 			return;
 
-		array<vector> vectorPoints = GetAnchorPoints(m_ParentShapeSource);
-		SCR_AABB bbox = new SCR_AABB(vectorPoints);
-		bbox.m_vMin[1] = BBOX_CHECK_HEIGHT * -0.5;
-		bbox.m_vMax[1] = BBOX_CHECK_HEIGHT * 0.5;
+		vector mins, maxs;
+		GetWorldBounds(mins, maxs);
+		mins[1] = mins[1] - BBOX_CHECK_HEIGHT * 0.5;
+		maxs[1] = maxs[1] + BBOX_CHECK_HEIGHT * 0.5;
 
 		SetAvoidOptions();
-		s_ObstacleDetector.RefreshObstaclesByAABB(CoordToParent(bbox.m_vMin), CoordToParent(bbox.m_vMax));
+		s_ObstacleDetector.RefreshObstaclesByAABB(mins, maxs);
 	}
 
 	//------------------------------------------------------------------------------------------------

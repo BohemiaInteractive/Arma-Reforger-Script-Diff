@@ -18,7 +18,6 @@ class VehicleControllerComponent : BaseVehicleControllerComponent
 	//sound
 	protected AudioHandle m_iEngineStarterHandle = AudioHandle.Invalid;
 	protected AudioHandle m_iEngineStartHandle = AudioHandle.Invalid;
-	protected AudioHandle m_iEngineStopHandle = AudioHandle.Invalid;
 
 	//------------------------------------------------------------------------------------------------
 	//! Invoker for the Engine Started event
@@ -136,9 +135,10 @@ class VehicleControllerComponent : BaseVehicleControllerComponent
 		SoundComponent soundComponent = SoundComponent.Cast(GetOwner().FindComponent(SoundComponent));
 		if (soundComponent)
 		{
-			soundComponent.Terminate(m_iEngineStopHandle);
-			m_iEngineStopHandle = AudioHandle.Invalid;
+			soundComponent.Terminate(m_iEngineStartHandle);
+			m_iEngineStartHandle = AudioHandle.Invalid;
 
+			soundComponent.Terminate(m_iEngineStarterHandle);
 			m_iEngineStarterHandle = soundComponent.SoundEvent(SCR_SoundEvent.SOUND_ENGINE_STARTER_LP);
 		}
 	}

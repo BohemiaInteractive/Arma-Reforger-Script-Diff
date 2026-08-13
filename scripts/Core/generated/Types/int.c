@@ -38,9 +38,9 @@ sealed class int
 	proto external string AsciiToString();
 	/*!
 	Integer to string with fixed length, padded with zeros.
-	\param len \p int Fixed length of output string, number will be padded with '0' from left.
-	\param hex \p bool If true, formats the value as hexadecimal. Otherwise, formats as decimal.
-	\param prefix \p string Prefixes the hexadecimal output (e.g., "#FF00AA").
+	\param len Fixed length of output string, number will be padded with '0' from left.
+	\param hex If true, formats the value as hexadecimal (otherwise, formats as decimal).
+	\param prefix Prefixes the hexadecimal output (e.g., "#FF00AA").
 	\code
 		int num = 123;
 		string s1 = num.ToString(5);

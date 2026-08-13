@@ -22,11 +22,6 @@ enum EEntityFrameUpdateSpecs
 	CALL_WHEN_ENTITY_SELECTED = 4		// called every frame but only when entity is selected
 }
 
-class GenericEntityClass: EntityPrefabData
-{
-	void GenericEntityClass(BaseContainer prefab) {}
-}
-
 /*!
 Indices of SkyMaterial properties
 usage: g_Game.GetWorldEntity().GetSkyMaterial().SetParamByIndex(ESkyMaterialParams.MIE_DENSITY, 10);
@@ -83,3 +78,5 @@ enum CharacterStance
 	STANCE_PRONE_RAISED
 }
 
+typedef func DiagEntityCallback;
+void DiagEntityCallback(float dt);

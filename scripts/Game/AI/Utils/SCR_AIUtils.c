@@ -663,6 +663,24 @@ class SCR_AIFactionHandling
 	}
 }
 
+class SCR_AIIntegerOperations
+{
+	//------------------------------------------------------------------------------------------------
+	// Decodes integer mask with 2 byte values packed in one integer
+	static void DecodeTwo(int packed, out int valueA, out int valueB)
+	{
+		valueA = (packed >> 0) & 0xFF;   // first slot
+		valueB = (packed >> 8) & 0xFF;   // second slot
+	};
+	
+	//------------------------------------------------------------------------------------------------
+	// Encodes integer as a mask with 2 byte values
+	static int EncodeTwo(int valueA, int valueB)
+	{
+    	return ((valueA & 0xFF) << 0) | ((valueB & 0xFF) << 8);
+	}
+}
+
 class SCR_AIUtils
 {
 	static AIAgent GetAIAgent(notnull IEntity ent)

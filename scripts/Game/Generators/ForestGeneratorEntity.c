@@ -1849,7 +1849,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 
 				tree = SelectTreeToSpawn(point, outline.m_aTreeGroups[groupIdx].m_aTrees);
 
-				if (!IsEntryValid(tree, pointLocal))
+				if (!IsEntryValid(tree, point, pointLocal))
 					continue;
 
 				tree.m_eType = treeType;
@@ -1940,7 +1940,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 
 				tree = SelectTreeToSpawn(point, outline.m_aTreeGroups[groupIdx].m_aTrees);
 
-				if (!IsEntryValid(tree, pointLocal))
+				if (!IsEntryValid(tree, point, pointLocal))
 					continue;
 
 				tree.m_eType = treeType;
@@ -1963,13 +1963,23 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] tree
+	//! \param[in] pointWorld
 	//! \param[in] pointLocal
 	//! \return
-	protected bool IsEntryValid(ForestGeneratorTree tree, vector pointLocal)
+	protected bool IsEntryValid(ForestGeneratorTree tree, vector pointWorld, vector pointLocal)
 	{
 		if (!tree)
 			return false;
 
+		if (tree.m_fMaxTerrainSlope < SCR_ForestGeneratorTreeBase.MAX_TERRAIN_SLOPE)
+		{
+			vector pointW = pointWorld; // to not modify pointWorld
+			vector normal = SCR_TerrainHelper.GetTerrainNormal(pointW, GetWorld());
+
+			if (normal[1] < Math.Cos(tree.m_fMaxTerrainSlope * Math.DEG2RAD))
+				return false;
+		}
+		
 		FallenTree fallenTree = FallenTree.Cast(tree);
 		if (fallenTree)
 		{
@@ -2078,7 +2088,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 				point = pointLocal.Multiply4(worldMat);
 				tree = SelectTreeToSpawn(point, bottomLevel.m_aTreeGroups[groupIdx].m_aTrees);
 
-				if (!IsEntryValid(tree, pointLocal))
+				if (!IsEntryValid(tree, point, pointLocal))
 					continue;
 
 				tree.m_eType = SCR_ETreeType.BOTTOM;
@@ -2220,7 +2230,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 				}
 
 				tree = SelectTreeToSpawn(point, topLevel.m_aTreeGroups[groupIdx].m_aTrees);
-				if (!IsEntryValid(tree, pointLocal))
+				if (!IsEntryValid(tree, point, pointLocal))
 					continue;
 
 				tree.m_eType = SCR_ETreeType.TOP;
@@ -2335,7 +2345,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 			groupIdx = m_RandomGenerator.RandInt(0, level.m_aTreeGroups.Count());
 
 		ForestGeneratorTree tree = SelectTreeToSpawn(point, level.m_aTreeGroups[groupIdx].m_aTrees);
-		if (!IsEntryValid(tree, pointLocal))
+		if (!IsEntryValid(tree, point, pointLocal))
 			return;
 
 		tree.m_eType = SCR_ETreeType.TOP;

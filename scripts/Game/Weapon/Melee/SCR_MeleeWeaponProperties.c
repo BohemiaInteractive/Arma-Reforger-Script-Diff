@@ -6,13 +6,13 @@ class SCR_MeleeWeaponPropertiesClass: ScriptComponentClass
 //------------------------------------------------------------------------------------------------
 class SCR_MeleeWeaponProperties : ScriptComponent
 {
-	[Attribute("10", "Size of damage dealt by the weapon", category: "Global")]
+	[Attribute("10", desc: "Size of damage dealt by the weapon", category: "Global")]
 	private float m_fDamage;	
 	
-	[Attribute("1", "Range of the weapon [m]", category: "Global")]
+	[Attribute("1", desc: "Range of the weapon [m]", category: "Global")]
 	private float m_fRange;
 	
-	[Attribute("0.3", "Accuracy of melee attacks, smaller values are more accurate", category: "Global")]
+	[Attribute("0.3", desc: "Accuracy of melee attacks, smaller values are more accurate", category: "Global")]
 	protected float m_fAccuracy;
 	
 	protected BaseWeaponStatsManagerComponent m_statsManager;

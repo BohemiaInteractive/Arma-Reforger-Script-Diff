@@ -111,12 +111,9 @@ class BaseRplComponent: GenericComponent
 	*/
 	proto external bool IsRemoteProxy();
 	/*!
-	Registers additional item into the set that will be inserted into replication
-	when InsertToReplication is called.
-	This can be used if you need to insert some custom items into your replicated node.
-
-	\warning Can be used only before the RplNode is inserted into the replication
+	\deprecated Use BaseRplComponent.GetNode() + RplNode.AddItem() instead
 	*/
+	[Obsolete("Use BaseRplComponent.GetNode() + RplNode.AddItem() instead.")]
 	proto external EItemInsertionResult InsertItem(Managed instance);
 	/*!
 	Inserts the component along with the entity and its children into the

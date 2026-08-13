@@ -67,7 +67,7 @@ sealed class WorkspaceWidget: RTTextureWidget
 	proto external float DPIScale(float valueInReferenceResolution);
 	//!Scale value from physical to reference resolution
 	proto external float DPIUnscale(float valueInPhysicalResolution);
-	//!Create widgets by \ref WidgetType, null Color means full alpha white
+	//!Create widgets by WidgetType, null Color means full alpha white
 	proto external Widget CreateWidget(WidgetType type, WidgetFlags flags, Color color, int sort, Widget parentWidget = NULL);
 	//!Create widget in this workspace, null Color means full alpha white
 	proto external Widget CreateWidgetInWorkspace(WidgetType type, int left, int top, int width, int height, WidgetFlags flags, Color color, int sort);

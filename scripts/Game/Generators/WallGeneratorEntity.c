@@ -824,7 +824,7 @@ break;
 			array<vector> tesselatedPoints = {};
 			if (!SCR_ParallelShapeHelper.GetAnchorsAndTesselatedPointsFromShape(shapeEntity, m_vShapeOffset, m_bYOffsetInShapeSpace, anchorPoints, tesselatedPoints))
 			{
-				PrintFormat("[WallGeneratorEntity._WB_OnKeyChanged] error getting shape points from shape with %1 points at position %2", shapeEntity.GetPointCount(), shapeEntity.CoordToParent(shapeEntity.GetOrigin()), level: LogLevel.WARNING);
+				PrintFormat("[WallGeneratorEntity._WB_OnKeyChanged] error getting shape points from shape with %1 points - %2", shapeEntity.GetPointCount(), Debug.GetEntityLinkString(shapeEntity), level: LogLevel.WARNING);
 				return false;
 			}
 

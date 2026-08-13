@@ -37,9 +37,9 @@ class SCR_ImageHelper
 		foreach (int i, int argb : data)
 		{
 			int a = argb & 0xFF000000;
-			int b = (argb & 0x000000FF) * 0x10000;
+			int b = (argb & 0x000000FF) << 16;
 			int g = argb & 0x0000FF00;
-			int r = (argb & 0x00FF0000) / 0x10000;
+			int r = (argb & 0x00FF0000) >> 16;
 
 			dataCopy[i] = a | b | g | r;
 		}
@@ -48,6 +48,127 @@ class SCR_ImageHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Get image data from floats in a non-specific range
+	//! \param[in] values full range floats
+	//! \param[in] min if known, please provide
+	//! \param[in] max if known, please provide
+	//! \return int array of ARGB greyscale values
+	static array<int> GetImageDataBlackAndWhiteFromRange(notnull array<float> values, float min = float.INFINITY, float max = float.INFINITY)
+	{
+		int valuesCount = values.Count();
+		if (valuesCount < 1)
+			return {};
+
+		bool checkForMin = min == float.INFINITY || min == -float.INFINITY || min > max;
+		bool checkForMax = max == float.INFINITY || max == -float.INFINITY || min > max;
+		if (checkForMin || checkForMax)
+		{
+			float initialMin = min;
+			float initialMax = max;
+
+			min = values[0];
+			max = min;
+			foreach (float value : values)
+			{
+				if (value == float.INFINITY)
+				{
+					value = float.MAX;
+					max = value;
+					continue;
+				}
+				else
+				if (value == -float.INFINITY)
+				{
+					value = -float.MAX;
+					min = value;
+					continue;
+				}
+
+				if (min > value)
+					min = value;
+				else
+				if (max < value)
+					max = value;
+			}
+		}
+
+		array<int> result = {};
+		result.Resize(valuesCount);
+
+		if (min == max)
+		{
+			for (int i; i < valuesCount; ++i)
+			{
+				result[i] = 0xFF000000; // black
+			}
+		}
+		else
+		{
+			foreach (int i, float value : values)
+			{
+				int iValue = Math.Round(Math.InverseLerp(min, max, value) * 255);
+				result[i] = 0xFF000000 | (iValue << 16) | (iValue << 8) | iValue;
+			}
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get image data from ints in a non-specific range
+	//! \param[in] values full range ints
+	//! \param[in] min if known, please provide
+	//! \param[in] max if known, please provide
+	//! \return int array of ARGB greyscale values
+	static array<int> GetImageDataBlackAndWhiteFromRange(notnull array<int> values, int min = int.MIN, int max = int.MAX)
+	{
+		int valuesCount = values.Count();
+		if (valuesCount < 1)
+			return {};
+
+		bool checkForMin = min == int.MIN || min == int.MAX || min > max;
+		bool checkForMax = max == int.MIN || max == int.MAX || min > max;
+		if (checkForMin || checkForMax)
+		{
+			int initialMin = min;
+			int initialMax = max;
+
+			min = values[0];
+			max = min;
+			foreach (int value : values)
+			{
+				if (min > value)
+					min = value;
+				else
+				if (max < value)
+					max = value;
+			}
+		}
+
+		array<int> result = {};
+		result.Resize(valuesCount);
+
+		if (min == max)
+		{
+			for (int i; i < valuesCount; ++i)
+			{
+				result[i] = 0xFF000000; // black
+			}
+		}
+		else
+		{
+			foreach (int i, int value : values)
+			{
+				int iValue = Math.Round(Math.InverseLerp(min, max, value) * 255);
+				result[i] = 0xFF000000 | (iValue << 16) | (iValue << 8) | iValue;
+			}
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Return greyscale from 0..1 values; another method overload takes 0..255 int values
 	//! \param[in] greyscaleValues01
 	//! \return int array of ARGB values
 	static array<int> GetImageDataBlackAndWhite(notnull array<float> greyscaleValues01)
@@ -63,8 +184,31 @@ class SCR_ImageHelper
 			if (greyscaleValue01 < 0)
 				greyscaleValue01 = 0;
 
-			int greyscaleValue0255 = greyscaleValue01 * 255;
-			result.Insert((greyscaleValue0255 * 0x10000 + greyscaleValue0255 * 0x100 + greyscaleValue0255) | 0xFF000000);
+			int greyscaleValue0255 = Math.Round(greyscaleValue01 * 255);
+			result.Insert(0xFF000000 | (greyscaleValue0255 << 16) | (greyscaleValue0255 << 8) | greyscaleValue0255);
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Return greyscale from 0..255 values; another method overload takes 0..1 float values
+	//! \param[in] greyscaleValues0255
+	//! \return int array of ARGB values
+	static array<int> GetImageDataBlackAndWhite(notnull array<int> greyscaleValues0255)
+	{
+		array<int> result = {};
+		result.Reserve(greyscaleValues0255.Count());
+
+		foreach (int greyscaleValue0255 : greyscaleValues0255)
+		{
+			if (greyscaleValue0255 > 255)
+				greyscaleValue0255 = 255;
+			else
+			if (greyscaleValue0255 < 0)
+				greyscaleValue0255 = 0;
+
+			result.Insert(0xFF000000 | (greyscaleValue0255 << 16) | (greyscaleValue0255 << 8) | greyscaleValue0255);
 		}
 
 		return result;
@@ -93,7 +237,7 @@ class SCR_ImageHelper
 			if (greyscaleValue01 < 0)
 				greyscaleValue01 = 0;
 
-			result.Insert(((int)(greyscaleValue01 * 255) * 0x1000000) | colourMask);
+			result.Insert(((int)(greyscaleValue01 * 255) << 24) | colourMask);
 		}
 
 		return result;
@@ -184,7 +328,7 @@ class SCR_ImageHelper
 			return false;
 
 		resourceManager.RegisterResourceFile(absoluteDDSFilePath, true);
-		
+
 		MetaFile eddsMetaFile = resourceManager.GetMetaFile(absoluteEDDSFilePath);
 		if (!eddsMetaFile)
 			return false;
@@ -228,6 +372,76 @@ class SCR_ImageHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] registeredImagePath
+	//! \return
+	static bool SetColorSpaceToSRGB(ResourceName registeredImagePath)
+	{
+		return SetColorSpaceTo(registeredImagePath, "ToSRGB");
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] registeredImagePath
+	//! \return
+	static bool SetColorSpaceToLinear(ResourceName registeredImagePath)
+	{
+		return SetColorSpaceTo(registeredImagePath, "ToLinear");
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected static bool SetColorSpaceTo(ResourceName registeredImagePath, string colorSpace)
+	{
+		if (!registeredImagePath) // .IsEmpty()
+		{
+			Print("[SCR_ImageHelper.SetColorSpaceTo] Provided registeredImagePath is empty", LogLevel.ERROR);
+			return false;
+		}
+
+		if (!colorSpace) // .IsEmpty()
+		{
+			Print("[SCR_ImageHelper.SetColorSpaceTo] Provided colorSpace is empty", LogLevel.ERROR);
+			return false;
+		}
+
+		string imageAbsolutePath;
+		if (!Workbench.GetAbsolutePath(registeredImagePath.GetPath(), imageAbsolutePath, true))
+		{
+			Print("[SCR_ImageHelper.SetColorSpaceTo] Cannot find " + registeredImagePath.GetPath(), LogLevel.ERROR);
+			return false;
+		}
+
+		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
+		if (!resourceManager)
+		{
+			Print("[SCR_ImageHelper.SetColorSpaceTo] Resource Manager is not available", LogLevel.ERROR);
+			return false;
+		}
+
+		MetaFile metaFile = resourceManager.GetMetaFile(imageAbsolutePath);
+		if (!metaFile)
+		{
+			Print("[SCR_ImageHelper.SetColorSpaceTo] MetaFile not found for " + imageAbsolutePath, LogLevel.ERROR);
+			return false;
+		}
+
+		BaseContainerList configurations = metaFile.GetObjectArray("Configurations");
+		if (!configurations || configurations.Count() < 1)
+		{
+			Print("[SCR_ImageHelper.SetColorSpaceTo] Invalid MetaFile: Configurations missing or empty for " + imageAbsolutePath, LogLevel.ERROR);
+			return false;
+		}
+
+		if (!configurations.Get(0).Set("ColorSpace", colorSpace)) //--- Assume PC is the first
+		{
+			Print("[SCR_ImageHelper.SetColorSpaceTo] Invalid color space " + colorSpace, LogLevel.ERROR);
+			return false;
+		}
+
+		metaFile.Save();
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// GetTextureRawDataCallback
 	protected static void GetTextureRawDataCallbackMethod(PixelRawData data, int imageWidth, int imageHeight, int stride)
 	{
 //		PrintFormat("Saving to %1 (%2x%3 stride %4)", s_sImageFilePath, imageWidth, imageHeight, stride);

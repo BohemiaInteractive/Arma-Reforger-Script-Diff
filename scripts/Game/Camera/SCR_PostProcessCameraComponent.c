@@ -93,6 +93,13 @@ class SCR_CameraPostProcessEffect
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return Material resource path
+	ResourceName GetMaterialPath()
+	{
+		return m_MaterialPath;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! \param[in] param
 	//! \param[in] value
 	void SetParam(string param, float value)

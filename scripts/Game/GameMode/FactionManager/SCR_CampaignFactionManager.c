@@ -1,4 +1,4 @@
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("m_sRankName", "Rank: %1")]
 class SCR_RankInfoCampaign : SCR_RankInfo
 {	
 	[Attribute("10", UIWidgets.EditBox, "How long does this rank has to wait between requests (sec).", params: "0 inf 1")]

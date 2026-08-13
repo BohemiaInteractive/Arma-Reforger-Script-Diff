@@ -5,21 +5,21 @@ class SCR_PatrolGroupCommand : SCR_WaypointGroupCommand
 	static const ResourceName cycleWPResource = "{35BD6541CBB8AC08}Prefabs/AI/Waypoints/AIWaypoint_Cycle.et";
 	
 	//------------------------------------------------------------------------------------------------
-	override bool Execute(IEntity cursorTarget, IEntity target, vector targetPosition, int playerID, bool isClient)
+	override bool Execute(IEntity cursorTarget, IEntity groupEnt, vector targetPosition, int playerID, bool isClient)
 	{
 		if (isClient && playerID == SCR_PlayerController.GetLocalPlayerId())
 			return true;
 
-		if (!target || !targetPosition)
+		if (!groupEnt || !targetPosition)
 			return false;
 		
-		return Patrol(target, targetPosition, playerID);
+		return Patrol(groupEnt, targetPosition, playerID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	bool Patrol(IEntity target, vector targetPosition, int playerID)
+	bool Patrol(IEntity groupEnt, vector targetPosition, int playerID)
 	{
-		SCR_AIGroup slaveGroup = SCR_AIGroup.Cast(target);
+		SCR_AIGroup slaveGroup = SCR_AIGroup.Cast(groupEnt);
 		if (!slaveGroup)
 			return false;
 		

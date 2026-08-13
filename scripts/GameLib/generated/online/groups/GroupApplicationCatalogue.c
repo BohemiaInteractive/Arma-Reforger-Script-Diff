@@ -15,16 +15,29 @@ sealed class GroupApplicationCatalogue
 	private void ~GroupApplicationCatalogue();
 
 	/*!
+	Delete applications / invitations of the given IDs.
+	\note If the ID belongs to an application, the caller must be the owner of the application.
+	      If the ID belongs to an invitation, the caller must have INVITATION_CREATE permission to be able to delete it
+	*/
+	proto external void DeleteApplications(notnull BackendCallback callback, notnull array<int> deleteIds);
+	/*!
 	Will request load of data for specific page of catalogue.
 	If data are already cached then callback is invoked immediately with this method and no request is sent to the backend.
 
 	Pages are indexed from 0. Int is casted into uint32.
 	\note This method should be used for paging UI where single page with fixed size and offset is visible at the time.
-				It should not be used for scrolling implementation which can possibly show items from 2 pages at once which can introduce issues.
+	\throws VME - if size was not yet set via SetPageSize
+							- if no order by was set yet via AppendOrderBy
 	*/
-	proto external void RequestPage(BackendCallback pCallback, int iPage, bool bClearCache);
-	//! Will forcefully request refresh for current page/offset. Always clears already present items.
-	proto external void RequestRefresh(BackendCallback pCallback);
+	proto external void RequestPage(notnull BackendCallback pCallback, int iPage, bool bClearCache);
+	/*!
+	Will request forced refresh of currently loaded page/offset.
+	Items will be cleared from cache and created again from received data
+	which might be possibly different.
+	\throws VME - if size was not yet set via SetPageSize
+							- if no order by was set yet via AppendOrderBy
+	*/
+	proto external void RequestRefresh(notnull BackendCallback pCallback);
 	/*!
 	Will set pointer to filters object for the catalogue.
 	Filters should be set only once at the beginning and then you can just modify local instance of filters.
@@ -49,9 +62,10 @@ sealed class GroupApplicationCatalogue
 
 	Offset 0 represent first item. Int is casted into uint32.
 	\note This method should be used for scrolling UI - there is no fixed position where page begins and ends.
-				It can be used even for paging UI implementation but it is recommended to use RequestPage() method for simplicity.
+	\throws VME - if size was not yet set via SetPageSize
+							- if no order by was set yet via AppendOrderBy
 	*/
-	proto external void RequestOffset(BackendCallback pCallback, int iOffset, bool bClearCache);
+	proto external void RequestOffset(notnull BackendCallback pCallback, int iOffset, bool bClearCache);
 	//! Get item count on current page
 	proto external int GetPageItemCount();
 	//! Get current page number

@@ -4,6 +4,7 @@ Do not modify, this script is generated
 ===========================================
 */
 
+[KickCauseGroupLink("BATTLEYE")]
 enum BattlEyeKickReason
 {
 	//! Inknown reason

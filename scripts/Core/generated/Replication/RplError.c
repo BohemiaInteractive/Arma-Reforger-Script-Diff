@@ -9,6 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
+[KickCauseGroupLink("REPLICATION")]
 enum RplError
 {
 	SYSTEM_FAILURE,

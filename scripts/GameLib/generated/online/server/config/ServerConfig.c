@@ -17,11 +17,6 @@ sealed class ServerConfig
 	///@{
 
 	/*!
-	Default enabled state of BattlEye (Anti-Cheat) protection.
-	ServerConfig::DEFAULT_BATTLEYE = `true`
-	*/
-	static const bool DEFAULT_BATTLEYE;
-	/*!
 	Default visibility state of the server in server browser.
 	ServerConfig::DEFAULT_VISIBLE = `true`
 	*/
@@ -43,7 +38,7 @@ sealed class ServerConfig
 	static const int MIN_MAX_PLAYERS;
 	/*!
 	Maximum limit of value for max player connection capacity.
-	ServerConfig::MAX_MAX_PLAYERS = `128`
+	ServerConfig::MAX_MAX_PLAYERS = `256`
 	*/
 	static const int MAX_MAX_PLAYERS;
 	/*!
@@ -51,6 +46,16 @@ sealed class ServerConfig
 	ServerConfig::DEFAULT_MAX_PLAYERS = `64`
 	*/
 	static const int DEFAULT_PORT;
+	/*!
+	Minimum length limit for server name.
+	ServerConfig::MIN_NAME_LENGTH = `1`
+	*/
+	static const int MIN_NAME_LENGTH;
+	/*!
+	Maximum  length limit for server name.
+	ServerConfig::MAX_NAME_LENGTH = `100`
+	*/
+	static const int MAX_NAME_LENGTH;
 	///@}
 
 	private void ServerConfig();
@@ -84,10 +89,6 @@ sealed class ServerConfig
 	proto external bool GetVisible();
 	//! Changes the visibility in server browser.
 	proto external void SetVisible(bool value);
-	//! Returns current value for enabled sate of the BattlEye.
-	proto external bool GetBattlEye();
-	//! Changes the enabled sate of the BattlEye.
-	proto external void SetBattlEye(bool value);
 }
 
 /*!

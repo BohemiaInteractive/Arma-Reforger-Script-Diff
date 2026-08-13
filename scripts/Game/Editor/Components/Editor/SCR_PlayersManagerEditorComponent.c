@@ -362,6 +362,9 @@ class SCR_PlayersManagerEditorComponent : SCR_BaseEditorComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void OnDisconnectedOwner(int playerID)
 	{
+		if (!m_MainEntities)
+			return;
+
 		m_MainEntities.Remove(playerID);
 		Event_OnDisconnected.Invoke(playerID);
 	}

@@ -55,6 +55,8 @@ class SCR_VehicleCameraDataComponentClass: ScriptComponentClass
  	float m_HorizontalSpringLag;
 	[Attribute("30", UIWidgets.EditBox, "Spring lag max angle used for horizontal movement\n")]
 	float m_HorizontalSpringLagMaxAngle;
+	[Attribute("false", UIWidgets.CheckBox, "Can fly? For camera zoom purposes\n")]
+	bool m_bCanFly;
 }
 
 

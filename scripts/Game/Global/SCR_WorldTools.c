@@ -11,7 +11,7 @@ class SCR_WorldTools
 	\param world World which is being traced
 	\return False if an intersection was found, true if the cylinder is devoid of obstacles
 	*/
-	static bool TraceCylinder(vector pos, float radius = 0.5, float height = 2, TraceFlags flags = TraceFlags.ENTS | TraceFlags.OCEAN, BaseWorld world = null)
+	static bool TraceCilinderUtil(vector pos, float radius = 0.5, float height = 2, TraceFlags flags = TraceFlags.ENTS | TraceFlags.OCEAN, BaseWorld world = null)
 	{
 		if (!world)
 			world = GetGame().GetWorld();
@@ -122,7 +122,7 @@ class SCR_WorldTools
 					if (traceUpCoef < 1.0 && traceUp.TraceEnt && traceUp.TraceEnt.IsInherited(SCR_IndestructibleEnvironmentalEntity))
 						continue;
 
-					if (TraceCylinder(outPosition + cylinderVectorOffset, cylinderRadius, cylinderHeight, flags, world))
+					if (TraceCilinderUtil(outPosition + cylinderVectorOffset, cylinderRadius, cylinderHeight, flags, world))
 						return true;
 				}
 			}
@@ -194,7 +194,7 @@ class SCR_WorldTools
 					traceCoef = world.TraceMove(trace, null);
 					position[1] = Math.Max(trace.Start[1] - traceCoef * traceOffset[1] + 0.01, world.GetSurfaceY(position[0], position[2]));
 
-					if (TraceCylinder(position + cylinderVectorOffset, cylinderRadius, cylinderHeight, flags, world))
+					if (TraceCilinderUtil(position + cylinderVectorOffset, cylinderRadius, cylinderHeight, flags, world))
 						outPositions.Insert(position);
 				}
 				

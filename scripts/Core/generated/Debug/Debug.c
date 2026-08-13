@@ -24,7 +24,7 @@ sealed class Debug
 
 	/*!
 	Prints current call stack (stack trace). Call stack is printed to log or to 'output' variable if argument is used.
-	\param output optional argument to get call stack to string variable instead of output
+	\param[out] output optional argument to get call stack to string variable instead of output
 	\code
 		Debug.DumpStack(); // print stack to log
 

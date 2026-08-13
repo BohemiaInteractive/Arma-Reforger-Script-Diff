@@ -1,6 +1,9 @@
 class SCR_InterfaceSettings : ModuleGameSettings
 {
 	[Attribute("1")]
+	float m_fDPIscale;
+	
+	[Attribute("1")]
 	bool m_bShowChat;
 
 	[Attribute("1")]

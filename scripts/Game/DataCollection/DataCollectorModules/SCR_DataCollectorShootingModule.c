@@ -172,14 +172,14 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 			if (!instigatorContextData.IsEnemyKillPunished(SCR_EDisguisedKillingPunishment.WARCRIME))
 				killerData.AddStat(SCR_EDataStats.AI_KILLS);
 			//~ Killing while disguised is a warcrime
-			else 
+			else if (instigatorContextData.ShouldCountForKickPenalty())
 				killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_KILLS);
 			
 			return;
 		}
 		else
 		{
-			if (instigatorContextData.DoesPlayerKillCountAsTeamKill())
+			if (instigatorContextData.DoesPlayerKillCountAsTeamKill() && instigatorContextData.ShouldCountForKickPenalty())
 				killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_KILLS);
 			
 			return;
@@ -220,14 +220,14 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 				if (!instigatorContextData.IsEnemyKillPunished(SCR_EDisguisedKillingPunishment.WARCRIME))
 					killerData.AddStat(SCR_EDataStats.AI_KILLS);
 				//~ Killing while disguised is a warcrime
-				else 
+				else if (instigatorContextData.ShouldCountForKickPenalty())
 					killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_KILLS);
 				
 				return;
 			}
 			else
 			{			
-				if (instigatorContextData.DoesPlayerKillCountAsTeamKill(possessedKillsCount: true))	
+				if (instigatorContextData.DoesPlayerKillCountAsTeamKill(possessedKillsCount: true) && instigatorContextData.ShouldCountForKickPenalty())
 					killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_KILLS);
 				
 				return;
@@ -240,14 +240,14 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 			if (!instigatorContextData.IsEnemyKillPunished(SCR_EDisguisedKillingPunishment.WARCRIME))
 				killerData.AddStat(SCR_EDataStats.KILLS);
 			//~ Killing while disguised is a warcrime
-			else 
+			else if (instigatorContextData.ShouldCountForKickPenalty())
 				killerData.AddStat(SCR_EDataStats.FRIENDLY_KILLS);
 			
 			return;
 		}
 		else
 		{
-			if (instigatorContextData.DoesPlayerKillCountAsTeamKill())
+			if (instigatorContextData.DoesPlayerKillCountAsTeamKill() && instigatorContextData.ShouldCountForKickPenalty())
 				killerData.AddStat(SCR_EDataStats.FRIENDLY_KILLS);
 			
 			return;

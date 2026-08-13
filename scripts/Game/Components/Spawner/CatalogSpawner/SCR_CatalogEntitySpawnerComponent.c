@@ -724,7 +724,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 			if (!aiCharacter)
 				continue;
 
-			groupController.AddAIToSlaveGroup(agent.GetControlledEntity(), playerGroup); //AddAISoldierToPlayerGroup(aiCharacter, groupLeaderEntity);
+			groupController.AddAIToSlaveGroup(aiCharacter, playerGroup); //AddAISoldierToPlayerGroup(aiCharacter, groupLeaderEntity);
 		}
 
 		SCR_SpawnerRequestComponent spawnerReqComponent = SCR_SpawnerRequestComponent.Cast(playerController.FindComponent(SCR_SpawnerRequestComponent));
@@ -751,7 +751,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		if (!groupController)
 			return;
 
-		groupController.RequestAddAIAgent(ai, controller.GetPlayerId());
+		groupController.RequestAddAIAgent(ai);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1258,6 +1258,10 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 			group = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(res, GetGame().GetWorld()));
 			if (!group)
 				return;
+
+			// GM-spawned hired AI uses NORMAL importance so it respects the AI budget cap.
+			// Pre-existing parent groups keep their tier.
+			group.SetImportance(SCR_EAISpawnImportance.NORMAL);
 		}
 
 		group.AddAgent(agent);

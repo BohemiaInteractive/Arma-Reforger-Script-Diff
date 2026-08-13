@@ -130,7 +130,7 @@ class SCR_InstigatorContextData
 		if (!possessedKillsCount && m_eKillerControlType == SCR_ECharacterControlType.POSSESSED_AI)
 			return false;
 		
-		//~ Victim was disguised as a unknown or hostile faction so do not concider it friendly fire
+		//~ Victim was disguised as a unknown or hostile faction so do not consider it friendly fire
 		if (m_eVictimDisguiseType == SCR_ECharacterDisguiseType.UNKNOWN_FACTION || m_eVictimDisguiseType == SCR_ECharacterDisguiseType.HOSTILE_FACTION)
 			return false;
 		
@@ -175,6 +175,32 @@ class SCR_InstigatorContextData
 			return SCR_Enum.HasFlag(perceivedFactionManager.GetPunishmentKillingWhileDisguisedFlags(), punishmentToCheck);
 
 		return SCR_Enum.HasPartialFlag(perceivedFactionManager.GetPunishmentKillingWhileDisguisedFlags(), punishmentToCheck);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! This checks for any potential overrides from the factions that would prevent a teamkill penalty from being registered
+	//! \return Will return true it should count as a penalty towards a kick.
+	bool ShouldCountForKickPenalty()
+	{
+		// check if it is a teamkill in the first place
+		if (m_eVictimKillerRelation != SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER)
+			return false;
+
+		// check if killer has an override
+		SCR_Faction scrKillerFaction = SCR_Faction.Cast(GetFaction(m_KillerEntity, m_iKillerPlayerID));
+		if (scrKillerFaction && 
+			(scrKillerFaction.TeamkillKickPenaltyOverride() == SCR_EOverrideTeamkillKickPenalty.NO_KICKS_TEAMKILLING || 
+			scrKillerFaction.TeamkillKickPenaltyOverride() == SCR_EOverrideTeamkillKickPenalty.NO_KICKS))
+			return false;
+
+		// check if victim has an override
+		SCR_Faction scrVictimFaction = SCR_Faction.Cast(GetFaction(m_VictimEntity, m_iVictimPlayerID));
+		if (scrVictimFaction && 
+			(scrVictimFaction.TeamkillKickPenaltyOverride() == SCR_EOverrideTeamkillKickPenalty.NO_KICKS_TEAMKILLED ||
+			scrVictimFaction.TeamkillKickPenaltyOverride() == SCR_EOverrideTeamkillKickPenalty.NO_KICKS))
+			return false;
+
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------

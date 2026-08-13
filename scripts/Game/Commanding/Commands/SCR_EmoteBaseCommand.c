@@ -12,7 +12,7 @@ class SCR_EmoteBaseCommand : SCR_BaseRadialCommand
 	protected ref array<ref ECharacterStance> m_aAllowedStances;
 	
 	//------------------------------------------------------------------------------------------------
-	override bool Execute(IEntity cursorTarget, IEntity target, vector targetPosition, int playerID, bool isClient)
+	override bool Execute(IEntity cursorTarget, IEntity groupEnt, vector targetPosition, int playerID, bool isClient)
 	{
 		//TODO: Implement optional local-only commands to safe networking for commands of this style
 		if (SCR_PlayerController.GetLocalPlayerId() != playerID)
@@ -58,10 +58,31 @@ class SCR_EmoteBaseCommand : SCR_BaseRadialCommand
 		SCR_CharacterControllerComponent characterComponent = SCR_CharacterControllerComponent.Cast(playerControlledEntity.FindComponent(SCR_CharacterControllerComponent));
 		if (!characterComponent)
 			return false;
-		
-		if (m_aAllowedStances.IsEmpty())
-			return true;
-		
-		return (m_aAllowedStances.Contains(characterComponent.GetStance()));
+
+		if (!m_aAllowedStances.IsEmpty() && !m_aAllowedStances.Contains(characterComponent.GetStance()))
+		{
+			SetCannotPerformReason(UIConstants.CANNOT_PERFORM_WRONG_STANCE);
+			return false;
+		}
+
+		if (characterComponent.IsLoitering())
+		{
+			SetCannotPerformReason(UIConstants.CANNOT_PERFORM_PLAYING_OTHER_ANIMATION);
+			return false;
+		}
+
+		if (!characterComponent.CanPlayItemGesture())
+		{
+			SetCannotPerformReason(UIConstants.CANNOT_PERFORM_GENERIC);
+			return false;
+		}
+
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool HasLocalEffectOnly()
+	{
+		return true;
 	}
 }

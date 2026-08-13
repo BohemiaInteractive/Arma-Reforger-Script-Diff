@@ -14,7 +14,10 @@ class SCR_ResourceEntityRefundAction : SCR_ScriptedUserAction
 	
 	[Attribute("#AR-Supplies_Refund_Action_Vehicle_Occupied", desc: "Invalid reason shown when entity is a vehicle and it is occupied")]
 	protected LocalizedString m_sInvalidIsOccupied;
-	
+
+	[Attribute("#AR-ActionInvalid_HostileFaction", desc: "Invalid reason shown when the user is not friendly with the base the entity is in")]
+	protected LocalizedString m_sInvalidEnemyBase;
+
 	protected SCR_Faction m_Faction;
 	protected SCR_EntityCatalogManagerComponent m_EntityCatalogManager;
 	protected SCR_CatalogEntitySpawnerComponent m_CatalogEntitySpawnerComponent;
@@ -41,16 +44,20 @@ class SCR_ResourceEntityRefundAction : SCR_ScriptedUserAction
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity) 
+	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity)
  	{
 		if (!m_ReplicationComponent || !m_ReplicationComponent.IsMaster())
 			return;
-		
+
 		if (!SelectSuitableResourceGenerator(pUserEntity) || !m_CatalogEntitySpawnerComponent)
 			return;
-		
+
 		//~ Vehicle is in use
 		if (m_CompartmentManager && m_CompartmentManager.AnyCompartmentsOccupiedOrLocked())
+			return;
+
+		//~ Server-side guard: user must be friendly with the base the entity is in
+		if (!IsUserFriendlyToBase(pUserEntity))
 			return;
 
 		//~ Refund if resource is enabled
@@ -125,8 +132,54 @@ class SCR_ResourceEntityRefundAction : SCR_ScriptedUserAction
 			m_sCannotPerformReason = m_sInvalidIsOccupied;
 			return false;
 		}
-		
+
+		//~ Prevent griefing: only users friendly to the base controlling this area may refund entities inside it
+		if (!IsUserFriendlyToBase(user))
+		{
+			m_sCannotPerformReason = m_sInvalidEnemyBase;
+			return false;
+		}
+
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! True if the entity is outside every base, or the user's faction is friendly to the base that currently controls the area.
+	protected bool IsUserFriendlyToBase(notnull IEntity user)
+	{
+		IEntity owner = GetOwner();
+		if (!owner)
+			return false;
+
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		if (!campaign)
+			return true;
+
+		SCR_CampaignMilitaryBaseManager baseManager = campaign.GetBaseManager();
+		if (!baseManager)
+			return true;
+
+		vector ownerPos = owner.GetOrigin();
+		SCR_CampaignMilitaryBaseComponent nearestBase = baseManager.FindClosestBase(ownerPos);
+		if (!nearestBase)
+			return true;
+
+		if (vector.DistanceXZ(ownerPos, nearestBase.GetOwner().GetOrigin()) > nearestBase.GetRadius())
+			return true;
+
+		Faction baseFaction = nearestBase.GetFaction();
+		if (!baseFaction)
+			return true;
+
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(user);
+		if (!character)
+			return false;
+		
+		Faction userFaction = character.GetFaction();
+		if (!userFaction)
+			return false;
+
+		return baseFaction.IsFactionFriendly(userFaction);
 	}
 	
 	//------------------------------------------------------------------------------------------------

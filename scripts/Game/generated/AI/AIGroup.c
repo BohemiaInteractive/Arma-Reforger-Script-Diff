@@ -27,8 +27,6 @@ class AIGroup: AIAgent
 	* However, the GetAgents array may return an empty array when the agents are remotely controlled
 	*/
 	proto external int GetServerAgentsCount();
-	proto external void ActivateAllMembers();
-	proto external void DeactivateAllMembers();
 	proto external AIFormationComponent GetFormationComponent();
 	// waypoints handling
 	proto external void AddWaypoint(AIWaypoint w);
@@ -43,6 +41,10 @@ class AIGroup: AIAgent
 	proto external IEntity GetLeaderEntity();
 	// Returns center of mass of the group, which is average of all member positions
 	proto external vector GetCenterOfMass();
+	// recorded alive-count even when no members are currently spawned.
+	proto external int GetIntendedActiveCount();
+	// group needs room. Activation admission uses only the hard limit (m_iLimitOfActiveAIs).
+	proto external int GetImportance();
 	proto external void SetNewLeader(AIAgent newLeader);
 
 	// callbacks

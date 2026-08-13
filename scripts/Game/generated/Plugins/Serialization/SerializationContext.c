@@ -12,8 +12,11 @@ Do not modify, this script is generated
 /*!
 Base class for serialization contexts
 */
-class SerializationContext: ScriptAndConfig
+sealed class SerializationContext: ScriptAndConfig
 {
+	//! Contexts may only be construced from concrete types
+	protected void SerializationContext();
+
 	proto external bool CanSeekMembers();
 	proto external bool IsValid();
 	proto external string GetDataExtension();

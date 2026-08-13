@@ -25,8 +25,8 @@ sealed class float
 
 	/*!
 	Float to string with fixed length, padded with zeroes.
-	\param len \p int fixed length (overall including decimal part and floating point mark)
-	\param lenDec \p int fixed length of decimal part
+	\param len fixed length (overall including decimal part and floating point mark)
+	\param lenDec fixed length of decimal part
 	\code
 		float num = 123.456;
 		string s1 = num.ToString(10, 4);

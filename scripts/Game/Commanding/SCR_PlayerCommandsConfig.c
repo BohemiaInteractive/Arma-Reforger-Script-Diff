@@ -163,6 +163,16 @@ class SCR_BaseGroupCommandTitleField : BaseContainerCustomTitleField
 
 		// Tag string
 		source.Get("m_sCommandName", title);
+		index = source.GetVarIndex("m_sCommandDisplayName");
+		if (index == -1)
+			return true;
+
+		string displayName;
+		source.Get("m_sCommandDisplayName", displayName);
+		if (displayName.IsEmpty())
+			displayName = "NO DISPLAY NAME!";
+
+		title += " - " + WidgetManager.Translate(displayName);
 
 		return true;
 	}

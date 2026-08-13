@@ -40,7 +40,7 @@ sealed class JoystickDeviceHandler: InputDeviceHandler
 	\param iSlotIndex Index of the joystick slot.
 	\param iEffectIndex Effect slot. Valid values are \<0, 3\>.
 	\param eEffectType Type of force feedback effect.
-										\note Only \ref CONSTANT_FORCE is supported.
+										\note Only CONSTANT_FORCE is supported.
 	\param fMagnitude Force magnitude.
 	\param iDurationMs Duration in milliseconds. -1 for infinite duration.
 	\return true if successful, false otherwise.
@@ -51,7 +51,7 @@ sealed class JoystickDeviceHandler: InputDeviceHandler
 	\param iSlotIndex Index of the joystick slot.
 	\param iEffectIndex Effect slot. Valid values are \<0, 3\>.
 	\param eEffectType Type of force feedback effect.
-									\note Only \ref RAMP_FORCE is supported.
+									\note Only RAMP_FORCE is supported.
 	\param fStart Start magnitude.
 	\param fEnd End magnitude.
 	\param iDurationMs Duration in milliseconds. -1 for infinite duration.
@@ -63,7 +63,7 @@ sealed class JoystickDeviceHandler: InputDeviceHandler
 	\param iSlotIndex Index of the joystick slot.
 	\param iEffectIndex Effect slot. Valid values are \<0, 3\>.
 	\param eEffectType Type of force feedback periodic effect.
-									 \note Supported values: \ref SQUARE, \ref SINE, \ref TRIANGLE, \ref SAWTOOTH_UP, \ref SAWTOOTH_DOWN.
+									 \note Supported values: SQUARE, SINE, TRIANGLE, SAWTOOTH_UP, SAWTOOTH_DOWN.
 	\param fMagnitude Magnitude of the force.
 	\param fFrequencyHz Frequency in Hz (default 50Hz).
 	\param fOffset Offset value.
@@ -77,7 +77,7 @@ sealed class JoystickDeviceHandler: InputDeviceHandler
 	\param iSlotIndex Index of the joystick slot.
 	\param iEffectIndex Effect slot. Valid values are \<0, 3\>.
 	\param eEffectType Type of force feedback condition effect.
-									 \note Supported values: \ref SPRING, \ref DAMPER, \ref INERTIA, \ref FRICTION.
+									 \note Supported values: SPRING, DAMPER, INERTIA, FRICTION.
 	\param fPositiveCoefficient Coefficient for positive force direction.
 	\param fNegativeCoefficient Coefficient for negative force direction.
 	\param fOffset Center offset.

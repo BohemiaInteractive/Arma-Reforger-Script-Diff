@@ -3,22 +3,22 @@
 class SCR_LookAtGroupCommand : SCR_BaseGroupCommand
 {
 	//------------------------------------------------------------------------------------------------
-	override bool Execute(IEntity cursorTarget, IEntity target, vector targetPosition, int playerID, bool isClient)
+	override bool Execute(IEntity cursorTarget, IEntity groupEnt, vector targetPosition, int playerID, bool isClient)
 	{
 		if (isClient && playerID == SCR_PlayerController.GetLocalPlayerId())
 			return true;
 
-		if (!target || !targetPosition)
+		if (!groupEnt || !targetPosition)
 			return false;
 		
-		return LookAtPosition(target, targetPosition, playerID);
+		return LookAtPosition(groupEnt, targetPosition, playerID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	bool LookAtPosition(IEntity target, vector targetPosition, int playerID)
+	bool LookAtPosition(IEntity groupEnt, vector targetPosition, int playerID)
 	{
-		SCR_AIGroup group = SCR_AIGroup.Cast(target);
-		if (!target)
+		SCR_AIGroup group = SCR_AIGroup.Cast(groupEnt);
+		if (!group)
 			return false;
 		
 		array<AIAgent> agents = {};

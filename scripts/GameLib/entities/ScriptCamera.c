@@ -38,18 +38,22 @@ class ScriptCamera: GenericEntity
 		SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(EntityEvent.POSTFRAME);
 
-		BaseWorld world = GetWorld();
-		world.SetCameraVerticalFOV(Index, FOV);
-		world.SetCameraFarPlane(Index, FarPlane);
-		world.SetCameraNearPlane(Index, NearPlane);
-		world.SetCameraType(Index, Type);
-		m_DbgListSelection = Type - 1;
-		world.SetCamera(Index, GetOrigin(), GetYawPitchRoll());
-		vector camMat[4];
-		GetTransform(camMat);
-		world.SetCameraEx(Index, camMat);
-		if (EnablePreload)
-			world.SchedulePreload(GetOrigin(), 500);
+		if (src)
+		{
+			BaseWorld world = GetWorld();
+			world.SetCameraVerticalFOV(Index, FOV);
+			world.SetCameraFarPlane(Index, FarPlane);
+			world.SetCameraNearPlane(Index, NearPlane);
+			world.SetCameraType(Index, Type);
+			m_DbgListSelection = Type - 1;
+			world.SetCamera(Index, GetOrigin(), GetYawPitchRoll());
+			vector camMat[4];
+			GetTransform(camMat);
+			world.SetCameraEx(Index, camMat);
+			if (EnablePreload)
+				world.SchedulePreload(GetOrigin(), 500);
+		}
+		
 		m_GamepadFreeFly = FreeFly;
 	}
 

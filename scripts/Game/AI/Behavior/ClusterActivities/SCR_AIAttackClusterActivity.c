@@ -74,11 +74,11 @@ class SCR_AIAttackClusterActivity : SCR_AIFireteamsClusterActivity
 			if (leader)
 			{
 				SCR_AICommsHandler commsHandler = SCR_AISoundHandling.FindCommsHandler(leader);
-				if (!commsHandler.CanBypass())
+				if (commsHandler && !commsHandler.CanBypass())
 				{
 					foreach (SCR_AIGroupFireteamLock ftLock : m_aFireteamsAttack)
 					{
-						IEntity talkRequestEntity = ftLock.GetFireteam().GetFirstMemberEntity();		
+						IEntity talkRequestEntity = ftLock.GetFireteam().GetFirstMemberEntity();
 						
 						int flankValue = Math.RandomIntInclusive(0, 1);
 						SCR_AITalkRequest rq = new SCR_AITalkRequest(ECommunicationType.REPORT_FLANK, talkRequestEntity, vector.Zero, flankValue, false, false, SCR_EAITalkRequestPreset.MANDATORY);

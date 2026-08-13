@@ -10,26 +10,25 @@ sealed class SCR_AutotestRunnerCore : SCR_GameCoreBase
 	//------------------------------------------------------------------------------------------------
 	override bool CanCreate()
 	{
-		return SCR_TestRunner.ShouldCreate();
+		SCR_TestRunner.OnGameStart();
+		if (SCR_TestRunner.HasInstance())
+		{
+			m_Game = GetGame();
+			return true;
+		}
+		
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnUpdate(float timeSlice)
-	{
-		if (!m_TestRunner)
-		{
-			m_TestRunner = new SCR_TestRunner();
-			m_Game = GetGame();
-		}
-		
-		m_TestRunner.OnUpdate(m_Game)
+	{		
+		if (SCR_TestRunner.HasInstance())
+			SCR_TestRunner.GetInstance().OnUpdate(m_Game);
 	}
 
 	override void OnGameEnd()
 	{
-		if (!m_TestRunner)
-			return;
-		
-		m_TestRunner.Abort(m_Game);
+		SCR_TestRunner.OnGameEnd(m_Game);
 	}
 }

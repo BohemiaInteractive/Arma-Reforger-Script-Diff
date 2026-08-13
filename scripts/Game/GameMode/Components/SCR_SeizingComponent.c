@@ -1,14 +1,5 @@
 class SCR_SeizingComponentClass : SCR_MilitaryBaseLogicComponentClass
 {
-	[Attribute("{59A6F1EBC6C64F79}Prefabs/Logic/SeizingTrigger.et", UIWidgets.ResourceNamePicker, "", "et")]
-	protected ResourceName m_sTriggerPrefab;
-
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	ResourceName GetTriggerPrefab()
-	{
-		return m_sTriggerPrefab;
-	}
 }
 
 void OnTimerChangeFn(WorldTimestamp newStart, WorldTimestamp newEnd);
@@ -70,13 +61,12 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	protected ref ScriptInvoker m_OnCaptureFinish;
 	protected ref OnTimerChangeInvoker m_OnTimerChange;
 
+	protected TagSystem m_TagSystem;
 	protected WorldTimestamp m_fInterruptedCaptureTimestamp;
 	protected float m_fCurrentSeizingTime;
 	protected float m_fInterruptedCaptureDuration;
 	protected SCR_Faction m_PrevailingFaction;
 	protected SCR_Faction m_PrevailingFactionPrevious;
-	protected BaseGameTriggerEntity m_Trigger;
-	protected bool m_bQueryFinished = true;
 	protected bool m_bEnabled = true;
 	protected RplComponent m_RplComponent;
 	protected bool m_bCharacterPresent;
@@ -163,6 +153,12 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	//------------------------------------------------------------------------------------------------
 	protected void EvaluatePrevailingFaction()
 	{
+		if (!m_TagSystem)
+		{
+			GetGame().GetCallqueue().Remove(EvaluatePrevailingFaction);
+			return;
+		}
+
 		float delay;
 
 		// Switch to idle mode when nobody is in the area
@@ -174,21 +170,8 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 
 		GetGame().GetCallqueue().CallLater(EvaluatePrevailingFaction, delay * 1000);
 
-		if (!m_bQueryFinished)
-			return;
-
-		m_Trigger.GetOnQueryFinished().Insert(OnQueryFinished);
-		m_Trigger.QueryEntitiesInside();
-		m_bQueryFinished = false;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnQueryFinished(BaseGameTriggerEntity trigger)
-	{
-		m_bQueryFinished = true;
-
 		array<IEntity> presentEntities = {};
-		int presentEntitiesCount = m_Trigger.GetEntitiesInside(presentEntities);
+		int presentEntitiesCount = m_TagSystem.GetTagsInRange(presentEntities, GetOwner().GetOrigin(), m_iRadius, ETagCategory.Character);
 		m_bCharacterPresent = presentEntitiesCount != 0;
 
 		// Nobody is here, no need to evaluate
@@ -640,9 +623,6 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	{
 		m_bEnabled = false;
 
-		if (m_Trigger)
-			delete m_Trigger;
-
 		ClearEventMask(GetOwner(), EntityEvent.FRAME);
 
 		foreach (SCR_MilitaryBaseComponent base : m_aBases)
@@ -708,23 +688,13 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 			return;
 		}
 
-		Resource triggerResource = Resource.Load(componentData.GetTriggerPrefab());
-		if (!triggerResource)
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
+		m_TagSystem = TagSystem.Cast(world.FindSystem(TagSystem));
+		if (!m_TagSystem)
 		{
-			Print("SCR_SeizingComponent: Trigger resource failed to load! Terminating...", LogLevel.ERROR);
+			Print("TagSystem cannot be found by SCR_SeizingComponent!", LogLevel.ERROR);
 			return;
 		}
-
-		// Spawn the trigger locally on server
-		m_Trigger = BaseGameTriggerEntity.Cast(GetGame().SpawnEntityPrefabLocal(triggerResource, GetGame().GetWorld()));
-		if (!m_Trigger)
-		{
-			Print("SCR_SeizingComponent: Trigger failed to spawn! Terminating...", LogLevel.ERROR);
-			return;
-		}
-
-		m_Trigger.SetSphereRadius(m_iRadius);
-		owner.AddChild(m_Trigger, -1);
 
 		// Register after-respawn cooldown method
 		if (m_fRespawnCooldownPeriod > 0)
@@ -772,9 +742,6 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	// destructor
 	void ~SCR_SeizingComponent()
 	{
-		if (m_Trigger)
-			delete m_Trigger;
-
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode)
 			gameMode.GetOnPlayerSpawned().Remove(OnPlayerSpawned);

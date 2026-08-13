@@ -21,7 +21,7 @@ class SCR_ArtilleryWaypointGroupCommand : SCR_WaypointGroupCommand
 #endif
 
 	//------------------------------------------------------------------------------------------------
-	override bool SetWaypointForAIGroup(IEntity target, vector targetPosition, int playerID)
+	override bool SetWaypointForAIGroup(IEntity groupEnt, vector targetPosition, int playerID)
 	{
 		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID));
 		if (!character)
@@ -29,7 +29,7 @@ class SCR_ArtilleryWaypointGroupCommand : SCR_WaypointGroupCommand
 
 		SpoofTargetPosition(targetPosition, character);
 
-		return super.SetWaypointForAIGroup(target, targetPosition, playerID);
+		return super.SetWaypointForAIGroup(groupEnt, targetPosition, playerID);
 	}
 
 	//------------------------------------------------------------------------------------------------

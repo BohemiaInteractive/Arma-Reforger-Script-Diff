@@ -15,6 +15,10 @@ sealed class BlurWidget: Widget
 	proto external float GetIntensity();
 	//! Sets intensity of the blur effect
 	proto external void SetIntensity(float intensity);
+	//! Returns true if the intensity and smooth border values are scaled with DPI
+	proto external bool IsDPIScaleEnabled();
+	//! Enable of disable DPI scaling of the intensity and smooth border
+	proto external void SetDPIScaleEnabled(bool isEnabled);
 	//! Returns true if tint blend mode is set to Add, returns false if it is set to Multiply
 	proto external bool IsTintBlendModeAdd();
 	//! If isAdd is true sets tint blend mode to Add, if false the mode is set to Multiply

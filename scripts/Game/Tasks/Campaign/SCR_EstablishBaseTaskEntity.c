@@ -50,13 +50,18 @@ class SCR_EstablishBaseTaskEntity : SCR_Task
 	//------------------------------------------------------------------------------------------------
 	protected void CheckEstablishmentArea()
 	{
-		IEntity player = SCR_PlayerController.GetLocalControlledEntity();
+		SCR_ChimeraCharacter player = SCR_ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
 		if (!player)
 			return;
 
-		float distanceSq = vector.DistanceSqXZ(player.GetOrigin(), GetOrigin());
+		Faction playerFaction = player.GetFaction();
+		if (!playerFaction)
+			return;
 
-		if (!m_bPlayerInArea && distanceSq <= m_iBaseEstablishingRadiusSq)
+		vector position = player.GetOrigin();
+		float distanceSq = vector.DistanceSqXZ(position, GetOrigin());
+
+		if (!m_bPlayerInArea && distanceSq <= m_iBaseEstablishingRadiusSq && !SCR_FactionCommanderEstablishBaseMenuHandlerHelper.IsNearAnyBase(playerFaction, position))
 		{
 			m_bPlayerInArea = true;
 			SCR_NotificationsComponent.SendLocal(ENotification.GROUP_TASK_ESTABLISH_BASE_ENABLED);
@@ -65,7 +70,7 @@ class SCR_EstablishBaseTaskEntity : SCR_Task
 				s_OnPlayerEnteredEstablishingArea.Invoke();
 		}
 
-		if (m_bPlayerInArea && distanceSq > m_iBaseEstablishingRadiusSq)
+		if (m_bPlayerInArea && (distanceSq > m_iBaseEstablishingRadiusSq || SCR_FactionCommanderEstablishBaseMenuHandlerHelper.IsNearAnyBase(playerFaction, position)))
 		{
 			m_bPlayerInArea = false;
 			SCR_NotificationsComponent.SendLocal(ENotification.GROUP_TASK_ESTABLISH_BASE_DISABLED);

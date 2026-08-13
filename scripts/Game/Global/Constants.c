@@ -182,6 +182,10 @@ class UIConstants
 	static const LocalizedString TIME_DISPLAY_MINUTES_SECONDS = 			"#AR-TimeDisplay_Minutes_Seconds";
 	static const LocalizedString TIME_DISPLAY_SECONDS =						"#AR-TimeDisplay_Seconds";
 	
+	static const LocalizedString CANNOT_PERFORM_WRONG_STANCE = "#AR-UserAction_CannotPerformWithCurrentStance";
+	static const LocalizedString CANNOT_PERFORM_PLAYING_OTHER_ANIMATION = "#AR-UserAction_CannotPerform_OtherAnimationInProgress";
+	static const LocalizedString CANNOT_PERFORM_GENERIC = "#AR-UserAction_CannotPerformNow";
+
 	// Common icons
 	static const ResourceName ICONS_IMAGE_SET = 		"{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset";
 	static const ResourceName ICONS_GLOW_IMAGE_SET = 	"{00FE3DBDFD15227B}UI/Textures/Icons/icons_wrapperUI-glow.imageset";

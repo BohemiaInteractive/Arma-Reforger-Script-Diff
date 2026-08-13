@@ -30,7 +30,7 @@ class TestHarness: Managed
 	//! Finalizes the testing process.
 	static proto void End();
 	//! Generates a xml report.
-	static proto string Report(bool omitSkipped = false);
+	static proto string Report(bool omitDisabled = false);
 	/*!
 	Replaces characters with special meaning in XML so that result can be used in
 	XML attribute value or XML element body.

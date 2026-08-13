@@ -60,6 +60,7 @@ class SCR_TaskManagerUIComponent : SCR_BaseGameModeComponent
 	protected ref SCR_TasksTabConfig m_TaskTabConfig;
 	protected bool m_bIsUnconscious;	//Character is unconscious --> Task menu control is disabled
 	protected bool m_bCurrentTaskVisible;
+	protected bool m_bRefreshNextFrame;
 
 	protected Widget m_wTaskHint;
 	protected SCR_Task m_SelectedTask;
@@ -471,18 +472,29 @@ class SCR_TaskManagerUIComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Register task list component.
+	//! Refresh the task list. Will be performed the next frame to avoid excessive calling.
 	//! \return whether task list was refreshed or not
 	bool RefreshTaskList()
 	{
 		if (!m_TaskListComponent)
 			return false;
-		
-		m_TaskListComponent.RefreshTaskList();
-		
+
+		if (m_bRefreshNextFrame)
+			return true;
+
+		m_bRefreshNextFrame = true;
+		GetGame().GetCallqueue().CallLater(ForceRefreshTaskList);
+
 		return true;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	private void ForceRefreshTaskList()
+	{
+		m_bRefreshNextFrame = false;
+		m_TaskListComponent.RefreshTaskList();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] visibility of task description.
 	bool SetTaskDescriptionVisiblity(bool newVisibility)

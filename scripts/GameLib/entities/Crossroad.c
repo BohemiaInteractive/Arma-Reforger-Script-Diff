@@ -1,6 +1,16 @@
 [EntityEditorProps(category: "GameLib/Generic", description:"Crossroad", dynamicBox: true)]
 class CrossroadEntityClass: GenericEntityClass
 {
+#ifdef WORKBENCH
+	//-----------------------------------------------------------------------
+	static override bool _WB_OnKeyChanged(WorldEditorAPI api, IEntitySource src, string key, BaseContainerList ownerContainers, IEntitySource parent)
+	{
+		CrossroadEntity ent = CrossroadEntity.Cast(api.SourceToEntity(src));
+		if (ent)
+			ent.UpdateTerrain();
+		return false;
+	}
+#endif
 }
 
 class CrossroadEntity : GenericEntity
@@ -168,11 +178,6 @@ class CrossroadEntity : GenericEntity
 		}
 	}
 	
-	override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
-	{
-		UpdateTerrain();
-		return false;
-	}	
 	
 	override int _WB_GetAnchorCount(IEntitySource src)
 	{

@@ -551,10 +551,14 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 		}
 
 		m_AIgroup = group;
-		
+
+		// Base defenders are HIGH importance - they win budget slots over ambient patrols,
+		// yield only to CRITICAL (hired / mission / player AI).
+		group.SetImportance(SCR_EAISpawnImportance.HIGH);
+
 		if (m_OnDefenderGroupSpawned)
 			m_OnDefenderGroupSpawned.Invoke(this, group);
-		
+
 		ReinforceGroup();
 	}
 	
@@ -596,51 +600,59 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \return state according to current players vicinities to DefenderSpawner
+	//! \return state according to current players vicinities to DefenderSpawner.
+	//! Coarse proximity goes through ObserversSystem (cameras + connected players + GM free-camera).
+	//! Hostile-faction band stays on the PlayerManager loop because ObserversSystem does not carry
+	//! faction information.
+	//!
+	//! Full handoff to SCR_EAIGroupLifecyclePolicy.ProximityDriven is not done: defender respawn
+	//! has to go through the local SpawnUnit path (free slot, rally-point walkout, supply
+	//! accounting, refill queue) which SCR_AIGroup.SpawnMembers cannot drive.
 	protected SCR_EDefenderSpawnerState GetPlayerDistanceState()
 	{
-		array<int> players = {};
-		GetGame().GetPlayerManager().GetPlayers(players);
+		World world = GetOwner().GetWorld();
+		if (!world)
+			return SCR_EDefenderSpawnerState.DEFENDERS_DESPAWN;
 
 		float spawnDistanceSq = Math.Clamp(Math.Pow(GetGame().GetViewDistance() * 0.5, 2), SPAWN_RADIUS_MAX, SPAWN_RADIUS_MIN);
-		float despawnDistanceSq = Math.Clamp(Math.Pow(GetGame().GetViewDistance() * 0.5, 2), SPAWN_RADIUS_MIN, SPAWN_RADIUS_MAX);
-		float minSpawnDistanceSq = m_fMinHostilePlayerDistance * m_fMinHostilePlayerDistance; //Minimum range for hostile players in vicinity
-		
-		SCR_ChimeraCharacter playerEntity;
-		float dist;
+		float minSpawnDistanceSq = m_fMinHostilePlayerDistance * m_fMinHostilePlayerDistance;
+
 		vector origin = GetOwner().GetOrigin();
-		
-		SCR_EDefenderSpawnerState outState = SCR_EDefenderSpawnerState.DEFENDERS_DESPAWN;
-		
-		foreach (int player : players)
+
+		bool observerInRange;
+		if (m_AIgroup)
 		{
-			playerEntity = SCR_ChimeraCharacter.Cast(GetGame().GetPlayerManager().GetPlayerControlledEntity(player));
-			if (!playerEntity)
-				continue;
-			
-			dist = vector.DistanceSq(playerEntity.GetOrigin(), origin);
-			
-			if (outState == SCR_EDefenderSpawnerState.DEFENDERS_DESPAWN) //Do this check only if outstate is set to Despawn, otherwise it is not necessary to repeat it
-			{
-				if (dist < spawnDistanceSq)		//If player is withing the range, enable defenders
-				{
-					outState = SCR_EDefenderSpawnerState.DEFENDERS_ENABLED;
-				}
-				else	//If player is not within range, set to DEFENDER_DESPAWN and skip to next
-				{
-					outState = SCR_EDefenderSpawnerState.DEFENDERS_DESPAWN;
-					continue;
-				}
-			}
-			
-			if (dist < minSpawnDistanceSq && playerEntity.GetFaction() != GetFaction())		//if player in vicinity is hostile and is not in minimum distance, pause spawning
-			{
-				outState = SCR_EDefenderSpawnerState.DEFENDERS_PAUSED_SPAWN;
-				break;
-			}
+			observerInRange = m_AIgroup.HasObserverInRange(Math.Sqrt(spawnDistanceSq));
+		}
+		else
+		{
+			ObserversSystem observers = ObserversSystem.Cast(world.FindSystem(ObserversSystem));
+			observerInRange = observers && observers.HasObserverWithinRangeSq(origin[0], origin[2], spawnDistanceSq);
 		}
 
-		return outState;
+		if (!observerInRange)
+			return SCR_EDefenderSpawnerState.DEFENDERS_DESPAWN;
+
+		// Hostile-faction band: iterate players via PlayerManager.
+		Faction myFaction = GetFaction();
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		if (!playerManager)
+			return SCR_EDefenderSpawnerState.DEFENDERS_ENABLED;
+
+		array<int> playerIDs = {};
+		playerManager.GetPlayers(playerIDs);
+		foreach (int playerID : playerIDs)
+		{
+			SCR_ChimeraCharacter playerChar = SCR_ChimeraCharacter.Cast(playerManager.GetPlayerControlledEntity(playerID));
+			if (!playerChar)
+				continue;
+			if (playerChar.GetFaction() == myFaction)
+				continue;
+			if (vector.DistanceSq(playerChar.GetOrigin(), origin) < minSpawnDistanceSq)
+				return SCR_EDefenderSpawnerState.DEFENDERS_PAUSED_SPAWN;
+		}
+
+		return SCR_EDefenderSpawnerState.DEFENDERS_ENABLED;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -649,27 +661,24 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	{
 		ChimeraWorld world = GetOwner().GetWorld();
 		WorldTimestamp replicationTime = world.GetServerTimestamp();
-		
+
 		AIWorld aiWorld = GetGame().GetAIWorld();
 		if (!aiWorld)
 			return;
-		
+
 		//If another Ai would be over limit, stop requesting and prevent players from enabling it again.
-		if ((aiWorld.GetCurrentAmountOfLimitedAIs() + 1) >= aiWorld.GetAILimit())
+		if (!aiWorld.CanActivateGroup(m_AIgroup))
 		{
 			if (m_bEnableSpawning)
 			{
 				m_bEnableSpawning = false; //disable spawner
 				Replication.BumpMe();
-				
-				m_GroupSpawningManager.SetIsAtAILimit(true); //block requesting action 
 			}
-			
 			return;
 		}
-		
+
 		SCR_EDefenderSpawnerState distanceState = GetPlayerDistanceState();
-		
+
 		if (m_bEnableSpawning && (distanceState == SCR_EDefenderSpawnerState.DEFENDERS_ENABLED))
 		{
 			// Add any stray or stuck units to group
@@ -718,10 +727,17 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 		//Despawn units that are too far away from players
 		if (distanceState == SCR_EDefenderSpawnerState.DEFENDERS_DESPAWN)
 		{
-			if (m_AIgroup)
+			if (m_AIgroup && !m_AIgroup.HasHeldMember())
 			{
+				// Keep the group entity and drop it to Dormant so GM still sees it, and a later
+				// SpawnGroup / ReinforceGroup trickles members back from the refill queue.
+				// m_iDespawnedGroupMembers tracks "spawn these without charging supplies"; it stays
+				// in addition to the group's own dormant alive-count.
+				// HasHeldMember() guard: skip auto-despawn while any member is force-held (driver
+				// in vehicle, player subordinate, permanent-LOD set). Same protection as the
+				// proximity-driven LifecycleTick path.
 				m_iDespawnedGroupMembers = m_AIgroup.GetAgentsCount();
-				SCR_EntityHelper.DeleteEntityAndChildren(m_AIgroup);
+				m_AIgroup.DespawnMembers();
 			}
 			
 			//If leftover groups from previous owners remains alive, they will be despawned
@@ -793,22 +809,22 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 
 		BaseGameMode gameMode = GetGame().GetGameMode();
 		if (!gameMode)
-			return;	
-			
+			return;
+
 		m_GroupSpawningManager = SCR_SpawnerAIGroupManagerComponent.Cast(gameMode.FindComponent(SCR_SpawnerAIGroupManagerComponent));
 		if (!m_GroupSpawningManager)
 		{
-			Print("SCR_DefenderSpawnerComponent requires SCR_SpawnerAIGroupManagerComponent attached to gamemode to work properly!", LogLevel.ERROR);	
+			Print("SCR_DefenderSpawnerComponent requires SCR_SpawnerAIGroupManagerComponent attached to gamemode to work properly!", LogLevel.ERROR);
 			return;
-		}	
-			
+		}
+
 		if (IsProxy())
 			return;
 
 		//Setup group handling (spawning and refilling). This delay also prevents potential JIP replication error on clients
 		GetGame().GetCallqueue().CallLater(HandleGroup, SPAWN_CHECK_INTERVAL, true);
 	}
-		
+
 	//------------------------------------------------------------------------------------------------
 	protected override void OnPostInit(IEntity owner)
 	{

@@ -507,6 +507,10 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 		m_iPlatoonCallsign = platoon;
 		m_iSquadCallsign = squad;
 
+		SCR_AIGroup group = SCR_AIGroup.Cast(GetOwner());
+		if (group)
+			group.OnCallsignChanged();
+
 		Event_OnCallsignChanged.Invoke(m_iCompanyCallsign, m_iPlatoonCallsign, m_iSquadCallsign, -1, -1);
 	}
 

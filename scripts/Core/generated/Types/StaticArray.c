@@ -44,7 +44,7 @@ sealed class StaticArray
 	\param dstOffset element offset in destination array
 	\param srcOffset element offset in source array
 	\param num number of elements to copy (-1 for all of them)
-	\returns \p int number of elements copied
+	\return number of elements copied
 		@code
 			int arr1[3] = {1,2,3};
 			int arr2[3];

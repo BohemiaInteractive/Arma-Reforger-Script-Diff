@@ -306,6 +306,17 @@ class BaseContainerCustomTitleField: BaseContainerCustomTitle
 	}
 }
 
+//! Links a reason enum to a specific KickCauseGroup value by name.
+class KickCauseGroupLink: UniqueAttribute
+{
+	string m_sGroupName;
+
+	void KickCauseGroupLink(string groupName)
+	{
+		m_sGroupName = groupName;
+	}
+}
+
 /*!
 \}
 */

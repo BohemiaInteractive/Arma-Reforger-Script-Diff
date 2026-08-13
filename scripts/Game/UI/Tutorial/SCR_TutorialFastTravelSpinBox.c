@@ -32,7 +32,7 @@ class SCR_TutorialFastTravelSpinBox : SCR_SpinBoxComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool SetCurrentItem(int i, bool playSound = false, bool animate = false)
+	override bool SetCurrentItem(int i, bool playSound = false, bool animate = false, bool invokeOnChanged = true)
 	{
 		super.SetCurrentItem(i, playSound, animate);
 		

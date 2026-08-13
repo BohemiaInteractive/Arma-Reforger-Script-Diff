@@ -2,6 +2,9 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 {
 	[Attribute("{09DFB36A6C8D45C0}UI/layouts/Editor/GameInfo/GameInfo_CampaignBuilding_ServiceIcon.layout")]
 	protected ResourceName m_sServiceIconsGridPrefab;
+	
+	[Attribute("{0DBF4B0B6DFDF109}Configs/Map/BaseServiceIcons.conf", params: "conf class=SCR_BaseServiceIconList")]
+	protected ResourceName m_sMapServiceIconsConfig;
 
 	[Attribute(DEFAULT_VALUE.ToString(), params: "1 inf 1", desc: "Maximum number of icons in the row")]
 	protected int m_iMaxColumns;
@@ -18,7 +21,8 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 	protected static const int DEFAULT_VALUE = 7;
 
 	protected ref array<EEditableEntityLabel> m_aAvailableServicesLabel = {};
-	
+	protected ref array<EEditableEntityLabel> m_aMapServiceIconEntityLabels = {};
+
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -44,10 +48,11 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 			return;
 		}
 
+		GetMapServiceIconEntityLabels();
 		GetAllServicesUIInfo();
 		SetBaseServices();
 		RefreshServiceUI();
-		
+
 		base.GetOnServiceRegistered().Insert(SetBaseServices);
 		base.GetOnServiceUnregistered().Insert(SetBaseServices);
 		base.GetOnServiceUnregistered().Insert(OnServiceUnregistered);
@@ -83,14 +88,45 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 			return;
 		
 		entityCore.GetCampaignBuildingModeLabelsData(entityLabels, buildingModeLabelData);
-				
+		
+		if(m_aMapServiceIconEntityLabels.IsEmpty())
+			GetMapServiceIconEntityLabels();
+		
 		foreach (SCR_EditableEntityCampaignBuildingModeLabelData data : buildingModeLabelData)
 		{
-			if (!m_aAvailableServicesLabel.Contains(data.GetEntityLabel()))
+			EEditableEntityLabel entityLabel = data.GetEntityLabel();
+			
+			//If the map's base element does not display this service, the building HUD shouldn't either (for consistency's sake)
+			if (!m_aMapServiceIconEntityLabels.Contains(entityLabel))
+				continue;
+			
+			if (!m_aAvailableServicesLabel.Contains(entityLabel))
 				m_aAvailableServicesLabel.Insert(data.GetEntityLabel());
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! Get the enetity label from the config that determines the service icons shown in the base element UI in the map
+	//! Since the building HUD should show the same service icons as the map, we don't want to show icons here that do not show there
+	protected void GetMapServiceIconEntityLabels()
+	{
+		m_aMapServiceIconEntityLabels.Clear();
+		
+		Resource holder = BaseContainerTools.LoadContainer(m_sMapServiceIconsConfig);
+		if (!holder || !holder.IsValid())
+			return;
+
+		BaseContainer container = holder.GetResource().ToBaseContainer();
+		if (!container)
+			return;
+
+		SCR_BaseServiceIconList list = SCR_BaseServiceIconList.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
+		if (!list)
+			return;
+
+		m_aMapServiceIconEntityLabels = list.GetEntityLabels();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void GetAllServicesUIInfo()
 	{
@@ -248,6 +284,8 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 		Widget gridWidget = m_wCampaignBuildingServicesRoot.FindAnyWidget("Grid");
 		if (!gridWidget)
 			return;
+		
+		m_aAvailableServicesLabel.Sort();
 		
 		// Iterate all services, check if they are avialable and if so, set the icon properly.
 		for (int i = m_aAvailableServicesLabel.Count() -1; i >= 0; --i)

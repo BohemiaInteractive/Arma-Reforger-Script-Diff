@@ -12,84 +12,97 @@ GUI usage:
 	SCR_AutotestPlugin
 */
 sealed class SCR_TestRunner
-{
-	//------------------------------------------------------------------------------------------------
-	static bool ShouldCreate()
+{	
+	private ref SCR_AutotestRunSettings m_RunSettings;
+	
+	private static ref SCR_TestRunner s_Instance;
+	
+	static ref SCR_TestRunner GetInstance()
 	{
-		HandleCommandLineArguments();
-
-		bool shouldCreate = SCR_AutotestHarness.s_bIsRunning;
-		if (!shouldCreate)
+		return s_Instance;
+	}
+	
+	static bool HasInstance()
+	{
+		return s_Instance;
+	}
+	
+	private static bool IsConfigured()
+	{
+		return s_Instance && s_Instance.m_RunSettings;
+	}
+	
+	private static bool IsRunning()
+	{
+		return HasInstance() && SCR_AutotestHarness.IsRunning();
+	}
+	
+	private void SCR_TestRunner();
+	
+	//-----------------------------------------------------------------------------
+	//! The main entry point of the Autotest Framework
+	//! This method configures the runner and bootstraps the harness, which ensures
+	//! that tests will run the next time the game/world is loaded.
+	//! [param] force aborts the currently running tests and inits a new runner
+	static void InitRunner(notnull SCR_AutotestRunSettings settings, bool force = false)
+	{	
+		if (force)
 		{
-			return false;
+			Print("Forcing a new test run. Clearing the instance...");
+			AbortRunner();
+		}
+			
+		if (IsRunning())
+		{
+			Print("Tests are already running");
+			return;
 		}
 
-		Print("Creating: SCR_TestRunner", LogLevel.NORMAL);
-
-		return true;
+		Configure(settings);
+		SCR_AutotestHarness.Bootstrap(settings);
 	}
-
-	//------------------------------------------------------------------------------------------------
-	private static void HandleCommandLineArguments()
+	
+	//! Clears runner instance and aborts currently running tests.
+	//! Will NOT produce report files.
+	static void AbortRunner()
 	{
-		bool autotestParamPresent = System.IsCLIParam("autotest");
-		if (!autotestParamPresent)
-			return;
-
-		string autotestConfigCLI;
-		System.GetCLIParam("autotest", autotestConfigCLI);
-
-		if (!autotestConfigCLI)
+		if (SCR_AutotestHarness.IsRunning())
+			SCR_AutotestHarness.Finish(abort: true);
+		
+		delete s_Instance;
+	}
+	
+	//! Creates an instance if it doesn't exist, and assigns settings
+	//! This DOES NOT bootstrap the harness
+	private static void Configure(notnull SCR_AutotestRunSettings settings)
+	{
+		if (!s_Instance)
+			s_Instance = new SCR_TestRunner();
+		
+		s_Instance.m_RunSettings = settings;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static void OnGameStart()
+	{
+		if (SCR_TestRunner.IsConfigured() || !System.IsCLIParam("autotest"))
 		{
-			Debug.Error("Empty -autotest parameter value");
+			return;
+		}
+		
+		SCR_AutotestRunSettings RunSettings = SCR_AutotestRunSettingsBuilder.CreateFromCLI();
+		if (!RunSettings)
+		{
 			GetGame().RequestClose();
-		}
-
-		if (autotestConfigCLI.StartsWith("{"))
-		{
-			Resource configHolder = Resource.Load(autotestConfigCLI);
-			if (configHolder.IsValid())
-			{
-				SCR_AutotestGroup config = SCR_AutotestGroup.Cast(BaseContainerTools.CreateInstanceFromContainer(configHolder.GetResource().ToBaseContainer()));
-				if (config)
-				{
-					PrintFormat("CLI autotest config: %1", config, level: LogLevel.NORMAL);
-					SCR_AutotestHarness.Begin(config, true);
-					return;
-				}
-
-				PrintFormat("Specified resource is not of type SCR_AutotestGroup: %1", config, level: LogLevel.ERROR);
-			}
-			else
-			{
-				PrintFormat("Invalid resource path for autotest config: %1", autotestConfigCLI, level: LogLevel.ERROR);
-			}
-		}
-
-		if (autotestConfigCLI.ToType().IsInherited(SCR_AutotestSuiteBase))
-		{
-			PrintFormat("CLI autotest suite: %1", autotestConfigCLI, level: LogLevel.NORMAL);
-			SCR_AutotestSuiteBase testSuite = SCR_AutotestSuiteBase.Cast(autotestConfigCLI.ToType().Spawn());
-			SCR_AutotestHarness.Begin(testSuite, true);
 			return;
 		}
-
-		if (autotestConfigCLI.ToType().IsInherited(SCR_AutotestCaseBase))
-		{
-			PrintFormat("CLI autotest case: %1", autotestConfigCLI, level: LogLevel.NORMAL);
-			SCR_AutotestCaseBase testCase = SCR_AutotestCaseBase.Cast(autotestConfigCLI.ToType().Spawn());
-			SCR_AutotestHarness.Begin(testCase, true);
-			return;
-		}
-
-		Debug.Error(string.Format("Invalid -autotest parameter value: %1", autotestConfigCLI));
-		GetGame().RequestClose();
+		
+		InitRunner(RunSettings);
 	}
 
-	//------------------------------------------------------------------------------------------------
 	void OnUpdate(notnull Game game)
 	{
-		if (!SCR_AutotestHarness.s_bIsRunning)
+		if (!SCR_AutotestHarness.IsRunning())
 			return;
 
 		if (GameStateTransitions.IsTransitionRequestedOrInProgress())
@@ -111,13 +124,9 @@ sealed class SCR_TestRunner
 
 		SCR_AutotestReport report = SCR_AutotestHarness.Finish();
 		report.WriteJUnitXML();
-		report.WriteFailedList();
+		report.WriteLogFiles();
 
-#ifdef ENABLE_DIAG
-		SCR_AutotestDebugMenu.Terminate();
-#endif
-
-		if (ShouldCloseGameAfterRun())
+		if (ShouldCloseGameAfterRun(report))
 		{
 			// GameStateTransitions.RequestGameTerminateTransition();
 			GetGame().RequestClose();
@@ -125,19 +134,27 @@ sealed class SCR_TestRunner
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void Abort(notnull Game game)
+	static void OnGameEnd(notnull Game game)
 	{
-#ifdef WORKBENCH
-		// on game end is called two times when going back to EditorMode
-		// on the first call InPlayMode is true, false on second
-		if (!game.InPlayMode() && SCR_AutotestHarness.s_bIsRunning)
-			SCR_AutotestHarness.Finish(abort: true);
-#endif
+	}
+	
+	static void OnConsoleCommand(string command)
+	{
+		// TODO: add console interface
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private bool ShouldCloseGameAfterRun()
+	private bool ShouldCloseGameAfterRun(notnull SCR_AutotestReport report)
 	{
-		return SCR_AutotestHarness.s_bCloseGameAfterRun;
+		if (SCR_AutotestHarness.GetActionAfterRun() == SCR_EAutotestOnFinishedAction.EXIT)
+			return true;
+
+		if (SCR_AutotestHarness.GetActionAfterRun() == SCR_EAutotestOnFinishedAction.NONE)
+			return false;
+
+		if (SCR_AutotestHarness.GetActionAfterRun() == SCR_EAutotestOnFinishedAction.EXIT_IF_NO_ERROR)
+			return !report.IsFailure();
+
+		return true;
 	}
 }

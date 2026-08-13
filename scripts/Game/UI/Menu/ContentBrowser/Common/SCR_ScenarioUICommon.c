@@ -49,8 +49,10 @@ class SCR_ScenarioUICommon
 	//! Hosts the scenario or opens a confirmation dialog if it can't be immediately started
 	static void TryHostScenario(notnull MissionWorkshopItem scenario, notnull SCR_DSConfig config)
 	{
+		if (IsHostingDisabledOnPlatform())
+			return;
+		
 		int nCompleted, nTotal;
-
 		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
 		if (mgr)
 			mgr.GetDownloadQueueState(nCompleted, nTotal);
@@ -245,6 +247,22 @@ class SCR_ScenarioUICommon
 	static MissionWorkshopItem GetInGameScenario(ResourceName resource)
 	{
 		return GetGame().GetBackendApi().GetWorkshop().GetInGameScenario(resource);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns true on platforms where hosting a listen server is not allowed
+	//! (e.g. consoles + handheld devices)
+	static bool IsHostingDisabledOnPlatform()
+	{
+	    // Consoles were already blocked via IsPlatformGameConsole()
+	    if (GetGame().IsPlatformGameConsole())
+	        return true;
+	
+	    // Handheld devices report as Windows, so they need an explicit check
+	    if (System.GetPlatform() == EPlatform.WINDOWS_HANDHELD)
+	        return true;
+	
+	    return false;
 	}
 	
 //---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
@@ -573,7 +591,7 @@ class SCR_ScenarioUICommon
 		if (!button)
 			return;
 
-		visible = visible && entryFocused && IsMultiplayer(mission) && !GetGame().IsPlatformGameConsole();
+		visible = visible && entryFocused && IsMultiplayer(mission) && !IsHostingDisabledOnPlatform();
 
 		button.SetVisible(visible);
 		if (visible)
@@ -592,7 +610,7 @@ class SCR_ScenarioUICommon
 		if (!button)
 			return;
 
-		visible = visible && IsMultiplayer(mission) && !GetGame().IsPlatformGameConsole();
+		visible = visible && IsMultiplayer(mission) && !IsHostingDisabledOnPlatform();
 		button.SetVisible(visible, false);
 
 		if (visible)

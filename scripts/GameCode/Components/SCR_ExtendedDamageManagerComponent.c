@@ -47,8 +47,6 @@ class SCR_ExtendedDamageManagerComponent : ExtendedDamageManagerComponent
 	//-----------------------------------------------------------------------------------------------------------
 	override void OnDamageEffectAdded(notnull SCR_DamageEffect dmgEffect)
 	{
-		super.OnDamageEffectAdded(dmgEffect);
-		
 		if (s_aDamageManagerData.IsIndexValid(m_iDamageManagerDataIndex))
 		{
 			ScriptInvoker invoker = s_aDamageManagerData.Get(m_iDamageManagerDataIndex).GetOnDamageEffectAdded(false);
@@ -60,8 +58,6 @@ class SCR_ExtendedDamageManagerComponent : ExtendedDamageManagerComponent
 	//-----------------------------------------------------------------------------------------------------------
 	override void OnDamageEffectRemoved(notnull SCR_DamageEffect dmgEffect)
 	{
-		super.OnDamageEffectAdded(dmgEffect);
-		
 		if (s_aDamageManagerData.IsIndexValid(m_iDamageManagerDataIndex))
 		{
 			ScriptInvoker invoker = s_aDamageManagerData.Get(m_iDamageManagerDataIndex).GetOnDamageEffectRemoved(false);

@@ -66,6 +66,12 @@ sealed class GroupData: Managed
 	proto external void SetActive(notnull BackendCallback pCallback);
 	proto external int GetId();
 	proto external GroupMemberCatalogue GetGroupMemberCatalogue();
+	/*!
+	Get Audit Log Catalogue of this group.
+	\warning There is only one instance of GroupAuditLogCatalogue
+	         Calling this getter on another group clears all cached Audit Log data.
+	*/
+	proto external GroupAuditLogCatalogue GetAuditLogCatalogue();
 	//! Returns current number of members. Must be fetched via RequestDetails()
 	proto external int GetMemberCount();
 	/*!

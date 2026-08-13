@@ -25,6 +25,7 @@ class SCR_ResourceSystemSubscriptionListing
 	void UnsubscribeListener(RplId listener)
 	{
 		m_aListeners.RemoveItem(listener);
+		m_aListeners.RemoveItem(RplId.Invalid()); //< Remove all invalid RplIds.
 	}
 	
 	//------------------------------------------------------------------------------------------------

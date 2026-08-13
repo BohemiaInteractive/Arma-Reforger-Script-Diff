@@ -1,6 +1,6 @@
 class RestAPIHelper<JsonApiStruct T > {
 
-	static T Get (BlenderRestAPI connection, string endpoint) {
+	static T Get(BlenderRestAPI connection, string endpoint) {
 		string response;
 		bool status = connection.Get(endpoint, response);
 		
@@ -12,6 +12,27 @@ class RestAPIHelper<JsonApiStruct T > {
 			return struct;
 		}
 		
+		return null;
+	}
+
+	static T Post(BlenderRestAPI connection, string endpoint, JsonApiStruct payload)
+	{
+		payload.RegAll();
+		payload.Pack();
+
+		string payloadAsString = payload.AsString();
+		
+		string response;
+		bool status = connection.Post(endpoint, payloadAsString, response);
+
+		if (status)
+		{
+			auto struct = new T();
+			struct.RegAll();
+			struct.ExpandFromRAW(response);
+			return struct;
+		}
+
 		return null;
 	}
 }
@@ -59,10 +80,17 @@ GetTransformResult GetTransform(notnull const BlenderRestAPI connection, string 
 
 //--------------------------------------------------------------
 
-bool OpenBlendFile(notnull const BlenderRestAPI connection, string blend_file) 
+bool OpenBlendFile(notnull const BlenderRestAPI connection, string blend_file)
 {
 	string endpoint = string.Format("/open_blend_file?path=%1", blend_file);
 	return connection.Get(endpoint);
 }
 
 //--------------------------------------------------------------
+
+
+
+
+
+
+

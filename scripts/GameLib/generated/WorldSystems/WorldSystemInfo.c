@@ -17,6 +17,7 @@ sealed class WorldSystemInfo: pointer
 	property are following:
 	- `Abstract`: `true`
 	- `Unique`: `false`
+	- `BoundDiag`: `-1` (none)
 	- `Location`: WorldSystemLocation.Both
 	- `Points`: empty set
 	- `Controllers`: empty set
@@ -27,6 +28,7 @@ sealed class WorldSystemInfo: pointer
 	proto external WorldSystemInfo SetAbstract(bool value);
 	proto external WorldSystemInfo SetUnique(bool value);
 	proto external WorldSystemInfo SetLocation(WorldSystemLocation value);
+	proto external WorldSystemInfo SetBoundDiag(int diagId);
 	proto external WorldSystemInfo AddPoint(WorldSystemPoint point);
 	proto external WorldSystemInfo RemovePoint(WorldSystemPoint point);
 	proto external WorldSystemInfo ClearPoints();

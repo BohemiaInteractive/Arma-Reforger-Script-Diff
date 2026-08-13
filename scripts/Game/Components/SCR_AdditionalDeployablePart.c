@@ -1,3 +1,4 @@
+[SCR_BaseContainerCountedResourceNameTitle("m_iNumberOfPrefabs", "m_sPrefab")]
 class SCR_AdditionalDeployablePart : ScriptAndConfig
 {
 	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, desc: "Prefab which is going to be required in order to deploy the main entity", params: "et")]
@@ -38,7 +39,7 @@ class SCR_AdditionalDeployablePart : ScriptAndConfig
 				continue;
 
 			numberOfSuccesfullySpawnedEnts++;
-			PostPrefabSpawn(spawnedEntity);
+			PostPrefabSpawn(spawnedEntity, authorPlayerId, user);
 			SCR_MultiPartDeployableItemComponent.SetAuthor(spawnedEntity, authorPlayerId);
 
 			spawnedIIC = InventoryItemComponent.Cast(spawnedEntity.FindComponent(InventoryItemComponent));
@@ -52,5 +53,5 @@ class SCR_AdditionalDeployablePart : ScriptAndConfig
 	//------------------------------------------------------------------------------------------------
 	//! Override if you would like to do something to the entity that was spawned after deployment
 	//! \param[in] spawnedEntity
-	void PostPrefabSpawn(notnull IEntity spawnedEntity);
+	void PostPrefabSpawn(notnull IEntity spawnedEntity, int authorPlayerId, IEntity user);
 }

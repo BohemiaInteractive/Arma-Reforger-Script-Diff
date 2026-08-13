@@ -635,8 +635,8 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		}
 
 		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(resourcesOwner);
-		if (!arsenalComponent)
-			return; // this is an arsenal request, thus we require an arsenal to be present for this
+		if (!arsenalComponent || !arsenalComponent.IsRefundEnabled())
+			return; // this is an arsenal request, thus we require an arsenal that can refund to be present for this
 		
 		//~ Get resource cost (cap at 0 minimum as function can return -1)
 		float resourceCost = Math.Clamp(SCR_ArsenalManagerComponent.GetItemRefundAmount(inventoryItemEntity, arsenalComponent, false), 0, float.MAX);

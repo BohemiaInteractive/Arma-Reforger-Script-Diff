@@ -41,6 +41,8 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 	// Widgets
 	protected Widget m_wFrame;						// parent frame
 	protected RenderTargetWidget m_wRenderTarget;	// RenderTargetWidget
+
+	protected const ResourceName PREVIEW_WORLD_SYSTEMS_CONFIG = "{3A1DEDB2A5818B53}Configs/Systems/MapPreviewSystemsConfig.conf";
 	
 	//------------------------------------------------------------------------------------------------
 	//! Set widget names
@@ -150,8 +152,9 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 			m_RTWorld = BaseWorld.CreateWorld(BASE_WORLD_TYPE, WORLD_NAME);
 			if (!m_RTWorld)
 				return false;
-			World previewRTWorld = m_RTWorld.GetRef();
-			previewRTWorld.ReloadSystems();
+
+			ChimeraWorld previewRTWorld = m_RTWorld.GetRef();
+			previewRTWorld.LoadSystems(PREVIEW_WORLD_SYSTEMS_CONFIG);
 		}
 		
 		BaseWorld previewWorld = m_RTWorld.GetRef();

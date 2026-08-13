@@ -467,7 +467,7 @@ class SCR_DetonatorGadgetComponent : SCR_GadgetComponent
 	//! \param[in] mode is the mode being cleared
 	protected override void ModeClear(EGadgetMode mode)
 	{
-		super.ModeClear(mode, charOwner);
+		super.ModeClear(mode);
 		if (mode == EGadgetMode.IN_HAND)
 			DeactivateGadgetUpdate();
 	}

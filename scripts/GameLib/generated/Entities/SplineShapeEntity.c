@@ -21,7 +21,7 @@ class SplineShapeEntity: ShapeEntity
 	*/
 	proto external bool HasPointExplicitTangents(int pointIdx);
 	/*!
-	Reconstructs the shape from the points in the points array, or by adding it after first paceFirstAtIdx points.
+	Reconstructs the shape from the points in the points array, or by adding it after first placeFirstAtIdx points.
 	points are the points to be added, entSource is the source of the shape entity. tangentLengthIn/Out allow to multiply the length of the tangents instead of the usual 0.5.
 	placeFirstAtIdx allows to keep the first (placeFirstAtIdx - 1) existing points of the spline and adds new points after those.
 	*/

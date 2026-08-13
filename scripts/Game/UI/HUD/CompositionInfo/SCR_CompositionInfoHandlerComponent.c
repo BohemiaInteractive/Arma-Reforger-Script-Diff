@@ -76,7 +76,7 @@ class SCR_CompositionInfoHandlerComponent : ScriptComponent
 		vector line[2];
 		line[0] = position;
 		line[1] = position + (transform[3] * m_fTraceDistance);
-		Shape.CreateLines(Color.RED, ShapeFlags.NOZBUFFER, line, 1);
+		Shape.CreateLines(Color.RED, ShapeFlags.NOZBUFFER, line, 2);
 		
 		SCR_EditableEntityAuthor author = editableEntity.GetAuthor();
 		if (!author || author.m_sAuthorUID.IsEmpty())
@@ -257,7 +257,7 @@ class SCR_CompositionDetails
 {
 	string m_sAuthorName;
 	int m_iAuthorID;
-	string m_sAuthorUID;
+	UUID m_sAuthorUID;
 	PlatformKind m_ePlatform;
 	string m_sEntityName;
 	int m_iLastUpdated;

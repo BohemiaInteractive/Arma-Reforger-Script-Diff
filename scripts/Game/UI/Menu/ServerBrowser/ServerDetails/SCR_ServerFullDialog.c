@@ -354,7 +354,9 @@ class SCR_ServerFullDialog : SCR_ConfigurableDialogUi
 				m_Widgets.m_wQueueState.SetColor(UIColors.CopyColor(UIColors.NEUTRAL_INFORMATION));
 				
 				m_Widgets.m_wExplanationEnqueuedWrapper.SetVisible(true);
-				m_Widgets.m_wExplanationFull.SetVisible(false);
+				
+				if (m_Widgets.m_wExplanationFull)
+					m_Widgets.m_wExplanationFull.SetVisible(false);
 				
 				UpdateEnqueuedTimeDisplay();
 				GetGame().GetCallqueue().CallLater(UpdateEnqueuedTimeDisplay, ENQUEUED_TIME_UPDATE_FREQUENCY, true);
@@ -367,7 +369,9 @@ class SCR_ServerFullDialog : SCR_ConfigurableDialogUi
 				m_Widgets.m_wQueueMaxSizeOverlay.SetVisible(true);
 			
 				m_Widgets.m_wExplanationEnqueuedWrapper.SetVisible(false);
-				m_Widgets.m_wExplanationFull.SetVisible(true);
+				
+				if (m_Widgets.m_wExplanationFull)
+					m_Widgets.m_wExplanationFull.SetVisible(true);
 				
 				break;
 			}
@@ -377,8 +381,10 @@ class SCR_ServerFullDialog : SCR_ConfigurableDialogUi
 				m_Widgets.m_wQueueMaxSizeOverlay.SetVisible(false);
 			
 				m_Widgets.m_wExplanationEnqueuedWrapper.SetVisible(false);
-				m_Widgets.m_wExplanationFull.SetVisible(true);
-
+				
+				if (m_Widgets.m_wExplanationFull)
+					m_Widgets.m_wExplanationFull.SetVisible(true);
+				
 				m_Widgets.m_wQueueWaitTimeOverlay.SetVisible(false);
 				
 				break;

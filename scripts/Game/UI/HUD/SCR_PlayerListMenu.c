@@ -35,7 +35,6 @@ class SCR_PlayerListEntry
 	}
 };
 
-//------------------------------------------------------------------------------------------------
 class SCR_PlayerListMenu : SCR_SuperMenuBase
 {
 	protected ResourceName m_sScoreboardRow = "{65369923121A38E7}UI/layouts/Menus/PlayerList/PlayerListEntry.layout";
@@ -56,8 +55,9 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	protected SCR_BaseScoringSystemComponent m_ScoringSystem;
 	protected SCR_PlayerListEntry m_SelectedEntry;
 	protected SCR_PlayerControllerGroupComponent m_PlayerGroupController;
-	protected PlayerController m_PlayerController;
+	protected SCR_PlayerController m_PlayerController;
 	protected SocialComponent m_SocialComponent;
+	protected SCR_PlayerActionsComponent m_PlayerActionsComp;
 	SCR_SortHeaderComponent m_Header;
 	protected Widget m_wTable;
 	protected bool m_bFiltering;
@@ -635,6 +635,9 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			UpdatePlayerActionList(combo , false);
 			GetGame().GetCallqueue().CallLater(UpdatePlayerActionList, 1000, true, combo, true);
 		}
+
+		if (m_PlayerActionsComp)
+			m_PlayerActionsComp.CreatePlayerListActionEntries(combo, playerID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -777,6 +780,11 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				case SCR_EPlayerListComboAction.UNBLOCK_PLAYER:
 				{
 					OnUnblock(null, string.Empty);
+					break;
+				}
+				case SCR_EPlayerListComboAction.CUSTOM_ACTION:
+				{
+					m_PlayerActionsComp.PerformPlayerListAction(comboData.GetComboEntryType(), playerID);
 					break;
 				}
 			}
@@ -1208,9 +1216,8 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		//Check if reporting is available
 		if (!IsLocalPlayer(entry.m_iID))
 			return true;
-		
-		//~ None of the conditions met
-		return false;
+
+		return m_PlayerActionsComp && m_PlayerActionsComp.CanUseAnyPlayerListAction(entry.m_iID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1243,11 +1250,14 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		GameBlocklist blocklist = GetGame().GetGameBlocklist();
 		blocklist.OnBlockListUpdateInvoker.Insert(OnBlocklistUpdate);
 		
-		m_PlayerController = GetGame().GetPlayerController();
+		m_PlayerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 		if (m_PlayerController)
 		{
 			m_SocialComponent = SocialComponent.Cast(m_PlayerController.FindComponent(SocialComponent));
-			
+			m_PlayerActionsComp = SCR_PlayerActionsComponent.Cast(m_PlayerController.FindComponent(SCR_PlayerActionsComponent));
+			if (m_PlayerActionsComp)
+				m_PlayerActionsComp.OnPlayerListOpened();
+
 			SCR_HUDManagerComponent hudManager = SCR_HUDManagerComponent.Cast(m_PlayerController.FindComponent(SCR_HUDManagerComponent));
 			hudManager.SetVisibleLayers(hudManager.GetVisibleLayers() & ~EHudLayers.HIGH);
 		}
@@ -1467,6 +1477,9 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		if (hudManager)
 			hudManager.SetVisibleLayers(hudManager.GetVisibleLayers() | EHudLayers.HIGH);
 
+		if (m_PlayerActionsComp)
+			m_PlayerActionsComp.OnPlayerListClosed();
+		
 		SCR_PlayerDelegateEditorComponent editorDelegateManager = SCR_PlayerDelegateEditorComponent.Cast(SCR_PlayerDelegateEditorComponent.GetInstance(SCR_PlayerDelegateEditorComponent));
 
 		//Remove the subscriptions to player right changed
@@ -1879,5 +1892,6 @@ enum SCR_EPlayerListComboAction
 	
 	//Blocking
 	BLOCK_PLAYER,
-	UNBLOCK_PLAYER
+	UNBLOCK_PLAYER,
+	CUSTOM_ACTION
 };

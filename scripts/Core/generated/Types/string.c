@@ -31,10 +31,9 @@ sealed class string
 	Parses a float from a string.
 	Any whitespaces at the beginning in front of a number in the string will be skipped.
 
-	\param default  Will be returned when the parsing fails (e.g. there's no number to parse)
-	\param offset   Number of characters in the string to skip
-	\param parsed   Out param - number of characters read
-
+	\param default Will be returned when the parsing fails (e.g. there's no number to parse)
+	\param offset Number of characters in the string to skip
+	\param[out] parsed number of characters read
 	\return The parsed float (the default if the parsing failed).
 
 	\code
@@ -56,10 +55,9 @@ sealed class string
 	Parses an integer from a string.
 	Any whitespaces at the beginning in front of a number in the string will be skipped.
 
-	\param default  Will be returned when the parsing fails (e.g. there's no number to parse)
-	\param offset   Number of characters in the string to skip
-	\param parsed   Out param - number of characters read
-
+	\param default Will be returned when the parsing fails (e.g. there's no number to parse)
+	\param offset Number of characters in the string to skip
+	\param[out] parsed number of characters read
 	\return The parsed integer (the default if the parsing failed).
 
 	\code
@@ -92,9 +90,9 @@ sealed class string
 	proto external vector ToVector();
 	/*!
 	Substring of `str` from `start` position `len` number of characters. (Maximum output string size is limited to 8191 characters)
-	\param start Position in \p str
+	\param start Position in str
 	\param len Count of characters
-	\return \p string - Substring of \p str
+	\return Substring of str
 	\code
 		string str = "Hello World";
 		string strSub = str.Substring(2, 5);
@@ -119,10 +117,9 @@ sealed class string
 	proto external string Trim();
 	/*!
 	Builds a string using given format and arguments. (Maximum output string size is limited to 8191 characters)
-	\param fmt    Formatting string - any string with special tokens %1 .. %9.
-	\param param1 Replaces the "%1" token in the formatting string in the result
-	\param param2 Replaces the "%2" token
-
+	\param fmt Formatting string (any string with special tokens %1 .. %9)
+	\param param1 Replaces the "%1" token
+	\param param2 Replaces the "%2" token, etc.
 	\return The resulting string, i.e. the formatting string with all the %1 ... %9 replaced.
 
 	\code
@@ -206,9 +203,9 @@ sealed class string
 	proto external int LastIndexOf(string sample);
 	/*!
 	\brief Finds 'sample' in 'str' from 'start' position. Returns -1 when not found
-		\param start \p int Start from position
-		\param sample \p string Finding string expression
-		\return \p int - Length of string \p s
+		\param start Start from position
+		\param sample Finding string expression
+		\return Position of found string, -1 when not found
 		@code
 			string str = "Hello World";
 			Print( str.IndexOfFrom( 3, "H" ) );
@@ -293,9 +290,9 @@ sealed class string
 	proto external int Compare(string sample, bool caseSensitive = true);
 	/*!
 	\brief Replace all occurrances of 'sample' in 'str' by 'replace'
-		\param sample string to search in \p str
-		\param replace string which replace \p sample in \p str
-		\return \p int - number of occurrances of 'sample' in 'str'
+		\param sample string to search in str
+		\param replace string which replaces sample in str
+		\return number of occurrances of 'sample' in 'str'
 		@code
 		string test = "If the length of the C string in source is less than num, only the content up to the terminating null-character is copied.";
 		Print(test);
@@ -341,7 +338,7 @@ sealed class string
 	Splits string into array of strings separated by `delimiter`.
 	\param delimiter Strings separator
 	\param[out] outTokens Array with strings
-	\param removeEmptyEntries If true removes empty strings from outTokens array
+	\param skipEmptyEntries If true removes empty strings from outTokens array
 	\code
 		array<string> strs = {};
 		string line = "The;quick;brown;fox;jumps;over;the;;dog;";
@@ -362,12 +359,32 @@ sealed class string
 		>> 'dog'
 	\endcode
 	*/
-	proto external void Split(string delimiter, notnull out array<string> outTokens, bool removeEmptyEntries);
+	proto external void Split(string delimiter, notnull out array<string> outTokens, bool skipEmptyEntries);
+	/*
+	Joins the given \a tokens into a single string separated by \a separator.
+
+	The tokens are concatenated in order, inserting \a separator between adjacent
+	tokens.
+
+	\param separator The separator inserted between tokens.
+	\param tokens A non-null array of tokens to join.
+	\param skipEmptyEntries Controls whether empty tokens are included or skipped.
+	\return The joined string.
+
+	\code
+	array<string> fruits = {"apple", "banana", "", "orange"};
+	string list = string.Join(", ", fruits, true);
+	Print(list);
+
+	>> list = 'apple, banana, orange'
+	\endcode
+	*/
+	static proto string Join(string separator, notnull array<string> tokens, bool skipEmptyEntries);
 	static proto string ToString(void var, bool type = false, bool name = false, bool quotes = true);
 	/*!
 	\brief Gets n-th character from string
 		\param index character index
-		\return \p string character on index-th position in string
+		\return character on index-th position in string
 		@code
 			string str = "Hello World";
 			Print( str[4] ); // Print( str.Get(4) );

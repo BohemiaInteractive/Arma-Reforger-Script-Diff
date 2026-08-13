@@ -27,6 +27,10 @@ class SCR_AutotestPrinter
 	//------------------------------------------------------------------------------------------------
 	void PrintTestSuiteEpilogue(TestSuite suite)
 	{
+		// TODO missing GetFailure() API on TestSuite
+		//if (suite.GetFailure())
+			//Log(string.Format("\t⛔ %1: SUITE FAILURE", test.GetName()));
+		
 		Log("/############################################");
 		Log("");
 	}
@@ -96,16 +100,20 @@ class SCR_AutotestPrinter
 	//------------------------------------------------------------------------------------------------
 	//! Writes test result to console and autotest log files.
 	//! If test is failed or verbose logging is enabled will additionaly print test log output for debugging.
-	void LogTestCaseResult(TestBase test)
-	{
-		TestResultBase result = test.GetResult();
-		if (!result)
+	void LogTestCaseResult(SCR_AutotestCaseBase test)
+	{		
+		TestFailureBase failure = test.GetFailure();
+		if (!failure)
 		{
-			Log(string.Format("\t⚠️ %1: NO_RESULT", test.GetName()), forceFileWrite: true);
+			Log(string.Format("\t✅ %1: SUCCESS", test.GetName()), forceFileWrite: true);
+			if (m_bLogVerbose)
+			{
+				DumpTestBuffer(test.Type());
+			}
 			return;
 		}
 
-		if (TestResultTimeout.Cast(result))
+		if (TestResultTimeout.Cast(failure))
 		{
 			Log(string.Format("\t⌚ %1: FAILURE", test.GetName()), forceFileWrite: true);
 			Log(string.Format("\t\tFailure reason: %1", "timeout"), forceFileWrite: true);
@@ -113,27 +121,16 @@ class SCR_AutotestPrinter
 			return;
 		}
 
-		if (result.Failure())
-		{
-			Log(string.Format("\t⛔ %1: FAILURE", test.GetName()), forceFileWrite: true);
-			
-			string failureReason = result.FailureText();
-			SCR_AutotestResult autotestResult = SCR_AutotestResult.Cast(result);
-			if (autotestResult)
-				failureReason = autotestResult.GetFailureReason();
+		Log(string.Format("\t⛔ %1: FAILURE", test.GetName()), forceFileWrite: true);
+		
+		string failureReason = failure.FailureText();
+		SCR_AutotestFailure autotestFailure = SCR_AutotestFailure.Cast(failure);
+		if (autotestFailure)
+			failureReason = autotestFailure.GetFailureReason();
 
-			Log(string.Format("\t\tFailure reason: %1", failureReason), forceFileWrite: true);
-			
-			DumpTestBuffer(test.Type());
-		}
-		else
-		{
-			Log(string.Format("\t✅ %1: SUCCESS", test.GetName()), forceFileWrite: true);
-			if (m_bLogVerbose)
-			{
-				DumpTestBuffer(test.Type());
-			}
-		}
+		Log(string.Format("\t\tFailure reason: %1", failureReason), forceFileWrite: true);	
+
+		DumpTestBuffer(test.Type());
 	}
 
 	//------------------------------------------------------------------------------------------------

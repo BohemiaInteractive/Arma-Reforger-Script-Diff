@@ -79,12 +79,14 @@ class RplComponent: BaseRplComponent
 	\param x Position of observer.
 	\param z Position of observer.
 	*/
+	[Obsolete("Use ObserversSystem.InsertObserverMP instead!")]
 	static proto void InsertMPObserver(RplIdentity identity, float x, float z);
 	/*
 	Remove MPObserver for identity.
 
 	\param identity Client connection.
 	*/
+	[Obsolete("Use ObserversSystem.RemoveObserverMP instead!")]
 	static proto void RemoveMPObserver(RplIdentity identity);
 }
 

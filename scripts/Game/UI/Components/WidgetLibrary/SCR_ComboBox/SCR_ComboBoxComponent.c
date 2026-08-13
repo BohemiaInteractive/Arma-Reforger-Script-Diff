@@ -239,7 +239,7 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool SetCurrentItem(int i, bool playSound = false, bool animate = false)
+	override bool SetCurrentItem(int i, bool playSound = false, bool animate = false, bool invokeOnChanged = true)
 	{
 		bool result = super.SetCurrentItem(i, playSound, animate);
 		UpdateName();

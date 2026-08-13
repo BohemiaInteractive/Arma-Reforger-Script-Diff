@@ -38,9 +38,9 @@ class PlayerManager
 	Requests player name cache update.
 	Invokes OnPlayerNameCacheUpdate when finished.
 	*/
-	static proto bool RequestPlayerNameCacheUpdate(array<string> aIdentityIDs);
+	static proto bool RequestPlayerNameCacheUpdate(array<UUID> aIdentityIDs);
 	//! Get name of the player with the given identity. Empty if not connected and not in player name cache.
-	proto external owned string GetPlayerNameByIdentity(string playerIdentity);
+	proto external owned string GetPlayerNameByIdentity(UUID playerIdentity);
 	//! Returns the entity controlled by a given player
 	proto external IEntity GetPlayerControlledEntity(int iPlayerId);
 	/*!

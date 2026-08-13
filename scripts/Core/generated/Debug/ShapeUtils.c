@@ -20,7 +20,7 @@ sealed class ShapeUtils
 	\param lodIndex			Level of detail index to be used for the shape.
 	\param meshName			The name of the mesh.
 	\param shapeColor		The color of the shape
-	\param flags				Flags that determine the properties and behavior of the shape.
+	\param flags		Flags that determine the properties and behavior of the shape.
 	*/
 	static proto ref Shape CreateShapeFromMesh(notnull MeshObject mo, int lodIndex, string meshName, int shapeColor, ShapeFlags flags);
 	/*!
@@ -29,7 +29,7 @@ sealed class ShapeUtils
 	\param lodIndex			Level of detail index to be used for the shape.
 	\param meshIndex		Index of the mesh.
 	\param shapeColor		The color of the shape
-	\param flags				Flags that determine the properties and behavior of the shape.
+	\param flags		Flags that determine the properties and behavior of the shape.
 	*/
 	static proto ref Shape CreateShapeFromMeshByIndex(notnull MeshObject mo, int lodIndex, int meshIndex, int shapeColor, ShapeFlags flags);
 	/*!
@@ -38,7 +38,7 @@ sealed class ShapeUtils
 	\param lodIndex			Level of detail index to be used for the shape.
 	\param meshName			Name of the mesh.
 	\param shapeColor		The color of the shape
-	\param flags				Flags that determine the properties and behavior of the shape.
+	\param flags		Flags that determine the properties and behavior of the shape.
 	*/
 	static proto ref Shape CreateShapeFromXOB(ResourceName xobFilePath, int lodIndex, string meshName, int shapeColor, ShapeFlags flags);
 }

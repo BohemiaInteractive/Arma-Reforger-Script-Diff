@@ -1692,9 +1692,12 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 	override protected void OnDamage(notnull BaseDamageContext damageContext)
 	{
 		super.OnDamage(damageContext);
+
+		if (damageContext.damageType == EDamageType.TRUE && damageContext.instigator.GetInstigatorType() == InstigatorType.INSTIGATOR_GM)
+			HandlePassengerDamage(damageContext.damageType, damageContext.damageValue, damageContext.instigator);
 		
 		if (damageContext.damageType == EDamageType.EXPLOSIVE && damageContext.struckHitZone == GetDefaultHitZone())
-			HandlePassengerDamage(EDamageType.EXPLOSIVE, damageContext.damageValue, damageContext.instigator);
+			HandlePassengerDamage(damageContext.damageType, damageContext.damageValue, damageContext.instigator);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1738,7 +1741,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		if (damageType == EDamageType.COLLISION)
 		{
 			// Damage occupants of the car that experienced a collision
-			m_CompartmentManager.DamageOccupants(damage, EDamageType.COLLISION, instigator);
+			m_CompartmentManager.DamageOccupants(damage, damageType, instigator);
 			// if a collision was capable of causing more than minCollisionEjectionDamageThreshold damage, try to eject passengers
 
  			if (damage > GetMinCollisionDamageEjectionThreshold())
@@ -1752,6 +1755,15 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 			// An explosion of minExplosionEjectionDamageThreshold or larger is capable of ejecting occupants.
 			if (damage > GetMinExplosionDamageEjectionThreshold())
 				m_CompartmentManager.EjectRandomOccupants(GetExplosionDamageEjectionChance(), true);
+			
+			return;
+		}
+		
+		if (damageType == EDamageType.TRUE && instigator.GetInstigatorType() == InstigatorType.INSTIGATOR_GM)
+		{
+			m_CompartmentManager.DamageOccupants(damage, damageType, instigator);
+			if (damage > GetMinExplosionDamageEjectionThreshold())
+				m_CompartmentManager.EjectRandomOccupants(1, true);
 			
 			return;
 		}

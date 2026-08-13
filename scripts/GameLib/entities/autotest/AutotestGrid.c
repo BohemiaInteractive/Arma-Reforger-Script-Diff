@@ -178,7 +178,7 @@ class AutotestGrid: GenericEntity
 	
 	override void EOnInit(IEntity owner) //!EntityEvent.INIT
 	{
-		m_camera = g_Game.FindEntity(m_cameraEntityName);
+		m_camera = GetWorld().FindEntityByName(m_cameraEntityName);
 
 		if (!m_camera)
 		{
@@ -189,7 +189,7 @@ class AutotestGrid: GenericEntity
 			m_camera.SetOrigin(Vector(1269.97, 32.95, 1156.55));
 		}
 		
-		m_MotionZoneInstance = MotionZone.Cast(g_Game.FindEntity(m_MotionZone));
+		m_MotionZoneInstance = MotionZone.Cast(GetWorld().FindEntityByName(m_MotionZone));
 		
 		if (m_MotionZoneInstance != null)
 		{

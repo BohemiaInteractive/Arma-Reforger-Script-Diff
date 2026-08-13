@@ -103,6 +103,20 @@ class SCR_GameModeEditor : SCR_BaseGameMode
 		OnPlayerTerminated(playerId);
 		super.OnPlayerDeleted(playerId, player);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnPlayerEntityChanged_S(int playerId, IEntity previousEntity, IEntity newEntity)
+	{
+		super.OnPlayerEntityChanged_S(playerId, previousEntity, newEntity);
+		if (!previousEntity && !newEntity)
+			return; // Not Entity was availble yet
+
+		// Skip auto init if player controlled any entity
+		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
+		if (editorManager && editorManager.GetPlayerID() == playerId)
+			editorManager.SetAutoInit(false);
+	}
+
 	override void OnGameStart()
 	{
 		super.OnGameStart();

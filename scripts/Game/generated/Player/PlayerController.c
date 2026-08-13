@@ -52,7 +52,7 @@ class PlayerController: GenericController
 	proto external bool HasRole(EPlayerRole role);
 	proto external bool SetCharacterCameraRenderActive(bool active);
 	proto external int GetPlayerId();
-	proto external int GetRplIdentity();
+	proto external RplIdentity GetRplIdentity();
 	proto external GamepadIOHandlerComponent GetGamepadIOHandlerComponent();
 	proto external void ResetGamepadIOHandler();
 	proto external void ApplyGamepadEffectImmediate(GamepadEffect effect);

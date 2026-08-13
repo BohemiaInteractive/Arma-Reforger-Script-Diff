@@ -3,7 +3,7 @@
 class SCR_RemoveAIGroupCommand : SCR_BaseGroupCommand
 {
 	//------------------------------------------------------------------------------------------------
-	override bool Execute(IEntity cursorTarget, IEntity target, vector targetPosition, int playerID, bool isClient)
+	override bool Execute(IEntity cursorTarget, IEntity groupEnt, vector targetPosition, int playerID, bool isClient)
 	{
 		if (isClient)
 		{
@@ -24,7 +24,7 @@ class SCR_RemoveAIGroupCommand : SCR_BaseGroupCommand
 			return false;
 		
 		if (GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(character) == 0)
-			groupController.RequestRemoveAgent(character, playerID);
+			groupController.RequestRemoveAgent(character);
 		
 		return true;
 	}

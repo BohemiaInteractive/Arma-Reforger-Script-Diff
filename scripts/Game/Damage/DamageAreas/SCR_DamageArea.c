@@ -112,6 +112,9 @@ class SCR_DamageArea : DamageArea
 	//! \param[in] entity
 	protected bool IsEffectApplied(notnull IEntity entity)
 	{
+		if(!m_DamageEffect)
+			return false;
+		
 		const SCR_ExtendedDamageManagerComponent damageManager = SCR_ExtendedDamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(entity));
 		array<ref SCR_PersistentDamageEffect> damageEffects = {};
 		if (damageManager.FindAllDamageEffectsOfType(GetDamageEffect().Type(), damageEffects) < 1)
@@ -132,6 +135,9 @@ class SCR_DamageArea : DamageArea
 	//! \param[in] entity
 	protected void AddEffect(notnull IEntity entity)
 	{
+		if(!m_DamageEffect)
+			return;
+		
 		const SCR_ExtendedDamageManagerComponent damageManager = SCR_ExtendedDamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(entity));
 		if (!damageManager)
 			return;
@@ -163,6 +169,9 @@ class SCR_DamageArea : DamageArea
 	//! \param[in] entity	
 	protected void RemoveEffect(notnull IEntity entity)
 	{
+		if(!m_DamageEffect)
+			return;
+		
 		const SCR_ExtendedDamageManagerComponent dmgMgr = SCR_ExtendedDamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(entity));
 		if (!dmgMgr)
 			return;

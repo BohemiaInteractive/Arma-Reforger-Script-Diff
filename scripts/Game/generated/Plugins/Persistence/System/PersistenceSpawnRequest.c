@@ -9,6 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
+//! Request to spawn entities or scripted states from the data known to persistence system.
 class PersistenceSpawnRequest: Managed
 {
 	PersistenceCollection Collection;

@@ -88,7 +88,7 @@ class CharacterInputContext
 	proto external void SetVehicleDoorInfoIndex(int val);
 	proto external int GetVehicleDoorInfoIndex();
 	proto external void SetVehicleTeleportTarget(vector target[]);
-	proto external vector[] GetVehicleTeleportTarget();
+	proto external void GetVehicleTeleportTarget(out vector mat[4]);
 	proto external void SetVehicleSteering(float val);
 	proto external float GetVehicleSteering();
 	proto external void SetVehicleThrottle(float val);

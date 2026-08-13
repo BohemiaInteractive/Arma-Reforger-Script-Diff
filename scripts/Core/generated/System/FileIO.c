@@ -18,7 +18,7 @@ sealed class FileIO
 
 	/*!
 	Opens a File.
-	\param name Name of a file to open. You can use filesystem prefixes. For accessing profile dir use '$profile', e.g. '$profile:myFileName.txt'.
+	\param name Name of a file to open (you can use filesystem prefixes; for accessing profile dir use '$profile', e.g. '$profile:myFileName.txt')
 	\param mode Constants FileMode.WRITE, FileMode.READ or FileMode.APPEND flag can be used
 	\return file handle ID or 0 if fails
 	*/

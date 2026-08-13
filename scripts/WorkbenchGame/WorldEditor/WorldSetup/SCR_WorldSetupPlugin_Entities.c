@@ -5,14 +5,14 @@
 	description: "Set up world's Entities",
 	shortcut: "", // "Ctrl+T", same as Script Editor Template
 	wbModules: { "WorldEditor" },
-	awesomeFontCode: 0xF0AC)] // F7A2 is already used
+	awesomeFontCode: 0xF0AC)] // 0xF7A2 is already used
 class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 {
 	[Attribute(defvalue: DEFAULT_CONFIG, params: "conf class=SCR_WorldSetupPluginConfig")]
 	protected ResourceName m_sConfig;
 
 	[Attribute(defvalue: "0", desc: "Create Prefab's child from the provided one in the selected addon and use it instead of using the provided Prefab directly")]
-	protected bool m_bCopyPrefabsToAddon;
+	protected bool m_bInheritPrefabInAddon;
 
 	[Attribute(uiwidget: UIWidgets.ComboBox, desc: "Addon in which the Prefabs will be copied (if copied)", enums: SCR_ParamEnumArray.FromAddons(titleFormat: 2, hideCoreModules: 2))]
 	protected int m_iAddon;
@@ -22,7 +22,7 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 	protected ref set<string> m_ClassNames = new set<string>();
 	protected ref set<string> m_Prefabs = new set<string>();
 
-	protected static const ResourceName DEFAULT_CONFIG = "{1DD914C62E44CDEB}Configs/Workbench/WorldEditor/WorldSetupPlugin/0_MinimalWorldSetup.conf";
+	protected static const ResourceName DEFAULT_CONFIG = "{5928717946656EBD}Configs/Workbench/WorldEditor/WorldSetupPlugin/1_BaseWorldSetup.conf";
 
 	//------------------------------------------------------------------------------------------------
 	protected override void Run()
@@ -52,7 +52,7 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
 		if (!worldEditorAPI)
 		{
-			Print("Could not obtain worldEditorAPI", LogLevel.ERROR);
+			Print("Cannot obtain worldEditorAPI", LogLevel.ERROR);
 			return false;
 		}
 
@@ -84,7 +84,7 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 		Resource resource = Resource.Load(m_sConfig);
 		if (!resource.IsValid())
 		{
-			Print("Could not load config", LogLevel.ERROR);
+			Print("Cannot load config", LogLevel.ERROR);
 			return false;
 		}
 
@@ -124,6 +124,7 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 		{
 			CreateEntityFromEntry(entry);
 		}
+
 		SCR_WorldEditorToolHelper.EndEntityAction(manageEditAction);
 
 		Print("Config applied successfully", LogLevel.NORMAL);
@@ -162,7 +163,7 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 		ResourceName prefab = entry.m_sPrefab;
 
 		// duplicate the Prefab
-		if (m_bCopyPrefabsToAddon)
+		if (m_bInheritPrefabInAddon)
 			prefab = CreatePrefabChildInAddon(prefab, m_iAddon);
 
 		if (prefab.IsEmpty())

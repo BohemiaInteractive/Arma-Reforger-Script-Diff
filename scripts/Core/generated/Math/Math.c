@@ -79,6 +79,24 @@ sealed class Math
 	*/
 	static proto float Max(float x, float y);
 	/*!
+	Returns larger of two values `x` and `y`.
+	\code
+		Print( Math.MaxInt(5, 2) );
+
+		>> 5
+	\endcode
+	*/
+	static proto int MaxInt(int x, int y);
+	/*!
+	Returns lower of two values `x` and `y`.
+	\code
+		Print( Math.MinInt(5, 2) );
+
+		>> 2
+	\endcode
+	*/
+	static proto int MinInt(int x, int y);
+	/*!
 	Returns sine of an angle specified in radians.
 	\code
 		Print( Math.Sin(0.785398) ); // (45)
@@ -131,8 +149,8 @@ sealed class Math
 
 		>> 0.785398
 	\endcode
-	\param y Y coordinate on the circle.
-	\param x X coordinate on the circle.
+	\param y Y coordinate on the circle
+	\param x X coordinate on the circle
 	*/
 	static proto float Atan2(float y, float x);
 	/*!
@@ -225,10 +243,10 @@ sealed class Math
 		val = EnfMath.SmoothCD(val, varTarget, valVelocity, 0.3, 1000, dt);
 	\endcode
 	\param val actual value
-	\param target value we are reaching for -> Target
-	\param velocity Acceleration/deceleration rate, need to be zeroed when filter is about to be reset.
-	\param smoothTime Smoothing parameter, 0.1 .. 0.4 are reasonable values, 0.1 is sharp, 0.4 is very smooth.
-	\param maxVelocity Maximum value change when multiplied by `dt`.
+	\param target value we are reaching for
+	\param velocity Acceleration/deceleration rate (need to be zeroed when filter is about to be reset)
+	\param smoothTime Smoothing parameter (0.1 .. 0.4 are reasonable values, 0.1 is sharp, 0.4 is very smooth)
+	\param maxVelocity Maximum value change when multiplied by `dt`
 	\param dt Time delta.
 	\return smoothed/filtered value
 	*/
@@ -243,11 +261,11 @@ sealed class Math
 	/*!
 	Does spring smoothing function.
 	\param val actual value
-	\param target value we are reaching for -> Target
-	\param velocity kind of memory and actual accel/decel rate, need to be zeroed when filter is about to be reset
+	\param target value we are reaching for
+	\param velocity kind of memory and actual accel/decel rate (need to be zeroed when filter is about to be reset)
 	\param spring spring amount 0...1
 	\param damping damper amount 0...1
-	\param dt delta time
+	\param dt delta time.
 	*/
 	static proto float SmoothSpring(float val, float target, inout float velocity, float spring, float damping, float dt);
 	/*!

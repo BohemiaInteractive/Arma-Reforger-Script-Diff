@@ -40,6 +40,9 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	[Attribute(defvalue: "{000CD338713F2B5A}Prefabs/AI/Groups/Group_Base.et", category: "Common")]
 	ResourceName m_sGroupPrefab;
 
+	[Attribute("2", UIWidgets.ComboBox, "Importance tier for the spawned group. Default HIGH - spawn requests defer rather than drop when the AI budget is full. Promote to CRITICAL for mission-defining groups.", enums: ParamEnumArray.FromEnum(SCR_EAISpawnImportance), category: "Common")]
+	protected SCR_EAISpawnImportance m_eImportance;
+
 	ref array<AIWaypoint> m_aWaypoints = {};
 	SCR_AIGroup m_AIGroup;
 	ref array<ResourceName> m_aAIPrefabsForRemoval = {};
@@ -268,6 +271,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 			m_AIGroup.SetMaxUnitsToSpawn(iUnitsToSpawn);
 		}
 
+		m_AIGroup.SetImportance(m_eImportance);
 		m_AIGroup.GetOnAgentRemoved().Insert(DecreaseAIGroupMemberCount);
 
 		if (m_bGroupWasNull)
@@ -278,8 +282,17 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 		}
 
 		m_AIGroup.SetMemberSpawnDelay(200);
+
+		// Determine expected member count, respecting any cap set by balance code above.
+		int slots = 0;
+		if (m_AIGroup.m_aUnitPrefabSlots)
+			slots = m_AIGroup.m_aUnitPrefabSlots.Count();
+		int expected = Math.Min(slots, m_AIGroup.GetMaxUnitsToSpawn());
+		m_AIGroup.SetNumberOfMembersToSpawn(expected);
+
 		m_AIGroup.GetOnAgentAdded().Insert(OnAgentAdded);
-		m_AIGroup.SpawnUnits();
+		// Use queue-based spawning so navmesh-not-loaded tiles are retried.
+		m_AIGroup.RequestSpawn(expected);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -627,6 +640,10 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	{
 		if (group.GetAgentsCount() == 0)
 		{
+			// Dormant groups are intentionally empty; don't terminate the scenario slot on them.
+			if (group.IsDormant())
+				return;
+
 			if (m_bEnableRepeatedSpawn)
 			{
 				if (m_iRepeatedSpawnNumber != -1 && m_iRepeatedSpawnNumber <= 0)

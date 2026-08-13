@@ -201,13 +201,8 @@ class SCR_WorldEditorToolHelper
 	//! \return true if terrain has been generated, false if not or no terrain entity is present
 	static bool HasTerrainMesh()
 	{
-		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
-		if (!worldEditor)
-			return false;
-
 		vector min, max;
-		worldEditor.GetTerrainBounds(min, max);
-		return max != vector.Zero || min != vector.Zero;
+		return GetTerrainBounds(min, max) && (max != vector.Zero || min != vector.Zero);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -240,10 +235,22 @@ class SCR_WorldEditorToolHelper
 	//! \return terrain's absolute dimensions (using terrain bounds)
 	static vector GetTerrainDimensions()
 	{
-		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
 		vector min, max;
-		worldEditor.GetTerrainBounds(min, max);
+		GetTerrainBounds(min, max);
 		return max - min;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] mins
+	//! \param[out] maxs
+	//! \return true on success, false otherwise (e.g no World Editor available)
+	static bool GetTerrainBounds(out vector min, out vector max)
+	{
+		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
+		if (!worldEditor)
+			return false;
+
+		return worldEditor.GetTerrainBounds(min, max);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -251,9 +258,8 @@ class SCR_WorldEditorToolHelper
 	//! \param[out] maxY
 	static void GetTerrainMinMaxY(out float minY, out float maxY)
 	{
-		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
 		vector min, max;
-		worldEditor.GetTerrainBounds(min, max);
+		GetTerrainBounds(min, max);
 
 		minY = min[1];
 		maxY = max[1];

@@ -30,6 +30,10 @@ class GraphNodeView: Managed
 	proto external vector PosPixelsToScene(vector pixelPos);
 	//! Takes into account view, convert from pixel space to scene space
 	proto external vector SizePixelsToScene(vector pixelPos);
+	proto external void SetPrimaryGridColor(notnull Color primaryGridColor);
+	proto external ref Color GetPrimaryGridColor();
+	proto external void SetSecondaryGridColor(notnull Color secondaryGridColor);
+	proto external ref Color GetSecondaryGridColor();
 }
 
 /*!

@@ -103,9 +103,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	//!
 	//! \param[in] playerID
 	//! \param[in] groupID
-	void PlayerRequestToJoinPrivateGroup(int playerID, RplId groupID)
+	void PlayerRequestToJoinPrivateGroup(RplId groupID)
 	{		
-		Rpc(RPC_PlayerRequestToJoinPrivateGroup, playerID, groupID);	
+		Rpc(RPC_PlayerRequestToJoinPrivateGroup, groupID);	
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -306,13 +306,8 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupManager)
 			return false;
-
-		//get controller from owner, because if this is used on server we cannot get local players player controller :wesmart:
-		SCR_PlayerController controller = SCR_PlayerController.Cast(GetOwner());
-		if (!controller)
-			return false;
 		
-		int playerID = controller.GetPlayerId();
+		int playerID = GetPlayerID();
 		SCR_AIGroup playerGroup = groupManager.GetPlayerGroup(playerID);
 		if (!playerGroup)
 			return false;
@@ -385,7 +380,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		group.GetOnJoinPrivateGroupConfirm().Invoke(DEFAULT_COLOR); // Saphyr TODO: temporary before definition from art dept.
 		
 		if (accept)
-			Rpc(RPC_ConfirmJoinPrivateGroup,playerID, group.GetGroupID());
+			Rpc(RPC_ConfirmJoinPrivateGroup, playerID, group.GetGroupID());
 		else
 			Rpc(RPC_CancelJoinPrivateGroup, playerID, group.GetGroupID());
 	}
@@ -523,15 +518,15 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//!
-	//! \param[in] playerID
 	//! \param[in] groupID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RPC_PlayerRequestToJoinPrivateGroup(int playerID, RplId groupID)
+	void RPC_PlayerRequestToJoinPrivateGroup(RplId groupID)
 	{	
 		SCR_AIGroup group = SCR_AIGroup.Cast(Replication.FindItem(groupID));
 		if (!group)
 			return;
-		
+
+		int playerID = GetPlayerID();
 		group.AddRequester(playerID);		
 		SCR_NotificationsComponent.SendToPlayer(group.GetLeaderID(), ENotification.GROUPS_REQUEST_JOIN_PRIVATE_GROUP, playerID);
 	}
@@ -603,7 +598,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (m_OnInviteReceived)
 			m_OnInviteReceived.Invoke(groupID, fromPlayerID);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] playerID
@@ -629,6 +624,10 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
 		SCR_AIGroup group = groupsManager.FindGroup(m_iGroupID);
 		if (!group)
+			return;
+
+		Faction groupFaction = group.GetFaction();
+		if (!groupFaction || groupFaction != SCR_FactionManager.SGetPlayerFaction(playerID))
 			return;
 
 		SCR_GroupRolePresetConfig groupPreset = groupsManager.FindGroupRolePresetConfig(group.GetFaction(), group.GetGroupRole());
@@ -820,6 +819,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		SCR_AIGroup group;
 		if (!InitiateComponents(playerID, groupsManager, playerGroupController, group))
 			return;
+
+		if (!group.IsPlayerLeader(GetPlayerID()))
+			return;
 		
 		groupsManager.SetPrivateGroup(group.GetGroupID(), isPrivate);
 	}
@@ -880,11 +882,20 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!groupsManager)
 			return;
 		
+		SCR_AIGroup group = groupsManager.FindGroup(groupID);
+		if (!group)
+			return;
+
+		Faction groupFaction = group.GetFaction();
+		int playerId = GetPlayerID();
+		if (!groupFaction || groupFaction != SCR_FactionManager.SGetPlayerFaction(playerId))
+			return;
+
 		int groupIDAfter;
 		if (m_iGroupID != -1)
-			groupIDAfter = groupsManager.MovePlayerToGroup(GetPlayerID(), m_iGroupID, groupID);
+			groupIDAfter = groupsManager.MovePlayerToGroup(playerId, m_iGroupID, groupID);
 		else
-			groupIDAfter = groupsManager.AddPlayerToGroup(groupID, GetPlayerID());
+			groupIDAfter = groupsManager.AddPlayerToGroup(groupID, playerId);
 		
 		if (groupIDAfter != m_iGroupID)
 		{
@@ -920,6 +931,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!group)
 			return;
 		
+		if (!group.IsPlayerLeader(GetPlayerID()))
+			return;
+
 		m_iGroupID = -1;
 		group.RemovePlayer(playerID);
 		if (group.GetPlayerCount() == 0) // is the group still nonempty?
@@ -951,6 +965,12 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		SCR_AIGroup group = groupsManager.FindGroup(groupID);
 		if (!group || group.GetPlayerCount() > 0)
 			return;
+
+		if (!group.IsPlayerLeader(GetPlayerID()))
+		{
+			PrintFormat("WARNING: SCR_PlayerControllerGroupComponent.RpcAsk_RemoveGroup: Player %1 tried to remove group of which he is not the leader, as leader is %2", SCR_PlayerIdentityUtils.GetPlayerLogInfo(GetPlayerID()), SCR_PlayerIdentityUtils.GetPlayerLogInfo(group.GetLeaderID()), level: LogLevel.WARNING);
+			return;
+		}
 
 		groupsManager.DeleteGroupDelayed(group);
 	}
@@ -1103,16 +1123,15 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	void RequestSetCustomGroupDescription(int groupID, string desc)
 	{
 		SCR_AIGroup.DeLocalizeText(desc);
-		Rpc(RPC_AskSetCustomDescription, groupID, desc, SCR_PlayerController.GetLocalPlayerId());
+		Rpc(RPC_AskSetCustomDescription, groupID, desc);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] groupID
 	//! \param[in] desc
-	//! \param[in] authorID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RPC_AskSetCustomDescription(int groupID, string desc, int authorID)
+	void RPC_AskSetCustomDescription(int groupID, string desc)
 	{
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupsManager)
@@ -1121,49 +1140,15 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		SCR_AIGroup group = groupsManager.FindGroup(groupID);
 		if (!group)
 			return;
-		
+
+		int authorID = GetPlayerID();
+		if (!group.IsPlayerLeader(authorID))
+		{
+			PrintFormat("WARNING: SCR_PlayerControllerGroupComponent.RPC_AskSetCustomDescription: Player %1 tried to change group description while not being a leader, as leader is %2", SCR_PlayerIdentityUtils.GetPlayerLogInfo(authorID), SCR_PlayerIdentityUtils.GetPlayerLogInfo(group.GetLeaderID()), level: LogLevel.WARNING);
+			return;
+		}
+
 		group.SetCustomDescription(desc, authorID);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] groupID
-	//! \param[in] maxMembers
-	void RequestSetGroupMaxMembers(int groupID, int maxMembers)
-	{
-		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
-		if (!groupsManager)
-			return;
-		
-		SCR_AIGroup group = groupsManager.FindGroup(groupID);
-		if (!group)
-			return;
-		
-		if (group.GetMaxMembers() == maxMembers)
-			return;
-		
-		Rpc(RPC_AskSetGroupMaxMembers, groupID, maxMembers);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] groupID
-	//! \param[in] maxMembers
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RPC_AskSetGroupMaxMembers(int groupID, int maxMembers)
-	{
-		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
-		if (!groupsManager)
-			return;
-		
-		SCR_AIGroup group = groupsManager.FindGroup(groupID);
-		if (!group)
-			return;
-		
-		if (group.GetMaxMembers() == maxMembers)
-			return;
-		
-		group.SetMaxMembers(maxMembers);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1190,36 +1175,12 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//!
-	//! \param[in] isAllowed
-	void RequestSetNewGroupsAllowed(bool isAllowed)
-	{
-		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
-		if (!groupsManager || isAllowed == groupsManager.GetNewGroupsAllowed())
-			return;
-		
-		Rpc(RPC_AskSetNewGroupsAllowed, isAllowed);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] isAllowed
-	void RequestSetCanPlayersChangeAttributes(bool isAllowed)
-	{
-		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
-		if (!groupsManager || isAllowed == groupsManager.GetNewGroupsAllowed())
-			return;
-		
-		Rpc(RPC_AskSetCanPlayersChangeAttributes, isAllowed);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
 	//! \param[in] groupID
 	//! \param[in] name
 	void RequestSetCustomGroupName(int groupID, string name)
 	{
 		SCR_AIGroup.DeLocalizeText(name);
-		Rpc(RPC_AskSetCustomName, groupID, name, SCR_PlayerController.GetLocalPlayerId());
+		Rpc(RPC_AskSetCustomName, groupID, name);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1228,7 +1189,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	//! \param[in] name
 	//! \param[in] authorID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RPC_AskSetCustomName(int groupID, string name, int authorID)
+	void RPC_AskSetCustomName(int groupID, string name)
 	{
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupsManager)
@@ -1237,34 +1198,15 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		SCR_AIGroup group = groupsManager.FindGroup(groupID);
 		if (!group)
 			return;
-		
+
+		int authorID = GetPlayerID();
+		if (!group.IsPlayerLeader(authorID))
+		{
+			PrintFormat("WARNING: SCR_PlayerControllerGroupComponent.RPC_AskSetCustomName: Player %1 tried to set group custom name while not being a leader, as leader is %2", SCR_PlayerIdentityUtils.GetPlayerLogInfo(authorID), SCR_PlayerIdentityUtils.GetPlayerLogInfo(group.GetLeaderID()), level: LogLevel.WARNING);
+			return;
+		}
+
 		group.SetCustomName(name, authorID);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] isAllowed
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RPC_AskSetNewGroupsAllowed(bool isAllowed)
-	{
-		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
-		if (!groupsManager || isAllowed == groupsManager.GetNewGroupsAllowed())
-			return;
-		
-		groupsManager.SetNewGroupsAllowed(isAllowed);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] isAllowed
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RPC_AskSetCanPlayersChangeAttributes(bool isAllowed)
-	{
-		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
-		if (!groupsManager || isAllowed == groupsManager.GetNewGroupsAllowed())
-			return;
-		
-		groupsManager.SetCanPlayersChangeAttributes(isAllowed);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1281,6 +1223,12 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		SCR_AIGroup group = groupsManager.FindGroup(groupID);
 		if (!group)
 			return;
+
+		if (!group.IsPlayerLeader(GetPlayerID()))
+		{
+			PrintFormat("WARNING: SCR_PlayerControllerGroupComponent.RPC_AskSetFrequency: Player %1 tried to change group radio frequency while not being a leader, as leader is %2", SCR_PlayerIdentityUtils.GetPlayerLogInfo(GetPlayerID()), SCR_PlayerIdentityUtils.GetPlayerLogInfo(group.GetLeaderID()), level: LogLevel.WARNING);
+			return;
+		}
 		
 		if (frequency < 0 || group.GetRadioFrequency() == frequency)
 			return;
@@ -1337,6 +1285,12 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		SCR_AIGroup group = groupsManager.FindGroup(groupID);
 		if (!group)
 			return;
+
+		if (!group.IsPlayerLeader(GetPlayerID()))
+		{
+			PrintFormat("WARNING: SCR_PlayerControllerGroupComponent.RPC_AskSetGroupFlag: Player %1 tried to change group flag while not being the leader, as leader is %2", SCR_PlayerIdentityUtils.GetPlayerLogInfo(GetPlayerID()), SCR_PlayerIdentityUtils.GetPlayerLogInfo(group.GetLeaderID()), level: LogLevel.WARNING);
+			return;
+		}
 		
 		group.SetGroupFlag(flagIndex, isFromImageset);		
 	}
@@ -1376,7 +1330,15 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupManager)
 			return;
-		
+
+		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(rplCompID));
+		if (!rplComp)
+			return;
+
+		SCR_AIGroup group = SCR_AIGroup.Cast(rplComp.GetEntity());
+		if (!group || !group.IsPlayerLeader(GetPlayerID()))
+			return;
+
 		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
 		if (!commandingManager)
 			return;
@@ -1385,7 +1347,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!groupEntity)
 			return;
 		
-		SCR_AIGroup group = SCR_AIGroup.Cast(groupEntity);
+		group = SCR_AIGroup.Cast(groupEntity);
 		if (!group)
 			return;
 		
@@ -1427,13 +1389,13 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	//!
 	//! \param[in] character
 	//! \param[in] playerID
-	void RequestAddAIAgent(SCR_ChimeraCharacter character, int playerID)
+	void RequestAddAIAgent(SCR_ChimeraCharacter character)
 	{
-		RplComponent rplComp = RplComponent.Cast(character.FindComponent(RplComponent));
+		RplComponent rplComp = character.GetRplComponent();
 		if (!rplComp)
 			return;
 		
-		Rpc(RPC_AskAddAIAgent, rplComp.Id(), playerID);
+		Rpc(RPC_AskAddAIAgent, rplComp.Id());
 	} 
 	
 	//------------------------------------------------------------------------------------------------
@@ -1441,11 +1403,12 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	//! \param[in] characterID
 	//! \param[in] playerID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RPC_AskAddAIAgent(RplId characterID, int playerID)
+	void RPC_AskAddAIAgent(RplId characterID)
 	{
 		SCR_GroupsManagerComponent groupsManager;
 		SCR_PlayerControllerGroupComponent playerGroupController;
 		SCR_AIGroup group;
+		int playerID = GetPlayerID();
 		if (!InitiateComponents(playerID, groupsManager, playerGroupController, group))
 			return;
 		
@@ -1467,7 +1430,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	//! Should be only called on the server
 	//! \param[in] controlledEntity
 	//! \param[in] group
-	void AddAIToSlaveGroup(notnull IEntity controlledEntity, SCR_AIGroup group)
+	void AddAIToSlaveGroup(notnull SCR_ChimeraCharacter controlledEntity, SCR_AIGroup group)
 	{
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupManager)
@@ -1488,7 +1451,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 			return;
 		
 		groupCompID = rplComp.Id();
-		rplComp = RplComponent.Cast(controlledEntity.FindComponent(RplComponent)); 
+		rplComp = controlledEntity.GetRplComponent(); 
 		characterCompID = rplComp.Id();
 		
 		groupManager.AskAddAiMemberToGroup(groupCompID, characterCompID);
@@ -1499,11 +1462,12 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	//! \param[in] characterID
 	//! \param[in] playerID
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RPC_AskRemoveAIAgent(RplId characterID, int playerID)
+	void RPC_AskRemoveAIAgent(RplId characterID,)
 	{
 		SCR_GroupsManagerComponent groupsManager;
 		SCR_PlayerControllerGroupComponent playerGroupController;
 		SCR_AIGroup group;
+		int playerID = GetPlayerID();
 		if (!InitiateComponents(playerID, groupsManager, playerGroupController, group))
 			return;
 		
@@ -1525,7 +1489,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	//! Should be only called on the server
 	//! \param[in] controlledEntity
 	//! \param[in] group
-	void RemoveAiFromSlaveGroup(notnull IEntity controlledEntity, SCR_AIGroup group)
+	void RemoveAiFromSlaveGroup(notnull SCR_ChimeraCharacter controlledEntity, SCR_AIGroup group)
 	{
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupManager)
@@ -1544,7 +1508,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		RplId groupCompID, characterCompID;
 		RplComponent rplComp = RplComponent.Cast(slaveGroup.FindComponent(RplComponent));
 		groupCompID = rplComp.Id();
-		rplComp = RplComponent.Cast(controlledEntity.FindComponent(RplComponent)); 
+		rplComp = controlledEntity.GetRplComponent();
 		if (!rplComp)
 			return;
 		
@@ -1557,13 +1521,13 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	//!
 	//! \param[in] character
 	//! \param[in] playerID
-	void RequestRemoveAgent(SCR_ChimeraCharacter character, int playerID)
+	void RequestRemoveAgent(notnull SCR_ChimeraCharacter character)
 	{
-		RplComponent rplComp = RplComponent.Cast(character.FindComponent(RplComponent));
+		RplComponent rplComp = character.GetRplComponent();
 		if (!rplComp)
 			return;
 		
-		Rpc(RPC_AskRemoveAIAgent, rplComp.Id(), playerID);
+		Rpc(RPC_AskRemoveAIAgent, rplComp.Id());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1598,6 +1562,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!playerGroup)
 			return;
 
+		if (!playerGroup.IsPlayerLeader(GetPlayerID()))
+			return;
+
 		if (playerGroup.GetLeaderID() == playerID)
 			return;
 
@@ -1607,19 +1574,23 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void SetRallyPoint(notnull SCR_MilitaryBaseComponent base, bool force)
 	{
-		Rpc(RpcAsk_SetRallyPoint, GetPlayerID(), base.GetCallsign(), force);
+		Rpc(RpcAsk_SetRallyPoint, base.GetCallsign(), force);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_SetRallyPoint(int playerID, int callsignId, bool force)
+	protected void RpcAsk_SetRallyPoint(int callsignId, bool force)
 	{
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupsManager)
 			return;
 
+		int playerID = GetPlayerID();
 		SCR_AIGroup playerGroup = groupsManager.GetPlayerGroup(playerID);
 		if (!playerGroup)
+			return;
+
+		if (!playerGroup.IsPlayerLeader(playerID))
 			return;
 
 		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.Cast(GetGame().GetGameMode());
@@ -1640,19 +1611,20 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void RemoveRallyPoint()
 	{
-		Rpc(RpcAsk_RemoveRallyPoint, GetPlayerID());
+		Rpc(RpcAsk_RemoveRallyPoint);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_RemoveRallyPoint(int playerID)
+	protected void RpcAsk_RemoveRallyPoint()
 	{
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupsManager)
 			return;
 
+		int playerID = GetPlayerID();
 		SCR_AIGroup playerGroup = groupsManager.GetPlayerGroup(playerID);
-		if (!playerGroup)
+		if (!playerGroup || !playerGroup.IsPlayerLeader(playerID))
 			return;
 
 		playerGroup.RemoveRallyPoint();
@@ -1681,6 +1653,14 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		
 		SCR_TransportUnitComponent transportUnit = SCR_TransportUnitComponent.Cast(Replication.FindItem(rplIdTransportUnitComponent));
 		if (!transportUnit)
+			return;
+
+		SCR_AIGroup transportGroup = SCR_AIGroup.Cast(transportUnit.GetOwner());
+		if (!transportGroup)
+			return;
+
+		SCR_Faction faction = SCR_Faction.Cast(transportGroup.GetFaction());
+		if (!faction || !faction.IsPlayerCommander(GetPlayerID()))
 			return;
 
 		SCR_CampaignMilitaryBaseComponent base = SCR_GameModeCampaign.GetInstance().GetBaseManager().FindBaseByCallsign(baseCallsign);

@@ -335,6 +335,7 @@ class SCR_PooledListComponent : SCR_ScriptedWidgetComponent
 		
 		// testing calculations 
 		float pageSizeBaseOnEntry = m_fEntryPxHeight * m_iPageEntriesCount;
+		
 
 		m_wSizeOffsetTop.SetHeightOverride(m_fPagePxHeight * page);
 		m_wSizeOffsetBottom.SetHeightOverride(offset);
@@ -476,12 +477,16 @@ class SCR_PooledListComponent : SCR_ScriptedWidgetComponent
 			// Entry height in px - with bottom padding 
 			float x;
 			m_aEntryWidgets[0].GetScreenSize(x, m_fEntryPxHeight);
+			m_fEntryPxHeight = GetGame().GetWorkspace().DPIUnscale(m_fEntryPxHeight);
+			x = GetGame().GetWorkspace().DPIUnscale(x);
 	
 			// Page height in px
 			m_wPage0.GetScreenSize(x, m_fPagePxHeight);
+			m_fPagePxHeight = GetGame().GetWorkspace().DPIUnscale(m_fPagePxHeight);
 	
 			// Height of view int px - how much can user see in px
 			m_wRoot.GetScreenSize(x, m_fViewPxHeight);
+			m_fViewPxHeight = GetGame().GetWorkspace().DPIUnscale(m_fViewPxHeight);
 			
 			// Check measures
 			if (m_fEntryPxHeight != 0)

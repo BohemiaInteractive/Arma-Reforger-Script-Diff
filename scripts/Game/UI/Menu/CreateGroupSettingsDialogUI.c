@@ -38,6 +38,9 @@ class CreateGroupSettingsDialogUI : DialogUI
 		m_GroupsManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!m_GroupsManager)
 			return;
+		
+		//temp debug remove
+		result = UserPrivilegeResult.NOT_ALLOWED;
 
 		Widget w = GetRootWidget();
 		if (!w)
@@ -107,31 +110,29 @@ class CreateGroupSettingsDialogUI : DialogUI
 		if (!groupController)
 			return;
 
-		if (m_bHasPrivilege)
+
+		bool isPrivate = m_GroupStatus.GetCurrentIndex() == SCR_EGroupPrivacy.PRIVATE;
+
+		array<SCR_EGroupRole> configuredGroupRoles = m_GroupsManager.GetConfiguredGroupRoles(m_LocalFaction, true);
+
+		int currentIndex = m_GroupRole.GetCurrentIndex();
+		if (configuredGroupRoles.IsIndexValid(currentIndex) && availableGroupRoles.Contains(configuredGroupRoles[currentIndex]))
 		{
-			bool isPrivate = m_GroupStatus.GetCurrentIndex() == SCR_EGroupPrivacy.PRIVATE;
-
-			array<SCR_EGroupRole> configuredGroupRoles = m_GroupsManager.GetConfiguredGroupRoles(m_LocalFaction, true);
-
-			int currentIndex = m_GroupRole.GetCurrentIndex();
-			if (configuredGroupRoles.IsIndexValid(currentIndex) && availableGroupRoles.Contains(configuredGroupRoles[currentIndex]))
-			{
-				bool joinGroup = !SCR_FactionCommanderPlayerComponent.IsLocalPlayerCommander();
-				
-				string groupName = string.Empty;
-				if (m_GroupName.IsEnabled())
-					groupName = m_GroupName.GetValue();
-				
-				string groupDescription = string.Empty;
-				if (m_GroupDescription.IsEnabled())
-					groupDescription = m_GroupDescription.GetValue();
-				
-				groupController.RequestCreateGroupWithData(configuredGroupRoles[currentIndex], isPrivate, groupName, groupDescription, joinGroup, true);
-			}
-			else
-			{
-				Print("Cannot create group because is not available", LogLevel.WARNING);
-			}
+			bool joinGroup = !SCR_FactionCommanderPlayerComponent.IsLocalPlayerCommander();
+			
+			string groupName = string.Empty;
+			if (m_GroupName.IsEnabled())
+				groupName = m_GroupName.GetValue();
+			
+			string groupDescription = string.Empty;
+			if (m_GroupDescription.IsEnabled())
+				groupDescription = m_GroupDescription.GetValue();
+			
+			groupController.RequestCreateGroupWithData(configuredGroupRoles[currentIndex], isPrivate, groupName, groupDescription, joinGroup, true);
+		}
+		else
+		{
+			Print("Cannot create group because is not available", LogLevel.WARNING);
 		}
 
 		Close();

@@ -21,6 +21,10 @@ class SCR_HealSupportStationAction : SCR_BaseDamageHealSupportStationAction
 	[Attribute("0", desc: "If this heal action will also heal the blood hitzone")]
 	protected bool m_bHealBloodHitzone;
 
+	[Attribute(defvalue: "2", desc: "Value by which action progress is going to be multiplied to speed it up when character is a medic", params: "0.1 inf 0.01")]
+	protected float m_fQualifiedPersonnelBonusUseSpeedFactor;
+
+	protected bool m_bIsQualified;
 	protected HitZone m_BloodHitZone;
 
 	//------------------------------------------------------------------------------------------------
@@ -124,6 +128,47 @@ class SCR_HealSupportStationAction : SCR_BaseDamageHealSupportStationAction
 	override bool IsStabilizedReason()
 	{
 		return m_eCannotPerformReason == ESupportStationReasonInvalid.HEAL_MAX_HEALABLE_HEALTH_REACHED_EMERGENCY;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnActionStart(IEntity pUserEntity)
+	{
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(pUserEntity);
+		m_bIsQualified = character && (character.HasRole(GetQualifiedRoles()) || character.HasLabel(GetQualifiedLabels()));
+
+		super.OnActionStart(pUserEntity);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Override this if you would want to change which squad roles should make a character qualified
+	protected array<SCR_EGroupRole> GetQualifiedRoles()
+	{
+		return {SCR_EGroupRole.MEDIC};
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Override this if you would want to change which character label should make a character qualified
+	protected array<EEditableEntityLabel> GetQualifiedLabels()
+	{
+		return {EEditableEntityLabel.ROLE_MEDIC};
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override float GetActionProgressScript(float fProgress, float timeSlice)
+	{
+		if (m_bIsQualified)
+			timeSlice *= m_fQualifiedPersonnelBonusUseSpeedFactor;
+
+		return super.GetActionProgressScript(fProgress, timeSlice);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override bool LoopActionUpdate(float timeSlice)
+	{
+		if (m_bIsQualified)
+			timeSlice *= m_fQualifiedPersonnelBonusUseSpeedFactor;
+
+		return super.LoopActionUpdate(timeSlice);
 	}
 	
 	//------------------------------------------------------------------------------------------------

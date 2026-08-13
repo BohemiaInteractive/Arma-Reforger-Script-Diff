@@ -263,4 +263,49 @@ modded class PlayerNameInputController
 }
 //! [World controller example - modding]
 
+//! [World diagnostics example - OnDiag]
+class DebugSystem : WorldSystem
+{
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		super.InitInfo(outInfo);
+		outInfo
+			.SetAbstract(false);
+	}
+
+	// Overriden OnDiag
+	override event protected void OnDiag(float timeSlice)
+	{
+		Print("Hello World from Diagnostics!");
+	}
+}
+//! [World diagnostics example - OnDiag]
+
+//! [World diagnostics example - binding bool diag]
+enum DiagMenus 
+{
+	MY_DIAG_BOOL
+}
+
+modded class DebugSystem : WorldSystem
+{
+	override static void InitInfo(WorldSystemInfo outInfo)
+	{
+		super.InitInfo(outInfo);
+		outInfo
+			.SetAbstract(false)
+			.SetBoundDiag(DiagMenus.MY_DIAG_BOOL); // <-- Bind it to the world system
+	}
+}
+//! [World diagnostics example - binding bool diag]
+
+bool RegisterWorldSystemDocsDiags()
+{
+	// Register the Diag
+	DiagMenu.RegisterBool(DiagMenus.MY_DIAG_BOOL, "", "Enable Debug Diag", "Systems");
+	return true;
+}
+
+bool RegisterAtStartup = RegisterWorldSystemDocsDiags();
+
 #endif

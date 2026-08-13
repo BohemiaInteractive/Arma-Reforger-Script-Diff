@@ -234,6 +234,10 @@ class TextureTypes
 
 		ref TextureType NTOType = new TextureType(m_Types, "_nto");
 		NTOType.CopyFrom(NMOType);
+		
+		ref TextureType BNType = new TextureType(m_Types, "_bn");
+		BNType.CopyFrom(NMOType);
+		
 
 		//--------------------------------------------------------------------
 		ref TextureType VFXType = new TextureType(m_Types, "_vfx");
@@ -256,6 +260,9 @@ class TextureTypes
 		MASKQType.AddBaseConfig("PS5", "{64796311C22F7B3C}configs/ResourceTypes/PS5/TextureMask.conf");
 		MASKQType.AddBaseConfig("HEADLESS", "{0B025DFAF55852CD}configs/ResourceTypes/HEADLESS/TextureMask.conf");
 
+		ref TextureType TIType = new TextureType(m_Types, "_ti");
+		TIType.CopyFrom(MASKQType);
+		
 		ref TextureType MASK1QType = new TextureType(m_Types, "_mask1");
 		MASK1QType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.RedHQCompression);
 		MASK1QType.AddBaseConfig("PC", "{51097E750D3FCE37}configs/ResourceTypes/PC/TextureMask1.conf");

@@ -3,9 +3,9 @@
 class SCR_FollowGroupCommand : SCR_WaypointGroupCommand
 {
 	//------------------------------------------------------------------------------------------------
-	override bool Execute(IEntity cursorTarget, IEntity target, vector targetPosition, int playerID, bool isClient)
+	override bool Execute(IEntity cursorTarget, IEntity groupEnt, vector targetPosition, int playerID, bool isClient)
 	{
-		if (!m_sWaypointPrefab || !target || !targetPosition)
+		if (m_sWaypointPrefab.IsEmpty() || !groupEnt)
 			return false;
 		
 		if (isClient)
@@ -14,7 +14,7 @@ class SCR_FollowGroupCommand : SCR_WaypointGroupCommand
 			return true;
 		}
 		
-		SCR_AIGroup slaveGroup = SCR_AIGroup.Cast(target);
+		SCR_AIGroup slaveGroup = SCR_AIGroup.Cast(groupEnt);
 		if (!slaveGroup)
 			return false;
 		

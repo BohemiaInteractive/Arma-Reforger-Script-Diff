@@ -39,6 +39,9 @@ class SCR_MissionHeaderCampaign : SCR_MissionHeader
 	[Attribute("0", UIWidgets.CheckBox, desc: "When enabled, random caches will spawn around the map")]
 	bool m_bSpawnRandomCaches;
 	
+	[Attribute("3", desc: "Number of needed characters before a base starts contesting, -1 disables contesting entirely.", params: "-1 inf")]
+	int m_iContestingCharactersNeeded;
+
 	[Attribute("0", UIWidgets.CheckBox, desc: "When enabled, are allowed to have a Randomized Spawnpoint")]
 	bool m_bRandomSpawnpointsEnabled;
 	

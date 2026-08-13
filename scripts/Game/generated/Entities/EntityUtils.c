@@ -38,6 +38,14 @@ sealed class EntityUtils
 	\return true, if ancestor-descendant relationship was valid. Else false, in which case outResult is undefined.
 	*/
 	static proto bool GetChildToAncestorTransform(IEntity child, IEntity ancestor, out vector result[4]);
+	/*!
+	Returns the prefab name of the entity
+	*/
+	static proto ResourceName GetEntityPrefabName(IEntity entity);
+	/*!
+	Set the VObject based on the MeshObject component in the prefab (retains its properties)
+	*/
+	static proto void SetVObjectFromPrefab(IEntity entity, ResourceName prefabName);
 }
 
 /*!

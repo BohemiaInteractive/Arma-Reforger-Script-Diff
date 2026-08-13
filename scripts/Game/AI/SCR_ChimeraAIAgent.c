@@ -27,9 +27,7 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 			if (m_CharacterController)
 				m_CharacterController.m_OnLifeStateChanged.Insert(OnLifeStateChanged);
 		}
-			
-		GetGame().GetCallqueue().CallLater(EnsureAILimit, 1, false);
-		
+
 		m_FactionAffiliationComponent = FactionAffiliationComponent.Cast(controlledEntity.FindComponent(FactionAffiliationComponent));
 		m_InfoComponent = SCR_AIInfoComponent.Cast(FindComponent(SCR_AIInfoComponent));
 		m_UtilityComponent = SCR_AIUtilityComponent.Cast(FindComponent(SCR_AIUtilityComponent));
@@ -43,23 +41,6 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void EnsureAILimit()
-	{
-		auto aiWorld = GetGame().GetAIWorld();
-		if (!aiWorld)
-			return;
-		
-		if (aiWorld.CanLimitedAIBeAdded())
-			return;
-		
-		IEntity controlledEntity = GetControlledEntity();
-		if (!EntityUtils.IsPlayer(controlledEntity) && !IsPlayerPending_S()) // Ensure that pending players can spawn
-		{
-			SCR_EntityHelper.DeleteEntityAndChildren(controlledEntity);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------	
 	protected void SendWoundedMsg()
 	{
 		IEntity controlled = GetControlledEntity();

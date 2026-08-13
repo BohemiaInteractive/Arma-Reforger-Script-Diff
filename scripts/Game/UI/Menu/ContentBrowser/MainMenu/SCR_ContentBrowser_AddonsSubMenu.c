@@ -75,6 +75,10 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	protected int m_iCurrentPage;
 	protected int m_iPageCount;
 
+	//Dynamic column and row counts
+	protected int m_iColumns;
+	protected int m_iRows;
+
 	// Navigation buttons
 	protected SCR_InputButtonComponent m_NavDetails;
 	protected SCR_InputButtonComponent m_NavPrimary;
@@ -103,9 +107,6 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		super.OnTabCreate(menuRoot, buttonsLayout, index);
 
 		InitWidgets();
-
-		// Init main parts of the layout
-		GridScreen_Init();
 
 		// Try to load filters
 		m_Widgets.m_FilterPanelComponent.TryLoad();
@@ -240,6 +241,9 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 				OnConnected();
 		}
 		
+		if (m_iColumns == 0)
+			DisplayPage(); //This is necessary because GetScreenSize always returns 0 on OnMenuShow/OnTabShow
+
 		super.OnMenuUpdate(tDelta);
 	}
 
@@ -343,26 +347,41 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		// When we request page, we also must clean the grid and side panel
 		GridScreen_Clear();
 		m_Widgets.m_AddonDetailsPanelComponent.SetWorkshopItem(null);
-		SetPanelsMode(showEmptyPanel: m_bFirstPage, messagePresetTag: MESSAGE_TAG_LOADING);
+
+		if (GetGame().GetWorkspace().GetUserDPIScale() <= 1.0)
+			SetPanelsMode(showEmptyPanel: m_bFirstPage, messagePresetTag: MESSAGE_TAG_LOADING);
+		else
+			SetPanelsMode(false, messagePresetTag: MESSAGE_TAG_LOADING);
 
 		m_iCurrentPage = pageId;
 		m_bFailToLoad = false;
 
+		DisplayPage();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void DisplayPage()
+	{
+		CalculateGridLayout();
+
+		if (m_iColumns == 0)
+			return;
+
 		switch (m_eMode)
 		{
 			case EContentBrowserAddonsSubMenuMode.MODE_EXTERNAL_ITEM_ARRAY:
-				DisplayExternalItems(pageId);
+				DisplayExternalItems(m_iCurrentPage);
 				break;
 			
 			case EContentBrowserAddonsSubMenuMode.MODE_ONLINE:
 				if (m_bFirstLoad)
-					RequestOnlinePageUnfiltered(pageId);
+					RequestOnlinePageUnfiltered(m_iCurrentPage);
 				else
-					RequestOnlinePage(pageId);
+					RequestOnlinePage(m_iCurrentPage);
 				break;
 			
 			case EContentBrowserAddonsSubMenuMode.MODE_OFFLINE:
-				DisplayOfflineItems(pageId);
+				DisplayOfflineItems(m_iCurrentPage);
 				break;
 		}
 	}
@@ -382,8 +401,8 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		if (!m_GetAssetListParamsDefault)
 			m_GetAssetListParamsDefault = new SCR_ContentBrowser_GetAssetListParams(this, true);
 
-		m_GetAssetListParamsDefault.limit = GRID_N_ROWS * GRID_N_COLUMNS;
-		m_GetAssetListParamsDefault.offset = pageId * GRID_N_ROWS * GRID_N_COLUMNS;
+		m_GetAssetListParamsDefault.limit = m_iRows * m_iColumns;
+		m_GetAssetListParamsDefault.offset = pageId * m_iRows * m_iColumns;
 
 		m_WorkshopApi.RequestPage(m_PageCallbackItemsTotal, m_GetAssetListParamsDefault, m_bClearCacheAtNextRequest);
 	}
@@ -392,7 +411,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	//! Requests a filtered page from backend to get the actual items to display
 	protected void RequestOnlinePage(int pageId)
 	{
-		m_WorkshopApi.SetPageSize(GRID_N_COLUMNS * GRID_N_ROWS);
+		m_WorkshopApi.SetPageSize(m_iColumns * m_iRows);
 
 		if (!m_PageCallback)
 		{
@@ -404,8 +423,8 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		if (!m_GetAssetListParams)
 			m_GetAssetListParams = new SCR_ContentBrowser_GetAssetListParams(this);
 
-		m_GetAssetListParams.limit = GRID_N_ROWS * GRID_N_COLUMNS;
-		m_GetAssetListParams.offset = pageId * GRID_N_ROWS * GRID_N_COLUMNS;
+		m_GetAssetListParams.limit = m_iRows * m_iColumns;
+		m_GetAssetListParams.offset = pageId * m_iRows * m_iColumns;
 		m_GetAssetListParams.type = m_sOnlinePageType;
 
 		//m_GetAssetListParams.PackToFile("$profile:GetAssetList.json");
@@ -422,13 +441,13 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	//! Selects items from the externally provided array and shows them on grid, only makes sense in external array mode
 	protected void DisplayExternalItems(int pageId)
 	{
-		m_WorkshopApi.SetPageSize(GRID_N_COLUMNS * GRID_N_ROWS);
+		m_WorkshopApi.SetPageSize(m_iColumns * m_iRows);
 
 		array<ref SCR_WorkshopItem> itemsAtPage = SelectItemsAtPage(m_aExternalItems, pageId);
 
 		// Filtering is disabled in this mode
 		// Update page count
-		float nItemsPerPage = GRID_N_ROWS * GRID_N_COLUMNS;
+		float nItemsPerPage = m_iRows * m_iColumns;
 		m_iPageCount = Math.Ceil(m_aExternalItems.Count() / nItemsPerPage);
 
 		SetPanelsMode(false);
@@ -446,7 +465,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void DisplayOfflineItems(int pageId)
 	{
-		m_WorkshopApi.SetPageSize(GRID_N_COLUMNS * GRID_N_ROWS);
+		m_WorkshopApi.SetPageSize(m_iColumns * m_iRows);
 
 		// Get offline items from API
 		array<WorkshopItem> rawWorkshopItems = {};
@@ -519,7 +538,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		}
 
 		// Update page count
-		m_iPageCount = Math.Ceil(itemsSorted.Count() / (GRID_N_ROWS * GRID_N_COLUMNS));
+		m_iPageCount = Math.Ceil(itemsSorted.Count() / (m_iRows * m_iColumns));
 
 		// Display items
 		SetPanelsMode(false, m_Widgets.m_FilterPanelComponent.AnyFilterButtonsVisible(), string.Empty, m_bFirstPage);
@@ -537,10 +556,10 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	// Here we create tile widgets in advance.
 	protected void GridScreen_Init()
 	{
-		for (int i = 0; i < GRID_N_COLUMNS * GRID_N_ROWS; i++)
+		for (int i = 0; i < m_iColumns * m_iRows; i++)
 		{
-			int colId = i % GRID_N_COLUMNS;
-			int rowId = i / GRID_N_COLUMNS;
+			int colId = i % m_iColumns;
+			int rowId = i / m_iColumns;
 
 			// Create tile widgets
 			Widget w = GetGame().GetWorkspace().CreateWidgets(LAYOUT_GRID_TILE, m_Widgets.m_Grid);
@@ -578,7 +597,13 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		// Clear old items
 		GridScreen_Clear();
 
-		int nItems = Math.ClampInt(items.Count(), 0, GRID_N_COLUMNS * GRID_N_ROWS);
+		CalculateGridLayout();
+
+		// Init workshop tile widgets
+		if (m_Widgets.m_Grid.GetChildren() == null)
+			GridScreen_Init();
+
+		int nItems = Math.ClampInt(items.Count(), 0, m_iColumns * m_iRows);
 
 		for (int i = 0; i < nItems; i++)
 		{
@@ -719,6 +744,33 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected void CalculateGridLayout()
+	{
+		if (m_iColumns > 0 && m_iRows > 0)
+			return;
+
+		//If the DPI scale is equal or less than 1, we can use the default column and rows amounts
+		if (GetGame().GetWorkspace().GetUserDPIScale() <= 1.0)
+		{
+			m_iColumns = GRID_N_COLUMNS;
+			m_iRows = GRID_N_ROWS;
+			return;
+		}
+
+		float gridWidth, gridHeight;
+		m_Widgets.m_Grid.GetScreenSize(gridWidth, gridHeight);
+
+		if (gridWidth <= 0 || gridHeight <= 0)
+			return;
+
+		float tileWidth = GetGame().GetWorkspace().DPIScale(SCR_ContentBrowserTileComponent.GetTileWidth());
+		float tileHeight = GetGame().GetWorkspace().DPIScale(SCR_ContentBrowserTileComponent.GetTileHeight());
+
+		m_iColumns = Math.Max(1, Math.Floor(gridWidth / tileWidth));
+		m_iRows = Math.Max(1, Math.Floor(gridHeight / tileHeight));
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Returns true if cursor over a given widget
 	protected bool IsWidgetUnderCursor(Widget w)
 	{
@@ -729,6 +781,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 				return true;
 			wCurrent = wCurrent.GetParent();
 		}
+		
 		return false;
 	}
 
@@ -738,7 +791,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	{
 		array<ref SCR_WorkshopItem> itemsOut = {};
 
-		float nItemsPerPage = GRID_N_ROWS * GRID_N_COLUMNS;
+		float nItemsPerPage = m_iRows * m_iColumns;
 		int nPages = Math.Ceil(items.Count() / nItemsPerPage);
 
 		if (pageId < 0 || pageId >= nPages)
@@ -1344,6 +1397,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 					selectedWorkshopTags.Insert(filterEntryTag.GetWorkshopTag());
 			}
 		}
+		
 		SCR_FilterCategory catType = filterSet.FindFilterCategory("type");
 		foreach (SCR_FilterEntry f : catType.GetFilters())
 		{
@@ -1351,6 +1405,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 			if (filterEntryTag && filterEntryTag.GetSelected())
 				selectedWorkshopTags.Insert(filterEntryTag.GetWorkshopTag());
 		}
+		
 		// If any tag filter is selected, but not all of them (because it would be same as selecting none)
 		if (!selectedWorkshopTags.IsEmpty() && selectedWorkshopTags.Count() != catType.GetFilters().Count())
 		{
@@ -1360,6 +1415,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 				if (item.GetWorkshopItem().HasAnyTag(selectedWorkshopTags))
 					itemsFilteredByTags.Insert(item);
 			}
+			
 			arraysFromCategories.Insert(itemsFilteredByTags);
 		}
 
@@ -1444,7 +1500,6 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 			foundInAll = true;
 			for (int arrayId = 1; arrayId < arrays.Count(); arrayId++)
 			{
-
 				if (!arrays[arrayId].Contains(item))
 				{
 					foundInAll = false;
@@ -1570,6 +1625,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 				if (filter.GetSelected(defaultValues))
 					typeTags.Insert(filter.m_sInternalName);
 			}
+			
 			tagArraysInclude.Insert(typeTags);
 		}
 
@@ -1583,6 +1639,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 				if (filter.GetSelected(defaultValues))
 					typeTags.Insert(filter.m_sInternalName);
 			}
+			
 			tagArraysInclude.Insert(typeTags);
 		}
 
@@ -1607,6 +1664,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 					{
 						params.ItemString(tag);					// <- Array element
 					}
+					
 					params.EndArray();							// <- End tags array
 				}
 
@@ -1620,6 +1678,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 				{
 					params.ItemString(tag);						// <- Array element
 				}
+				
 				params.EndArray();								// <- End "exclude" array
 			}
 

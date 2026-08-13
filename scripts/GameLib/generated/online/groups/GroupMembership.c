@@ -20,13 +20,8 @@ sealed class GroupMembership: Managed
 	proto external int GetId();
 	//! Returns nickname of the member
 	proto external string GetNickname();
-	//! Returns time when the membership was created
-	proto external int CreatedAt();
 	//! Returns Role of this member
 	proto external GroupMemberRole GetRole();
-	//! Fetch details of this membership from backend
-	[Obsolete("All details needed are already fetched by GroupMemberCatalogue.")]
-	proto external void RequestDetails(notnull BackendCallback pCallback);
 	//! Kick the member from the Group. Marks the membership as no longer valid
 	proto external void Kick(notnull BackendCallback pCallback);
 	/*!

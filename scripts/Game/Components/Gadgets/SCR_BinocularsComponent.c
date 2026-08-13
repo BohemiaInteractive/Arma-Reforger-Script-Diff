@@ -76,6 +76,35 @@ class SCR_BinocularsComponent : SCR_GadgetComponent
 		super.ToggleFocused(enable);
 		
 		SetZoomedView(enable);
+
+		if (enable && m_Optic)
+		{
+			ActivateGadgetUpdate();
+			if (m_CharacterOwner == SCR_PlayerController.GetLocalControlledEntity())
+				m_Optic.UpdateFarObserver(m_CharacterOwner, 0);
+		}
+		else
+		{
+			DeactivateGadgetUpdate();
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void Update(float timeSlice)
+	{
+		if (!m_Optic)
+			return;
+
+		if (m_iMode != EGadgetMode.IN_HAND)
+			return;
+
+		if (!SCR_PlayerController.s_pLocalPlayerController || !SCR_PlayerController.s_pLocalPlayerController.GetIsBinocularsZoomed())
+			return;
+
+		if (m_CharacterOwner != SCR_PlayerController.GetLocalControlledEntity())
+			return;
+
+		m_Optic.UpdateFarObserver(m_CharacterOwner, timeSlice);
 	}
 	
 	//------------------------------------------------------------------------------------------------

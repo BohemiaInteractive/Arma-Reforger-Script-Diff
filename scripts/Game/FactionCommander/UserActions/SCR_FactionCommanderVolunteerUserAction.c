@@ -1,5 +1,8 @@
 class SCR_FactionCommanderVolunteerUserAction : ScriptedUserAction
 {
+	[Attribute("", UIWidgets.EditBox, "Faction key that may use this action. Leave empty to allow any faction (legacy behavior).")]
+	protected string m_sFactionKey;
+
 	protected bool m_bInProgress;
 	protected bool m_bIsCommanderRoleEnabled;
 
@@ -60,9 +63,16 @@ class SCR_FactionCommanderVolunteerUserAction : ScriptedUserAction
 		if (m_bInProgress || !m_VotingManager || ! m_SignupComponent || !m_bIsCommanderRoleEnabled)
 			return false;
 
-		SCR_Faction playerFaction = SCR_Faction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(user);
+		if (!character)
+			return false;
+
+		SCR_Faction playerFaction = SCR_Faction.Cast(character.GetFaction());
 
 		if (!playerFaction || !playerFaction.IsCommanderAvailable())
+			return false;
+
+		if (!m_sFactionKey.IsEmpty() && playerFaction.GetFactionKey() != m_sFactionKey)
 			return false;
 
 		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(user);
@@ -182,7 +192,11 @@ class SCR_FactionCommanderVolunteerUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	protected void OnVotingStart(EVotingType type, int value)
 	{
-		if (type == EVotingType.COMMANDER && value == GetGame().GetPlayerController().GetPlayerId())
+		if (type != EVotingType.COMMANDER)
+			return;
+
+		PlayerController pc = GetGame().GetPlayerController();
+		if (pc && value == pc.GetPlayerId())
 			m_bInProgress = true;
 	}
 
@@ -192,8 +206,22 @@ class SCR_FactionCommanderVolunteerUserAction : ScriptedUserAction
 		if (type != EVotingType.COMMANDER)
 			return;
 
-		int playerID = GetGame().GetPlayerController().GetPlayerId();
+		PlayerController pc = GetGame().GetPlayerController();
+		if (!pc)
+			return;
+
+		int playerID = pc.GetPlayerId();
 		if (winner == playerID || value == playerID)
 			m_bInProgress = false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void ~SCR_FactionCommanderVolunteerUserAction()
+	{
+		if (m_VotingManager)
+		{
+			m_VotingManager.GetOnVotingStart().Remove(OnVotingStart);
+			m_VotingManager.GetOnVotingEnd().Remove(OnVotingEnd);
+		}
 	}
 }

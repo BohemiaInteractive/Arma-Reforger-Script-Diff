@@ -1,5 +1,4 @@
 
-
 class SCR_AutotestHelper
 {
 	//------------------------------------------------------------------------------------------------
@@ -27,12 +26,33 @@ class SCR_AutotestHelper
 		}
 	}
 	
+	static void SwitchToGameMode()
+	{
+#ifdef WORKBENCH
+		if (!GetGame().InPlayMode())
+		{
+			WorldEditor we = Workbench.GetModule(WorldEditor);
+			if (!we.GetApi())
+			{
+				Print("WorldEditor is not open!", LogLevel.ERROR);
+				return;
+			}
+
+			we.SwitchToGameMode();
+		}
+#endif
+	}
+	
 	// OVERRIDE in game project
+
+	//------------------------------------------------------------------------------------------------
+	//! Game specific way to set world time multiplier if supported.
+	static void WorldSetTimeCoef(int coef);
 
 	//------------------------------------------------------------------------------------------------
 	//! Game specific default world for testing.
 	static ResourceName GetDefaultWorld();
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Game specific default systems config for testing.
 	static ResourceName GetDefaultSystemsConfig();

@@ -18,6 +18,8 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 	
 	protected SCR_EBaseCaptureState m_eCaptureState;
 	protected ref OnCaptureStateChangedInvoker m_OnCaptureStateChanged;
+	
+	protected int m_iMinimumCharactersForContest = 3;
 
 	[RplProp()]
 	protected int m_iContestingFactionsCount;
@@ -34,12 +36,24 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override protected void OnQueryFinished(BaseGameTriggerEntity trigger)
+	override protected void EvaluatePrevailingFaction()
 	{
-		m_bQueryFinished = true;
+		if (!m_TagSystem)
+			return;
+
+		float delay;
+
+		// Switch to idle mode when nobody is in the area
+		// Evaluation for all bases should not be done at once, randomize the timer a bit
+		if (m_bCharacterPresent)
+			delay = Math.RandomFloatInclusive(TRIGGER_CHECK_PERIOD_ACTIVE, TRIGGER_CHECK_PERIOD_ACTIVE + (TRIGGER_CHECK_PERIOD_ACTIVE * 0.2));
+		else
+			delay = Math.RandomFloatInclusive(TRIGGER_CHECK_PERIOD_IDLE, TRIGGER_CHECK_PERIOD_IDLE + (TRIGGER_CHECK_PERIOD_IDLE * 0.2));
+
+		GetGame().GetCallqueue().CallLater(EvaluatePrevailingFaction, delay * 1000);
 
 		array<IEntity> presentEntities = {};
-		int presentEntitiesCount = m_Trigger.GetEntitiesInside(presentEntities);
+		int presentEntitiesCount = m_TagSystem.GetTagsInRange(presentEntities, GetOwner().GetOrigin(), m_iRadius, ETagCategory.Character);
 		m_bCharacterPresent = presentEntitiesCount != 0;
 
 		// Nobody is here, no need to evaluate
@@ -98,7 +112,7 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 			if (m_bCapturingRequiresPlayer && playerManager.GetPlayerIdFromControlledEntity(entity) != 0)
 				factionsPlayerPresence.Set(evaluatedEntityFaction, true);
 		}
-
+		
 		int totalFactionPresenceCount, maxFactionPresence;
 		m_iContestingFactionsCount = 0;
 		bool multipleMaxPresence;
@@ -117,7 +131,7 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 				multipleMaxPresence = true;
 			}
 		}
-		
+
 		Replication.BumpMe();
 
 		SCR_Faction defenderFaction = m_Base.GetCampaignFaction();
@@ -137,13 +151,8 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 		{
 			if (faction == defenderFaction)
 			{
-				// if its equal, it will go to the defenders!
-				if (presence * 2 >= totalFactionPresenceCount)
-				{
-					prevailingFaction = null;
-					curSeizingCharacters = 0;
-				}
-				else
+				// we need at least 3 enemies to contest the base, but they can be from different teams.
+				if (presence * 2 < totalFactionPresenceCount && totalFactionPresenceCount - presence >= m_iMinimumCharactersForContest && m_iMinimumCharactersForContest != -1)
 				{
 					// no cap < contested < capture in terms of relevancy so we make sure contested doesnt overwrite capture state
 					if (baseCaptureState == SCR_EBaseCaptureState.NONE)
@@ -163,9 +172,13 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 				if (m_bCapturingRequiresPlayer && !factionsPlayerPresence.Get(faction))
 					continue;
 
-				// Needs to have superior presence in the area, and radio coverage to be able to capture
+				// Cannot capture if not the superior presence
+				if (presence != maxFactionPresence || multipleMaxPresence)
+					continue;
+
+				// Needs radio coverage (if applicable) to be able to capture
 				cFaction = SCR_CampaignFaction.Cast(faction);
-				if (presence == maxFactionPresence && !multipleMaxPresence && cFaction && (!cFaction.IsPlayable() || m_Base.IsHQRadioTrafficPossible(cFaction)))
+				if (cFaction && (!cFaction.IsPlayable() || m_Base.IsHQRadioTrafficPossible(cFaction)))
 				{
 					prevailingFaction = faction;
 					curSeizingCharacters = presence;
@@ -176,7 +189,7 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 
 		// Get amount of effectively seizing characters (clamp for max attackers attribute or set to 0 if there is no prevailing faction)
 		if (prevailingFaction)
-			curSeizingCharacters = Math.Min(totalFactionPresenceCount - curSeizingCharacters, m_iMaximumSeizingCharacters);
+			curSeizingCharacters = Math.Min((2 * curSeizingCharacters) - totalFactionPresenceCount, m_iMaximumSeizingCharacters);
 
 		if (baseCaptureState != m_eCaptureState)
 		{
@@ -327,6 +340,12 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 			return;
 		
 		m_Base = campaignBase;
+
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		if (!campaign)
+			return;
+
+		m_iMinimumCharactersForContest = campaign.GetCharactersNeededContesting();
 	}
 }
 

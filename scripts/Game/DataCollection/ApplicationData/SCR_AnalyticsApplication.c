@@ -529,8 +529,6 @@ class SCR_AnalyticsApplication : WorldSystem
 			m_MOBData.MOB_xs += selectedHQ.GetOwner().GetOrigin()[0].ToString(); 
 			m_MOBData.MOB_ys += selectedHQ.GetOwner().GetOrigin()[1].ToString();
 			m_MOBData.MOB_zs += selectedHQ.GetOwner().GetOrigin()[2].ToString();
-			
-			PrintString(selectedHQ.GetBaseNameUpperCase());
 		}
 		
 		m_MOBData.MOB_names += "]";

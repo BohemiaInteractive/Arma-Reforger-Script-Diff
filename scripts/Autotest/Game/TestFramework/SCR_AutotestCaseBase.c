@@ -4,77 +4,133 @@ Provides integration with test specific logger for improved output.
 */
 class SCR_AutotestCaseBase : TestBase
 {
+	private SCR_AutotestSuiteBase m_OwningSuite;
+	private ref SCR_AutotestParamData m_ParamDataBase;
+	
+	private bool m_bIsCrashing;
+	
+	//------------------------------------------------------------------------------------------------
+	//! Override this method in combination with adding a field to your class.
+	//! The field must inherit from SCR_AutotestParamData.
+	//! This method must cast 'params' to the correct class and assign it to that field.
+	void SetParams(SCR_AutotestParamData params);
+	
+	//------------------------------------------------------------------------------------------------
+	static Test GetTestAttribute(typename testType)
+	{
+		array<Class> attributes = {};
+		testType.GetAttributes(attributes);
+		Test testAttr;
+		foreach (Class attr : attributes)
+		{
+			testAttr = Test.Cast(attr);
+			if (testAttr)
+			{
+				break;
+			}
+		}
+		
+		return testAttr;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	sealed static bool IsParameterized(typename testType)
+	{
+		return GetTestAttribute(testType).IsInherited(SCR_ParamTest);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override string GetName()
+	{
+		if (IsParameterized(this.Type()))
+			return string.Format("%1_###_%2", super.GetName(), GetParamReportIdentifier());
+
+		return super.GetName();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns a string that will be appended to the test name in the report after '#'.
+	//! Override this to return distinct names for your parameterized tests.
+	string GetParamReportIdentifier()
+	{
+		if (!m_ParamDataBase)
+			return "<missing params>";
+		
+		return m_ParamDataBase.GetIdentifier();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Asserts that a boolean expression is true.
 	//! Will set the test as failed with provided message otherwise.
 	//! If the test is already failed the current result will be used.
-	TestResultBase AssertTrue(bool expression, string msg)
+	TestFailureBase AssertTrue(bool expression, string msg)
 	{
-		TestResultBase result = GetResult();
-		if (result && result.Failure())
-			return result;
+		TestFailureBase failure = GetFailure();
+		if (failure)
+			return failure;
 
 		if (!expression)
 		{
-			result = SCR_AutotestResult.AsFailure("AssertTrue: %1", msg);
-			SetResult(result);
+			failure = SCR_AutotestFailure.Create("AssertTrue: %1", msg);
+			SetFailure(failure);
 		}
 
-		return result;
+		return failure;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	//! Set result indicating that the test succeeded.
-	//! If the test is already failed the current result will be used, unless force is set.
-	//! \param[in] force Allows overriding failed result.
-	//! \return Result
-	notnull TestResultBase SetResultSuccess(bool force = false)
-	{
-		TestResultBase result = GetResult();
-		if (!force && result && result.Failure())
-			return result;
-		
-		result = SCR_AutotestResult.AsSuccess();
-		SetResult(result);
-
-		return result;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Set result indicating that the test failed.
+	//! Set failure reason of the test. Won't override already set reason.
 	//! \param[in] reason Reason for the failure, supports string interpolation.
 	//! \param[in] param1 String param
 	//! \param[in] param2 String param
 	//! \param[in] param3 String param
-	//! \return Failure result
-	notnull TestResultBase SetResultFailure(string reason, string param1 = "", string param2 = "", string param3 = "")
+	//! \return Failure object
+	notnull TestFailureBase SetFailure(string reason, string param1 = "", string param2 = "", string param3 = "")
 	{
-		TestResultBase result = GetResult();
-		if (result && result.Failure())
-			return result;
+		TestFailureBase failure = GetFailure();
+		if (failure)
+			return failure;
 		
-		result = SCR_AutotestResult.AsFailure(reason, param1, param2, param3);
-		SetResult(result);
+		failure = SCR_AutotestFailure.Create(reason, param1, param2, param3);
+		SetFailure(failure);
 
-		return result;
+		return failure;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Get suite that owns the test.
-	TestSuite GetSuite()
+	[Friend(SCR_AutotestSuiteBase)]
+	protected void SetSuite(SCR_AutotestSuiteBase suite)
 	{
-		for (int i, countSuites = TestHarness.GetNSuites(); i < countSuites; i++)
-		{
-			TestSuite suite = TestHarness.GetSuite(i);
-			for (int j, countTests = suite.GetNTests(); j < countTests; j++)
-			{
-				TestBase test = suite.GetTest(j);
-				if (test.Type() == this.Type())
-					return suite;
-			}
-		}
+		m_OwningSuite = suite;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[Friend(SCR_AutotestSuiteBase)]
+	protected void SetParamsInternal(SCR_AutotestParamData param)
+	{
+		m_ParamDataBase = param;
+		SetParams(param);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[Friend(SCR_AutotestHarness)]
+	protected void MarkCrashing()
+	{
+		m_bIsCrashing = true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get suite that owns the test.
+	SCR_AutotestSuiteBase GetSuite()
+	{
+		return m_OwningSuite;
+	}
 
-		return null;
+	//------------------------------------------------------------------------------------------------
+	//! Get additional debug lines for diag menu
+	array<string> GetDebugText()
+	{
+		return {};
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -102,21 +158,54 @@ class SCR_AutotestCaseBase : TestBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	[Step(EStage.Setup)]
+	[TestStep(TestStage.Setup)]
 	private void Setup_Logger()
 	{
 		SCR_AutotestHarness._SetActiveTestCase(this);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	[TestStep(TestStage.Setup, timeoutMs: 500)]
+	private void Setup_Checkpoint()
+	{
+		SCR_AutotestReport report = SCR_AutotestHarness.Checkpoint();
+		report.WriteLogFiles();
+	}
+	
+	[TestStep(TestStage.Setup)]
+	private void Setup_ResetLibraries()
+	{
+		SCR_Timer.ClearAll();
+		SCR_TimerInternal.ClearAll();
+		SCR_TestLib.DeleteObjects();
+	}
+
+	[TestStep(TestStage.Setup)]
+	void Setup_VerifyParamsNotEmpty()
+	{
+		if (!IsParameterized(this.Type()))
+			return;
+		
+		if (m_ParamDataBase == null)
+			SetFailure("Parameters not set on a parameterized test case");
+	}
+	
+	[TestStep(TestStage.Setup)]
+	void Setup_VerifyNotCrashing()
+	{
+		// TODO we could use some custom failure type for distinct output in XML for Autotest Web app parsing
+		AssertTrue(m_bIsCrashing == false, "Expected test to not be marked as crashing");
+	}
 
 	//------------------------------------------------------------------------------------------------
-	[Step(EStage.TearDown)]
+	[TestStep(TestStage.TearDown)]
 	private void TearDown_PrintTestResult()
 	{
 		SCR_AutotestHarness.GetLogger().LogTestCaseResult(this);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	[Step(EStage.TearDown)]
+	[TestStep(TestStage.TearDown)]
 	private void TearDown_Logger()
 	{
 		SCR_AutotestHarness._SetActiveTestCase(null);

@@ -160,8 +160,16 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 				aiGroup = editableGroupComponent.GetAIGroupComponent();
 				if (aiGroup)
 				{
-					aiGroup.GetOnInit().Insert(InitGroup);
-				
+					// The provider tracks the group itself: members get their budget hooks
+					// as they spawn. Group members spawn over several ticks through the AI
+					// spawn queue, so a one-shot "group complete" event is not enough here.
+					if (m_Provider)
+					{
+						SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(m_Provider.FindComponent(SCR_CampaignBuildingProviderComponent));
+						if (providerComponent)
+							providerComponent.TrackAIGroup(aiGroup);
+					}
+
 					EntitySpawnParams params = EntitySpawnParams();
 					params.TransformMode = ETransformMode.WORLD;
 					params.Transform[3] = aiGroup.GetOrigin();
@@ -248,37 +256,6 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 		compositionComponent.SetClearProviderEvent(ent);
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	//! Init spawned AI group (set events and flags)
-	protected void InitGroup(SCR_AIGroup aiGroup)
-	{
-		if (!aiGroup)
-			return;
-		
-		aiGroup.GetOnInit().Remove(InitGroup);
-		
-		array<AIAgent> outAgents = {};
-		IEntity ent;
-		SCR_EditableEntityComponent editableEntityComponent;
-		SCR_CampaignBuildingProviderComponent providerComponent;
-		
-		aiGroup.GetAgents(outAgents);
-		
-		foreach (AIAgent agent: outAgents)
-		{
-			ent = agent.GetControlledEntity();
-			editableEntityComponent = SCR_EditableEntityComponent.Cast(ent.FindComponent(SCR_EditableEntityComponent));
-			if (editableEntityComponent)
-				SetAiFlag(editableEntityComponent);
-			
-			providerComponent = SCR_CampaignBuildingProviderComponent.Cast(m_Provider.FindComponent(SCR_CampaignBuildingProviderComponent));
-			if (!providerComponent)
-				continue;
-			
-			providerComponent.SetOnEntityKilled(agent.GetControlledEntity());
-		}
-	}
-		
 	//------------------------------------------------------------------------------------------------
 	protected void SetAiFlag(SCR_EditableEntityComponent component)
 	{

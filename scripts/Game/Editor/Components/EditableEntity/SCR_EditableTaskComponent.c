@@ -264,10 +264,13 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 	{
 		if (m_AttachableTask)
 		{
-			AttachTo(parentEntity);
+			if (parentEntity != parentEntityPrev)
+			{
+				AttachTo(parentEntity);
 			
-			m_AttachedToId = Replication.FindItemId(parentEntity);
-			Replication.BumpMe();
+				m_AttachedToId = Replication.FindItemId(parentEntity);
+				Replication.BumpMe();
+			}
 			
 			super.OnParentEntityChanged(null, null, changedByUser); //--- Needed to continue entity registration
 		}

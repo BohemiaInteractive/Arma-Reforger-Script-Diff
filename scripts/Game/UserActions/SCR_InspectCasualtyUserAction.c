@@ -1,5 +1,10 @@
 class SCR_InspectCasualtyUserAction : ScriptedUserAction
 {
+	[Attribute(defvalue: "4", desc: "Value by which action progress is going to be multiplied to speed it up when character is a medic", params: "0.1 inf 0.01")]
+	protected float m_fQualifiedPersonnelBonusUseSpeedFactor;
+
+	protected bool m_bIsQualified;
+
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
@@ -44,7 +49,7 @@ class SCR_InspectCasualtyUserAction : ScriptedUserAction
 		
 		return false;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{
@@ -104,16 +109,41 @@ class SCR_InspectCasualtyUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override void OnActionStart(IEntity pUserEntity)
 	{
-		ChimeraCharacter char = ChimeraCharacter.Cast(pUserEntity);
-		if (!char)
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(pUserEntity);
+		if (!character)
 			return;
 
-		CharacterControllerComponent contr = char.GetCharacterController();
+		CharacterControllerComponent contr = character.GetCharacterController();
 		if(!contr)
 			return;
+
+		m_bIsQualified = character.HasRole(GetQualifiedRoles()) || character.HasLabel(GetQualifiedLabels());
 		
 		if (contr.CanPartialLower() && !contr.IsPartiallyLowered())
 			contr.SetPartialLower(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Override this if you would want to change which squad roles should make a character qualified
+	protected array<SCR_EGroupRole> GetQualifiedRoles()
+	{
+		return {SCR_EGroupRole.MEDIC};
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Override this if you would want to change which character label should make a character qualified
+	protected array<EEditableEntityLabel> GetQualifiedLabels()
+	{
+		return {EEditableEntityLabel.ROLE_MEDIC};
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override float GetActionProgressScript(float fProgress, float timeSlice)
+	{
+		if (m_bIsQualified)
+			timeSlice *= m_fQualifiedPersonnelBonusUseSpeedFactor;
+
+		return fProgress + timeSlice;
 	}
 	
 	//------------------------------------------------------------------------------------------------

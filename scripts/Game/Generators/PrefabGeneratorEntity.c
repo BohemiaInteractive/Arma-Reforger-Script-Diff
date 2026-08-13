@@ -146,7 +146,7 @@ class PrefabGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 
 	//------------------------------------------------------------------------------------------------
 	//! Get a perlin value given specific parameters
-	protected float SamplePerlin(float time, float frequency = 20, float seed = 1, float amplitude = 1, float phaseOffset = 0)
+	protected float SamplePerlin(float time, float frequency, float seed, float amplitude)
 	{
 		if (frequency == 0 || amplitude == 0) // division/multiplication by zero protection
 			return 0;

@@ -14,7 +14,11 @@ class SCR_RefuelAtSupportStationAction : SCR_BaseUseSupportStationAction
 	
 	[Attribute("1", desc: "Decimal count of action percentage. Put on 2 if the entity has a large fuel tank", params: "0 2")]
 	protected int m_iActionDecimalCount;
-	
+
+	[Attribute(defvalue: "1.5", desc: "Value by which action progress is going to be multiplied to speed it up when character is a vehicle crewman", params: "0.1 inf 0.01")]
+	protected float m_fQualifiedPersonnelBonusUseSpeedFactor;
+
+	protected bool m_bIsQualified;
 	protected SCR_FuelManagerComponent m_FuelManager;
 	
 	//------------------------------------------------------------------------------------------------
@@ -197,4 +201,45 @@ class SCR_RefuelAtSupportStationAction : SCR_BaseUseSupportStationAction
 		
 		return (fuelPercentage / validFuelNodes) * 100;
 	}
-};
+
+	//------------------------------------------------------------------------------------------------
+	override void OnActionStart(IEntity pUserEntity)
+	{
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(pUserEntity);
+		m_bIsQualified = character && (character.HasRole(GetQualifiedRoles()) || character.HasLabel(GetQualifiedLabels()));
+
+		super.OnActionStart(pUserEntity);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Override this if you would want to change which squad roles should make a character qualified
+	protected array<SCR_EGroupRole> GetQualifiedRoles()
+	{
+		return {SCR_EGroupRole.TRANSPORT, SCR_EGroupRole.HELI_TRANSPORT};
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Override this if you would want to change which character label should make a character qualified
+	protected array<EEditableEntityLabel> GetQualifiedLabels()
+	{
+		return {EEditableEntityLabel.TRAIT_VEHICLE_CREW, EEditableEntityLabel.TRAIT_HELI_CREW};
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override float GetActionProgressScript(float fProgress, float timeSlice)
+	{
+		if (m_bIsQualified)
+			timeSlice *= m_fQualifiedPersonnelBonusUseSpeedFactor;
+
+		return super.GetActionProgressScript(fProgress, timeSlice);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override bool LoopActionUpdate(float timeSlice)
+	{
+		if (m_bIsQualified)
+			timeSlice *= m_fQualifiedPersonnelBonusUseSpeedFactor;
+
+		return super.LoopActionUpdate(timeSlice);
+	}
+}

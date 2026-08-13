@@ -453,6 +453,20 @@ class SCR_Math3D
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] value
+	//! \param[in] angleRad positive = counter-clockwise, negative - clockwise - e.g: Math.Math.PI_HALF = -90°, -Math.Math.PI_HALF = +90°
+	//! \return
+	static vector RotateVectorAroundY(vector value, float angleRad)
+	{
+		return {
+			value[0] * Math.Cos(angleRad) - value[2] * Math.Sin(angleRad),
+			value[1],
+			value[0] * Math.Sin(angleRad) + value[2] * Math.Cos(angleRad),
+		};
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Returns a rotation matrix that makes object positioned at source position face the point at destination
 	//! \param[in] source Source point the rotation looks 'from'
 	//! \param[in] destination Target point the rotation looks 'at'

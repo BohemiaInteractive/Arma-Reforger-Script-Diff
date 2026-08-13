@@ -37,6 +37,8 @@ class CharacterCamera3rdPersonTurret extends CharacterCamera3rdPersonVehicle
 			
 			if (turret)
 			{
+				m_bIsTurret = true;
+				
 				bool bUsingVehicleCameraData;
 
 				SCR_VehicleCameraDataComponent vehicleCamDataComp = SCR_VehicleCameraDataComponent.Cast(turret.FindComponent(SCR_VehicleCameraDataComponent));

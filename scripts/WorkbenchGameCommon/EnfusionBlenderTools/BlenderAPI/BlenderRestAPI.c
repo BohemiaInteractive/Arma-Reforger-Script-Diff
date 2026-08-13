@@ -53,7 +53,6 @@ class BlenderRestAPI
 	
 	
 	// HTTP API
-	
 	bool Get(string endpoint, out string data = "")
 	{ 
 		this.m_Response = "";
@@ -69,7 +68,19 @@ class BlenderRestAPI
 		return m_RestState == BlenderRestAPIState.SUCCESS;
 	}
 	
-	// TODO POST, maybe others? 
+	bool Post(string endpoint, string payload = "", out string data = "")
+	{ 
+		this.m_Response = "";
+		m_RestState = BlenderRestAPIState.WAITING;
+		
+		m_RestContext.POST(m_RestCallback, endpoint, payload);
+		while (m_RestState == BlenderRestAPIState.WAITING) {
+			Sleep(10);
+		}
+		
+		data = m_Response;
+		return m_RestState == BlenderRestAPIState.SUCCESS;
+	}
 	
 	
 	static BlenderRestAPI Create(int port = -1) 
@@ -112,7 +123,7 @@ class BlenderRestAPI
 		auto instance = BlenderRestAPI();
 		instance.m_BlenderProcess = blender_process;
 		instance.m_RestContext = rest_context;
-		instance.m_RestContext.SetTimeout(200);
+		instance.m_RestContext.SetTimeout(30000);
 		instance.m_RestCallback = RestCallback();
 		instance.m_RestCallback.SetOnSuccess(instance.OnRestSuccessCallback);
 		instance.m_RestCallback.SetOnError(instance.OnRestErrorCallback);	

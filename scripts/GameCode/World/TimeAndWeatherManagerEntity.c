@@ -618,7 +618,7 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 			return false;
 		
 		int count = m_OrderedWindDirectionInfo.Count();
-		float checkRange = (m_OrderedWindDirectionInfo[1].GetWindDirectionValue() - m_OrderedWindDirectionInfo[0].GetWindDirectionValue()) / 2;
+		float checkRange = (360 / m_OrderedWindDirectionInfo.Count()) * 0.5;
 		
 		for (int i = 0; i < count; i++)
 		{
@@ -648,7 +648,7 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 			}
 			else 
 			{
-				if (windDirectionFloat >= firstCheck && windDirectionFloat < secondCheck)
+				if (windDirectionFloat >= firstCheck && windDirectionFloat <= secondCheck)
 				{
 					index = i;
 					windDirectionInfo = m_OrderedWindDirectionInfo[i];

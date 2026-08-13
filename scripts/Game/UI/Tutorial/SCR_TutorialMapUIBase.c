@@ -179,7 +179,7 @@ class SCR_TutorialMapUIBase : SCR_CampaignMapUIElement
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void SetImage(string image)
+	override void SetImage(string image, string imageset)
 	{
 	}
 	

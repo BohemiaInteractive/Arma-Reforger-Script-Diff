@@ -361,6 +361,19 @@ class SCR_ServicesStatusHelper
 				return false;
 			}
 			case EPlatform.WINDOWS:
+			case EPlatform.WINDOWS_HANDHELD:
+			{
+				PlatformService platformService = GetGame().GetPlatformService();
+				if (!platformService)
+					break;
+				
+				PlatformKind platformKind = platformService.GetLocalPlatformKind();
+				
+				if (platformKind == PlatformKind.XBOX)
+					return SCR_Enum.HasFlag(service.m_ePlatforms, SCR_EBackendServicePlatforms.XBOX);
+				else
+					return SCR_Enum.HasFlag(service.m_ePlatforms, SCR_EBackendServicePlatforms.PC);
+			}
 			case EPlatform.LINUX:
 			{
 				return SCR_Enum.HasFlag(service.m_ePlatforms, SCR_EBackendServicePlatforms.PC);

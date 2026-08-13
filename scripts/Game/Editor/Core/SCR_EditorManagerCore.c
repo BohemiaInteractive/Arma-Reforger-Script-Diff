@@ -157,38 +157,38 @@ class SCR_EditorManagerCore : SCR_GameCoreBase
 		if (RplSession.Mode() == RplMode.Client)
 			return;
 		
-		if (m_aEditorEntities.Contains(playerID))
-		{
-			SCR_EditorManagerEntity editorManager = m_aEditorEntities.Get(playerID);
-			
-			//--- Remember editor modes so they can be restored upon reconnection
-			if (!m_DisconnectedModes)
-				m_DisconnectedModes = {};
-			
-			bool isAdmin = SCR_Global.IsAdmin(playerID);
-			
-			EEditorMode modes = editorManager.GetModes();
-			EEditorMode persistentModes;
-			foreach (SCR_EditorModePrefab prefab: m_ModePrefabs)
-			{
-				if (
-					SCR_Enum.HasFlag(modes, prefab.GetMode()) //--- Player has the mode
-					&& SCR_Enum.HasFlag(prefab.GetFlags(), EEditorModeFlag.PERSISTENT) //--- Mode is marked as persistent
-					&& (!isAdmin || !SCR_Enum.HasFlag(prefab.GetFlags(), EEditorModeFlag.ADMIN)) //--- If player is admin, don't preserve modes added with admin rights
-				)
-				{
-					persistentModes |= prefab.GetMode();
-				}
-			}
-			
-			if (persistentModes != 0)
-				m_DisconnectedModes.Insert(new SCR_EditorManagerDisconnectData(playerID, persistentModes));
+		if (!m_aEditorEntities || !m_aEditorEntities.Contains(playerID))
+			return;
 		
-			m_aEditorEntities.Remove(playerID);
-			Event_OnEditorManagerDeletedServer.Invoke(editorManager);
-			editorManager.DeleteAllEditors();
-			delete editorManager;
+		SCR_EditorManagerEntity editorManager = m_aEditorEntities.Get(playerID);
+		
+		//--- Remember editor modes so they can be restored upon reconnection
+		if (!m_DisconnectedModes)
+			m_DisconnectedModes = {};
+		
+		bool isAdmin = SCR_Global.IsAdmin(playerID);
+		
+		EEditorMode modes = editorManager.GetModes();
+		EEditorMode persistentModes;
+		foreach (SCR_EditorModePrefab prefab: m_ModePrefabs)
+		{
+			if (
+				SCR_Enum.HasFlag(modes, prefab.GetMode()) //--- Player has the mode
+				&& SCR_Enum.HasFlag(prefab.GetFlags(), EEditorModeFlag.PERSISTENT) //--- Mode is marked as persistent
+				&& (!isAdmin || !SCR_Enum.HasFlag(prefab.GetFlags(), EEditorModeFlag.ADMIN)) //--- If player is admin, don't preserve modes added with admin rights
+			)
+			{
+				persistentModes |= prefab.GetMode();
+			}
 		}
+		
+		if (persistentModes != 0)
+			m_DisconnectedModes.Insert(new SCR_EditorManagerDisconnectData(playerID, persistentModes));
+	
+		m_aEditorEntities.Remove(playerID);
+		Event_OnEditorManagerDeletedServer.Invoke(editorManager);
+		editorManager.DeleteAllEditors();
+		delete editorManager;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -532,6 +532,19 @@ class SCR_EditorManagerCore : SCR_GameCoreBase
 	//------------------------------------------------------------------------------------------------
 	override void OnGameEnd()
 	{
+		//--- Get lobby
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (gameMode)
+		{
+			//--- Add game mode event handlers
+			gameMode.GetOnPlayerRegistered().Remove(OnPlayerRegistered);
+			gameMode.GetOnPostCompPlayerDisconnected().Remove(OnPlayerDisconnected);
+			gameMode.GetOnPlayerSpawned().Remove(OnPlayerSpawn);
+			gameMode.GetOnPlayerKilled().Remove(OnPlayerKilled);
+			gameMode.GetOnPlayerDeleted().Remove(OnPlayerDeleted);
+			gameMode.GetOnPlayerRoleChange().Remove(OnPlayerRoleChange);
+		}
+		
 		m_EditorManager = null;
 		m_aEditorEntities = null;
 		Event_OnEditorManagerCreatedServer = new ScriptInvoker;

@@ -14,7 +14,9 @@ Output structure for reporting collisions.
 */
 sealed class Contact
 {
+	//! Rigidbody of Object1
 	Physics Physics1;
+	//! Rigidbody of Object2
 	Physics Physics2;
 	//! Surface properties of Object1
 	SurfaceProperties	Material1;
@@ -22,10 +24,12 @@ sealed class Contact
 	SurfaceProperties	Material2;
 	//! Impulse applied to resolve the collision
 	float	Impulse;
+	//! Distance between contact points along collision axis (negative value indicates penetration)
+	float	Distance;
 	//! Index of collider on Object1
-	int ShapeIndex1;
+	int	ShapeIndex1;
 	//! Index of collider on Object2
-	int ShapeIndex2;
+	int	ShapeIndex2;
 	//! Collision axis at the contact point
 	vector	Normal;
 	//! Position of the contact point (world space)

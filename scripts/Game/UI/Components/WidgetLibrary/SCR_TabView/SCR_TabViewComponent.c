@@ -60,6 +60,7 @@ class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 	protected Widget m_wButtons;
 	protected Widget m_wButtonBar;
 	protected Widget m_wContentOverlay;
+	protected SizeLayoutWidget m_wTabBarSizeLayout;
 	protected SCR_PagingButtonComponent m_PagingLeft;
 	protected SCR_PagingButtonComponent m_PagingRight;
 
@@ -80,6 +81,11 @@ class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 	protected const int MANW_TAB_WIDTH = 270;
 	protected const string MANW_IDENTIFIER = "MANW";
 	
+	//Used for when the tab bar overflows the menu it is in
+	protected int m_iVisibleTabCount;
+	protected int m_iFirstVisibleTab;
+	protected bool m_bShouldHideTabsOnOverflow = true;
+
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -91,6 +97,8 @@ class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	void Init()
 	{
+		m_iFirstVisibleTab = m_iSelectedTab;
+
 		// Prevent multiple initialization
 		if (!m_wRoot || m_wButtonBar)
 			return;
@@ -98,6 +106,7 @@ class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 		m_wButtonBar = m_wRoot.FindAnyWidget("HorizontalLayout0");
 		m_wButtons = m_wRoot.FindAnyWidget("Tabs");
 		m_wContentOverlay = m_wRoot.FindAnyWidget("ContentOverlay");
+		m_wTabBarSizeLayout = SizeLayoutWidget.Cast(m_wRoot.FindAnyWidget("SizeLayout1"));
 
 		if (!m_wContentOverlay || !m_wButtonBar || !m_wButtons)
 			return;
@@ -140,6 +149,34 @@ class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override bool OnUpdate(Widget w)
+	{
+		super.OnUpdate(w);
+		
+		if (w != m_wRoot)
+			return true;
+		
+		//This is necessary because GetScreenSize always returns 0 on Init or Show
+		if (m_iVisibleTabCount == 0)
+		{
+			foreach (SCR_TabViewContent content : m_aElements)
+			{
+				//Temporary fix so that this won't overwrite tabviews with already hidden tabs, like in the build menu
+				if (content.m_wButton.IsVisible() == false)
+				{
+					m_bShouldHideTabsOnOverflow = false;
+					m_iVisibleTabCount = 1;
+					return true;
+				}
+			}
+			
+			GetGame().GetCallqueue().CallLater(UpdateTabVisibility, 0, false); //Calllater because making changes to a widget during OnUpdate causes issues
+		}
+		
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void CreateTab(SCR_TabViewContent content)
 	{
 		// Create tab button
@@ -148,6 +185,8 @@ class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 			return;
 
 		HorizontalLayoutSlot.SetPadding(button, 0, 0, BUTTON_PADDING_RIGHT, 0); // Add padding
+
+		content.m_wButton = button;
 
 		SCR_ButtonTextComponent comp = SCR_ButtonTextComponent.Cast(button.FindHandler(SCR_ButtonTextComponent));
 		if (!comp)
@@ -435,6 +474,7 @@ class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 		if (callAction && m_OnChanged)
 			m_OnChanged.Invoke(this, m_wRoot, m_iSelectedTab);
 
+		UpdateTabVisibility();
 		UpdatePagingButtons();
 	}
 
@@ -721,6 +761,71 @@ class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Calculate how many tabs can be shown wthout overflowing the menu it is in
+	protected void CalculateVisibleTabCount()
+	{
+		if (!m_wContentOverlay || !m_wTabBarSizeLayout || m_aElements.IsEmpty())
+			return;
+
+		float availableWidth, unusedHeight;
+		m_wTabBarSizeLayout.GetScreenSize(availableWidth, unusedHeight);
+		
+		float tabWidth = GetGame().GetWorkspace().DPIScale(m_fTabWidth);
+
+		if (availableWidth < 1 || tabWidth < 1)
+			return;
+		
+		if (m_bShowTextOnlyWhenSelectedTab)
+		{
+			float tabWidthTextHidden = GetGame().GetWorkspace().DPIScale(m_fTabWidthTextHidden);
+			availableWidth = availableWidth - tabWidth;
+			m_iVisibleTabCount = Math.Max(1, Math.Floor((availableWidth / tabWidthTextHidden) + 1));
+			return;
+		}
+
+		m_iVisibleTabCount = Math.Max(1, Math.Floor(availableWidth / tabWidth));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Update the visibility of the tabs, only relevant if the tab bar overflows the menu it is in
+	protected void UpdateTabVisibility()
+	{	
+		if (!m_bShouldHideTabsOnOverflow)
+			return;
+		
+		if (m_iVisibleTabCount == 0)
+			CalculateVisibleTabCount();
+
+		//If the VisibleTabCount is equal or greater than the amount of tabs that can be shown, it means there is no overflow
+		if (m_iVisibleTabCount == 0 || m_iVisibleTabCount >= m_aElements.Count())
+			return;
+
+		// Updating the visible range of tabs if a tabs gets selected
+		// When the tab on the far left/right gets selected, the hidden tab beside it will be revealed (and a tab on the other side will be hidden)
+		if (m_iSelectedTab >= 0)
+		{
+			if (m_iSelectedTab == m_iFirstVisibleTab && m_iFirstVisibleTab > 0)
+				m_iFirstVisibleTab--;
+			else if (m_iSelectedTab == m_iFirstVisibleTab + m_iVisibleTabCount - 1 && m_iFirstVisibleTab + m_iVisibleTabCount < m_aElements.Count())
+				m_iFirstVisibleTab++;
+			else if (m_iSelectedTab < m_iFirstVisibleTab)
+				m_iFirstVisibleTab = m_iSelectedTab;
+
+			m_iFirstVisibleTab = Math.Clamp(m_iFirstVisibleTab, 0, Math.Max(0, m_aElements.Count() - m_iVisibleTabCount));
+		}
+
+		foreach (int i, SCR_TabViewContent content : m_aElements)
+		{
+			Widget tab = content.m_wButton;
+			if (!tab)
+				continue;
+
+			bool visible = i >= m_iFirstVisibleTab && i < m_iFirstVisibleTab + m_iVisibleTabCount;
+			tab.SetVisible(visible);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
 	int GetNextValidItem(bool toLeft)
 	{
 		if (m_aElements.IsEmpty())
@@ -760,6 +865,7 @@ class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 			if (m_aElements[i].m_bEnabled)
 				foundItem = i;
 		}
+
 		return foundItem;
 	}
 
@@ -985,7 +1091,6 @@ class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("m_sTabButtonContent")]
 class SCR_TabViewContent
 {
@@ -1032,4 +1137,5 @@ class SCR_TabViewContent
 	SCR_ButtonTextComponent m_ButtonComponent;
 	Widget m_wTab;
 	SizeLayoutWidget m_wLayout;
+	Widget m_wButton;
 }

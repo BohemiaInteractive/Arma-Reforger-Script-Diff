@@ -209,14 +209,14 @@ TODO: REMOVE THIS, REPLACE WITH SENDING THROUGH RPL THE STATS FROM THE SERVER RE
 			if (!instigatorContextData.IsEnemyKillPunished(SCR_EDisguisedKillingPunishment.WARCRIME))
 				killerData.AddStat(SCR_EDataStats.ROADKILLS);
 			//~ Killing while disguised is a warcrime
-			else 
+			else if (instigatorContextData.ShouldCountForKickPenalty())
 				killerData.AddStat(SCR_EDataStats.FRIENDLY_ROADKILLS);
 		}
 			
 		//~ Roadkill friendly
 		else
 		{
-			if (instigatorContextData.DoesPlayerKillCountAsTeamKill())
+			if (instigatorContextData.DoesPlayerKillCountAsTeamKill() && instigatorContextData.ShouldCountForKickPenalty())
 				killerData.AddStat(SCR_EDataStats.FRIENDLY_ROADKILLS);
 		}
 				
@@ -253,14 +253,14 @@ TODO: REMOVE THIS, REPLACE WITH SENDING THROUGH RPL THE STATS FROM THE SERVER RE
 			if (!instigatorContextData.IsEnemyKillPunished(SCR_EDisguisedKillingPunishment.WARCRIME))
 				killerData.AddStat(SCR_EDataStats.AI_ROADKILLS);	
 			//~ Killing while disguised is a warcrime
-			else 
+			else if (instigatorContextData.ShouldCountForKickPenalty())
 				killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_ROADKILLS);
 		}
 		//~ friendly
 		else
 		{
 			//~ Counts as teamkill
-			if (instigatorContextData.DoesPlayerKillCountAsTeamKill())
+			if (instigatorContextData.DoesPlayerKillCountAsTeamKill() && instigatorContextData.ShouldCountForKickPenalty())
 				killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_ROADKILLS);
 		}
 			

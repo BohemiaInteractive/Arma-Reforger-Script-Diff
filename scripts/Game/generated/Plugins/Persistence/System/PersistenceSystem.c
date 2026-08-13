@@ -16,7 +16,7 @@ class PersistenceSystem: WorldSystem
 	Save the current state of the instance. Data is transient until the storage is flushed,
 	but the entity can safely be deleted already after this (e.g. saving a disconnecting player).
 	*/
-	proto external bool Save(notnull Managed entityOrState, ESaveGameType saveType = ESaveGameType.MANUAL);
+	proto external bool Save(notnull Managed entityOrState, ESaveGameType saveType = ESaveGameType.SCRIPTED);
 	//! Send of an async spawn request to fetch and instantiate the save-data. Any already available istances will instantly complete the callback with OK.
 	proto external void RequestSpawn(notnull PersistenceSpawnRequest spawnRequest, PersistenceResultCallback callback = null);
 	//! Send of an async spawn request to fetch and apply the save-data to existing instances.
@@ -67,15 +67,15 @@ class PersistenceSystem: WorldSystem
 	Note: This will reset any customization done via script on SetConfig.
 	*/
 	proto external bool ReloadConfig(notnull Managed entityOrState);
-	//! Serialize an entity instance into the provided save context.
-	proto external ESerializeResult SerializeEntity(notnull IEntity entity, notnull SaveContext context, SerializerDefaultSpawnData defaultData = null);
+	//! Serialize a tracked entity or state instance into the provided save context.
+	proto external ESerializeResult Serialize(notnull Managed entityOrState, notnull SaveContext context, SerializerDefaultSpawnData defaultData = null);
 	/*!
-	Apply serialized data to an existing entity instance (only FINALIZE handlers are allowed for loaded entities)
-	Returns loaded entity, or recreated one, or null in case of failure
+	Try to apply serialization data onto an existing instance. Will return a different one if incomatible.
+	Note: Removal of previous and or new instance must be handled manually in caller scope.
 	*/
-	proto external IEntity DeserializeLoadEntity(notnull IEntity entity, notnull LoadContext context, bool allowRecreate = true);
+	proto external ref Managed DeserializeLoad(notnull Managed entityOrState, notnull LoadContext context);
 	//! Spawn a new entity from serialization data.
-	proto external IEntity DeserializeSpawnEntity(notnull LoadContext context);
+	proto external ref Managed DeserializeSpawn(notnull LoadContext context);
 	/*!
 	The deserialization completed callback is invoked after all tasks are completed.
 	Adding a task gives the ability to wait for a call queue, frame or other delayed event until the instance is considered done and can be used by the callback handler.
@@ -131,7 +131,7 @@ class PersistenceSystem: WorldSystem
 		- Removed in previous session and the change is being applied on load
 		- Deserialize failure that was configured not to be tolerated
 	*/
-	event protected void HandleDelete(IEntity entity);
+	event void HandleDelete(IEntity entity);
 }
 
 /*!

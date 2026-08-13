@@ -15,6 +15,10 @@ class SCR_CampaignMilitaryBaseTaskEntity : SCR_Task
 	//------------------------------------------------------------------------------------------------
 	SCR_CampaignMilitaryBaseComponent GetMilitaryBase()
 	{
+		// Hotfix for client trying to access military base in different RPL stream order than nomral create (e.g. during save game load)
+		if (!m_MilitaryBase && m_MilitaryBaseTaskData.m_iBaseCallSign != SCR_MilitaryBaseComponent.INVALID_BASE_CALLSIGN)
+			AssignMilitaryBaseByCallsign(m_MilitaryBaseTaskData.m_iBaseCallSign);
+
 		return m_MilitaryBase;
 	}
 	
@@ -73,9 +77,9 @@ class SCR_CampaignMilitaryBaseTaskEntity : SCR_Task
 		
 		AssignMilitaryBaseByCallsign(callSign);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void AssignMilitaryBaseByCallsign(int callsign)
+	protected void AssignMilitaryBaseByCallsign(int callsign)
 	{
 		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		if (!campaign)
@@ -86,6 +90,8 @@ class SCR_CampaignMilitaryBaseTaskEntity : SCR_Task
 			return;
 		
 		m_MilitaryBase = baseManager.FindBaseByCallsign(callsign);
+		if (!m_MilitaryBase)
+			return; // Not available on proxy yet.
 
 		if (m_OnDisplayDataChanged)
 			m_OnDisplayDataChanged.Invoke();

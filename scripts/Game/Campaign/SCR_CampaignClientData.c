@@ -10,6 +10,7 @@ class SCR_CampaignClientData
 	protected float m_fLastPenaltyDeductionTimestamp;
 	protected WorldTimestamp m_fNextTravelAvailableAt;
 	protected int m_iAvailableAllocatedSupplies;
+	protected bool m_bFactionCommander;
 
 	//------------------------------------------------------------------------------------------------
 	void SetID(string ID)
@@ -105,5 +106,17 @@ class SCR_CampaignClientData
 	int GetAvailableAllocatedSupplies()
 	{
 		return m_iAvailableAllocatedSupplies;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetFactionCommander(bool isCommander)
+	{
+		m_bFactionCommander = isCommander;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsFactionCommander()
+	{
+		return m_bFactionCommander;
 	}
 }

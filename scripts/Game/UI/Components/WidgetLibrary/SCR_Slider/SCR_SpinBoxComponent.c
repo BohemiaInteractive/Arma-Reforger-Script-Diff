@@ -139,9 +139,9 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool SetCurrentItem(int i, bool playSound = false, bool animate = false)
+	override bool SetCurrentItem(int i, bool playSound = false, bool animate = false, bool invokeOnChanged = true)
 	{
-		return SetCurrentItem_Internal(i, playSound, animate, true);
+		return SetCurrentItem_Internal(i, playSound, animate, invokeOnChanged);
 	}
 
 	// --- Protected ---

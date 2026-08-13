@@ -12,6 +12,9 @@ class SCR_BaseRadialCommand
 	
 	[Attribute("", UIWidgets.EditBox, "Name of the icon associated to the command, taken from appropriate imageset set in the radial menu" )]
 	protected string m_sIconName;
+	
+	[Attribute(defvalue: "0", desc: "When true the position of the command will be the position of the player, otherwise whatever player is looking at will be the target and the position of it")]
+	protected bool m_bTargetSelf;
 
 	[Attribute(SCR_ECharacterRank.INVALID.ToString(), UIWidgets.ComboBox, desc: "Rank that is requried in order to use this command.\nINVALID == no requirement", enums: ParamEnumArray.FromEnum(SCR_ECharacterRank))]
 	protected SCR_ECharacterRank m_eRequiredRank;
@@ -27,11 +30,19 @@ class SCR_BaseRadialCommand
 	//! This method is right now broadcaasted to all clients, so if the command 
 	//! is intended only for specific clients, it needs to be filtered inside 
 	// Returns true if the command was executed succesfully, false otherwise.
-	bool Execute(IEntity cursorTarget, IEntity target, vector targetPosition, int playerID, bool isClient)
+	bool Execute(IEntity cursorTarget, IEntity groupEnt, vector targetPosition, int playerID, bool isClient)
 	{
 		return true;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Determines if command requires a trace to determine the target and its position, or is the command user the target
+	//! \return true for the target to be the user, and his position to be target position, otherwise false
+	bool IsTargetSelf()
+	{
+		return m_bTargetSelf;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	void VisualizeCommand(vector targetPosition);
 	
@@ -137,7 +148,15 @@ class SCR_BaseRadialCommand
 	{
 		return true;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Determines if execution of this command has to go through the server or is it completly handled by the client who tried to use this command
+	//! \return true if action is meant to not be replicated for execution by other clients
+	bool HasLocalEffectOnly()
+	{
+		return false;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected void SetCannotExecuteReason(LocalizedString newReason)
 	{
