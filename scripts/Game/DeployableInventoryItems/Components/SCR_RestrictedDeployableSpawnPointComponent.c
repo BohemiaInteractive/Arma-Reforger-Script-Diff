@@ -666,6 +666,14 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 		if (!ownerEntity || ownerEntity != userEntity)
 			return false;
 		
+		FactionManager factionManager = GetGame().GetFactionManager();
+		if (!factionManager)
+			return false;
+
+		SCR_Faction faction = SCR_Faction.Cast(factionManager.GetFactionByKey(m_FactionKey));
+		if (!faction.IsCustomLoadoutSupported())
+			return false;
+
 		if (m_eRespawnBudgetType != SCR_ESpawnPointBudgetType.SUPPLIES || !CanActionBeShown(userEntity, true, true))
 			return false;
 

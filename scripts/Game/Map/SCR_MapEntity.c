@@ -628,8 +628,13 @@ class SCR_MapEntity: MapEntity
 		
 		m_fZoomPPU = targetPPU;
 		AssignViewLayer(false);
-		ZoomChange(targetPPU / m_MapWidget.PixelPerUnit());	// contours
-		
+
+		float pixelPerUnit = m_MapWidget.PixelPerUnit();
+		if (pixelPerUnit <= 0)
+			pixelPerUnit = 0.01; // should never happen, fallback to "normal" value.
+
+		ZoomChange(targetPPU / pixelPerUnit);	// contours
+
 		if (instant)
 			m_fTargetPPU = m_fZoomPPU;
 		
@@ -943,7 +948,10 @@ class SCR_MapEntity: MapEntity
 	// \param worldX is world x
 	// \param worldY is world y
 	void ScreenToWorld(int screenPosX, int screenPosY, out float worldX, out float worldY)
-	{				
+	{
+		if (m_fZoomPPU + m_iMapOffsetX == 0 || m_fZoomPPU - m_iMapOffsetY == 0)
+			return;
+
 		worldX = (screenPosX - m_Workspace.DPIScale(m_iPanX)) / m_fZoomPPU + m_iMapOffsetX;
 		worldY = (screenPosY - m_Workspace.DPIScale(m_iPanY)) / m_fZoomPPU - m_iMapOffsetY;
 		worldY =  m_iMapSizeY - worldY;	// fix Y axis which is reversed between screen and world
@@ -1080,8 +1088,12 @@ class SCR_MapEntity: MapEntity
 		float screenWidth, screenHeight;
 		m_MapWidget.GetScreenSize(screenWidth, screenHeight);
 
-		float maxUnitsPerScreen = screenHeight / m_MapWidget.PixelPerUnit();	
-		m_fMinZoom = (maxUnitsPerScreen / m_iMapSizeY) * m_MapWidget.PixelPerUnit();
+		float pixelPerUnit = m_MapWidget.PixelPerUnit();
+		if (pixelPerUnit <= 0)
+			pixelPerUnit = 0.01; // should never happen, fallback to "normal" value.
+
+		float maxUnitsPerScreen = screenHeight / pixelPerUnit;
+		m_fMinZoom = (maxUnitsPerScreen / m_iMapSizeY) * pixelPerUnit;
 		m_fMaxZoom = SCR_MapConstants.MAX_PIX_PER_METER;
 		
 		return true;

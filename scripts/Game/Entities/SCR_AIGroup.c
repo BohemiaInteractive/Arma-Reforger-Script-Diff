@@ -531,6 +531,12 @@ class SCR_AIGroup : ChimeraAIGroup
 	//! Called on the server (authority)
 	void SetPrivate(bool isPrivate)
 	{
+		if (!m_bIsPrivacyChangeable)
+			return;
+
+		if (m_bPrivate == isPrivate)
+			return;
+
 		RPC_SetPrivate(isPrivate);
 		Rpc(RPC_SetPrivate, isPrivate);
 	}

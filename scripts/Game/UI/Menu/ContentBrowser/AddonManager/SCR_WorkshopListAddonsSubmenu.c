@@ -111,7 +111,9 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 		
 		RefreshAll();
 		
-		//SCR_AnalyticsApplication.GetInstance().WorkshopSetTab(SCR_EAnalyticsWorkshopTab.MOD_MANAGER);
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.WorkshopSetTab(SCR_EAnalyticsWorkshopTab.MOD_MANAGER);
 	}
 	
 	//------------------------------------------------------------------------------------------------

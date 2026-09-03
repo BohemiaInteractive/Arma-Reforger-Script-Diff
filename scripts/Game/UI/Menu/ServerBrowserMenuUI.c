@@ -186,7 +186,9 @@ class ServerBrowserMenuUI : MenuRootBase
 	{
 		super.OnMenuHide();
 		
-		//SCR_AnalyticsApplication.GetInstance().CloseMultiplayerMenu();		
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.CloseMultiplayerMenu();		
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -283,7 +285,9 @@ class ServerBrowserMenuUI : MenuRootBase
 		if (m_ActionsComponent)
 			m_ActionsComponent.ActivateActions();
 
-		//SCR_AnalyticsApplication.GetInstance().OpenMultiplayerMenu();
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.OpenMultiplayerMenu();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1358,7 +1362,9 @@ class ServerBrowserMenuUI : MenuRootBase
 
 		Refresh();
 
-		//SCR_AnalyticsApplication.GetInstance().MultiplayerMenuSetSorting(sortElementName);
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.MultiplayerMenuSetSorting(sortElementName);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1406,7 +1412,9 @@ class ServerBrowserMenuUI : MenuRootBase
 		if (!m_FilterPanel || !m_FilterPanel.GetFilterListBoxShown() || !focus || !focus.IsVisible())
 			SwitchFocus(SCR_EListMenuWidgetFocus.LIST, true);
 		
-		//SCR_AnalyticsApplication.GetInstance().MultiplayerMenuSetTab(id);		
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.MultiplayerMenuSetTab(id);		
 	}
 	
 	// --- Filters ---
@@ -1421,7 +1429,9 @@ class ServerBrowserMenuUI : MenuRootBase
 		else
 			SwitchFocus(SCR_EListMenuWidgetFocus.LIST); // Focus back to last entry
 
-		//SCR_AnalyticsApplication.GetInstance().MultiplayerMenuUseFilterOn();
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.MultiplayerMenuUseFilterOn();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1440,7 +1450,9 @@ class ServerBrowserMenuUI : MenuRootBase
 			Refresh();
 		}
 
-		//SCR_AnalyticsApplication.GetInstance().MultiplayerMenuSetFilter(filter.GetCategory().m_sInternalName, filter.m_sInternalName);
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.MultiplayerMenuSetFilter(filter.GetCategory().m_sInternalName, filter.m_sInternalName);
 	}
 	
 	// --- Scrolling ---
@@ -1522,7 +1534,9 @@ class ServerBrowserMenuUI : MenuRootBase
 		m_ParamsFilter.SetSearch(sInput);
 		Refresh();
 		
-		//SCR_AnalyticsApplication.GetInstance().MultiplayerMenuUseSearch();
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.MultiplayerMenuUseSearch();
 	}
 
 	// --- Favoriting ---
@@ -1549,7 +1563,9 @@ class ServerBrowserMenuUI : MenuRootBase
 		m_CallbackFavorite.SetOnSuccess(OnRoomSetFavoriteResponse);
 		m_CallbackFavorite.SetOnError(OnRoomSetFavoriteError);
 
-		//SCR_AnalyticsApplication.GetInstance().MultiplayerMenuUseFavorite();
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.MultiplayerMenuUseFavorite();
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -59,16 +59,20 @@ class SCR_SettingsSuperMenu : SCR_SuperMenuBase
 	override void OnMenuShow()
 	{
 		super.OnMenuShow();
-				
-		//SCR_AnalyticsApplication.GetInstance().OpenSettings();
+		
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.OpenSettings();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuHide()
 	{
 		super.OnMenuHide();
-	
-		//SCR_AnalyticsApplication.GetInstance().CloseSettings();
+		
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.CloseSettings();
 	}
 	
 	//------------------------------------------------------------------------------------------------

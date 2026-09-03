@@ -477,20 +477,15 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	{
 		SCR_MilitaryBaseComponent base;
 
-		IEntity provider = GetProviderEntity();
-		if (provider)
-		{
-			SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(provider.FindComponent(SCR_CampaignBuildingProviderComponent));
-			if (!providerComponent)
-				return;
+		SCR_CampaignBuildingProviderComponent providerComponent = GetProviderComponent();
+		if (!providerComponent)
+			return;
 
-			base = providerComponent.GetMilitaryBaseComponent();
-		}
-
+		base = providerComponent.GetMilitaryBaseComponent();
 		if (base)
 			return;
 
-		GetGame().GetWorld().QueryEntitiesBySphere(GetProviderEntity().GetOrigin(), GetProviderComponent().GetBuildingRadius(), AssociateCompositionsToProvider, null, EQueryEntitiesFlags.ALL);
+		GetGame().GetWorld().QueryEntitiesBySphere(providerComponent.GetOwner().GetOrigin(), providerComponent.GetBuildingRadius(), AssociateCompositionsToProvider, null, EQueryEntitiesFlags.ALL);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -498,20 +493,15 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	{
 		ToggleBuildingTool(true);
 
-		IEntity provider = GetProviderEntity();
-		if (!provider)
-			return;
-
-		// In case the provider of the building was the base, don't remove it's stamp from component. So the composition can't be build from another providers
-		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(provider.FindComponent(SCR_CampaignBuildingProviderComponent));
+		SCR_CampaignBuildingProviderComponent providerComponent = GetProviderComponent();
 		if (!providerComponent)
 			return;
 
 		SCR_MilitaryBaseComponent base = providerComponent.GetMilitaryBaseComponent();
 		if (base)
-			return;
+			return; // In case the provider of the building was the base, don't remove it's stamp from component. So the composition can't be build from another providers
 
-		GetGame().GetWorld().QueryEntitiesBySphere(GetProviderEntity().GetOrigin(), GetProviderComponent().GetBuildingRadius(), UnassignCompositionProvider, null, EQueryEntitiesFlags.ALL);
+		GetGame().GetWorld().QueryEntitiesBySphere(providerComponent.GetOwner().GetOrigin(), providerComponent.GetBuildingRadius(), UnassignCompositionProvider, null, EQueryEntitiesFlags.ALL);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -534,7 +524,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 
 	//------------------------------------------------------------------------------------------------
 	bool UnassignCompositionProvider(IEntity ent)
-	{
+	{		
 		SCR_EditableEntityComponent editableComponent = SCR_EditableEntityComponent.Cast(ent.FindComponent(SCR_EditableEntityComponent));
 		if (!editableComponent || editableComponent.GetParentEntity())
 			return true;

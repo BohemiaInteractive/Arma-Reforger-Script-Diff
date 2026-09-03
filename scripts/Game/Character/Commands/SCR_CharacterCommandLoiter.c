@@ -14,9 +14,10 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 	protected SCR_ScriptedCommandsStaticTable m_pStaticTable;
 	protected SCR_CharacterCommandHandlerComponent m_pCommandHandler;
 	protected ref SCR_LoiterCustomAnimData m_customAnimData;
-		
+	protected RplComponent m_rplComponent;
 	protected ELoiterCommandState m_eState;
 	protected bool m_bWasTag;
+	protected float m_fVelocityThreshold = 0.2;
 	
 	//------------------------------------------------------------------------------------------------
 	// constructor
@@ -42,7 +43,9 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 	override void OnActivate()
 	{
 		m_bWasTag = false;
-		
+		if (!m_rplComponent)
+			m_rplComponent = m_pCharacter.GetRplComponent();
+
 		if (m_pScrInputCtx.m_iLoiteringType < 0)
 		{
 			SetFlagFinished(true);
@@ -91,6 +94,15 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 		// If loitering was terminated without properly releasing the ownership of the loiter action, do it now
 		FreeOccupiedActions();
 		
+		if (m_eState == ELoiterCommandState.LOITERING)
+			StopLoitering(true);
+		
+		if (!IsFlagFinished())
+		{
+			FinishLoiter();
+			m_pCommandHandler.BroadCastLoiterFinish();
+		}
+	
 		if (m_customAnimData)
 		{
 			if (m_customAnimData.m_iCommandBindID != -1 && m_customAnimData.m_sGraphName != string.Empty)
@@ -136,8 +148,27 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 					InputManager iManager = GetGame().GetInputManager();
 					cancelLoiterInputs = iManager.GetActionValue("CharacterFire") || iManager.GetActionValue("CharacterSprint") || iManager.GetActionValue("CharacterRaiseWeapon") || iManager.GetActionValue("CharacterWeaponADS") || iManager.GetActionValue("CharacterReload");
 				}
-				
-				if ((m_bWasTag && !isTag) || (cancelLoiterInputs && !m_pScrInputCtx.m_bLoiteringDisablePlayerInput))
+							
+				bool shouldStopLoitering;
+				if (m_pCharacter)
+ 				{
+					CharacterControllerComponent characterControllerComponent = m_pCharacter.GetCharacterController();
+					if (characterControllerComponent && m_rplComponent && m_rplComponent.IsOwner())
+					{
+						float fallSpeed = characterControllerComponent.GetVelocity().Length();
+						bool isEntityLinked = m_pCharAnimComponent.PhysicsIsLinked();
+						if (isEntityLinked)
+							fallSpeed = m_pCharAnimComponent.GetLinkedEntity().GetPhysics().GetVelocity().Length();
+																	
+						if (characterControllerComponent.IsFalling() || characterControllerComponent.IsSwimming() || ((fallSpeed > m_fVelocityThreshold) && isEntityLinked))
+						{
+							shouldStopLoitering = true;
+							// Stop animation immediately
+						}
+					}			
+				}
+
+				if (shouldStopLoitering || (m_bWasTag && !isTag) || (cancelLoiterInputs && !m_pScrInputCtx.m_bLoiteringDisablePlayerInput))
 				{
 					m_pCommandHandler.StopLoitering(false);
 				}

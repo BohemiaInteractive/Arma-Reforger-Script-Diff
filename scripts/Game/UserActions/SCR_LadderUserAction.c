@@ -50,8 +50,11 @@ class SCR_LadderUserAction : ScriptedUserAction
 	
 	protected override bool CanBeShownScript(IEntity user)
 	{		
-		// Already on a ladder
 		SCR_CharacterCommandHandlerComponent cmdHandler = FindCommandHandler(user);
+		if (cmdHandler && cmdHandler.IsLoitering())
+			return false;
+		
+		// Already on a ladder
 		return cmdHandler && !cmdHandler.GetCommandLadder();
 	}
 	

@@ -759,9 +759,8 @@ class SCR_FactionCommanderPlayerComponent : ScriptComponent
 	//! \param[in] position
 	//! \param[in] requesterGroupId
 	//! \param[in] group
-	//! \param[in] playerId
 	//! \param[in] handler
-	void CreateRequestedTask(string taskPrefab, vector position, int requesterGroupId, SCR_AIGroup group, int playerId, SCR_FactionCommanderBaseMenuHandler handler = null)
+	void CreateRequestedTask(string taskPrefab, vector position, int requesterGroupId, SCR_AIGroup group, SCR_FactionCommanderBaseMenuHandler handler = null)
 	{
 		int groupId = -1;
 
@@ -771,12 +770,12 @@ class SCR_FactionCommanderPlayerComponent : ScriptComponent
 		if (requesterGroupId == -1)
 			return;
 
-		Rpc(RpcAsk_CreateRequestedTask, taskPrefab, position, requesterGroupId, groupId, playerId);
+		Rpc(RpcAsk_CreateRequestedTask, taskPrefab, position, requesterGroupId, groupId);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_CreateRequestedTask(string taskPrefab, vector destination, int requesterGroupId, int assigneeId, int playerId)
+	protected void RpcAsk_CreateRequestedTask(string taskPrefab, vector destination, int requesterGroupId, int assigneeId)
 	{
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupsManager)
@@ -795,6 +794,14 @@ class SCR_FactionCommanderPlayerComponent : ScriptComponent
 
 		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
 		if (!taskSystem)
+			return;
+
+		if (!m_PlayerController)
+			return;
+
+		int playerId = m_PlayerController.GetPlayerId();
+
+		if (!taskSystem.CanPlayerCreateNewTask(playerId))
 			return;
 
 		string taskID = string.Format(REQUESTED_TASK_ID, faction.GetFactionKey(), GenerateTaskID());
@@ -833,21 +840,20 @@ class SCR_FactionCommanderPlayerComponent : ScriptComponent
 	//! \param[in] taskPrefab
 	//! \param[in] position
 	//! \param[in] group
-	//! \param[in] playerId
 	//! \param[in] handler
-	void CreateTask(ResourceName taskPrefab, vector position, SCR_AIGroup group, int playerId)
+	void CreateTask(ResourceName taskPrefab, vector position, SCR_AIGroup group)
 	{
 		int groupId = -1;
 
 		if (group)
 			groupId = group.GetGroupID();
 
-		Rpc(RpcAsk_CreateTask, taskPrefab, groupId, playerId, position, GetGame().GetFactionManager().GetFactionIndex(SCR_FactionManager.SGetLocalPlayerFaction()));
+		Rpc(RpcAsk_CreateTask, taskPrefab, groupId, position, GetGame().GetFactionManager().GetFactionIndex(SCR_FactionManager.SGetLocalPlayerFaction()));
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_CreateTask(string taskPrefab, int assigneeId, int playerId, vector destination, int factionIndex)
+	protected void RpcAsk_CreateTask(string taskPrefab, int assigneeId, vector destination, int factionIndex)
 	{
 		Faction faction = GetGame().GetFactionManager().GetFactionByIndex(factionIndex);
 		if (!faction)
@@ -858,6 +864,14 @@ class SCR_FactionCommanderPlayerComponent : ScriptComponent
 
 		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
 		if (!taskSystem)
+			return;
+
+		if (!m_PlayerController)
+			return;
+
+		int playerId = m_PlayerController.GetPlayerId();
+
+		if (!taskSystem.CanPlayerCreateNewTask(playerId))
 			return;
 
 		string taskID = string.Format(TASK_ID, faction.GetFactionKey(), GenerateTaskID());

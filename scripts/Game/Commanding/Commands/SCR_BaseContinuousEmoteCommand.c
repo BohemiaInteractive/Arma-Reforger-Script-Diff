@@ -24,7 +24,7 @@ class SCR_ContinuousLoiterCommand : SCR_BaseRadialCommand
 		if (SCR_PlayerController.GetLocalPlayerId() != playerID)
 			return true;
 		
-		IEntity playerControlledEntity = GetGame().GetPlayerController().GetControlledEntity();		
+		SCR_ChimeraCharacter playerControlledEntity = SCR_ChimeraCharacter.Cast(GetGame().GetPlayerController().GetControlledEntity());
 		if (!playerControlledEntity)
 			return false;
 		
@@ -46,6 +46,9 @@ class SCR_ContinuousLoiterCommand : SCR_BaseRadialCommand
 		
 		if (m_bUnequipItems && (gadgetManager.GetHeldGadget() || characterController.GetWeaponManagerComponent().GetCurrentWeapon()))
 		{
+			if (!CanBePerformed(playerControlledEntity))
+				return false;
+
 			if (characterController.IsGadgetInHands())
 				characterController.RemoveGadgetFromHand();		
 			
@@ -94,8 +97,11 @@ class SCR_ContinuousLoiterCommand : SCR_BaseRadialCommand
 	//------------------------------------------------------------------------------------------------
 	bool StartLoiter()
 	{
-		ChimeraCharacter playerControlledEntity = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+		SCR_ChimeraCharacter playerControlledEntity = SCR_ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
 		if (!playerControlledEntity)
+			return false;
+
+		if (!CanBePerformed(playerControlledEntity))
 			return false;
 		
 		SCR_CharacterControllerComponent characterController = SCR_CharacterControllerComponent.Cast(playerControlledEntity.GetCharacterController());

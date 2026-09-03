@@ -47,7 +47,7 @@ class SCR_FactionCommanderCommandConflictMenuHandler : SCR_FactionCommanderConfl
 
 		if (!IsTaskValid(hoveredEntity))
 		{
-			comp.CreateTask(GetTaskPrefab(), position, group, playerId);
+			comp.CreateTask(GetTaskPrefab(), position, group);
 			return;
 		}
 

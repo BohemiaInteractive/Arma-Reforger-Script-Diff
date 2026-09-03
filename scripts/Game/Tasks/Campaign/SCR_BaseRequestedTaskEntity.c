@@ -8,7 +8,6 @@ class SCR_BaseRequestedTaskEntityClass : SCR_TaskClass
 
 class SCR_BaseRequestedTaskEntity : SCR_Task
 {
-	static const int REQUEST_MAX_COUNT = 2;
 	static const int INVALID_REQUESTER_ID = -1;
 
 	protected SCR_BaseRequestedTaskData m_BaseRequestedTaskData;

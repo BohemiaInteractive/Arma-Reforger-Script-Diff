@@ -68,7 +68,9 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 		// But we can switch back to it later, and we must setup the workshop api again
 		InitWorkshopApi();
 		
-		//SCR_AnalyticsApplication.GetInstance().ScenariosSetTab(m_eMode);
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.ScenariosSetTab(m_eMode);
 
 		m_bIsOpened = true;
 	}
@@ -503,7 +505,9 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	{
 		UpdateScenarioList(false);
 		
-		//SCR_AnalyticsApplication.GetInstance().ScenariosUseSearch();		
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.ScenariosUseSearch();		
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -512,7 +516,9 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	{
 		UpdateScenarioList(false);
 		
-		//SCR_AnalyticsApplication.GetInstance().ScenariosSetSorting(sortHeader.GetSortElementName());
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.ScenariosSetSorting(sortHeader.GetSortElementName());
 	}
 
 	// ---- PUBLIC ----

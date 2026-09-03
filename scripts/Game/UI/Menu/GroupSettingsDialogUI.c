@@ -163,7 +163,7 @@ class GroupSettingsDialogUI: DialogUI
 		if (!m_PlayerComponent)
 			return;
 		
-		m_PlayerComponent.RequestPrivateGroupChange(m_PlayerComponent.GetPlayerID() , index);
+		m_PlayerComponent.RequestPrivateGroupChange(index);
 	}
 
 	//------------------------------------------------------------------------------------------------

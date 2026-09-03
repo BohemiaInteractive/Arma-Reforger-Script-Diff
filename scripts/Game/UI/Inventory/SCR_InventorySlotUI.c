@@ -798,9 +798,13 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 			Refresh();
 		
 		// if we are using a bandage from inventory, inform analytics.
-		//SCR_ConsumableItemComponent consumableComp = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
-		//if (consumableComp && consumableComp.GetConsumableType() == SCR_EConsumableType.BANDAGE && context == SCR_EUseContext.FROM_INVENTORY)
-		//	SCR_AnalyticsApplication.GetInstance().UseHealingFromInventory();
+		SCR_ConsumableItemComponent consumableComp = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
+		if (consumableComp && consumableComp.GetConsumableType() == SCR_EConsumableType.BANDAGE && context == SCR_EUseContext.FROM_INVENTORY)
+		{
+			SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+			if (analytics)
+				analytics.UseHealingFromInventory();
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------	
@@ -1215,4 +1219,4 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		if (m_FuelManager && m_wProgressBar)
 			m_FuelManager.GetOnFuelChanged().Remove(OnFuelAmountChanged);
 	}
-};
+}

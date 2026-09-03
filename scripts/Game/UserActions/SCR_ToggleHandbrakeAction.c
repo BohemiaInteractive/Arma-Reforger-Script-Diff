@@ -93,6 +93,8 @@ class SCR_ToggleHandbrakeAction : SCR_ScriptedUserAction
 		bool handBrake = controller.GetPersistentHandBrake();
 		controller.SetPersistentHandBrake(!handBrake);
 		simulation.SetBreak(!handBrake, !handBrake);
+		if (handBrake)
+			vehicleEntity.GetPhysics().SetActive(ActiveState.ACTIVE); // wakeup physics when parking brake is released
 
 		//get number of all gears where neautral is also one of them and it is the middle one
 		int gears = simulation.GearboxGearsCount();

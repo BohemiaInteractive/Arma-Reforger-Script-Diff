@@ -278,7 +278,9 @@ class SCR_InterfaceSettingsSubMenu : SCR_SettingsSubMenuBase
 		GetGame().UserSettingsChanged();
 		ChangeMasterSwitchState();
 		
-		//SCR_AnalyticsApplication.GetInstance().ChangeSetting("Interface", settingsName);
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.ChangeSetting("Interface", settingsName);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -318,6 +320,8 @@ class SCR_InterfaceSettingsSubMenu : SCR_SettingsSubMenuBase
 		// Add the invoker again once everything is done
 		m_MasterSpinBoxComp.m_OnChanged.Insert(OnMasterChange);
 		
-		//SCR_AnalyticsApplication.GetInstance().SetHudVisibilitySetting(currentItem);
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.SetHudVisibilitySetting(currentItem);
 	}
 }

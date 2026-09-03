@@ -34,7 +34,11 @@ class SCR_FactionCommanderBaseRequestMenuHandler : SCR_FactionCommanderBaseTaskM
 	//------------------------------------------------------------------------------------------------
 	bool CanRequestEntryBeSelected(notnull Faction commanderFaction, int playerId, vector position, IEntity hoveredEntity, out string disabledText = "")
 	{
-		if (GetActiveGroupRequestCount(commanderFaction, playerId) >= SCR_BaseRequestedTaskEntity.REQUEST_MAX_COUNT)
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (!taskSystem)
+			return false;
+
+		if (!taskSystem.CanPlayerCreateNewTask(playerId))
 		{
 			disabledText = LIMIT_REQUEST_REACHED_TEXT;
 			return false;
@@ -66,7 +70,11 @@ class SCR_FactionCommanderBaseRequestMenuHandler : SCR_FactionCommanderBaseTaskM
 		if (!group)
 			return false;
 
-		if (GetActiveGroupRequestCount(commanderFaction, playerId) >= SCR_BaseRequestedTaskEntity.REQUEST_MAX_COUNT)
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (!taskSystem)
+			return false;
+
+		if (!taskSystem.CanPlayerCreateNewTask(playerId))
 		{
 			disabledText = LIMIT_REQUEST_REACHED_TEXT;
 			return false;
@@ -136,7 +144,7 @@ class SCR_FactionCommanderBaseRequestMenuHandler : SCR_FactionCommanderBaseTaskM
 
 		if (!IsTaskValid(hoveredEntity))
 		{
-			factionCommanderPlayerComponent.CreateRequestedTask(GetTaskPrefab(), position, requesterGroup.GetGroupID(), group, playerId, this);
+			factionCommanderPlayerComponent.CreateRequestedTask(GetTaskPrefab(), position, requesterGroup.GetGroupID(), group, this);
 			return;
 		}
 

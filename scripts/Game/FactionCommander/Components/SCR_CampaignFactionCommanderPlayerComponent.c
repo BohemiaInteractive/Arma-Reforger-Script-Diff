@@ -236,10 +236,9 @@ class SCR_CampaignFactionCommanderPlayerComponent : SCR_FactionCommanderPlayerCo
 	//! Create campaign military base task
 	//! \param[in] taskPrefab
 	//! \param[in] group
-	//! \param[in] playerId
 	//! \param[in] handler
 	//! \param[in] positionOffset
-	void CreateCampaignMilitaryBaseTask(ResourceName taskPrefab, SCR_AIGroup group, int playerId, vector positionOffset = vector.Zero)
+	void CreateCampaignMilitaryBaseTask(ResourceName taskPrefab, SCR_AIGroup group, vector positionOffset = vector.Zero)
 	{
 		int groupId = -1;
 
@@ -254,16 +253,18 @@ class SCR_CampaignFactionCommanderPlayerComponent : SCR_FactionCommanderPlayerCo
 		if (baseCallsign == SCR_MilitaryBaseComponent.INVALID_BASE_CALLSIGN)
 			return;
 
-		Rpc(RpcAsk_CreateCampaignMilitaryBaseTask, taskPrefab, groupId, GetGame().GetFactionManager().GetFactionIndex(SCR_FactionManager.SGetLocalPlayerFaction()), playerId, baseCallsign, positionOffset);
+		Rpc(RpcAsk_CreateCampaignMilitaryBaseTask, taskPrefab, groupId, GetGame().GetFactionManager().GetFactionIndex(SCR_FactionManager.SGetLocalPlayerFaction()), baseCallsign, positionOffset);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_CreateCampaignMilitaryBaseTask(ResourceName taskPrefab, int assigneeId, int factionIndex, int playerId, int baseCallsign, vector positionOffset)
+	protected void RpcAsk_CreateCampaignMilitaryBaseTask(ResourceName taskPrefab, int assigneeId, int factionIndex, int baseCallsign, vector positionOffset)
 	{
 		PlayerController sender = PlayerController.Cast(GetOwner());
 		if (!sender)
 			return;
+
+		int playerId = sender.GetPlayerId();
 
 		SCR_Faction faction = SCR_Faction.Cast(GetGame().GetFactionManager().GetFactionByIndex(factionIndex));
 		if (!faction || !faction.IsPlayerCommander(sender.GetPlayerId()))

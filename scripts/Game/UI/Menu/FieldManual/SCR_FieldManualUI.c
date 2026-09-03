@@ -158,15 +158,19 @@ class SCR_FieldManualUI : MenuRootBase
 		CloseReadingPanel();
 		OpenFirstSubCategory();
 
-		//SCR_AnalyticsApplication.GetInstance().OpenFieldManual();
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.OpenFieldManual();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected override void OnMenuHide()
 	{	
 		super.OnMenuHide();
-			
-		//SCR_AnalyticsApplication.GetInstance().CloseFieldManual();
+		
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.CloseFieldManual();
 	}
 
 #ifdef WORKBENCH

@@ -449,7 +449,7 @@ class SCR_GroupSubMenuBase : SCR_SubMenuBase
 			return;
 
 		SCR_AIGroup playerGroup = groupsManager.FindGroup(playerComponent.GetGroupID());
-		playerComponent.RequestPrivateGroupChange(playerComponent.GetPlayerID(), !playerGroup.IsPrivate());
+		playerComponent.RequestPrivateGroupChange(!playerGroup.IsPrivate());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -499,6 +499,6 @@ class SCR_GroupSubMenuBase : SCR_SubMenuBase
 		if (!group)
 			return;
 
-		m_PlayerGroupController.RequestPrivateGroupChange(m_PlayerGroupController.GetPlayerID(), !group.IsPrivate());
+		m_PlayerGroupController.RequestPrivateGroupChange(!group.IsPrivate());
 	}
 }

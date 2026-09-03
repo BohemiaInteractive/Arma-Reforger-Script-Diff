@@ -1678,7 +1678,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	//------------------------------------------------------------------------------------------------
 	bool CanPlayLoiterAnimation(ELoiteringType loiterType)
 	{
-		if (IsDead())
+		if (GetLifeState() != ECharacterLifeState.ALIVE)
 			return false;
 
 		if (IsFalling())

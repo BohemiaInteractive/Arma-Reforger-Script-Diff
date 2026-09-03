@@ -1333,13 +1333,15 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 			}
 		}
 
-		//~ Check if the player has enough personal supplies allocated for the loadout
+		// Check if the player has enough MSAR allocated for the loadout
+		// checks for ALL ITEMS, non MSAR items are mostly non personal / "squad level" like NSV, mortar rounds and mines
+		// doubtful you need 200 mines on every respawn, but within your MSAR limit should be fine!
 		if (m_bUseMilitarySupplyAllocation && playerController)
 		{
 			SCR_PlayerSupplyAllocationComponent playerSupplyAllocationComponent = SCR_PlayerSupplyAllocationComponent.Cast(playerController.FindComponent(SCR_PlayerSupplyAllocationComponent));
 			if (playerSupplyAllocationComponent)
 			{
-				if (GetCharacterLoadoutSupplyCost(characterEntity, true) > playerSupplyAllocationComponent.GetPlayerMilitarySupplyAllocation())
+				if (GetCharacterLoadoutSupplyCost(characterEntity, false) > playerSupplyAllocationComponent.GetPlayerMilitarySupplyAllocation())
 				{
 					if (sendNotificationOnFailed)
 						SCR_NotificationsComponent.SendToPlayer(playerId, ENotification.PLAYER_LOADOUT_NOT_SAVED_NOT_ENOUGH_MSA);

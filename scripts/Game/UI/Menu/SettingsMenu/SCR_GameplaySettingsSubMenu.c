@@ -94,6 +94,7 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		
 		BindLanguage();
 		BindCrossplaySettings();
+		BindClientAnalytics();
 
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_UI_SHOW_ALL_SETTINGS, false))
 			return;
@@ -203,7 +204,44 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		
 		GetGame().UserSettingsChanged();
 		
-		//SCR_AnalyticsApplication.GetInstance().ChangeSetting(m_sUserInterfaceSettings, settingName);
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.ChangeSetting(m_sUserInterfaceSettings, settingName);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void BindClientAnalytics()
+	{
+		Widget w = m_wRoot.FindAnyWidget("ClientAnalyticsOptOut");
+		if (!w)
+			return;
+		
+		SCR_SpinBoxComponent comp = SCR_SpinBoxComponent.Cast(w.FindHandler(SCR_SpinBoxComponent));
+		if (!comp)
+			return;
+		
+		// Is this as intended?
+		comp.SetCurrentItem(!GetGame().IsCollectingAnalytics());
+		comp.m_OnChanged.Insert(OnClientAnalyticsChanged);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnClientAnalyticsChanged()
+	{
+		const string settingName = "ClientAnalyticsOptOut";
+		Widget w = m_wRoot.FindAnyWidget(settingName);
+		if (!w)
+			return;
+		
+		SCR_SpinBoxComponent comp = SCR_SpinBoxComponent.Cast(w.FindHandler(SCR_SpinBoxComponent));
+		if (!comp)
+			return;
+		
+		bool optedOut = comp.GetCurrentIndex();
+		Print("Setting: " + optedOut);
+		GetGame().SetClientAnalytics(!optedOut);
+		// Setting handled by gameCode - code marks it as changed
+		//GetGame().UserSettingsChanged();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -222,6 +260,8 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		
 		m_OnLanguageChanged.Invoke(this);
 		
-		//SCR_AnalyticsApplication.GetInstance().ChangeSetting(m_sUserInterfaceSettings, settingName);
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.ChangeSetting(m_sUserInterfaceSettings, settingName);
 	}
 }

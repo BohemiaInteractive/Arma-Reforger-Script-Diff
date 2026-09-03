@@ -1635,6 +1635,12 @@ class SCR_Task : GenericEntity
 		ReadUIInfo(reader, m_TaskData.m_UIInfo);
 		reader.ReadVector(m_TaskData.m_vPosition);
 		reader.ReadInt(m_TaskData.m_iAuthorId);
+
+		// when this object is replicated to client
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (taskSystem)
+			taskSystem.PlayerCreatedNewTask(this);
+
 		reader.ReadString(m_TaskData.m_sAuthorIdentityId);
 		reader.ReadInt(m_TaskData.m_ePlatformKind);
 		
@@ -1949,7 +1955,12 @@ class SCR_Task : GenericEntity
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
 		if (groupsManager)
 			groupsManager.GetOnPlayableGroupRemoved().Remove(OnGroupRemoved);
-		
+
+		// when this object is replicated to client
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (taskSystem)
+			taskSystem.PlayerTaskDeleted(this);
+
 		DisconnectFromTaskSystem();
 	}
 }

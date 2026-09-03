@@ -688,8 +688,11 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 
 		m_BaseManager.SelectHQs(candidatesForHQ, controlPoints, selectedHQs);
 		m_BaseManager.SetHQFactions(selectedHQs);
+
 		// Call analytic event
-		//SCR_AnalyticsApplication.GetInstance().OnMOBSelected(selectedHQs);
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.OnMOBSelected(selectedHQs);
 
 		foreach (SCR_CampaignMilitaryBaseComponent hq : selectedHQs)
 		{

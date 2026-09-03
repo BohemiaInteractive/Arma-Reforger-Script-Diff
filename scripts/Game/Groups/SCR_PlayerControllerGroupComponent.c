@@ -69,9 +69,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	//! \param[in] description
 	//! \param[in] joinGroup
 	//! \param[in] deleteIfNoPlayer
-	void RequestCreateGroupWithData(SCR_EGroupRole groupRole, bool isPrivate, string name, string description, bool joinGroup = true, bool deleteIfNoPlayer = true)
+	void RequestCreateGroupWithData(SCR_EGroupRole groupRole, bool isPrivate, string name, string description, bool joinGroup = true)
 	{
-		Rpc(RpcAsk_CreateGroupWithData, groupRole, isPrivate, name, description, joinGroup, deleteIfNoPlayer);
+		Rpc(RpcAsk_CreateGroupWithData, groupRole, isPrivate, name, description, joinGroup);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -94,9 +94,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	//!
 	//! \param[in] playerID
 	//! \param[in] isPrivate
-	void RequestPrivateGroupChange(int playerID, bool isPrivate)
+	void RequestPrivateGroupChange(bool isPrivate)
 	{
-		Rpc(RPC_ChangePrivateGroup, playerID, isPrivate);
+		Rpc(RPC_ChangePrivateGroup, isPrivate);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -685,8 +685,11 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	//!
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RpcAsk_CreateGroupWithData(SCR_EGroupRole groupRole, bool isPrivate, string name, string description, bool joinGroup, bool deleteIfNoPlayer)
+	void RpcAsk_CreateGroupWithData(SCR_EGroupRole groupRole, bool isPrivate, string name, string description, bool joinGroup)
 	{
+		if (isPrivate && !joinGroup)
+			return; // why would you make a private group and not join it
+
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupsManager)
 			return;
@@ -700,6 +703,26 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!faction)
 			return;
 
+		SCR_AIGroup playerGroup = groupsManager.GetPlayerGroup(playerId);
+		if (playerGroup)
+		{
+			bool isSame = faction == playerGroup.GetFaction();
+			isSame &= playerGroup.GetPlayerCount() < 2; // maybe he wants to be alone
+			isSame &= playerGroup.GetGroupRole() == groupRole;
+			if (isSame && playerGroup.IsPrivate() != isPrivate)
+			{
+				isSame &= playerGroup.IsPrivacyChangeable();
+				if (isSame)
+					playerGroup.SetPrivate(isPrivate);
+			}
+
+			if (isSame)
+			{
+				TrySetCustomNameAndDescription(playerGroup, name, description, playerId);
+				return; // player requested to have a new group which is exactly like his current group, or his current group can be made to be such
+			}
+		}
+
 		SCR_Faction scrFaction = SCR_Faction.Cast(faction);
 		if (!scrFaction)
 			return;
@@ -708,6 +731,34 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!availableGroupRoles || !availableGroupRoles.Contains(groupRole))
 		{
 			PrintFormat("Group role %1 is not available", typename.EnumToString(SCR_EGroupRole, groupRole), level: LogLevel.WARNING);
+			return;
+		}
+
+		set<SCR_AIGroup> groups = groupsManager.FindGroupsInFaction(groupRole, faction);
+		foreach (SCR_AIGroup group : groups)
+		{
+			if (playerGroup == group)
+				continue; // we already checked it
+
+			if (group.IsPrivate())
+				continue;
+
+			if (group.GetPlayerCount() > 0)
+				continue; // ignore ones that have players, as he might want to be a lone wolf :smh:
+
+			if (isPrivate != group.IsPrivate())
+			{
+				if (!group.IsPrivacyChangeable())
+					continue; // if player wants a private group but we found such that cant be made preive the ignore
+			}
+
+			if (!joinGroup)
+				return; // dont allow player to create an empty group if there is already a empty group that can be used
+
+			// reuse existing group
+			RPC_AskJoinGroup(group.GetGroupID());
+			TrySetCustomNameAndDescription(group, name, description, playerId);
+			group.SetPrivate(isPrivate);
 			return;
 		}
 
@@ -732,7 +783,6 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		}
 
 		newGroup.SetPrivate(isPrivate);
-		newGroup.SetCanDeleteIfNoPlayer(deleteIfNoPlayer);
 
 		/*
 		To set the name and description of the group, the calling of the SetCustomNameAndDescription function must be delayed to the next frame,
@@ -763,9 +813,13 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		SCR_AIGroup group;
 		if (!InitiateComponents(playerID, groupsManager, playerGroupController, group))
 			return;
-		
+
+		int requestingPlayerId = GetPlayerID();
+		if (playerID == requestingPlayerId)
+			return; // why would you want to kick yourself from the group 
+
 		//requesting player is not leader of the targets group, do nothing
-		if (!group.IsPlayerLeader(GetPlayerID()))
+		if (!group.IsPlayerLeader(requestingPlayerId))
 			return;
 		
 		// if we have a reserves group, we prioritize putting the kicked player in there.
@@ -809,20 +863,21 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//!
-	//! \param[in] playerID
 	//! \param[in] isPrivate
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RPC_ChangePrivateGroup(int playerID, bool isPrivate)
+	void RPC_ChangePrivateGroup(bool isPrivate)
 	{
+		int playerID = GetPlayerID();
+
 		SCR_GroupsManagerComponent groupsManager;
 		SCR_PlayerControllerGroupComponent playerGroupController;
 		SCR_AIGroup group;
 		if (!InitiateComponents(playerID, groupsManager, playerGroupController, group))
 			return;
 
-		if (!group.IsPlayerLeader(GetPlayerID()))
+		if (!group.IsPlayerLeader(playerID))
 			return;
-		
+
 		groupsManager.SetPrivateGroup(group.GetGroupID(), isPrivate);
 	}
 	
@@ -1110,7 +1165,27 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void SetCustomNameAndDescription(SCR_AIGroup group, string name, string description, int playerId)
+	//! Attempts to set name and description unless they are set to such values
+	//! \param[in] group which properties are modified
+	//! \param[in] name which will be assigned to the group if it already isnt such
+	//! \param[in] desription which will be assigned to the group if it already isnt such
+	//! \param[in] playerId who is responsible for this change
+	protected void TrySetCustomNameAndDescription(notnull SCR_AIGroup group, string name, string description, int playerId)
+	{
+		if (group.GetCustomName() != name)
+			group.SetCustomName(name, playerId);
+
+		if (group.GetCustomDescription() != description)
+			group.SetCustomDescription(description, playerId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Sets the name and the description even if the like that. Can be used to trigger the events which refresh the UI
+	//! \param[in] group which properties are modified
+	//! \param[in] name which will be assigned to the group if it already isnt such
+	//! \param[in] desription which will be assigned to the group if it already isnt such
+	//! \param[in] playerId who is responsible for this change
+	protected void SetCustomNameAndDescription(notnull SCR_AIGroup group, string name, string description, int playerId)
 	{
 		group.SetCustomName(name, playerId);
 		group.SetCustomDescription(description, playerId);
@@ -1338,6 +1413,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		SCR_AIGroup group = SCR_AIGroup.Cast(rplComp.GetEntity());
 		if (!group || !group.IsPlayerLeader(GetPlayerID()))
 			return;
+
+		if (group.GetSlave() != null)
+			return; // we expect client to request a slave group only when he doesnt have one already, thus there is not need to process this further, as he has one
 
 		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
 		if (!commandingManager)
@@ -1814,7 +1892,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 
 			if (scrFaction.GetCanCreateOnlyPredefinedGroups())
 			{
-				RequestCreateGroupWithData(scrFaction.GetDefaultGroupRoleForNewGroup(), false, string.Empty, string.Empty, true, true);
+				RequestCreateGroupWithData(scrFaction.GetDefaultGroupRoleForNewGroup(), false, string.Empty, string.Empty, true);
 				return;
 			}
 

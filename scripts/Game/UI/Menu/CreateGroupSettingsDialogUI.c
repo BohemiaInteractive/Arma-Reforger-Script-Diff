@@ -38,9 +38,6 @@ class CreateGroupSettingsDialogUI : DialogUI
 		m_GroupsManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!m_GroupsManager)
 			return;
-		
-		//temp debug remove
-		result = UserPrivilegeResult.NOT_ALLOWED;
 
 		Widget w = GetRootWidget();
 		if (!w)
@@ -128,7 +125,7 @@ class CreateGroupSettingsDialogUI : DialogUI
 			if (m_GroupDescription.IsEnabled())
 				groupDescription = m_GroupDescription.GetValue();
 			
-			groupController.RequestCreateGroupWithData(configuredGroupRoles[currentIndex], isPrivate, groupName, groupDescription, joinGroup, true);
+			groupController.RequestCreateGroupWithData(configuredGroupRoles[currentIndex], isPrivate, groupName, groupDescription, joinGroup);
 		}
 		else
 		{

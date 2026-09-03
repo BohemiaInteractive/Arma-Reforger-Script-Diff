@@ -11,6 +11,7 @@ class SCR_TaskSystem : GameSystem
 	protected static ref SCR_TaskInvoker s_OnTaskCreated;
 	
 	protected static ref array<SCR_Task> s_aTasks = {};
+	protected static ref map<int, ref array<SCR_Task> > s_mPlayerTaskAmount = new map<int,ref array<SCR_Task> >();
 	
 	protected const ResourceName BASE_TASK_RESOURCE = "{1D0F815858EE24AD}Prefabs/Tasks/BaseTask.et";
 	protected const ResourceName EXTENDED_TASK_RESOURCE = "{CF6A2A13DF7B1018}Prefabs/Tasks/ExtendedTask.et";
@@ -24,6 +25,9 @@ class SCR_TaskSystem : GameSystem
 	private const int DIAG_MAX_NAME_LENGTH = 30;
 	private const int DIAG_MAX_NAME_LENGTH_LIST = 20;
 	private const int DIAG_MAX_DESCRIPTION_LENGTH = 23;
+
+	private const int MAX_TASK_AMOUNT_PLAYER = 3;
+	private const int MAX_TASK_AMOUNT_COMMANDER = 50;
 	
 	//------------------------------------------------------------------------------------------------
 	override static void InitInfo(WorldSystemInfo outInfo)
@@ -316,7 +320,90 @@ class SCR_TaskSystem : GameSystem
 		outTasks.Copy(s_aTasks);
 		return outTasks.Count();
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] playerId
+	//! \return
+	bool CanPlayerCreateNewTask(int playerId)
+	{
+		// player needs to exist
+		if (playerId < 0)
+			return false;
+
+		array<SCR_Task> playerTasks = s_mPlayerTaskAmount.Get(playerId);
+		if (!playerTasks)
+			return true;
+
+		int playerTaskAmount = playerTasks.Count();
+		if (playerTaskAmount < MAX_TASK_AMOUNT_PLAYER)
+			return true;
+
+		SCR_Faction faction = SCR_Faction.Cast(SCR_FactionManager.SGetPlayerFaction(playerId));
+		if (!faction)
+			return false;
+
+		// Half of the commanders job is placing tasks so we shouldnt limit their ability to place new tasks
+		return faction.IsPlayerCommander(playerId) && playerTaskAmount < MAX_TASK_AMOUNT_COMMANDER;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Update task system that a new task is created by a specific player
+	//! \param[in] newTask
+	void PlayerCreatedNewTask(SCR_Task newTask)
+	{
+		int authorId = newTask.GetAuthorID();
+		if (authorId < 1)
+			return;
+
+		array<SCR_Task> playerTasks = s_mPlayerTaskAmount.Get(authorId);
+
+		if (!playerTasks)
+		{
+			s_mPlayerTaskAmount.Set(authorId, new array<SCR_Task>());
+
+			playerTasks = s_mPlayerTaskAmount.Get(authorId);
+		}
+
+		SCR_Task task;
+
+		for (int idx = playerTasks.Count()-1 ; idx >= 0 ; idx --)
+		{
+			task = playerTasks[idx];
+
+			if (!task)
+				playerTasks.Remove(idx);
+		}
+
+		// minor redundancy check
+		if (!playerTasks.Contains(newTask))
+			playerTasks.Insert(newTask);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Update task system that a task is removed by a specific player
+	//! \param[in] removedTask
+	void PlayerTaskDeleted(SCR_Task removedTask)
+	{
+		int authorId = removedTask.GetAuthorID();
+		if (authorId < 1)
+			return;
+
+		array<SCR_Task> playerTasks = s_mPlayerTaskAmount.Get(authorId);
+
+		if (!playerTasks)
+			return;
+
+		SCR_Task task;
+		for (int idx = playerTasks.Count()-1 ; idx >= 0 ; idx --)
+		{
+			task = playerTasks[idx];
+
+			if (!task || task == removedTask)
+				playerTasks.Remove(idx);
+		}
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Returns task assigned to provided executor; Returns null if executor is not assigned to any task
 	//! \param[in] executor
@@ -1556,12 +1643,14 @@ class SCR_TaskSystem : GameSystem
 		
 		task.SetTaskID(taskID);
 		
-		if (playerId > -1) 				// author is a player
+		if (playerId > -1) 	// author is a player
 		{
 			UUID playerIdentity = SCR_PlayerIdentityUtils.GetPlayerIdentityId(playerId);
 			PlayerManager playerManager = GetGame().GetPlayerManager();
 			PlatformKind platform = playerManager.GetPlatformKind(playerId);
 			task.SetAuthorCredentials(playerId,playerIdentity,platform);
+
+			PlayerCreatedNewTask(task);
 		}	
 		
 		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(name))
@@ -1577,7 +1666,7 @@ class SCR_TaskSystem : GameSystem
 		Print("SCR_TaskSystem: Created task with ID: " + taskID, LogLevel.DEBUG);
 		return task;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Deletes task from SCR_TaskSystem
 	//! \param[in] task
@@ -1595,7 +1684,9 @@ class SCR_TaskSystem : GameSystem
 			Print("SCR_TaskSystem: Missing Rpl Component; Cannot delete task with ID: " + task.GetTaskID(), LogLevel.WARNING);
 			return;
 		}
-		
+
+		PlayerTaskDeleted(task);
+
 		Print("SCR_TaskSystem: Deleted task with ID: " + task.GetTaskID(), LogLevel.DEBUG);
 		taskRpl.DeleteRplEntity(task, false);
 	}

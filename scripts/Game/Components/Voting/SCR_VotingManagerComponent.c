@@ -772,7 +772,10 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 		
 		string authorIdentityID = SCR_PlayerIdentityUtils.GetPlayerIdentityId(voting.GetAuthorId());
 		string winnerIdentityID = SCR_PlayerIdentityUtils.GetPlayerIdentityId(winner);
-		//SCR_AnalyticsApplication.GetInstance().VoteToKickResult(type, authorIdentityID, winnerIdentityID, resultSuccessful);
+
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.VoteToKickResult(type, authorIdentityID, winnerIdentityID, resultSuccessful);
 	}
 
 	//------------------------------------------------------------------------------------------------

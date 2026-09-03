@@ -8,7 +8,6 @@ enum SCR_EAnalyticalItemSlotType
 	OTHER
 }
 
-/*
 [EnumLinear()]
 enum SCR_EAnalyticsWorkshopTab
 {
@@ -605,11 +604,21 @@ class SCR_AnalyticsApplication : WorldSystem
 	//! If you want to enable analytics programatically, use for example SetLogging(SCR_EAnalyticsApplicationLoggingFlags.CONSOLE | SCR_EAnalyticsApplicationLoggingFlags.API);
 	static SCR_AnalyticsApplication GetInstance()
 	{
+		/*
+		TODO: Consider refactoring this into a singleton that would always return
+		a valid SCR_AnalyticsApplication
+		*/
+		
 		World world = GetGame().GetWorld();
 		if (!world)
 			return null;
+		
+		// SCR_AnalyticsApplication can be removed from the systems
+		WorldSystem analytics = world.FindSystem(SCR_AnalyticsApplication);
+		if (!analytics)
+			return null;
 
-		return SCR_AnalyticsApplication.Cast(world.FindSystem(SCR_AnalyticsApplication));
+		return SCR_AnalyticsApplication.Cast(analytics);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -747,5 +756,3 @@ class SCR_AnalyticsApplication : WorldSystem
 		}
 	}
 }
-
-*/

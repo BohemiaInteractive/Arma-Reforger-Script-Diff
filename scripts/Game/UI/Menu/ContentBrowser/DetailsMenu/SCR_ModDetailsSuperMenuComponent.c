@@ -30,7 +30,10 @@ class SCR_ModDetailsSuperMenuComponent : SCR_SuperMenuComponent
 	override SCR_SubMenuBase OnTabShow(SCR_TabViewComponent comp, Widget w)
 	{
 		SCR_SubMenuBase subMenu = super.OnTabShow(comp, w);
-		//SCR_AnalyticsApplication.GetInstance().ModDetailsSetTab(subMenu.GetIndex());
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.ModDetailsSetTab(subMenu.GetIndex());
+
 		return subMenu;
 	}
 
@@ -39,7 +42,9 @@ class SCR_ModDetailsSuperMenuComponent : SCR_SuperMenuComponent
 	{
 		super.OnMenuShow();
 		
-		//SCR_AnalyticsApplication.GetInstance().OpenModDetails();	
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.OpenModDetails();	
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -56,7 +61,9 @@ class SCR_ModDetailsSuperMenuComponent : SCR_SuperMenuComponent
 	{
 		super.OnMenuHide();
 		
-		//SCR_AnalyticsApplication.GetInstance().CloseModDetails();	
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.CloseModDetails();	
 	}
 	
 	//------------------------------------------------------------------------------------------------

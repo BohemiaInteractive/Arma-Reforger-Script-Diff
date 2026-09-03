@@ -22,6 +22,6 @@ class SCR_FactionCommanderEstablishBaseRequestConfirmMenuHandler : SCR_FactionCo
 
 		SCR_EstablishBaseRequestedTaskEntity requestTask = SCR_EstablishBaseRequestedTaskEntity.Cast(hoveredEntity);
 		if (requestTask)
-			factionCommanderPlayerComponent.CreateTask(m_sEstablishTaskPrefab, hoveredEntity.GetOrigin(), group, playerId);
+			factionCommanderPlayerComponent.CreateTask(m_sEstablishTaskPrefab, hoveredEntity.GetOrigin(), group);
 	}
 }

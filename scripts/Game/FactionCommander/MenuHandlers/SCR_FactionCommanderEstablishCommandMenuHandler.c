@@ -78,7 +78,7 @@ class SCR_FactionCommanderEstablishCommandMenuHandler : SCR_FactionCommanderConf
 		if (!factionCommanderPlayerComponent || !m_MapCommandCursor)
 			return;
 
-		factionCommanderPlayerComponent.CreateTask(GetTaskPrefab(), position, m_Group, m_MapCommandCursor.GetPlayerId());
+		factionCommanderPlayerComponent.CreateTask(GetTaskPrefab(), position, m_Group);
 	}
 
 	//------------------------------------------------------------------------------------------------

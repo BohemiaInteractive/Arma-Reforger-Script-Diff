@@ -112,7 +112,9 @@ class SCR_ControllerPresetsSettingsSubmenu: SCR_SettingsSubMenuBase
 		if (keybindModule)
 			keybindModule.SelectControllerPresets(presetIndex: index);
 		
-		//SCR_AnalyticsApplication.GetInstance().ChangeSetting("Presets", "Controller Preset");
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.ChangeSetting("Presets", "Controller Preset");
 	}
 	
 	//------------------------------------------------------------------------------------------------

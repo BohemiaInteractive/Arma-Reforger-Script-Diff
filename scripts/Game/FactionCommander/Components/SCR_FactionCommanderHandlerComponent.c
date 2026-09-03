@@ -176,7 +176,9 @@ class SCR_FactionCommanderHandlerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	void SetFactionCommander(notnull SCR_Faction faction, int commanderPlayerId)
 	{
-		if (faction.GetCommanderId() == commanderPlayerId)
+		int oldCommanderId = faction.GetCommanderId();
+
+		if (oldCommanderId == commanderPlayerId)
 			return;
 
 		FactionManager fManager = GetGame().GetFactionManager();
@@ -223,6 +225,22 @@ class SCR_FactionCommanderHandlerComponent : SCR_BaseGameModeComponent
 		{
 			m_mReplaceCommanderCooldowns.Remove(factionIndex);
 			Rpc(RpcDo_FactionCooldown, factionIndex, world.GetServerTimestamp());
+		}
+
+		if (commanderPlayerId == 0)
+		{
+			PrintFormat("INFO: Player %1 has relieved their commander role for faction %2 (%3)", SCR_PlayerIdentityUtils.GetPlayerLogInfo(oldCommanderId), faction.GetFactionName(), faction.GetFactionKey(), level: LogLevel.NORMAL);
+		}
+		else
+		{
+			if (oldCommanderId == 0)
+			{
+				PrintFormat("INFO: Player %1 has become the commander for faction %2 (%3)", SCR_PlayerIdentityUtils.GetPlayerLogInfo(commanderPlayerId), faction.GetFactionName(), faction.GetFactionKey(), level: LogLevel.NORMAL);
+			}
+			else
+			{
+				PrintFormat("INFO: Player %1 has become the commander for faction %2 (%3), relieving player %4", SCR_PlayerIdentityUtils.GetPlayerLogInfo(commanderPlayerId), faction.GetFactionName(), faction.GetFactionKey(), SCR_PlayerIdentityUtils.GetPlayerLogInfo(oldCommanderId), level: LogLevel.NORMAL);
+			}
 		}
 
 		OnFactionCommanderChanged();

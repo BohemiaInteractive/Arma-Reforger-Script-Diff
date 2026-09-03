@@ -1785,8 +1785,10 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		// Inspection or lowered weapon stance
 		m_bWasRaised = m_CharacterController.IsWeaponRaised();
 		m_CharacterController.SetWeaponRaised(false);
-				
-		//SCR_AnalyticsApplication.GetInstance().OpenInventory(GetTotalWeightOfAllStorages());
+		
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.OpenInventory(GetTotalWeightOfAllStorages());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1852,8 +1854,10 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		// Revert inspection or lowered weapon stance
 		if (m_CharacterController)
 			m_CharacterController.SetWeaponRaised(m_bWasRaised);		
-		
-		//SCR_AnalyticsApplication.GetInstance().CloseInventory(GetTotalWeightOfAllStorages());
+
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.CloseInventory(GetTotalWeightOfAllStorages());
 	}
 	
 	//------------------------------------------------------------------------------------------------

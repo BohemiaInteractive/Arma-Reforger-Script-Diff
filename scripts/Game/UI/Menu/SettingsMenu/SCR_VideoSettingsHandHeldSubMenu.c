@@ -72,7 +72,10 @@ class SCR_VideoSettingsHandheldSubMenu : SCR_SettingsSubMenuBase
 	protected void OnCustomMenuItemChanged(string widgetName)
 	{
 		OnMenuItemChanged(new SCR_SettingsBindingBase("", "", widgetName));
-		//SCR_AnalyticsApplication.GetInstance().ChangeSetting("Video", widgetName);
+
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.ChangeSetting("Video", widgetName);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -251,7 +254,9 @@ class SCR_VideoSettingsHandheldSubMenu : SCR_SettingsSubMenuBase
 
 		m_bLoadingSettings = false;
 		
-		//SCR_AnalyticsApplication.GetInstance().SetQualityPresetSetting(itemIndex);
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.SetQualityPresetSetting(itemIndex);
 	}
 
 	//------------------------------------------------------------------------------------------------

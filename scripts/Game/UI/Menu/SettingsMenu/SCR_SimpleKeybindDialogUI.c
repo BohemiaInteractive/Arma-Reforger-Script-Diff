@@ -71,8 +71,12 @@ class SCR_SimpleKeybindDialogUI : SCR_KeybindDialogBase
 		{
 			m_Binding.Save();
 
-			//if (!m_WasCanceled)
-			//	SCR_AnalyticsApplication.GetInstance().ChangeKeybind(m_sActionName, m_Entry.m_sPreset);
+			if (!m_WasCanceled)
+			{
+				SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+				if (analytics)
+					analytics.ChangeKeybind(m_sActionName, m_Entry.m_sPreset);
+			}
 			
 			if (m_OnKeyCaptured)
 				m_OnKeyCaptured.Invoke(); //TODO: there is no "capturing cancelled" state nor check. This will be called upon closing the dialog as well. FIX

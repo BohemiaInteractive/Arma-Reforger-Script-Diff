@@ -75,6 +75,13 @@ class ChimeraGame: Game
 	\return True if the option was successfully set to desired value.
 	*/
 	proto external bool SetCrossPlay(bool enabled);
+	//! \return if the analytics collection is enabled
+	proto external bool IsCollectingAnalytics();
+	/*!
+	Enable/Disable collection and sending of analytical data
+	\note Wont have effect if the game have active mods
+	*/
+	proto external void SetClientAnalytics(bool enabled);
 	/*!
 	Enable or disable the logging of FPS.
 	\param msec gap in milliseconds at which time the log/calculate FPS is calculated. <= 0 to disable it.

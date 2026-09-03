@@ -162,7 +162,9 @@ class SCR_PlayMenu : MenuRootBase
 	{
 		super.OnMenuHide();
 		
-		//SCR_AnalyticsApplication.GetInstance().ClosePlayMenu();
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.ClosePlayMenu();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -173,7 +175,9 @@ class SCR_PlayMenu : MenuRootBase
 		if (m_ActionsComponent)
 			m_ActionsComponent.ActivateActions();
 		
-		//SCR_AnalyticsApplication.GetInstance().OpenPlayMenu();
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.OpenPlayMenu();
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -183,7 +183,10 @@ class SCR_EditorSettingsSubMenu: SCR_SettingsSubMenuBase
 			return;
 		
 		editorSettings.Set(LAYER_EDITING, state);
-		//SCR_AnalyticsApplication.GetInstance().ChangeSetting(GAME_MASTER, LAYER_EDITING);
+
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.ChangeSetting(GAME_MASTER, LAYER_EDITING);
 		
 		GetGame().UserSettingsChanged();
 	}
@@ -195,7 +198,10 @@ class SCR_EditorSettingsSubMenu: SCR_SettingsSubMenuBase
 			return;
 		
 		editorSettings.Set(PREVIEW_VERTICAL_SNAP, state);
-		//SCR_AnalyticsApplication.GetInstance().ChangeSetting(GAME_MASTER, PREVIEW_VERTICAL_SNAP);
+
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.ChangeSetting(GAME_MASTER, PREVIEW_VERTICAL_SNAP);
 
 		GetGame().UserSettingsChanged();
 	}
@@ -209,7 +215,10 @@ class SCR_EditorSettingsSubMenu: SCR_SettingsSubMenuBase
 		state = 1 << state; //--- Shift the value, because it's a flag
 		
 		editorSettings.Set(PREVIEW_VERTICLE_MODE, state);
-		//SCR_AnalyticsApplication.GetInstance().ChangeSetting(GAME_MASTER, PREVIEW_VERTICLE_MODE);
+
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.ChangeSetting(GAME_MASTER, PREVIEW_VERTICLE_MODE);
 		
 		GetGame().UserSettingsChanged();
 		
@@ -230,7 +239,10 @@ class SCR_EditorSettingsSubMenu: SCR_SettingsSubMenuBase
 			return;
 
 		settings.Set(CAMERA_MOVE_ATL, state);
-		//SCR_AnalyticsApplication.GetInstance().ChangeSetting(GAME_MASTER, CAMERA_MOVE_ATL);
+
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.ChangeSetting(GAME_MASTER, CAMERA_MOVE_ATL);
 		
 		GetGame().UserSettingsChanged();
 	}
@@ -243,7 +255,10 @@ class SCR_EditorSettingsSubMenu: SCR_SettingsSubMenuBase
 			return;
 
 		settings.Set(CAMERA_SPEED_ATL, state);
-		//SCR_AnalyticsApplication.GetInstance().ChangeSetting(GAME_MASTER, CAMERA_SPEED_ATL);
+
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.ChangeSetting(GAME_MASTER, CAMERA_SPEED_ATL);
 
 		GetGame().UserSettingsChanged();
 	}
@@ -258,7 +273,10 @@ class SCR_EditorSettingsSubMenu: SCR_SettingsSubMenuBase
 			return;
 
 		settings.Set(CAMERA_SPEED_COEF, value);
-		//SCR_AnalyticsApplication.GetInstance().ChangeSetting(GAME_MASTER, CAMERA_SPEED_COEF);
+
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.ChangeSetting(GAME_MASTER, CAMERA_SPEED_COEF);
 		
 		GetGame().UserSettingsChanged();
 	}
@@ -271,7 +289,10 @@ class SCR_EditorSettingsSubMenu: SCR_SettingsSubMenuBase
 			return;
 
 		settings.Set(CAMERA_ABOVE_TERRAIN, state);
-		//SCR_AnalyticsApplication.GetInstance().ChangeSetting(GAME_MASTER, CAMERA_ABOVE_TERRAIN);
+
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.ChangeSetting(GAME_MASTER, CAMERA_ABOVE_TERRAIN);
 			
 		GetGame().UserSettingsChanged();
 	}
@@ -284,7 +305,10 @@ class SCR_EditorSettingsSubMenu: SCR_SettingsSubMenuBase
 			return;
 		
 		settings.Set(CAMERA_ROTATE_WITH_MODIFIER, state);
-		//SCR_AnalyticsApplication.GetInstance().ChangeSetting(GAME_MASTER, CAMERA_ROTATE_WITH_MODIFIER);
+
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.ChangeSetting(GAME_MASTER, CAMERA_ROTATE_WITH_MODIFIER);
 
 		GetGame().UserSettingsChanged();
 	}
@@ -297,7 +321,10 @@ class SCR_EditorSettingsSubMenu: SCR_SettingsSubMenuBase
 			return;
 		
 		editorSettings.Set(SHOW_IDENTITY_BIO_TOOLTIP, state);
-		//SCR_AnalyticsApplication.GetInstance().ChangeSetting(GAME_MASTER, SHOW_IDENTITY_BIO_TOOLTIP);
+
+		SCR_AnalyticsApplication analytics = SCR_AnalyticsApplication.GetInstance();
+		if (analytics)
+			analytics.ChangeSetting(GAME_MASTER, SHOW_IDENTITY_BIO_TOOLTIP);
 
 		GetGame().UserSettingsChanged();
 	}
@@ -319,4 +346,4 @@ class SCR_EditorSettingsSubMenu: SCR_SettingsSubMenuBase
 
 		return valueText;
 	}
-};
+}

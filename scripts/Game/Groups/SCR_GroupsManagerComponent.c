@@ -341,12 +341,12 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] groupID
 	//! \param[in] isPrivate
-	//------------------------------------------------------------------------------------------------
 	void SetPrivateGroup(int groupID, bool isPrivate)
 	{
 		SCR_AIGroup group = FindGroup(groupID);
-		if (!group)
+		if (!group || !group.IsPrivacyChangeable())
 			return;
+
 		group.SetPrivate(isPrivate);
 	}
 
@@ -1196,6 +1196,27 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		}
 
 		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Finds all instances of groups with a specified role in a faction and returns a set of with them.
+	//! \param[in] groupRole which will be searched for
+	//! \param[in] faction from which groups will be fetched
+	//! \return set of all groups from provided faction that have specific role, and if none were found, then it is an empty set
+	notnull set<SCR_AIGroup> FindGroupsInFaction(SCR_EGroupRole groupRole, notnull Faction faction)
+	{
+		array<SCR_AIGroup> allFactionGroups = GetPlayableGroupsByFaction(faction);
+		set<SCR_AIGroup> groups();
+
+		foreach (SCR_AIGroup group : allFactionGroups)
+		{
+			if (!group || group.GetGroupRole() != groupRole)
+				continue;
+
+			groups.Insert(group);
+		}
+
+		return groups;
 	}
 
 	//------------------------------------------------------------------------------------------------
