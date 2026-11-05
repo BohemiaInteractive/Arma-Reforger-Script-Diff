@@ -2655,7 +2655,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	{
 		SCR_CampaignFaction baseFaction = GetCampaignFaction();
 
-		if (!baseFaction.IsPlayable())
+		if (!baseFaction || !baseFaction.IsPlayable())
 			return;
 
 		SCR_CampaignFactionManager factionManager = SCR_CampaignFactionManager.Cast(GetGame().GetFactionManager());

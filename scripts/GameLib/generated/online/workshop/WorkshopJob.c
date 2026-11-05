@@ -10,7 +10,7 @@ Do not modify, this script is generated
 */
 
 /*!
-This is interface to track state and control individual asynchronous jobs withing workshop.
+This is interface to track state and control individual asynchronous jobs within workshop.
 State is saved into meta files of the asset which allows persistence between game restarts and continue unfinished jobs.
 
 Jobs which was finished with any result or canceled by user is discarded by the workshop but Script or Native code can store these jobs with strong reference.

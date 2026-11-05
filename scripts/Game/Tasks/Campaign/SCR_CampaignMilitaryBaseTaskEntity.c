@@ -178,6 +178,11 @@ class SCR_CampaignMilitaryBaseTaskEntity : SCR_Task
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_CampaignMilitaryBaseTaskEntity()
 	{
+		delete m_OnMilitaryBaseCallsignAssigned;
+		m_OnMilitaryBaseCallsignAssigned = null;
+		m_MilitaryBaseTaskData = null;
+		m_MilitaryBase = null;
+		
 		SCR_MilitaryBaseSystem militaryBaseSystem = SCR_MilitaryBaseSystem.GetInstance();
 		if (militaryBaseSystem)
 			militaryBaseSystem.GetOnBaseFactionChanged().Remove(OnTargetBaseCaptured);

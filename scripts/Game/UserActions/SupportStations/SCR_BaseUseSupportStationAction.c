@@ -428,6 +428,12 @@ class SCR_BaseUseSupportStationAction : SCR_ScriptedUserAction
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override bool IsUsableByMultipleUsersScript()
+	{
+		return CanHaveMultipleUsers();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! If not -1 it will show the percentage on the current action
 	protected float GetActionPercentage()
 	{

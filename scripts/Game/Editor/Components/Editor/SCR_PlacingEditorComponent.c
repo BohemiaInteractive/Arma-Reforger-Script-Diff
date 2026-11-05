@@ -471,7 +471,12 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		}
 
 		OnBeforeEntityCreatedServer(prefab);
-		
+
+		SCR_EditorModeEntity editor = SCR_EditorModeEntity.Cast(GetOwner());
+		bool isGM;
+		if (editor)
+			isGM = editor.GetModeType() == EEditorMode.EDIT;
+
 		SCR_EditableEntityComponent entity;
 		bool hasRecipients = false;
 		RplId currentLayerID;
@@ -512,7 +517,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 				params.m_Offset = offsets[permutation[i]];
 				entity = SpawnEntityResource(params, prefabResource, playerID, isQueue, recipient, canBePlayer);
 				
-				entity.SetAuthor(playerID);
+				entity.SetAuthor(playerID, isGM);
 				
 				entities.Insert(entity);
 				entityIds.Insert(Replication.FindItemId(entity));
@@ -525,7 +530,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			//--- Spawn stand-alone entity
 			entity = SpawnEntityResource(params, prefabResource, playerID, isQueue, null, canBePlayer);
 			
-			entity.SetAuthor(playerID);
+			entity.SetAuthor(playerID, isGM);
 			
 			entities.Insert(entity);
 			entityIds.Insert(Replication.FindItemId(entity));

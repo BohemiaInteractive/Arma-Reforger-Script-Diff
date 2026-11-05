@@ -64,11 +64,18 @@ class SCR_ImpactEffectComponent : ScriptComponent
 
 	protected static const ref array<string> WATER_SOUNDS = { SCR_SoundEvent.SOUND_VEHICLE_WATER_SMALL, SCR_SoundEvent.SOUND_VEHICLE_WATER_MEDIUM, SCR_SoundEvent.SOUND_VEHICLE_WATER_BIG, SCR_SoundEvent.SOUND_VEHICLE_WATER_BIG };
 	protected static const int m_aAproximatedMasses[5] = { 250, 400, 1500, 3500, 10000 };
-	protected SCR_EImpactSoundType m_eImpactType;
+	protected static const int MINIMUM_MASS = 10;
+	protected static const int DEFAULT_MASS = 1700;
+	protected static const int CHARACTER_MASS = 70;
+	protected static const int CHARACTER_SURFACE = 9000;
 	protected int m_iSurface;
 	protected float m_fdM;
 	protected float m_fMass = 2000;
 
+#ifdef ENABLE_DIAG
+	protected const int IMPACT_DIAG_HISTORY_SIZE = 40;
+	protected ref array<ref Shape> m_aImpactDiagShapes = {};
+#endif
 
 	//------------------------------------------------------------------------------------------------
 	protected array<ResourceName> GetDefaultParticles()
@@ -91,6 +98,10 @@ class SCR_ImpactEffectComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void OnImpact(notnull IEntity other, float impulse, vector impactPosition, vector impactNormal, GameMaterial mat, vector velocityBefore = vector.Zero, vector velocityAfter = vector.Zero)
 	{
+		Physics physicsOther = other.GetPhysics();
+		if (physicsOther && physicsOther.GetResponseIndex() == SCR_EPhysicsResponseIndex.NO_COLLISION)
+			return;
+		
 		// Change in velocity due to contact
 		float dV = Math.AbsFloat(vector.Dot(velocityBefore - velocityAfter, impactNormal));
 
@@ -99,45 +110,46 @@ class SCR_ImpactEffectComponent : ScriptComponent
 		// Some types of entities may have a negligible effect on the vehicle's speed but should play an impact sound anyway - this is handled here
 		if (dV < VELOCITY_IMPACT_THRESHOLD)
 		{
-			float velocity = velocityBefore.Length();
+			const float velocity = velocityBefore.Length();
 
 			if (velocity < VEHICLE_VELOCITY_MINIMUM)
 				return;
-
+			
 			if (ChimeraCharacter.Cast(other) && impulse > CHARACTER_IMPULSE_MINIMUM)
-			{
+			{								
+				const float combinedMass = m_fMass + CHARACTER_MASS;
+				dV = velocity * CHARACTER_MASS / combinedMass;
+				
 				impactSoundType = SCR_EImpactSoundType.CHARACTER;
 			}
 			// high impulse but negligible change in velocity = small destructible object
 			else if (impulse > SMALL_OBJECT_IMPULSE_MINIMUM)
-			{
-				impactSoundType = SCR_EImpactSoundType.SMALL_OBJECT;
-
-				float otherMass = GetAproximatedMass(other);
-				float finalMass = m_fMass + otherMass;
-				if (finalMass != 0.0)
-				{
-					float velocityAfterImpact = m_fMass * velocity / finalMass;
-					dV = velocity - velocityAfterImpact;
-				}
-				else
-				{
-					dV = velocity;
-				}
-			}
+			{				
+				const float otherMass = GetAproximatedMass(other);
+				const float combinedMass = m_fMass + otherMass;
+				dV = velocity * otherMass / combinedMass;
+			}			
 		}
 
+		// Convert to change of momentum
 		dV *= m_fMass;
 
 		if (dV > m_fdM)
 		{
 			m_fdM = dV;
-			m_eImpactType = impactSoundType;
 
 			m_vPosition = impactPosition;
 			m_vNormal = impactNormal;
-			m_iSurface = mat.GetSoundInfo().GetSignalValue();
-
+			
+			if (impactSoundType != SCR_EImpactSoundType.CHARACTER)
+			{
+				m_iSurface = mat.GetSoundInfo().GetSignalValue();
+			}
+			else
+			{
+				m_iSurface = CHARACTER_SURFACE;
+			}
+			
 			m_GameMaterial = mat;
 
 			UpdateParticlesMagnitude(other, impulse);
@@ -269,26 +281,19 @@ class SCR_ImpactEffectComponent : ScriptComponent
 		// Ignore impacts that occur within close range of the last one
 		if (vector.DistanceSq(m_vPosition, m_vPositionLast) > IMPACT_DIST_SQ_THRESHOLD)
 		{
-			float collisionDM = m_fdM;
-
-			// Ignore velocity change when colliding with characters
-			if (m_eImpactType == SCR_EImpactSoundType.CHARACTER)
-			{
-				collisionDM = -1 * m_eImpactType;
-			}
-
 			const SCR_EImpactSoundEvent eventIndex = GetImpactSoundEventIndex(m_vNormal);
+			vector localPosition = GetOwner().CoordToLocal(m_vPosition);
 
-			PlayImpactSound(eventIndex, m_vPosition, m_iSurface, collisionDM);
+			PlayImpactSoundOffset(eventIndex, localPosition, m_iSurface, m_fdM);
 
 			if (m_iMagnitude != -1)
 			{
 				PlayImpactParticle(m_vPosition, m_iMagnitude, m_GameMaterial);
-				Rpc(RPC_OnImpactSoundAndParticlesBroadcast, m_vPosition, collisionDM, m_vNormal, m_iMagnitude);
+				Rpc(RPC_OnImpactSoundAndParticlesBroadcast, m_vPosition, localPosition, m_fdM, m_vNormal, m_iMagnitude);
 			}
 			else
 			{
-				Rpc(RPC_OnImpactSoundBroadcast, eventIndex, m_vPosition, m_iSurface, collisionDM);
+				Rpc(RPC_OnImpactSoundBroadcast, eventIndex, localPosition, m_iSurface, m_fdM);
 			}
 
 			// Set cashed values
@@ -322,25 +327,62 @@ class SCR_ImpactEffectComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void PlayImpactSound(SCR_EImpactSoundEvent eventIndex, vector position, int surface, float collisionDM)
 	{
+		PlayImpactSoundOffset(eventIndex, GetOwner().CoordToLocal(position), surface, collisionDM);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Play an impact sound at an offset already expressed in the vehicle's local space.
+	protected void PlayImpactSoundOffset(SCR_EImpactSoundEvent eventIndex, vector offset, int surface, float collisionDM)
+	{
 		if (!m_SignalsManagerComponent || !m_SoundComponent)
 			return;
 
 		m_SignalsManagerComponent.SetSignalValue(m_SignalsManagerComponent.AddOrFindSignal(IMPACT_SURFACE_SIGNAL_NAME), surface);
 		m_SignalsManagerComponent.SetSignalValue(m_SignalsManagerComponent.AddOrFindSignal(COLLISION_D_M_SIGNAL_NAME), collisionDM);
-		m_SoundComponent.SoundEventOffset(typename.EnumToString(SCR_EImpactSoundEvent, eventIndex), GetOwner().CoordToLocal(position));
+		m_SoundComponent.SoundEventOffset(typename.EnumToString(SCR_EImpactSoundEvent, eventIndex), offset);
+
+#ifdef ENABLE_DIAG
+		AddImpactDiag(GetOwner().CoordToParent(offset));
+#endif
+	}
+
+#ifdef ENABLE_DIAG
+	//------------------------------------------------------------------------------------------------
+	//! Add a persistent impact cross to this vehicle's diagnostic history.
+	protected void AddImpactDiag(vector position)
+	{
+		if (!DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_VEHICLES_SOUNDIMPACT_DIAG))
+			return;
+
+		Shape shape = Shape.CreateCross(Color.RED, ShapeFlags.NOZBUFFER, position, 1.0);
+		if (!shape)
+			return;
+
+		m_aImpactDiagShapes.Insert(shape);
+		if (m_aImpactDiagShapes.Count() > IMPACT_DIAG_HISTORY_SIZE)
+			m_aImpactDiagShapes.Remove(0);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected float GetAproximatedMass(IEntity entity)
+	override protected void EOnDiag(IEntity owner, float timeSlice)
+	{
+		if (!DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_VEHICLES_SOUNDIMPACT_DIAG))
+			m_aImpactDiagShapes.Clear();
+	}
+#endif
+
+	//------------------------------------------------------------------------------------------------
+	// Returns value > 0
+	protected int GetAproximatedMass(IEntity entity)
 	{
 		Physics physics = GetOwner().GetPhysics();
 		if (physics == null)
-			return 0;
+			return MINIMUM_MASS;
 
-		int responseIndex = physics.GetResponseIndex();
+		const int responseIndex = physics.GetResponseIndex();
 
 		if (responseIndex < SCR_EPhysicsResponseIndex.TINY_DESTRUCTIBLE || responseIndex >= SCR_EPhysicsResponseIndex.NO_COLLISION)
-			return 1700;
+			return DEFAULT_MASS;
 
 		return m_aAproximatedMasses[responseIndex - SCR_EPhysicsResponseIndex.TINY_DESTRUCTIBLE];
 	}
@@ -426,17 +468,17 @@ class SCR_ImpactEffectComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Unreliable, RplRcver.Broadcast)]
-	protected void RPC_OnImpactSoundBroadcast(SCR_EImpactSoundEvent eventIndex, vector impactPosition, int impactSurface, float collisionDM)
+	protected void RPC_OnImpactSoundBroadcast(SCR_EImpactSoundEvent eventIndex, vector impactOffset, int impactSurface, float collisionDM)
 	{
 		if(IsPhysicActive())
 			return;
 
-		PlayImpactSound(eventIndex, impactPosition, impactSurface, collisionDM);
+		PlayImpactSoundOffset(eventIndex, impactOffset, impactSurface, collisionDM);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Unreliable, RplRcver.Broadcast)]
-	protected void RPC_OnImpactSoundAndParticlesBroadcast(vector impactPosition, float collisionDM, vector contactNormal, int magnitude)
+	protected void RPC_OnImpactSoundAndParticlesBroadcast(vector impactPosition, vector impactOffset, float collisionDM, vector contactNormal, int magnitude)
 	{
 
 		vector transform[4];
@@ -461,7 +503,7 @@ class SCR_ImpactEffectComponent : ScriptComponent
 
 		EmitParticles(transform, resourceName);
 
-		PlayImpactSound(GetImpactSoundEventIndex(contactNormal), impactPosition, contactMat.GetSoundInfo().GetSignalValue(), collisionDM);
+		PlayImpactSoundOffset(GetImpactSoundEventIndex(contactNormal), impactOffset, contactMat.GetSoundInfo().GetSignalValue(), collisionDM);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -497,6 +539,10 @@ class SCR_ImpactEffectComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
+#ifdef ENABLE_DIAG
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_VEHICLES_SOUNDIMPACT_DIAG, "", "Impact sound positions", "Vehicles");
+#endif
+
 		m_ParticleSpawnParams = new ParticleEffectEntitySpawnParams();
 		m_ParticleSpawnParams.TransformMode = ETransformMode.WORLD;
 		m_ParticleSpawnParams.UseFrameEvent = true;
@@ -523,5 +569,20 @@ class SCR_ImpactEffectComponent : ScriptComponent
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(GetOwner(), EntityEvent.INIT);
+
+#ifdef ENABLE_DIAG
+		ConnectToDiagSystem(owner);
+#endif
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{
+#ifdef ENABLE_DIAG
+		DisconnectFromDiagSystem(owner);
+		m_aImpactDiagShapes.Clear();
+#endif
+
+		super.OnDelete(owner);
 	}
 }

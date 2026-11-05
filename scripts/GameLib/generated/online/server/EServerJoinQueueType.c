@@ -9,15 +9,26 @@ Do not modify, this script is generated
 \{
 */
 
-//! Type of server join queue. Different queue types have different processing priorities — a priority queue is processed before the regular queue.
+/*!
+Identifies which join queue a player belongs to.
+Players are served in strict priority order: a player's turn comes only when they are at position 0
+in their queue and all higher-priority queues are empty.
+UNKNOWN is a special sentinel value with no defined priority.
+*/
 sealed enum EServerJoinQueueType
 {
-	//! Unknown type of queue (can be unhandled type or intentionally not specified)
+	//! Queue type was not specified or is not recognized by this version of the client.
 	UNKNOWN,
-	//! Regular type of queue for all players
-	REGULAR,
-	//! Priority queue which is processed before REGULAR type of queue.
+	//! Synthetic client-side state: player is BUSY and either joined while a slot was available, or reached position 0 in another queue. Has a fixed expiration timer not refreshed by polling.
+	UNREADY,
+	//! Priority 1 (highest). Player had a slot on the server, disconnected, and is rejoining within the configured reconnect threshold. The server must first free the old slot before the player can rejoin.
+	RECONNECTING,
+	//! Priority 2. Player has priority access (server admin or whitelisted).
 	PRIORITY,
+	//! Priority 3. Player transitioned from BUSY (UNREADY) state to READY while waiting.
+	READY,
+	//! Priority 4 (lowest). Standard player with no special access.
+	REGULAR,
 }
 
 /*!

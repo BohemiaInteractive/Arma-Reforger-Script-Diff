@@ -48,7 +48,11 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bStickyGadgets", "StickyGadgets"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bAutoEquipNextPlaceableItem", "AutomaticEquipmentOfPlaceables"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bMouseControlAircraft", "MouseControlAircraft"));
-		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bGamepadFreelookInAircraft", "GamepadFreelookInAircraft"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bMouseControlVehicle", "MouseControlVehicle"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_fMouseSteeringSensitivity", "MouseSteeringSensitivity"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_fMouseSteeringCenteringDelay", "MouseSteeringCenteringDelay"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bGamepadFreelookInVehicle", "GamepadFreelookInVehicle"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bManualClutch", "ManualClutch"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_eDrivingAssistance", "DrivingAssistance"));
 
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_FieldOfViewSettings", "m_fFirstPersonFOV", "1PP"));
@@ -81,6 +85,7 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_eGyroDirectionRoll", "GyroDirectionRoll"));
 		
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_fRumbleIntensity", "RumbleIntensity"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_fForceFeedbackIntensity", "FFBIntensity"));
 
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GyroAimingSpace", "GyroAimingSpace", "GyroSettings"));
 
@@ -105,13 +110,15 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		{
 			HideMenuItem("MouseY");
 			HideMenuItem("AimMouse");
+			HideMenuItem("MouseControlVehicle");
 			HideMenuItem("MouseControlAircraft");
+			HideMenuItem("MouseSteeringSensitivity");
+			HideMenuItem("MouseSteeringCenteringDelay");
 			HideMenuItem("FOVInputCurveMouse");
 			HideMenuItem("KeyboardCollective");
 			HideMenuItem("LogitechLED");	
 		}
 		
-		HideMenuItem("HotasCollective");
 		HideMenuItem("ShowPlatformIcon");
 #endif
 
@@ -140,6 +147,9 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 			HideMenuItem("GyroPrecisionSpeed");
 			HideMenuItem("GyroSmoothingSpeed");
 		}
+		
+		if (!SCR_SystemHelper.IsPC())
+			HideMenuItem("FFBIntensity");
 	}
 
 	//------------------------------------------------------------------------------------------------

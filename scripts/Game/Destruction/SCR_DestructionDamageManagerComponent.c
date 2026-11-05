@@ -293,8 +293,7 @@ class SCR_DestructionDamageManagerComponent : SCR_DamageManagerComponent
 	void SetHitZoneHealth(float baseHealth, bool clearDamage = true)
 	{
 		HitZone hitZone = GetDefaultHitZone();
-		hitZone.SetMaxHealth(baseHealth);
-		hitZone.SetHealth(baseHealth);
+		hitZone.SetMaxHealth(baseHealth, ESetMaxHealthFlags.SCALED);
 	}
 	
 	//------------------------------------------------------------------------------------------------

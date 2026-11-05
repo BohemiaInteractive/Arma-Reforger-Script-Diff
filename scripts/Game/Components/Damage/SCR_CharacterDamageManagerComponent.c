@@ -39,6 +39,11 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	protected float m_fVehicleFallTriggerVelocity = -2.0;
 	protected float m_fVehicleFallDamage = 200.0;
 	
+	// Unflip vehicle damage
+	protected bool		m_bUnflipCollisionGuardActive = false;
+	protected IEntity	m_UnflipGuardedVehicle;         		// optional: used to filter by instigator
+	protected int		m_iUnflipGuardCounter = 0;      		// supports multiple concurrent actions	
+	
 	// Static array for all limbs
 	static ref array<ECharacterHitZoneGroup> LIMB_GROUPS;
 	static const ref array<ECharacterHitZoneGroup> EXTREMITY_LIMB_GROUPS = {ECharacterHitZoneGroup.LEFTARM, ECharacterHitZoneGroup.RIGHTARM, ECharacterHitZoneGroup.LEFTLEG, ECharacterHitZoneGroup.RIGHTLEG};
@@ -412,6 +417,22 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	//! Hijack collisiondamage in case it's applied to defaultHZ, since that means it's falldamage.
 	override bool HijackDamageHandling(notnull BaseDamageContext damageContext)
 	{
+		// Handle Unflipped vehicle collision damage when collision guard is on
+		if (m_bUnflipCollisionGuardActive && damageContext.damageType == EDamageType.COLLISION)
+		{
+			if (damageContext.instigator)
+			{
+				IEntity instigatorEnt = damageContext.instigator.GetInstigatorEntity();
+				if (instigatorEnt && instigatorEnt.GetRootParent() == m_UnflipGuardedVehicle)
+					return true;
+			}
+			else
+			{
+				Print("Missing instigator, is this deliberate?", LogLevel.WARNING);
+				return true;
+			}
+		}
+		
 		const SCR_HitZone hitZone = SCR_HitZone.Cast(damageContext.struckHitZone);
 		if (hitZone && !DotDamageEffect.Cast(damageContext.damageEffect))
 			hitZone.ApplyDamagePassRules(damageContext);
@@ -1691,7 +1712,11 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	//------------------------------------------------------------------------------------------------
 	//! Filter out any contacts under a reasonable speed for damage
 	override bool FilterContact(IEntity owner, IEntity other, Contact contact)
-	{			
+	{
+		 // Unflip guard: ignore any contact with the vehicle being unflipped
+		if (m_bUnflipCollisionGuardActive && other && m_UnflipGuardedVehicle && other.GetRootParent() == m_UnflipGuardedVehicle)
+			return false;
+		
 		if (!IsFallingVehicle(owner, other, contact) && (Math.AbsFloat(contact.GetRelativeNormalVelocityBefore()) <= 3))
 			return false;
 
@@ -2002,6 +2027,59 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		
 		nearestHitZones.Clear();
 		GetHitZonesByColliderIDs(nearestHitZones, closestIDs);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Enables/disables discarding of vehicle collision damage during the unflip user action.
+	//! \param active whether to add or remove one guard reference
+	//! \param guardedVehicle vehicle used for instigator filtering
+	void SetUnflipCollisionGuardActive(bool active, notnull IEntity guardedVehicle)
+	{
+		const int UNFLIP_GUARD_TIMEOUT_MS 		= 25000;		// max time the guard stays active as safety fallback in case it is never disabled
+		const int UNFLIP_GUARD_DEACTIVATION_MS 	= 2000;			// time the guard stays active when guard is deactivated by character
+		
+		if (active)
+		{
+			m_iUnflipGuardCounter++;
+			 m_UnflipGuardedVehicle = guardedVehicle;
+			m_bUnflipCollisionGuardActive = true;
+
+			// Safety net: if the disable call never arrives, drop the guard automatically
+			GetGame().GetCallqueue().Remove(ForceDisableUnflipGuard);
+			GetGame().GetCallqueue().CallLater(ForceDisableUnflipGuard, UNFLIP_GUARD_TIMEOUT_MS, false);
+		}
+		else
+		{
+			m_iUnflipGuardCounter = Math.Max(0, m_iUnflipGuardCounter - 1);
+			if (m_iUnflipGuardCounter == 0)
+			{
+				GetGame().GetCallqueue().Remove(ForceDisableUnflipGuard);
+				GetGame().GetCallqueue().CallLater(ForceDisableUnflipGuard, UNFLIP_GUARD_DEACTIVATION_MS, false);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return true if vehicle collision damage should currently be discarded
+	bool IsUnflipCollisionGuardActive()
+	{
+		return m_bUnflipCollisionGuardActive;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return the vehicle currently guarded against, or null
+	IEntity GetUnflipGuardedVehicle()
+	{
+		return m_UnflipGuardedVehicle;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Safety fallback that forcibly clears the guard state.
+	protected void ForceDisableUnflipGuard()
+	{
+		m_iUnflipGuardCounter = 0;
+		m_bUnflipCollisionGuardActive = false;
+		m_UnflipGuardedVehicle = null;
 	}
 	
 	//------------------------------------------------------------------------------------------------

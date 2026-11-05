@@ -42,6 +42,7 @@ class SCR_WelcomeScreenThreeHorizontalColumns : SCR_DeployMenuBaseScreenLayout
 			return;
 
 		Widget threeHorizontalColumns = GetGame().GetWorkspace().CreateWidgets(m_sThreeHorizontalColumnsLayout, targetColumn);
+		VerticalLayoutSlot.SetSizeMode(threeHorizontalColumns, LayoutSizeMode.Fill);
 
 		if (m_LeftColumn)
 		{

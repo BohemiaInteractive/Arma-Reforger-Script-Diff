@@ -280,7 +280,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 		{
 			if (marker.GetMarkerOwnerID() == -1)	// is server marker
 			{
-				if (!Replication.IsServer())		// cannot delete server makers from client
+				if (!Replication.IsServer())		// cannot delete server markers from client
 					return;
 				
 				OnRemoveSynchedMarker(marker.GetMarkerID());
@@ -317,7 +317,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 			return;
 		
 		if (m_iID == int.MAX)
-			m_iID == 0;
+			m_iID = 0;
 		else
 			m_iID++;
 		
@@ -650,15 +650,23 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 		if (!sc || System.IsConsoleApp())
 			return;
 		
+		int markerOwnerID;
+		int localPlayerID = SCR_PlayerController.GetLocalPlayerId();
+		bool isPrivilegedToUGC = sc.IsPrivilegedTo(EUserInteraction.UserGeneratedContent);
+		
 		for (int i = m_aStaticMarkers.Count() - 1; i >= 0; i--)
 		{
-			m_aStaticMarkers[i].SetBlocked(!sc.IsPrivilegedTo(EUserInteraction.UserGeneratedContent) || sc.IsRestricted(m_aStaticMarkers[i].GetMarkerOwnerID(), EUserInteraction.UserGeneratedContent));
+			markerOwnerID = m_aStaticMarkers[i].GetMarkerOwnerID();
+			m_aStaticMarkers[i].SetBlocked(markerOwnerID != localPlayerID && (!isPrivilegedToUGC || sc.IsRestricted(markerOwnerID, EUserInteraction.UserGeneratedContent)));
+			
 			SetStaticMarkerDisabled(m_aStaticMarkers[i], !m_aStaticMarkers[i].TestVisibleFrame(m_vVisibleFrameMin, m_vVisibleFrameMax));
 		}
 		
 		for (int i = m_aDisabledMarkers.Count() - 1; i >= 0; i--)
 		{
-			m_aDisabledMarkers[i].SetBlocked(!sc.IsPrivilegedTo(EUserInteraction.UserGeneratedContent) || sc.IsRestricted(m_aDisabledMarkers[i].GetMarkerOwnerID(), EUserInteraction.UserGeneratedContent));
+			markerOwnerID = m_aDisabledMarkers[i].GetMarkerOwnerID();
+			m_aDisabledMarkers[i].SetBlocked(markerOwnerID != localPlayerID && (!isPrivilegedToUGC || sc.IsRestricted(markerOwnerID, EUserInteraction.UserGeneratedContent)));
+			
 			SetStaticMarkerDisabled(m_aDisabledMarkers[i], !m_aDisabledMarkers[i].TestVisibleFrame(m_vVisibleFrameMin, m_vVisibleFrameMax));
 		}
 	}
@@ -733,16 +741,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 			if (!texts.IsIndexValid(i))
 				break;
 			
-			if (isPlatformXbox)
-			{
-				string resultText;
-				SCR_ProfaneFilter.ReplaceProfanities(texts[i], resultText);
-				marker.SetCustomText(resultText);
-			}
-			else
-			{
-				marker.SetCustomText(texts[i]);
-			}
+			marker.SetCustomText(texts[i]);
 			
 			i++;
 		}

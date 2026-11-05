@@ -1928,6 +1928,9 @@ class SCR_Global
 	*/
 	static bool IsAdmin()
 	{
+		if (!GetGame().GetPlayerController())
+			return false;
+
 		int playerID = GetGame().GetPlayerController().GetPlayerId();
 		return GetGame().GetPlayerManager().HasPlayerRole(playerID, EPlayerRole.ADMINISTRATOR)
 			|| GetGame().GetPlayerManager().HasPlayerRole(playerID, EPlayerRole.SESSION_ADMINISTRATOR);
@@ -1969,22 +1972,22 @@ class SCR_Global
 	//! Checks if provided position is within terrain bounds and over the terrain surface
 	//! \param[in] pos position in world space
 	//! \return true if it is, otherwise false
-	static bool IsPositionWithinTerrainBounds(vector pos)
+	static bool IsPositionWithinTerrainBounds(vector pos, float errorMargin = 0.01)
 	{
-		float x = pos[0];
-		float y = pos[1];
-		float z = pos[2];
+		const float x = pos[0];
+		const float y = pos[1];
+		const float z = pos[2];
 
-		ChimeraGame game = GetGame();
+		const ChimeraGame game = GetGame();
 		vector mins, maxs;
 		game.GetWorldEntity().GetTerrain(0, 0).GetTerrainBoundBox(mins, maxs);
-		if (x < mins[0] || x > maxs[0])
+		if (x < (mins[0] - errorMargin) || x > (maxs[0] + errorMargin))
 			return false;
 
-		if (z < mins[2] || z > maxs[2])
+		if (z < (mins[2] - errorMargin) || z > (maxs[2] + errorMargin))
 			return false;
 
-		float surfaceY = game.GetWorld().GetSurfaceY(x, z);
-		return y > surfaceY || float.AlmostEqual(y, surfaceY, 0.01); // script has lower precision, thus values rounded from game code might be slightly different
+		const float surfaceY = game.GetWorld().GetSurfaceY(x, z);
+		return y > surfaceY || float.AlmostEqual(y, surfaceY, errorMargin);
 	}
 }

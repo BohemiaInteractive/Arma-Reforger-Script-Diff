@@ -18,6 +18,14 @@ class SCR_MenuOverlaysEditorComponent : SCR_BaseEditorComponent
 	[Attribute()]
 	private ref array<ref SCR_EditorMenuOverlayLayer> m_aLayers;
 
+	//------------------------------------------------------------------------------------------------
+	protected void OnLimitedChange(bool isLimited)
+	{
+		SCR_EditorMenuOverlayLayer playerLayer = GetOverlayLayer(EEditorMenuOverlayLayer.PLAYER);
+		if (playerLayer)
+			playerLayer.SetEnabled(!SCR_CameraLimitedEditorComponent.IsArmavisionBlocked(SCR_EditorModeEntity.Cast(GetOwner())));
+	}
+
 	/*!
 	Get overlay layer script object which holds all of its parameters.
 	\param layerType Overlay type
@@ -52,6 +60,17 @@ class SCR_MenuOverlaysEditorComponent : SCR_BaseEditorComponent
 	override void EOnEditorActivate()
 	{
 		if (!m_aLayers || m_aLayers.IsEmpty()) return;
+
+		SCR_EditorModeEntity mode = SCR_EditorModeEntity.Cast(GetOwner());
+		if (mode && (mode.GetModeType() == EEditorMode.PHOTO || mode.GetModeType() == EEditorMode.PHOTO_SAVE))
+		{
+			SCR_EditorManagerEntity editorManager = GetManager();
+			if (editorManager)
+				editorManager.GetOnLimitedChange().Insert(OnLimitedChange);
+
+			OnLimitedChange(false);
+		}
+
 		foreach (SCR_EditorMenuOverlayLayer layer: m_aLayers)
 		{
 			layer.ActivateLayer();
@@ -77,6 +96,10 @@ class SCR_MenuOverlaysEditorComponent : SCR_BaseEditorComponent
 	}
 	override void EOnEditorDeactivate()
 	{
+		SCR_EditorManagerEntity editorManager = GetManager();
+		if (editorManager)
+			editorManager.GetOnLimitedChange().Remove(OnLimitedChange);
+
 		if (!m_aLayers || m_aLayers.IsEmpty()) return;
 		
 		SCR_MenuEditorComponent menuEditor = SCR_MenuEditorComponent.Cast(SCR_MenuEditorComponent.GetInstance(SCR_MenuEditorComponent));
@@ -128,6 +151,8 @@ class SCR_EditorMenuOverlayLayer
 	private ref array<ref SCR_EditorMenuOverlay> m_aOverlays;
 	
 	private int m_iDefaultOverlay;
+	private bool m_bEnabled = true;
+	private bool m_bIsActive;
 	private Widget m_RootWidget;
 	private Widget m_RootWidgetDefault;
 	private SCR_EditorMenuOverlayLayer m_RootLayer;
@@ -177,7 +202,9 @@ class SCR_EditorMenuOverlayLayer
 		
 		m_aOverlays[m_iCurrentOverlay].DeleteWidget();
 		m_iCurrentOverlay = index;
-		m_aOverlays[m_iCurrentOverlay].CreateWidget(m_RootWidget, m_iZOrder, m_bAlignToRoot);
+		if (m_bEnabled)
+			m_aOverlays[m_iCurrentOverlay].CreateWidget(m_RootWidget, m_iZOrder, m_bAlignToRoot);
+		
 		Event_OnOverlayChanged.Invoke(m_aOverlays[m_iCurrentOverlay]);
 		
 		if (m_bCanHide && m_CustomRoot != 0)
@@ -186,6 +213,27 @@ class SCR_EditorMenuOverlayLayer
 			if (menuEditor && !menuEditor.IsVisible()) m_aOverlays[m_iCurrentOverlay].SetWidgetOpacity(0);
 		}
 	}
+	//------------------------------------------------------------------------------------------------
+	//! Enable or remove this layer's UI without changing the selected overlay.
+	void SetEnabled(bool enabled)
+	{
+		if (m_bEnabled == enabled)
+			return;
+
+		m_bEnabled = enabled;
+		if (enabled)
+		{
+			if (m_bIsActive)
+				SetCurrentOverlay(m_iCurrentOverlay, true);
+		}
+		else
+		{
+			SCR_EditorMenuOverlay overlay = GetCurrentOverlay();
+			if (overlay)
+				overlay.DeleteWidget();
+		}
+	}
+
 	/*!
 	Set overlay to defautl value.
 	*/
@@ -243,6 +291,7 @@ class SCR_EditorMenuOverlayLayer
 		if (!menu)
 			return;
 		
+		m_bIsActive = true;
 		m_RootWidgetDefault = menu.GetMenu().GetRootWidget();
 		if (m_CustomRoot != 0)
 		{
@@ -270,6 +319,7 @@ class SCR_EditorMenuOverlayLayer
 	*/
 	void ExitLayer(SCR_MenuEditorComponent menu)
 	{
+		m_bIsActive = false;
 		if (!m_aOverlays || m_aOverlays.IsEmpty()) return;
 		
 		m_aOverlays[m_iCurrentOverlay].DeleteWidget();

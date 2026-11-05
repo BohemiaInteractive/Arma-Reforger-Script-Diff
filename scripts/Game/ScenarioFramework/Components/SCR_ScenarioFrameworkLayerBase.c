@@ -24,7 +24,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	[Attribute(desc: "Faction key that corresponds with the SCR_Faction set in FactionManager", category: "Asset")]
 	FactionKey m_sFactionKey;
 
-	[Attribute(defvalue: "100", desc: "If the RANDOM_MULTIPLE option is selected, what's the percentage? ", UIWidgets.Graph, "0 100 1", category: "Children")]
+	[Attribute(defvalue: "100", desc: "If the RANDOM_MULTIPLE option is selected, what's the percentage? ", UIWidgets.GradientDialog, "0 100 1", category: "Children")]
 	int m_iRandomPercent;
 
 	[Attribute(desc: "When enabled, it will repeatedly spawn childern according to other parameters set", category: "Children")]

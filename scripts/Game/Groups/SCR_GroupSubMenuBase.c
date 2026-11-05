@@ -212,6 +212,7 @@ class SCR_GroupSubMenuBase : SCR_SubMenuBase
 		SCR_AIGroup.GetOnCustomNameChanged().Insert(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnFlagSelected().Insert(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnCustomDescriptionChanged().Insert(UpdateGroupsMenu);
+		SCR_AIGroup.GetOnCallsignChanged().Insert(UpdateGroupsMenu);
 		SCR_GroupTileButton.GetOnGroupTileClicked().Insert(UpdateGroupsMenu);
 		SetAcceptButtonStatus();
 	}
@@ -248,6 +249,7 @@ class SCR_GroupSubMenuBase : SCR_SubMenuBase
 		SCR_AIGroup.GetOnCustomNameChanged().Remove(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnFlagSelected().Remove(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnCustomDescriptionChanged().Remove(UpdateGroupsMenu);
+		SCR_AIGroup.GetOnCallsignChanged().Remove(UpdateGroupsMenu);
 		SCR_GroupTileButton.GetOnGroupTileClicked().Remove(UpdateGroupsMenu);
 
 		if (m_PlayerGroupController)

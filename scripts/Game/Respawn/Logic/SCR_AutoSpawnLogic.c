@@ -30,6 +30,9 @@ class SCR_AutoSpawnLogic : SCR_SpawnLogic
 	{
 		super.OnPlayerSpawnFailed_S(playerId);
 
+		if (!CanRequestSpawn_S(playerId))
+			return;
+		
 		const int delay = Math.RandomFloat(900, 1100);
 		GetGame().GetCallqueue().CallLater(DoSpawn_S, delay, false, playerId);
 	}

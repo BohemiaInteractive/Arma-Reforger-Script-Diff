@@ -50,7 +50,7 @@ class SCR_GameOverScreenConfig
 	}	
 	
 	//Init
-	protected void SCR_GameOverScreenConfig()
+	void SCR_GameOverScreenConfig()
 	{
 		EGameOverTypes id;
 		int count = m_aGameOverScreens.Count();

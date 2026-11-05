@@ -17,6 +17,10 @@ class SCR_SwitchLightUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{		
+		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+		if (character && SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
+			return false;
+
 		if (!m_LightComp)
 			return false;
 		

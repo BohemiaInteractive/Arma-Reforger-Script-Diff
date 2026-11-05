@@ -153,7 +153,21 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 			return false;
 
 		if (m_wText)
-			m_wText.SetText(m_aElementNames[i]);
+		{
+			if (m_aElementData && m_aElementData.IsIndexValid(i))
+			{
+				SCR_TextFormatContainerBase data = SCR_TextFormatContainerBase.Cast(m_aElementData[i]);
+
+				if (data)
+					data.ParamSetTextFormat(m_wText, m_aElementNames[i]);
+				else
+					m_wText.SetTextFormat(m_aElementNames[i]);
+			}
+			else
+			{
+				m_wText.SetTextFormat(m_aElementNames[i]);
+			}
+		}
 
 		if (m_bShowHints)
 			UpdateHintBar(i, lastIndex);

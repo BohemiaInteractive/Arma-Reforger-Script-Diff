@@ -147,7 +147,8 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void SpawnVehicle()
 	{
-		SCR_FactionAffiliationComponent comp = SCR_FactionAffiliationComponent.Cast(GetOwner().FindComponent(SCR_FactionAffiliationComponent));
+		const IEntity owner = GetOwner();
+		SCR_FactionAffiliationComponent comp = SCR_FactionAffiliationComponent.Cast(owner.FindComponent(SCR_FactionAffiliationComponent));
 		if (!comp)
 			return;
 
@@ -162,11 +163,19 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 			return;
 
 		vector pos;
-		const bool spawnEmpty = SCR_WorldTools.FindEmptyTerrainPosition(pos, GetOwner().GetOrigin(), SPAWNING_RADIUS, SPAWNING_RADIUS);
+#ifdef WORKBENCH
+		SCR_DebugShapeManager debugDrawMgr;
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AMBIENT_VEHICLE_SPAWNER))
+			debugDrawMgr = m_DebugShapeMgr;
+
+		const bool spawnEmpty = SCR_WorldTools.FindEmptyTerrainPosition(pos, owner.GetOrigin(), SPAWNING_RADIUS, SPAWNING_RADIUS, world: owner.GetWorld(), debugDrawMgr: debugDrawMgr);
+#else
+		const bool spawnEmpty = SCR_WorldTools.FindEmptyTerrainPosition(pos, owner.GetOrigin(), SPAWNING_RADIUS, SPAWNING_RADIUS, world: owner.GetWorld());
+#endif
 		if (!spawnEmpty)
 		{
 #ifdef WORKBENCH
-			Print("SCR_AmbientVehicleSpawnPointComponent: FindEmptyTerrainPosition failed at " + GetOwner().GetOrigin().ToString(), LogLevel.WARNING);
+			Print("SCR_AmbientVehicleSpawnPointComponent: FindEmptyTerrainPosition failed at " + owner, LogLevel.WARNING);
 #endif
 
 			// In case this spawnpoint is blocked from the start, don't process it anymore
@@ -421,6 +430,74 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 		if (manager)
 			manager.RegisterSpawnpoint(this);
 	}
+
+#ifdef WORKBENCH
+	protected ref SCR_DebugShapeManager m_DebugShapeMgr = new SCR_DebugShapeManager();
+
+	//------------------------------------------------------------------------------------------------
+	override void _WB_OnInit(IEntity owner, inout vector mat[4], IEntitySource src)
+	{
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AMBIENT_VEHICLE_SPAWNER, "", "Debug ambient vehicle spawner", "World");
+		_WB_ValidatePosition(owner);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void _WB_ValidatePosition(notnull IEntity owner)
+	{
+		m_DebugShapeMgr.Clear();
+
+		vector pos;
+		SCR_DebugShapeManager debugDrawMgr;
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AMBIENT_VEHICLE_SPAWNER))
+			debugDrawMgr = m_DebugShapeMgr;
+
+		if (SCR_WorldTools.FindEmptyTerrainPosition(pos, owner.GetOrigin(), SPAWNING_RADIUS, SPAWNING_RADIUS, world: owner.GetWorld(), debugDrawMgr: debugDrawMgr))
+			return;
+
+		m_DebugShapeMgr.AddArrow(pos + vector.Up * 100, pos, Color.RED);
+		const string text = "Not enough space for ambient vehicle spawner to work!";
+		m_DebugShapeMgr.AddText(text, pos + vector.Up * 105, 2, Color.RED);
+		string debugInfo;
+		if (!DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AMBIENT_VEHICLE_SPAWNER))
+			debugInfo = "(You can enable debug with more information by clicking RMB on SCR_AmbientVehicleSpawnPointComponent and selecting \"Enable position validation debug\")";
+
+		PrintFormat("SCR_AmbientVehicleSpawnPointComponent._WB_ValidatePosition: %1 - %2 %3", owner, text, debugInfo, level: LogLevel.ERROR);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void _WB_SetTransform(IEntity owner, inout vector mat[4], IEntitySource src)
+	{
+		_WB_ValidatePosition(owner);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override array<ref WB_UIMenuItem> _WB_GetContextMenuItems(IEntity owner)
+	{
+		array<ref WB_UIMenuItem> items = {};
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AMBIENT_VEHICLE_SPAWNER))
+			items.Insert(new WB_UIMenuItem("Disable position validation debug", 0));
+		else
+			items.Insert(new WB_UIMenuItem("Enable position validation debug", 0));
+
+		return items;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void _WB_OnContextMenu(IEntity owner, int id)
+	{
+		switch (id)
+		{
+			case 0:
+			{
+				DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_AMBIENT_VEHICLE_SPAWNER, !DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AMBIENT_VEHICLE_SPAWNER));
+				if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AMBIENT_VEHICLE_SPAWNER))
+					Print("To validate all ambient vehicle spawn points you will need to reinitialize the world by loading it again (Ctrl+O)", LogLevel.NORMAL);
+
+				_WB_ValidatePosition(owner);
+			}
+		}
+	}
+#endif
 
 	//------------------------------------------------------------------------------------------------
 	override void OnDelete(IEntity owner)

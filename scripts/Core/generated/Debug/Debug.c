@@ -56,6 +56,13 @@ sealed class Debug
 	//! Dialog box with error message.
 	static proto void Error(string err);
 	/*!
+	Dialog box with formatted error message. Accepts up to nine optional arguments
+	using the same format specifiers as PrintFormat().
+	\param fmt Format string.
+	\param title Error dialog title.
+	*/
+	static proto void ErrorFormat(string fmt, void param1 = NULL, void param2 = NULL, void param3 = NULL, void param4 = NULL, void param5 = NULL, void param6 = NULL, void param7 = NULL, void param8 = NULL, void param9 = NULL, string title = "Error");
+	/*!
 	Constructs a string that when used in log represents a clickable link. When clicked on a camera moves to view the entity.
 	\param[in] entity used to generate the link
 	\return clickable link in format: ENTITY:id (['name'] 'className') at \<x y z\>

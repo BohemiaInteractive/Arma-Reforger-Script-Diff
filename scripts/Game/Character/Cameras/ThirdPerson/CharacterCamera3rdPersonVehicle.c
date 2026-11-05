@@ -68,9 +68,10 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 	float m_fUpDownAngleCurrent;
 	
 	protected bool m_bCanFly = false;
-	protected VehicleBaseSimulation m_VehicleSim;
 	
 	protected bool m_bIsTurret = false;
+	
+	protected float m_fZoomAngleReduction = 0.65;
 
 	//------------------------------------------------------------------------------------------------
 	void CharacterCamera3rdPersonVehicle(CameraHandlerComponent pCameraHandler)
@@ -118,7 +119,7 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 					m_pCameraAlignData = vehicleCamData.m_pCameraAlignData;
 					m_fRollFactor = vehicleCamData.m_3rdPersonRollFactor;
 					m_fPitchFactor = vehicleCamData.m_3rdPersonPitchFactor;
-					m_fAngleThirdPerson = vehicleCamData.m_fAngleThirdPerson * Math.DEG2RAD;
+					m_fAngleThirdPerson = vehicleCamData.m_fAngleThirdPerson;
 					m_pCameraPivot = vehicleCamData.m_pPivot;
 					m_bUseNoParent = vehicleCamData.m_bNoParent;
 					m_bForceBasedCamera = vehicleCamData.m_UseForceBased_3PVCamera;
@@ -135,10 +136,7 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 					
 					VehicleControllerComponent vehCtrl = VehicleControllerComponent.Cast(m_OwnerVehicle.FindComponent(VehicleControllerComponent));
 					if (vehCtrl)
-					{
 						m_bCanFly = vehicleCamData.m_bCanFly;
-						m_VehicleSim = vehCtrl.GetBaseSimulation();
-					}
 				}
 				
 				if (m_pCameraPivot)
@@ -321,16 +319,10 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		
 		// raise camera when zooming in
 		float focusLevel = 0;
-		if (m_CharacterCameraHandler && !m_bIsTurret)
+		if (m_CharacterCameraHandler && !m_bIsTurret && !m_bCanFly)
 			focusLevel = m_CharacterCameraHandler.GetFocusMode();
 		
 		float camHeight = m_fHeight + focusLevel;
-		if (m_bCanFly && !m_VehicleSim.HasAnyGroundContact())
-		{
-			vector camAnglesBefore = Math3D.MatrixToAngles(pOutResult.m_CameraTM);
-			if ((camAnglesBefore[1] - m_fAngleThirdPerson*Math.RAD2DEG) < 0)
-				camHeight = -camHeight*3;
-		}
 		
 		//! Roll
 		if (bCharacterAttached)
@@ -356,7 +348,8 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 				rollAngle = yawPitchRoll[2] * (1.0 - m_fRollFactor) * Math.DEG2RAD * pOutResult.m_CameraTM[2][2];
 				
 				// Camera offset
-				characterOffset = characterOffset + Vector(0, camHeight, 0);
+				float heightSign = vehMat[1][1]; // Adjust the sign of the height direction as the vehicle rolls.
+				characterOffset = characterOffset + Vector(0, heightSign * camHeight, 0);
 				vector pitchRollMat[3];
 				Math3D.AnglesToMatrix({0, yawPitchRoll[1], yawPitchRoll[2]}, pitchRollMat);				
 				characterOffset = characterOffset.Multiply3(pitchRollMat); // apply vehicle pitch and roll to camera center
@@ -394,20 +387,41 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 			}
 			if (applyCharAngle)
 			{
+				vector anglesOffset;
 				if (m_bUseNoParent)
-					SCR_Math3D.RotateAround(pOutResult.m_CameraTM, pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[0], m_fAngleThirdPerson - (1.0 - m_fPitchFactor) * yawPitchRoll[1] * Math.DEG2RAD, pOutResult.m_CameraTM);
+					anglesOffset = Vector(0, -m_fAngleThirdPerson + (1 - m_fPitchFactor) * yawPitchRoll[1], 0);
 				else
-					SCR_Math3D.RotateAround(pOutResult.m_CameraTM, pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[0], m_fAngleThirdPerson - m_fPitchFactor * yawPitchRoll[1] * Math.DEG2RAD, pOutResult.m_CameraTM);
+					anglesOffset = Vector(0, -m_fAngleThirdPerson + m_fPitchFactor * yawPitchRoll[1], 0);
+				
+				if (anglesOffset != vector.Zero)
+				{
+					// First pass to determine position
+					vector transformAngleOffset[3];
+					Math3D.AnglesToMatrix(anglesOffset, transformAngleOffset);
+					Math3D.MatrixMultiply3(pOutResult.m_CameraTM, transformAngleOffset, pOutResult.m_CameraTM);
+		
+					const vector original = m_fCamDist * pOutResult.m_CameraTM[2];
+		
+					// Second pass to account for FOV
+					const float angleOffsetScale = m_fCamFOV / 90;
+					Math3D.AnglesToMatrix(-anglesOffset * (1 - angleOffsetScale), transformAngleOffset);
+					Math3D.MatrixMultiply3(pOutResult.m_CameraTM, transformAngleOffset, pOutResult.m_CameraTM);
+		
+					// Restore original position relative to pivot by adding offset
+					const vector offset = original - m_fCamDist * pOutResult.m_CameraTM[2];
+					vector.Lerp(pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[3] - offset, 0.5);
+				}
 			}
 			else
 				SCR_Math3D.RotateAround(pOutResult.m_CameraTM, pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[0], 0, pOutResult.m_CameraTM);
 		}
 		
 		//angle camera slightly when focus
-		if (!m_bCanFly && focusLevel > 0)
+		if (!m_bCanFly)
 		{
 			vector camAngles = Math3D.MatrixToAngles(pOutResult.m_CameraTM);
-			camAngles[1] = camAngles[1] - camAngles[1]*0.65 * focusLevel;
+			camAngles[1] = camAngles[1] - camAngles[1] * m_fZoomAngleReduction * focusLevel;
+			Math.Lerp(camAngles[1], camAngles[1] + ((1 - m_fPitchFactor) * yawPitchRoll[1]), 0.5);
 			Math3D.AnglesToMatrix(camAngles, pOutResult.m_CameraTM);
 		}
 		

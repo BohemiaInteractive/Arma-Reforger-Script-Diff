@@ -104,6 +104,13 @@ class MagazineWell_Cannon_M242_APDST : BaseMagazineWell
 {
 };
 
+//L8A1 66mm Smoke Launcher Grenades
+class MagazineWellSmokeLauncherL8A1Class {}
+MagazineWellSmokeLauncherL8A1Class MagazineWellSmokeLauncherL8A1Source;
+
+class MagazineWellSmokeLauncherL8A1 : BaseMagazineWell
+{
+}
 
 // Warsaw Pact
 // AK74 - 5.45x39mm

@@ -49,6 +49,9 @@ class SCR_HealingUserAction : ScriptedUserAction
 		if (!userCharacter)
 			return false;
 		
+		if (SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(userCharacter))
+			return false;
+		
 		// Medics' item use ability check
 		CharacterControllerComponent userController = userCharacter.GetCharacterController();
 		if (!userController || userController.IsUsingItem())

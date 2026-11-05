@@ -12,6 +12,16 @@ class SCR_TurnOnAction : TurnOnUserAction
 				broadcastComponent.EnableRadio(true);
 		}	
 	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool CanBeShownScript(IEntity user)
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+		if (character && SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
+			return false;
+
+		return super.CanBeShownScript(user);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)

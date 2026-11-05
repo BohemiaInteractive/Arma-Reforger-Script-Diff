@@ -33,8 +33,7 @@ class SCR_CloseVehicleDoorUserAction : VehicleDoorUserAction
 		if (!character)
 			return;
 
-		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
-		if (controller && controller.IsLoitering())
+		if (SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
 			return;
 
 		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
@@ -73,8 +72,7 @@ class SCR_CloseVehicleDoorUserAction : VehicleDoorUserAction
 		if (!character)
 			return false;
 
-		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
-		if (controller && controller.IsLoitering())
+		if (SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
 			return false;
 
 		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
@@ -122,6 +120,9 @@ class SCR_CloseVehicleDoorUserAction : VehicleDoorUserAction
 
 		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(user);
 		if (!character)
+			return false;
+
+		if (SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
 			return false;
 		
 		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();

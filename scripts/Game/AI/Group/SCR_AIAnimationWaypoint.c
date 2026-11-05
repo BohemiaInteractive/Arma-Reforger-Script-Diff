@@ -141,7 +141,7 @@ class SCR_AIAnimationScript
 };
 
 //------------------------------------------------------------------------------------------------
-void SCR_AIOnAnimationBehaviorAction(AIAgent agent, bool startingAnimation, int animationIndex);
+void SCR_AIOnAnimationBehaviorAction(AIAgent agent, bool startingAnimation, bool performFast, int animationIndex);
 typedef func SCR_AIOnAnimationBehaviorAction;
 
 //------------------------------------------------------------------------------------------------

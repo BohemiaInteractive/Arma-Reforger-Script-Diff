@@ -132,7 +132,7 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 	{
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
 		if (editorManager)
-			GetGame().GetCallqueue().CallLater(editorManager.Close, 1, false, false); //--- Cannot trigger operation which closes UI from that UI's handler
+			GetGame().GetCallqueue().CallLater(editorManager.Close, 1, false, false, true); //--- Cannot trigger operation which closes UI from that UI's handler
 		
 		return false;
 	}

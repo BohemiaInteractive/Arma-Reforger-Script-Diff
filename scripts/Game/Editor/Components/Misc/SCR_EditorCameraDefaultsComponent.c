@@ -14,8 +14,12 @@ class SCR_EditorCameraDefaultsComponent : ScriptComponent
 	[Attribute()]
 	protected ref array<ref SCR_CameraCoordinates> m_aPositions;
 
+	protected int m_iSelectedPosition = -1; //--- Index in m_aPositions picked by the first GetRandomPosition() call, -1 when not picked yet
+
 	/*!
 	Get random camera position from the list of pre-defined positions.
+	The position is picked only once and the same one is returned on next calls,
+	so the engine camera prepared before the editor opens matches the editor camera created later.
 	\param[out] transform Transformation matrix
 	\return True if a position was found
 	*/
@@ -23,7 +27,10 @@ class SCR_EditorCameraDefaultsComponent : ScriptComponent
 	{
 		if (!m_aPositions || m_aPositions.Count() == 0) return false;
 		
-		SCR_CameraCoordinates coordinates = m_aPositions[Math.RandomInt(0, m_aPositions.Count())];
+		if (m_iSelectedPosition < 0 || m_iSelectedPosition >= m_aPositions.Count())
+			m_iSelectedPosition = Math.RandomInt(0, m_aPositions.Count());
+
+		SCR_CameraCoordinates coordinates = m_aPositions[m_iSelectedPosition];
 		coordinates.GetTransform(transform);
 		return true;
 	}

@@ -955,5 +955,7 @@ enum SCR_EDataStats
 	LIGHTBAN_SESSION_DURATION, //!< Session duration at the time player was lightbanned the last time
 	LIGHTBAN_STREAK, //!< How many times was the player lightbanned in a row after the last lightban in a short succession
 	HEAVYBAN_SESSION_DURATION, //!< Session duration at the time player was heavybanned the last time
-	HEAVYBAN_STREAK //!< How many times was the player heavybanned in a row after the last heavyban in a short succession
+	HEAVYBAN_STREAK, //!< How many times was the player heavybanned in a row after the last heavyban in a short succession
+	STAMINA_KIT_SELF, //!< Number of times player boosted stamina for themself
+	STAMINA_KIT_FRIENDLIES //!< Number of times player boosted stamina for friendlies (not including themself)
 };

@@ -2,6 +2,7 @@
 class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 {
 	protected const string GAMEPAD_PRESET_PREFIX = "gamepad:";
+	protected const string JOYSTICK_PRESET_PREFIX = "joystick:";
 	protected const string PRIMARY_PRESET_PREFIX = "";
 	
 	protected ref InputBinding m_Binding;
@@ -65,12 +66,12 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void StartCaptureForAction(string actionName, string actionPreset, EInputDeviceType device = EInputDeviceType.KEYBOARD, bool append = false)
+	void StartCaptureForAction(string actionName, string actionPreset, EInputDeviceType device = EInputDeviceType.KEYBOARD, bool append = false, EInputBindingAxleCapture eAxleCapture = EInputBindingAxleCapture.HALF_AXLE)
 	{
 		if (!m_Binding)
 			return;
 
-		m_Binding.StartCapture(actionName, device, actionPreset, append);
+		m_Binding.StartCapture(actionName, device, actionPreset, append, eAxleCapture);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -99,7 +100,7 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void AddKeybindToActionByIndex(string actionName, string preset, int bindIndex, string filterName = string.Empty)
+	void AddKeybindToActionByIndex(string actionName, string preset, int bindIndex, string filterName = string.Empty, int deviceId = -1)
 	{
 		if (!m_Binding)
 			return;
@@ -111,8 +112,12 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 		SCR_KeyBindingBind bind = binds.Get(bindIndex);
 		if (!bind)
 			return;
-		
-		m_Binding.AddBinding(actionName, preset, bind.m_sBindString, filterName);
+
+		string binding = bind.m_sBindString;
+		if (deviceId > -1)
+			binding.Replace("%1", deviceId.ToString());
+
+		m_Binding.AddBinding(actionName, preset, binding, filterName);
 		m_Binding.Save();
 	}
 	
@@ -195,7 +200,7 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 	//------------------------------------------------------------------------------------------------
 	void UnbindAction(string actionName, string preset = "", EInputDeviceType device = EInputDeviceType.KEYBOARD)
 	{	
-		m_Binding.StartCapture(actionName, device, preset, false);
+		m_Binding.StartCapture(actionName, device, preset, false, EInputBindingAxleCapture.NONE);
 		m_Binding.SaveCapture();
 		m_Binding.Save();
 
@@ -248,11 +253,12 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 
 				break;
 			}
-			case EInputDeviceType.GAMEPAD:
+
+			default:
 			{
-				if (!m_Binding.IsDefault(actionName, EInputDeviceType.GAMEPAD, preset))
+				if (!m_Binding.IsDefault(actionName, device, preset))
 				{
-					m_Binding.ResetDefault(actionName, EInputDeviceType.GAMEPAD, preset);
+					m_Binding.ResetDefault(actionName, device, preset);
 					reset = true;
 				}
 
@@ -265,36 +271,56 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 
 		m_Binding.Save();
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	string GetDevicePresetPrefix(EInputDeviceType device)
+	{
+		switch (device)
+		{
+			case EInputDeviceType.GAMEPAD:
+				return GetGamepadPresetPrefix();
+
+			case EInputDeviceType.JOYSTICK:
+				return GetJoystickPresetPrefix();
+		}
+
+		return GetPrimaryPresetPrefix();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	void ResetAllActions(EInputDeviceType device = EInputDeviceType.KEYBOARD)
 	{
 		array<string> contexts = {};
 		m_Binding.GetContexts(contexts);
 		string finalPreset;
-		string devicePrefix;
+		string devicePrefix = GetDevicePresetPrefix(device);
 		string actionName;
-
+		set<string> filterPresets();
 		foreach (SCR_KeyBindingCategory category: m_KeybindConfig.m_KeyBindingCategories)
 		{
 			foreach (SCR_KeyBindingEntry entry: category.m_KeyBindingEntries)
 			{
-				if (device == EInputDeviceType.GAMEPAD)
-					devicePrefix = GetGamepadPresetPrefix();
-				else 
-					devicePrefix = GetPrimaryPresetPrefix();
-				
-				if (device == EInputDeviceType.GAMEPAD && !entry.m_sPresetGamepadOptional.IsEmpty())
-					finalPreset = devicePrefix + entry.m_sPresetGamepadOptional;
-				else if (!entry.m_sPreset.IsEmpty())
-					finalPreset = devicePrefix + entry.m_sPreset;
-				
-				if (device == EInputDeviceType.GAMEPAD && !entry.m_sActionNameGamepadOptional.IsEmpty())
-					actionName = entry.m_sActionNameGamepadOptional;
-				else
-					actionName = entry.m_sActionName;
+				actionName = entry.m_sActionName;
 
-				ResetAction(actionName, finalPreset, device);
+				if (!entry.m_sPreset.IsEmpty())
+					finalPreset = devicePrefix + entry.m_sPreset;
+
+				if (device == EInputDeviceType.GAMEPAD)
+				{
+					if (!entry.m_sPresetGamepadOptional.IsEmpty())
+						finalPreset = devicePrefix + entry.m_sPresetGamepadOptional;
+	
+					if (!entry.m_sActionNameGamepadOptional.IsEmpty())
+						actionName = entry.m_sActionNameGamepadOptional;
+				}
+
+				filterPresets.Clear();
+				filterPresets.Insert(finalPreset);
+				FindAllActionFilterPresets(actionName, device, filterPresets);
+				foreach (string filter : filterPresets)
+				{
+					ResetAction(actionName, filter, device);
+				}
 			}
 		}
 		
@@ -304,7 +330,62 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 		if (analytics)
 			analytics.ResetAllKeybinds();
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Scans action binding for all input presets currently used by it
+	protected void FindAllActionFilterPresets(string actionName, EInputDeviceType device, inout notnull set<string> filters)
+	{
+		if (!m_Binding)
+			return;
+
+		BaseContainer inputSrc = SCR_InputHelper.GetInputBinding(actionName, string.Empty, -1, m_Binding);
+		if (!inputSrc)
+			return;
+
+		BaseContainerList sources = inputSrc.GetObjectArray(SCR_InputHelper.INPUT_CONTAINER_SOURCES_NAME);
+		if (!sources)
+			return;
+
+		const array<string> devicePrefixes = SCR_InputHelper.GetDeviceString(device);
+		string filter, input;
+		BaseContainer source;
+		BaseContainerList comboSources;
+		BaseContainer comboSource;
+		for (int id = sources.Count() - 1; id >= 0; id--)
+		{
+			source = sources.Get(id);
+			if (source.GetClassName() == SCR_InputHelper.INPUT_CONTAINER_SOURCE_COMBO_TYPE)
+			{
+				comboSources = source.GetObjectArray(SCR_InputHelper.INPUT_CONTAINER_SOURCES_NAME);
+				if (!comboSources)
+					continue;
+
+				for (int j, comboCount = comboSources.Count(); j < comboCount; j++)
+				{
+					source = comboSources.Get(j);
+					if (!source.Get(SCR_InputHelper.INPUT_CONTAINER_INPUT_NAME, input))
+						continue;
+
+					if (input.IsEmpty())
+						break;
+				}
+			}
+			else
+			{
+				source.Get(SCR_InputHelper.INPUT_CONTAINER_INPUT_NAME, input);
+			}
+
+			if (input.IsEmpty())
+				continue;
+
+			if (!devicePrefixes.Contains(input))
+				continue;
+
+			source.Get(SCR_InputHelper.INPUT_CONTAINER_FILTER_PRESET_NAME, filter);
+			filters.Insert(filter);
+		}
+	}
+
 	//------------------------------------------------------------------------------------------------
 	string GetGamepadPresetPrefix()
 	{
@@ -315,6 +396,12 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 	string GetPrimaryPresetPrefix()
 	{
 		return PRIMARY_PRESET_PREFIX;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetJoystickPresetPrefix()
+	{
+		return JOYSTICK_PRESET_PREFIX;
 	}
 	
 	//------------------------------------------------------------------------------------------------

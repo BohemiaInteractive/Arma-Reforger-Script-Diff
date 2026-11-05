@@ -338,6 +338,11 @@ enum ENotification
 	//INVENTORY ITEMS
 	PLAYER_HAND_ITEM_DROPPED = 1900, //!< Player was forced to drop hand slot item
 	PLAYER_HAND_ITEM_PUT_IN_INVENTORY = 1901, //!< Player was forced to put hand item in inventory
+	PLAYER_FLASK_EMPTY = 1902, //!< Player tried to use an empty flask
+	PLAYER_HYDRATION_FULL = 1903, //!< Player tried to drink while fully hydrated
+	PLAYER_FLASK_REFILLED = 1904, //!< Water was added to a flask
+	PLAYER_FLASK_WATER_REMAINING = 1905, //!< Water was removed from a flask
+	PLAYER_HYDRATION_CRITICAL = 1906, //!< Low hydration increases the player's stamina drain
 
 	//GROUP TASK
 	GROUP_TASK_GROUP_ASSIGNED_TO_SAME_TASK = 2200,
@@ -364,4 +369,7 @@ enum ENotification
 	GROUP_TASK_ESTABLISH_BASE_TOO_CLOSE_ANOTHER_BASE = 2221,
 	GROUP_TASK_ESTABLISH_BASE_TOO_CLOSE_ANOTHER_OBJECTIVE = 2222,
 	GROUP_TASK_ESTABLISH_BASE_LIMIT_REACHED = 2223,
+	
+	//DLC
+	DLC_NOT_OWNED = 3000,
 };

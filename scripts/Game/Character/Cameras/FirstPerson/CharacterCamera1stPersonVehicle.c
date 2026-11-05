@@ -8,6 +8,7 @@ class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 	IEntity m_OwnerVehicle;
 	protected float m_fAngleFirstPerson;
 	protected float m_fAngleFirstPersonScale;
+	protected float m_fHeightOffset;
 
 	//-----------------------------------------------------------------------------
 	void CharacterCamera1stPersonVehicle(CameraHandlerComponent pCameraHandler)
@@ -38,6 +39,7 @@ class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 							m_fRollFactor = vehicleCamData.m_fRollFactor;
 							m_fPitchFactor = vehicleCamData.m_fPitchFactor;
 							m_fAngleFirstPerson = vehicleCamData.m_fAngleFirstPerson * Math.DEG2RAD;
+							m_fHeightOffset = vehicleCamData.m_fFirstPersonHeightOffset;
 						}
 					}
 
@@ -95,7 +97,7 @@ class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 						
 			vector resultTM[4];
 			m_CharacterHeadAimingComponent.GetLookTransformationLS(GetCameraBoneIndex(), EDirectBoneMode.RelativePosition, offsetLS, additiveYaw, resultTM);
-			m_LookPositionOverrideLS = resultTM[3];
+			m_LookPositionOverrideLS = resultTM[3] + Vector(0, m_fHeightOffset, 0);
 
 			m_CharacterHeadAimingComponent.SetPitchLimitReductionMultiplier(0.5); // Less aggressive pitch reduction.
 		}

@@ -179,6 +179,32 @@ class SCR_ResupplyTaskSolver : SCR_TaskSolverBase
 			return;
 
 		m_SourceBase = sourceBase;
+
+		RedirectToNewSourceBase();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! The waypoints to the source base keep the position and base they were created with.
+	//! When the source base changes while the group drives to it or loads there, drop these waypoints
+	//! and choose the next step again with the new source base.
+	//! Without a source base the task fails in Update.
+	protected void RedirectToNewSourceBase()
+	{
+		if (!m_SourceBase || GetState() != SCR_ETaskSolverState.IN_PROGRESS)
+			return;
+
+		if (m_eResupplySolverState != SCR_EResupplyTaskSolverState.MOVING_TO_SOURCE_BASE && m_eResupplySolverState != SCR_EResupplyTaskSolverState.LOADING_SUPPLIES)
+			return;
+
+		// Remove the handlers first, so completing the old waypoints does not start the next step
+		RemoveOnMoveToSourceBaseCompletedHandler();
+		RemoveOnLoadSuppliesCompletedHandler();
+		m_MoveToSourceBaseWaypoint = null;
+		m_LoadSuppliesWaypoint = null;
+
+		CompleteAllWaypoints();
+
+		CreateMoveWaypointToSourceOrSuppliedBase();
 	}
 
 	//------------------------------------------------------------------------------------------------

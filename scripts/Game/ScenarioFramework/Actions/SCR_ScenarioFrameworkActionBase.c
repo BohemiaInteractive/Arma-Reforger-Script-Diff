@@ -4,7 +4,7 @@ class SCR_ScenarioFrameworkActionBase : BaseContainerObject
 	[Attribute(desc: "If set to true, when this action gets activated, it will break the breakpoint in the Script Editor in CanActivate method from which you can step out to the OnActivate method and debug this specific action. This can be also set during runtime via Debug Menu > ScenarioFramework > Action Inspector")]
 	bool m_bDebug;
 	
-	[Attribute(defvalue: "-1", uiwidget: UIWidgets.Graph, params: "-1 10000 1", desc: "How many times this action can be performed if this gets triggered? Value -1 for infinity")]
+	[Attribute(defvalue: "-1", uiwidget: UIWidgets.GradientDialog, params: "-1 10000 1", desc: "How many times this action can be performed if this gets triggered? Value -1 for infinity")]
 	int	m_iMaxNumberOfActivations;
 
 	IEntity	m_Entity;

@@ -117,6 +117,23 @@ class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 		if (!m_aElements)
 			return;
 
+		const EPlatform platformType = System.GetPlatform(); 
+		SCR_TabViewContent tab;
+		for (int id = m_aElements.Count() - 1; id >= 0; id--)
+		{
+			tab = m_aElements[id];
+			if (!tab)
+				continue;
+
+			if (!tab.m_aVisibilityWhitelist || tab.m_aVisibilityWhitelist.IsEmpty())
+				continue;
+
+			if (tab.m_aVisibilityWhitelist.Contains(platformType))
+				continue;
+
+			m_aElements.RemoveOrdered(id);
+		}
+
 		foreach (int i, SCR_TabViewContent content : m_aElements)
 		{
 			CreateTab(content);
@@ -161,6 +178,9 @@ class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 		{
 			foreach (SCR_TabViewContent content : m_aElements)
 			{
+				if (!content.m_wButton)
+					continue;
+				
 				//Temporary fix so that this won't overwrite tabviews with already hidden tabs, like in the build menu
 				if (content.m_wButton.IsVisible() == false)
 				{
@@ -1132,6 +1152,9 @@ class SCR_TabViewContent
 
 	[Attribute("32")]
 	float m_fIconHeight;
+
+	[Attribute(defvalue: "", desc: "List of platforms for which this element will be visible", uiwidget: UIWidgets.ComboBox, enumType: EPlatform)]
+	ref array<EPlatform> m_aVisibilityWhitelist;
 
 	Widget m_wIcon;
 	SCR_ButtonTextComponent m_ButtonComponent;

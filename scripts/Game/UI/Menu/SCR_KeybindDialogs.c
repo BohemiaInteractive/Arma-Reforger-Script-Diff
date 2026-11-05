@@ -58,9 +58,9 @@ class SCR_KeybindDialogs
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static SCR_AdvancedKeybindDialogUI CreateAdvancedKeybindDialog(SCR_KeyBindingEntry entry, string displayName, string actionName, string actionPreset, SCR_EActionPrefixType prefixType)
+	static SCR_AdvancedKeybindDialogUI CreateAdvancedKeybindDialog(SCR_KeyBindingEntry entry, string displayName, string actionName, string actionPreset, SCR_EActionPrefixType prefixType, EInputDeviceType deviceType = EInputDeviceType.INVALID)
 	{
-		SCR_AdvancedKeybindDialogUI dialog = new SCR_AdvancedKeybindDialogUI(entry, displayName, actionName, actionPreset, prefixType);
+		SCR_AdvancedKeybindDialogUI dialog = new SCR_AdvancedKeybindDialogUI(entry, displayName, actionName, actionPreset, prefixType, deviceType);
 		SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, "advanced_keybind", dialog);
 		
 		return dialog;

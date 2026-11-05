@@ -21,6 +21,10 @@ class ExtraProduct: Managed
 	proto external ProductServerRentingDetails GetServerRentingDetails();
 	proto external string GetCreatedAtStr();
 	proto external string GetUpdatedAtStr();
+	//! Returns the time when this product was created
+	proto external Timestamp GetCreatedAt();
+	//! Returns the time when this product was last updated
+	proto external Timestamp GetUpdatedAt();
 }
 
 /*!

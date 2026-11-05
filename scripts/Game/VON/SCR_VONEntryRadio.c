@@ -89,6 +89,12 @@ class SCR_VONEntryRadio : SCR_VONEntry
 	{
 		SetCustomLayout("{033302D7C8158EF8}UI/layouts/HUD/VON/VONEntry.layout");
 		
+		if (!m_RadioTransceiver)
+		{
+			SetUsable(false);
+			return;
+		}
+		
 		SetUsable(m_RadioTransceiver.GetRadio().IsPowered());
 		
 		AdjustEntryModif(0);

@@ -77,14 +77,20 @@ enum EApiCode
 	EACODE_ERROR_SERVER_IS_FULL,
 	//! Client-Side only - Client can perform replication join to the server.
 	EACODE_SERVER_JOIN,
-	//! Client-Side only - Client is currently waiting in queue for free slot on the server.
+	//! Client-Side only - Client is currently waiting in queue for a free slot, or is in UNREADY limbo state after joining with BUSY status.
 	EACODE_SERVER_QUEUE_WAIT,
 	//! Client-Side only - Client has successfully left the queue.
 	EACODE_SERVER_QUEUE_LEFT,
-	//! Client-Side only - Operation failed because client was not active and the slot in queue expired.
+	//! Client-Side only - User's queue slot expired due to polling inactivity. Promoted client-side from EACODE_ERROR_SERVER_USER_NOT_IN_QUEUE when the manager knows the player was previously in the queue.
 	EACODE_ERROR_SERVER_QUEUE_EXPIRED,
-	//! Client-Side only - Operation failed because client is not in the queue for the server.
+	//! Client-Side only - Backend reported that the user is not in the queue. The entry either expired or was never created. Promoted to EACODE_ERROR_SERVER_QUEUE_EXPIRED if the player was known to be in the queue.
+	EACODE_ERROR_SERVER_USER_NOT_IN_QUEUE,
+	//! Client-Side only - Operation failed because the join queue for this server no longer exists (server may have been unregistered). The join flow cannot continue.
 	EACODE_ERROR_SERVER_QUEUE_NOT_FOUND,
+	//! Client-Side only - Player remained in BUSY state past the allowed duration. Must call join again to re-enter.
+	EACODE_ERROR_SERVER_USER_UNREADY_TOO_LONG,
+	//! Client-Side only - Player attempted to join a server without queue support while in BUSY (unready) state.
+	EACODE_ERROR_SERVER_JOIN_UNREADY_DENIED,
 	//lobby errors
 	EACODE_ERROR_MP_ROOM_NOT_FOUND,
 	EACODE_ERROR_MP_ROOM_IS_FULL,
@@ -97,6 +103,7 @@ enum EApiCode
 	EACODE_ERROR_P2P_USER_JOIN_BAN,
 	EACODE_ERROR_DS_USER_JOIN_BAN,
 	EACODE_ERROR_PLAYER_IS_BANNED,
+	EACODE_ERROR_DUPLICATE_BAN,
 	EACODE_ERROR_MULTIPLE_TARGET_MATCH,
 	EACODE_ERROR_RENTED_SERVER_GAME_DATA_CORRUPTED,
 	EACODE_ERROR_MAINTENANCE_IN_PROGRESS,

@@ -34,6 +34,19 @@ class SCR_WorldEditorToolHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Return the world which is currently loaded in the World Editor
+	//! To use from Remote Console it needs to be switched to WorkbenchGame context
+	//! \return world instance or null if such is currently not present
+	static BaseWorld GetWorldFromEditor()
+	{
+		WorldEditorAPI api = GetWorldEditorAPI();
+		if (!api)
+			return null;
+
+		return api.GetWorld();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Return the currently opened Prefab's entity with Edit Prefab button in Resource Manager
 	//! \return the entity's source, null if error
 	static IEntitySource GetPrefabEditModeEntitySource()
@@ -67,6 +80,8 @@ class SCR_WorldEditorToolHelper
 
 		return ancestor.GetResourceName();
 	}
+
+
 
 	//------------------------------------------------------------------------------------------------
 	//! Get a World Editor link in Enfusion protocol format (enfusion://) using current camera's position/angles

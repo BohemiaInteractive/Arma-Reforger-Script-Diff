@@ -1871,44 +1871,6 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		ConnectToDiagSystem();
 #endif
 
-		// Parameters override from header
-		SCR_MissionHeaderCampaign header = SCR_MissionHeaderCampaign.Cast(GetGame().GetMissionHeader());
-		if (header)
-		{
-			m_bIgnoreMinimumVehicleRank = header.m_bIgnoreMinimumVehicleRank;
-
-			int suppliesMax = header.m_iMaximumBaseSupplies;
-			int suppliesMin = header.m_iMinimumBaseSupplies;
-			int controlPointsLimit = header.m_iControlPointsCap;
-			float victoryTimeout = header.m_fVictoryTimeout;
-			float supplyAssistanceReward = header.m_fSupplyOffloadAssistanceReward;
-
-			if (suppliesMax != -1)
-				m_iMaxStartingSupplies = suppliesMax;
-
-			if (suppliesMin != -1)
-				m_iMinStartingSupplies = suppliesMin;
-
-			if (controlPointsLimit != -1)
-				m_iControlPointsThreshold = controlPointsLimit;
-
-			if (victoryTimeout != -1)
-				m_fVictoryTimer = victoryTimeout;
-
-			if (supplyAssistanceReward >= 0)
-				m_fSupplyOffloadAssistanceReward = supplyAssistanceReward;
-
-			m_bRandomSpawnpointsEnabled = header.m_bRandomSpawnpointsEnabled;
-			m_bSpawnRandomCaches = header.m_bSpawnRandomCaches;
-			m_iContestingCharactersNeeded = header.m_iContestingCharactersNeeded;
-			m_bCommanderRoleEnabled = header.m_bCommanderRoleEnabled;
-			m_bEstablishingBasesEnabled = header.m_bEstablishingBasesEnabled;
-			m_bSuppliesAutoRegenerationEnabled = header.m_bSuppliesAutoRegenerationEnabled;
-			m_eStartingRank = header.m_eStartingRank;
-			m_bINDFORCanSpawnOnBases = header.m_bINDFORCanSpawnOnBases;
-			m_bINDFORCanSpawnOnDistantBases = header.m_bINDFORCanSpawnOnDistantBases;
-		}
-
 		// Establishing Bases can only be enabled when Commander Role is enabled
 		if (!m_bCommanderRoleEnabled)
 			m_bEstablishingBasesEnabled = false;
@@ -1916,6 +1878,49 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		// prewarm acp for HQ radio sounds
 		if (!m_sHQRadioSoundEntityPrefab.IsEmpty() && !System.IsConsoleApp())
 			SCR_HQRadioSoundEntity.GetInstance();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void ParseHeaderFile(notnull MissionHeader missionHeader)
+	{
+		super.ParseHeaderFile(missionHeader);
+		
+		SCR_MissionHeaderCampaign campaignHeader = SCR_MissionHeaderCampaign.Cast(missionHeader);
+		if (!campaignHeader)
+			return;
+
+		m_bIgnoreMinimumVehicleRank = campaignHeader.m_bIgnoreMinimumVehicleRank;
+
+		int suppliesMax = campaignHeader.m_iMaximumBaseSupplies;
+		int suppliesMin = campaignHeader.m_iMinimumBaseSupplies;
+		int controlPointsLimit = campaignHeader.m_iControlPointsCap;
+		float victoryTimeout = campaignHeader.m_fVictoryTimeout;
+		float supplyAssistanceReward = campaignHeader.m_fSupplyOffloadAssistanceReward;
+
+		if (suppliesMax != -1)
+			m_iMaxStartingSupplies = suppliesMax;
+
+		if (suppliesMin != -1)
+			m_iMinStartingSupplies = suppliesMin;
+
+		if (controlPointsLimit != -1)
+			m_iControlPointsThreshold = controlPointsLimit;
+
+		if (victoryTimeout != -1)
+			m_fVictoryTimer = victoryTimeout;
+
+		if (supplyAssistanceReward >= 0)
+			m_fSupplyOffloadAssistanceReward = supplyAssistanceReward;
+
+		m_bRandomSpawnpointsEnabled = campaignHeader.m_bRandomSpawnpointsEnabled;
+		m_bSpawnRandomCaches = campaignHeader.m_bSpawnRandomCaches;
+		m_iContestingCharactersNeeded = campaignHeader.m_iContestingCharactersNeeded;
+		m_bCommanderRoleEnabled = campaignHeader.m_bCommanderRoleEnabled;
+		m_bEstablishingBasesEnabled = campaignHeader.m_bEstablishingBasesEnabled;
+		m_bSuppliesAutoRegenerationEnabled = campaignHeader.m_bSuppliesAutoRegenerationEnabled;
+		m_eStartingRank = campaignHeader.m_eStartingRank;
+		m_bINDFORCanSpawnOnBases = campaignHeader.m_bINDFORCanSpawnOnBases;
+		m_bINDFORCanSpawnOnDistantBases = campaignHeader.m_bINDFORCanSpawnOnDistantBases;
 	}
 
 	//------------------------------------------------------------------------------------------------

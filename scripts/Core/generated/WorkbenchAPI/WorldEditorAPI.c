@@ -97,50 +97,9 @@ sealed class WorldEditorAPI
 	proto external bool IsEntitySelectedAsMain(IEntitySource entity);
 	proto external bool IsEditMode();
 	proto external bool IsGameMode();
-	/*!
-	Modifies the terrain height at specified position based on given brush.
-	\param xWorldPos X coordinate of the modification position.
-	\param zWorldPos Z coordinate of the modification position.
-	\param operation Operation to perform on the terrain.
-	\param toolDesc Parameters of the operation.
-	\param shape Shape of the brush.
-	\param interpFunc Interpolation function used when creating the brush.
-	*/
-	proto external void ModifyHeightMap(float xWorldPos, float zWorldPos, FilterMorphOperation operation, notnull TerrainToolDesc toolDesc, FilterMorphShape shape, FilterMorphLerpFunc interpFunc);
-	/*!
-	Modifies the terrain height at specified position based on given map.
-	\param xWorldPos X coordinate of the modification position.
-	\param zWorldPos Z coordinate of the modification position.
-	\param operation Operation to perform on the terrain.
-	\param toolDesc Parameters of the operation.
-	\param userShape NxN array describing the modification brush. Values from 0.0 to 1.0 describing no to maximum strength.
-	\param userShapeFilter Filtering to use when the tool size is not the same as the userShape array dimension.
-	*/
-	proto external void ModifyHeightMapUserShape(float xWorldPos, float zWorldPos, FilterMorphOperation operation, notnull TerrainToolDesc toolDesc, array<float> userShape, UserShapeFilter userShapeFilter);
-	/*!
-	Modifies the terrain layers at specified position based on given brush.
-	\param xWorldPos X coordinate of the modification position.
-	\param zWorldPos Z coordinate of the modification position.
-	\param operation Operation to perform on the terrain.
-	\param toolDesc Parameters of the operation.
-	\param shape Shape of the brush.
-	\param interpFunc Interpolation function used when creating the brush.
-	*/
-	proto external void ModifyLayers(float xWorldPos, float zWorldPos, FilterMorphOperation operation, notnull TerrainToolDesc toolDesc, FilterMorphShape shape, FilterMorphLerpFunc interpFunc);
-	/*!
-	Modifies the terrain height at specified position based on given map.
-	\param xWorldPos X coordinate of the modification position.
-	\param zWorldPos Z coordinate of the modification position.
-	\param operation Operation to perform on the terrain.
-	\param toolDesc Parameters of the operation.
-	\param userShape NxN array describing the modification brush. Values from 0.0 to 1.0 describing no to maximum strength.
-	\param userShapeFilter Filtering to use when the tool size is not the same as the userShape array dimension.
-	*/
-	proto external void ModifyLayersUserShape(float xWorldPos, float zWorldPos, FilterMorphOperation operation, notnull TerrainToolDesc toolDesc, array<float> userShape, UserShapeFilter userShapeFilter);
-	proto external bool BeginTerrainAction(TerrainToolType toolType, string historyPointName = string.Empty, string historyPointIcon = string.Empty);
-	proto external void EndTerrainAction(string historyPointName = string.Empty);
 	//! Returns terrain height (world space) in given point x,z (world space). Very fast method.
 	proto external float GetTerrainSurfaceY(float x, float z);
+	proto external bool ExportSurfaceMasks(int terrainIndex, string exportDirectory);
 	/*!
 	Returns terrain height (world space) for given tile. Data are in final form - with applied roads and other modifiers. Very fast method.
 	Output array will be resized by this method and size will be:
@@ -150,7 +109,7 @@ sealed class WorldEditorAPI
 	WorldEditor we = Workbench.GetModule(WorldEditor);
 	auto api = we.GetApi();
 	array<float> heightMap = {};
-	api.BeginTerrainAction(TerrainToolType.HEIGHT_EXACT);
+	api.BeginTerrainAction();
 	if (api.GetTerrainSurfaceTile(0, 1, 8, heightMap))
 	{
 		for (int i = 0; i < heightMap.Count(); i++)
@@ -163,7 +122,7 @@ sealed class WorldEditorAPI
 	proto external bool GetTerrainSurfaceTile(int terrainIndex, int tileX, int tileY, out notnull array<float> surfaceY);
 	/*!
 	Write terrain height (world space) to given tile. Very fast method.
-	Use in combination with BeginTerrainAction(TerrainToolType.HEIGHT_EXACT) /EndTerrainAction
+	Use in combination with BeginTerrainAction() / EndTerrainAction()
 	Input array must have exact size:
 	(GetTerrainResolutionX(terrainIndex) / GetTerrainTilesX(terrainIndex)) * (GetTerrainResolutionY(terrainIndex) / GetTerrainTilesY(terrainIndex))
 
@@ -171,7 +130,7 @@ sealed class WorldEditorAPI
 	WorldEditor we = Workbench.GetModule(WorldEditor);
 	auto api = we.GetApi();
 	array<float> heightMap = {};
-	api.BeginTerrainAction(TerrainToolType.HEIGHT_EXACT);
+	api.BeginTerrainAction();
 	if (api.GetTerrainSurfaceTile(0, 1, 8, heightMap))
 	{
 		for (int i = 0; i < heightMap.Count(); i++)
@@ -219,8 +178,11 @@ sealed class WorldEditorAPI
 	proto external void AddCommentEntity(IEntity entity, string comment, Color commentColor = Color.White, string category = string.Empty);
 	proto external void MoveCommentEntity(IEntity entity, vector newTranslation);
 	proto external void GetCommentCategories(out notnull array<string> outCategories);
+	proto external bool BeginTerrainAction(string historyPointName = string.Empty, string historyPointIcon = string.Empty);
+	proto external void EndTerrainAction(string historyPointName = string.Empty);
 	//! Fills `y` with GetTerrainSurfaceY() and returns true if on x, z position is terrain, returns false otherwise.
 	proto external bool TryGetTerrainSurfaceY(float x, float z, out float y);
+	proto external void GetSurfaceMaterials(int terrainIndex, out notnull array<ResourceName> outMaterialPaths);
 	//! Trace inside WorldEditor window, x and y coords are window coordinates.
 	proto external bool TraceWorldPos(int x, int y, TraceFlags traceFlags, out vector traceStart, out vector traceEnd, out vector traceDir, out IEntity hitEntity = null);
 	/*!
@@ -245,6 +207,16 @@ sealed class WorldEditorAPI
 	\return `true` if successful, `false` otherwise.
 	*/
 	proto external bool SetVariableValue(notnull BaseContainer topLevel, array<ref ContainerIdPathEntry> containerIdPath, string key, string value);
+	/*!
+	Sets an existing container into object property.
+
+	\param topLevel Container from which the search is started.
+	\param containerIdPath Path to the variable we want to set. \see ContainerID
+	\param key The actual variable to set.
+	\param object A BaseContainer instance that will be set to variable. The editor becomes the owner of the instance.
+	\return `true` if successful, `false` otherwise.
+	*/
+	proto external bool SetObjectVariableMember(notnull BaseContainer topLevel, array<ref ContainerIdPathEntry> containerIdPath, string key, notnull BaseContainer object);
 	/*!
 	Clear value of potentially nested variable. The whole path must exist, this function is just to clear the value.
 	\param topLevel Container from which the search is started.

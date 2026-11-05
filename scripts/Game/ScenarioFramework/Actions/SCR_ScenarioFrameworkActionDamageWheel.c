@@ -7,7 +7,7 @@ class SCR_ScenarioFrameworkActionDamageWheel : SCR_ScenarioFrameworkActionBase
 	[Attribute(defvalue: "", desc: "Name of Slots that are defined on the SlotManagerComponent on target vehicle")]
 	ref array<string> m_aSlotNamesOnSlotManager;
 
-	[Attribute(defvalue: "100", desc: "Health Percentage to be set for target wheels", UIWidgets.Graph, "0 100 1")]
+	[Attribute(defvalue: "100", desc: "Health Percentage to be set for target wheels", UIWidgets.GradientDialog, "0 100 1")]
 	int m_iHealthPercentage;
 
 	//------------------------------------------------------------------------------------------------

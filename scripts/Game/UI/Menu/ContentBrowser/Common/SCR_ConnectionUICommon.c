@@ -29,7 +29,7 @@ class SCR_ConnectionUICommon
 			return true;
 		}
 
-		SetConnectionButtonTexture(button, enabled);
+		SetConnectionButtonTexture(button, enabled, serviceName);
 
 		return true;
 	}
@@ -48,7 +48,7 @@ class SCR_ConnectionUICommon
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected static void SetConnectionButtonTexture(SCR_InputButtonComponent button, bool enabled)
+	protected static void SetConnectionButtonTexture(SCR_InputButtonComponent button, bool enabled, string serviceName = SCR_ServicesStatusHelper.SERVICE_BI_BACKEND_MULTIPLAYER)
 	{
 		if (!button)
 			return;
@@ -58,12 +58,19 @@ class SCR_ConnectionUICommon
 			button.ResetTexture();
 			return;
 		}
-
-		button.SetTexture(UIConstants.ICONS_IMAGE_SET, GetConnectionIssuesIcon(), UIColors.CopyColor(UIColors.WARNING_DISABLED));
+		
+		string icon = GetConnectionIssuesIcon(serviceName);
+		if (icon.IsEmpty())
+		{
+			button.ResetTexture();
+			return;
+		}
+		
+		button.SetTexture(UIConstants.ICONS_IMAGE_SET, icon, UIColors.CopyColor(UIColors.WARNING_DISABLED));
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static string GetConnectionIssuesIcon()
+	static string GetConnectionIssuesIcon(string serviceName = SCR_ServicesStatusHelper.SERVICE_BI_BACKEND_MULTIPLAYER)
 	{
 		switch (SCR_ServicesStatusHelper.GetLastReceivedCommStatus())
 		{
@@ -72,7 +79,7 @@ class SCR_ConnectionUICommon
 			case SCR_ECommStatus.RUNNING: 		return ICON_CONNECTION;
 		}
 		
-		if (!SCR_ServicesStatusHelper.AreMultiplayerServicesAvailable())
+		if (!SCR_ServicesStatusHelper.IsServiceActive(serviceName))
 			return ICON_SERVICES_ISSUES;
 		
 		return string.Empty;

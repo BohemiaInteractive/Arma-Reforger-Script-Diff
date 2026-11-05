@@ -6,6 +6,17 @@ class SCR_MapLogisticUI : SCR_MapUIElementContainer
 	[Attribute("{94F1E2223D7E0588}UI/layouts/Campaign/ServiceHint.layout", params: "layout")]
 	protected ResourceName m_sServiceHint;
 
+	[Attribute("{4E7B19C2A85D36F0}UI/layouts/Campaign/TransportUnitMapElement.layout", desc: "Map icon of a transport unit.", params: "layout")]
+	protected ResourceName m_sTransportUnitElement;
+
+	[Attribute("80", desc: "Size of the transport unit icon on the map [px].", params: "1 inf")]
+	protected float m_fTransportUnitIconSize;
+
+	//! Map icons of the local faction transport units, created on map open and removed on map close
+	protected ref map<SCR_TransportUnitComponent, SCR_MapUITransportUnit> m_mTransportUnitIcons = new map<SCR_TransportUnitComponent, SCR_MapUITransportUnit>();
+
+	protected SCR_SuppliesTransportSystem m_SuppliesTransportSystem;
+
 	//------------------------------------------------------------------------------------------------
 	protected void InitBases()
 	{
@@ -47,6 +58,107 @@ class SCR_MapLogisticUI : SCR_MapUIElementContainer
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected void InitTransportUnits()
+	{
+		m_SuppliesTransportSystem = SCR_SuppliesTransportSystem.GetInstance();
+		if (!m_SuppliesTransportSystem)
+			return;
+
+		m_SuppliesTransportSystem.GetOnTransportUnitAdded().Insert(AddTransportUnitIcon);
+		m_SuppliesTransportSystem.GetOnTransportUnitRemoved().Insert(RemoveTransportUnitIcon);
+
+		array<SCR_TransportUnitComponent> transportUnits = {};
+		m_SuppliesTransportSystem.GetTransportUnits(transportUnits, SCR_FactionManager.SGetLocalPlayerFaction());
+		foreach (SCR_TransportUnitComponent transportUnit : transportUnits)
+		{
+			AddTransportUnitIcon(transportUnit);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void DeinitTransportUnits()
+	{
+		if (m_SuppliesTransportSystem)
+		{
+			m_SuppliesTransportSystem.GetOnTransportUnitAdded().Remove(AddTransportUnitIcon);
+			m_SuppliesTransportSystem.GetOnTransportUnitRemoved().Remove(RemoveTransportUnitIcon);
+		}
+
+		foreach (SCR_TransportUnitComponent transportUnit, SCR_MapUITransportUnit icon : m_mTransportUnitIcons)
+		{
+			if (icon && icon.GetRoot())
+				icon.GetRoot().RemoveFromHierarchy();
+		}
+
+		m_mTransportUnitIcons.Clear();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void AddTransportUnitIcon(SCR_TransportUnitComponent transportUnit)
+	{
+		if (!transportUnit || !m_wIconsContainer || m_mTransportUnitIcons.Contains(transportUnit))
+			return;
+
+		Faction faction = transportUnit.GetFaction();
+		if (!faction || faction != SCR_FactionManager.SGetLocalPlayerFaction())
+			return;
+
+		Widget w = GetGame().GetWorkspace().CreateWidgets(m_sTransportUnitElement, m_wIconsContainer);
+		if (!w)
+			return;
+
+		SCR_MapUITransportUnit iconHandler = SCR_MapUITransportUnit.Cast(w.FindHandler(SCR_MapUITransportUnit));
+		if (!iconHandler)
+		{
+			w.RemoveFromHierarchy();
+			return;
+		}
+
+		iconHandler.SetParent(this);
+		iconHandler.Init(transportUnit, m_fTransportUnitIconSize);
+
+		FrameSlot.SetSizeToContent(w, true);
+		FrameSlot.SetAlignment(w, 0.5, 0.5);
+
+		m_mTransportUnitIcons.Insert(transportUnit, iconHandler);
+		UpdateTransportUnitIcon(iconHandler);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void RemoveTransportUnitIcon(SCR_TransportUnitComponent transportUnit)
+	{
+		SCR_MapUITransportUnit icon = m_mTransportUnitIcons.Get(transportUnit);
+		if (icon && icon.GetRoot())
+			icon.GetRoot().RemoveFromHierarchy();
+
+		m_mTransportUnitIcons.Remove(transportUnit);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateTransportUnitIcon(notnull SCR_MapUITransportUnit icon)
+	{
+		Widget w = icon.GetRoot();
+		if (!w)
+			return;
+
+		vector position = icon.GetPos();
+
+		// Position not replicated yet
+		if (position == vector.Zero)
+		{
+			w.SetVisible(false);
+			return;
+		}
+
+		int screenX, screenY;
+		m_MapEntity.WorldToScreen(position[0], position[2], screenX, screenY, true);
+
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
+		FrameSlot.SetPos(w, workspace.DPIUnscale(screenX), workspace.DPIUnscale(screenY));
+		w.SetVisible(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnMapOpen(MapConfiguration config)
 	{
 		super.OnMapOpen(config);
@@ -60,11 +172,14 @@ class SCR_MapLogisticUI : SCR_MapUIElementContainer
 		}
 
 		InitBases();
+		InitTransportUnits();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMapClose(MapConfiguration config)
 	{
+		DeinitTransportUnits();
+
 		super.OnMapClose(config);
 
 		foreach (Widget w, SCR_MapUIElement i : m_mIcons)
@@ -80,6 +195,13 @@ class SCR_MapLogisticUI : SCR_MapUIElementContainer
 	override void Update(float timeSlice)
 	{
 		super.Update(timeSlice);
+
+		// Every frame, so the icons follow map pan and zoom
+		foreach (SCR_TransportUnitComponent transportUnit, SCR_MapUITransportUnit icon : m_mTransportUnitIcons)
+		{
+			if (transportUnit && icon)
+				UpdateTransportUnitIcon(icon);
+		}
 
 		SCR_CampaignLogisticMapUIBase logisticMapBase;
 		foreach (Widget w, SCR_MapUIElement mapUIElement : m_mIcons)
@@ -100,9 +222,6 @@ class SCR_MapLogisticUI : SCR_MapUIElementContainer
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_MapLogisticUI()
 	{
-		foreach (Widget w, SCR_MapUIElement i : m_mIcons)
-		{
-			delete w;
-		}
+		m_mIcons.Clear();
 	}
 }

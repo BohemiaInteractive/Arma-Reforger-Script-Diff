@@ -591,7 +591,7 @@ class SCR_ScenarioUICommon
 		if (!button)
 			return;
 
-		visible = visible && entryFocused && IsMultiplayer(mission) && !IsHostingDisabledOnPlatform();
+		visible = visible && entryFocused && IsMultiplayer(mission) && !IsHostingDisabledOnPlatform() && SocialComponent.IsMultiplayerAllowed();
 
 		button.SetVisible(visible);
 		if (visible)
@@ -610,7 +610,7 @@ class SCR_ScenarioUICommon
 		if (!button)
 			return;
 
-		visible = visible && IsMultiplayer(mission) && !IsHostingDisabledOnPlatform();
+		visible = visible && IsMultiplayer(mission) && !IsHostingDisabledOnPlatform() && SocialComponent.IsMultiplayerAllowed();
 		button.SetVisible(visible, false);
 
 		if (visible)

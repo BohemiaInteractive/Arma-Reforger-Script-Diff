@@ -38,6 +38,7 @@ sealed class GroupAuditLogEvent: Managed
 	MEMBER_KICKED - the member who was kicked
 	*/
 	proto external GroupAuditLogMember GetTarget();
+	proto external Timestamp GetCreatedAt();
 }
 
 /*!

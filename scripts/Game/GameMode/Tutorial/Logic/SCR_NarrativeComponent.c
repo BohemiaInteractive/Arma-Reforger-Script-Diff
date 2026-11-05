@@ -99,15 +99,15 @@ class SCR_NarrativeComponent : ScriptComponent
 
 		if (m_bRootMotion && m_CharController && animId > -1)
 		{
-			SCR_LoiterCustomAnimData customAnimData = SCR_LoiterCustomAnimData.CreateInstance(commandId, animId);
-			
+			SCR_LoiterCustomAnimData customAnimData = SCR_LoiterCustomAnimData.CreateInstance(commandID : commandId, commandValue : animId, commandName: command, allowRootMotion : m_bRootMotion);
+
 			SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(m_CharacterAnimation.GetCommandHandler());
 			scrCmdHandler.StartCommand_Move();
-			
+
 			vector targetPosition[4] = { "1 0 0", "0 1 0", "0 0 1", "0 0 0" };
-			
+
 			bool alignToPosition = false;
-			
+
 			if (m_sPositionToEntity != "")
 			{
 				entityToAttachTo = GetGame().GetWorld().FindEntityByName(m_sPositionToEntity);
@@ -118,7 +118,7 @@ class SCR_NarrativeComponent : ScriptComponent
 				}
 			}
 
-			m_CharController.StartLoitering(entityToAttachTo, animId, false, true, alignToPosition, targetPosition, false, customAnimData);
+			m_CharController.StartLoitering(entityToAttachTo, animId, false, m_bRootMotion, alignToPosition, targetPosition, false, customAnimData);
 		}
 		else
 		{

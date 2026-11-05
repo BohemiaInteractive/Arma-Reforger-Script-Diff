@@ -15,6 +15,8 @@ class BaseInventoryStorageComponentClass: InventoryItemComponentClass
 
 class BaseInventoryStorageComponent: InventoryItemComponent
 {
+	//! Get the manager responsible for managing this storage, if any.
+	proto external InventoryStorageManagerComponent GetHierarchyManager();
 	/*!
 	*IMPORTANT* Should be called upon initialization of slot instance
 	 provide newly created slot and desired slot ID

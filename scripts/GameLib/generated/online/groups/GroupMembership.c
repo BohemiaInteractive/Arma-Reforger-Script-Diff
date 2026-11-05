@@ -20,6 +20,8 @@ sealed class GroupMembership: Managed
 	proto external int GetId();
 	//! Returns nickname of the member
 	proto external string GetNickname();
+	//! Returns the time when the membership was created
+	proto external Timestamp GetCreatedAt();
 	//! Returns Role of this member
 	proto external GroupMemberRole GetRole();
 	//! Kick the member from the Group. Marks the membership as no longer valid
@@ -29,9 +31,9 @@ sealed class GroupMembership: Managed
 	\note The user updating cannot promote other user to a
 	      role with higher priority than their own role and must have sufficient permissions to do so.
 	\param pCallback Script callback where you will receive the result
-	\param iRoleId ID of the new role
+	\param pRole The new role to assign to the member
 	*/
-	proto external void UpdateRole(notnull BackendCallback pCallback, int iRoleId);
+	proto external void UpdateRole(notnull BackendCallback pCallback, notnull GroupMemberRole pRole);
 }
 
 /*!

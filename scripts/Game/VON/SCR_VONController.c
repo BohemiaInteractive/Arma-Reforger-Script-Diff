@@ -259,6 +259,9 @@ class SCR_VONController : ScriptComponent
 		
 		if (entry == m_LongRangeEntry)	// unset long range entry
 			m_LongRangeEntry = null;
+		
+		if (entry == m_SavedEntry)
+			m_SavedEntry = null;
 				
 		if (m_VONMenu)
 		{

@@ -110,7 +110,11 @@ class CharacterCamera1stPersonTurret extends CharacterCamera1stPerson
 		CharacterControllerComponent charController = m_OwnerCharacter.GetCharacterController();
 
 		//! apply to rotation matrix
-		m_vLastCameraAngles = m_pControlledTurret.GetAimingDirection().VectorToAngles();
+		m_vLastCameraAngles = m_pControlledTurret.GetAimingRotation();
+		float playerVehicleRotDif = m_OwnerVehicle.GetRootParent().GetYawPitchRoll()[0] - m_OwnerCharacter.GetYawPitchRoll()[0];
+		if (playerVehicleRotDif < m_vHorAimLimits[1] && playerVehicleRotDif > m_vHorAimLimits[0])
+			m_vLastCameraAngles += Vector(playerVehicleRotDif, 0, 0);
+		
 		if (charController.IsFreeLookEnabled() || m_pTurretController.GetCanAimOnlyInADS() || charController.IsTrackIREnabled())
 		{
 			float downLimit = m_pCompartment.GetFreelookAimLimitOverrideDown();

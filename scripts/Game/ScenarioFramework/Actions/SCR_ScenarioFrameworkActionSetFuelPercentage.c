@@ -4,7 +4,7 @@ class SCR_ScenarioFrameworkActionSetFuelPercentage : SCR_ScenarioFrameworkAction
 	[Attribute(desc: "Target entity to manipulate fuel (Optional if action is attached on Slot that spawns target entity)")]
 	ref SCR_ScenarioFrameworkGet m_Getter;
 
-	[Attribute(defvalue: "75", desc: "Percentage of a fuel to be set.", UIWidgets.Graph, "0 100 1")]
+	[Attribute(defvalue: "75", desc: "Percentage of a fuel to be set.", UIWidgets.GradientDialog, "0 100 1")]
 	int m_iFuelPercentage;
 
 	//------------------------------------------------------------------------------------------------

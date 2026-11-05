@@ -960,6 +960,21 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Hides provided hint if it is shown, or removes it from the queue if it wasnt shown yet
+	//! \param[in] hintID
+	void HideHint(EHint hintID)
+	{
+		if (m_aHintQueue.RemoveItem(hintID))
+			return;
+
+		SCR_HintUIInfo info = m_HintsConfig.GetHintByEnum(hintID);
+		if (!info)
+			return;
+
+		SCR_HintManagerComponent.HideHint(info);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void ProcessHintQueue()
 	{
 		if (m_aHintQueue.IsEmpty())

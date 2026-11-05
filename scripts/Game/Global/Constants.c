@@ -172,6 +172,7 @@ class UIConstants
 	static const LocalizedString VALUE_UNIT_DEGREES =		"#AR-ValueUnit_Degrees";
 	static const LocalizedString VALUE_UNIT_METERS =		"#AR-ValueUnit_Short_Meters";
 	static const LocalizedString VALUE_UNIT_SECONDS =		"#AR-ValueUnit_Short_Seconds";
+	static const LocalizedString VALUE_UNIT_RPM =			"#AR-ValueUnit_RPM";
 	static const LocalizedString VALUE_MUTLIPLIER_SHORT =	"#AR-ValueUnit_Short_Times";
 	
 	static const LocalizedString VALUE_OUT_OF =				"#AR-SupportStation_ActionFormat_ItemAmount";
@@ -245,7 +246,10 @@ class UIConstants
 	
 	// Input devices
 	static const string DEVICE_KEYBOARD = 	"keyboard";
+	static const string DEVICE_MOUSE = 		"mouse";
+	static const string DEVICE_TRACK_IR = 	"trackir";
 	static const string DEVICE_GAMEPAD = 	"gamepad";
+	static const string DEVICE_JOYSTICK = 	"joystick";
 	
 	// Mouse buttons
 	static const int MOUSE_LEFT_CLICK =		0;

@@ -73,6 +73,49 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override event protected void OnDamageStateChanged(EDamageState newState, EDamageState previousDamageState, bool isJIP)
+	{
+		super.OnDamageStateChanged(newState, previousDamageState, isJIP);
+		
+		//MultiPhaseDestructibles are hacked with their own damage system on top of damage.
+		//In some weird cases, MultiPhaseDestructibles will take no damage but have their HP be 0 (e.g.: SetHealth calls)
+		//when that happens we want them to be destroyed
+		//Therefore this whole method is just a hack to make sure destruction calls get called under those cases
+		if(IsProxy())
+			return;
+		
+		SCR_DestructionMultiPhaseComponentClass componentData = SCR_DestructionMultiPhaseComponentClass.Cast(GetComponentData(GetOwner()));
+		
+		HitZone defaultHz = GetDefaultHitZone();
+	
+		if (defaultHz.GetHealth() > m_fNextPhaseHealth)
+			return;
+			
+		const float maxHealth = defaultHz.GetMaxHealth();
+		const int targetPhase = CalculateDamagePhase(0, maxHealth, maxHealth - defaultHz.GetHealth());
+		int currentDamagePhase = GetDamagePhase();
+		
+		//When the destructible is destroyed normally the phase change already happens
+		//this will trigger and destruction wont happen twice.
+		if (currentDamagePhase == targetPhase)
+			return;
+		
+		if (componentData.m_bDeleteAfterFinalPhase)
+		{
+			ReplicateDestructibleState(targetPhase);
+			DeleteDestructibleDelayed();
+		}
+		else
+		{
+			GoToDamagePhase(targetPhase, false);
+			ReplicateDestructibleState(targetPhase);
+	
+			if (componentData.m_bDestroyChildrenWhenDestroyed)
+				DeleteDestructibleChildrenDelayed();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Returns whether the object should disable physics on destruction (before being deleted or changed)
 	override bool GetDisablePhysicsOnDestroy()
 	{
@@ -112,10 +155,10 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 	//! Returns the target damage stage for the input current health, current phase and damage
 	int CalculateDamagePhase(int damagePhase, float health, float damage)
 	{
-		if (damage < 0)
+		if (damage <= 0)
 			return damagePhase;
 
-		while (damage >= 0)
+		while (damage > 0)
 		{
 			damagePhase++;
 			SCR_DamagePhaseData damagePhaseData = GetDamagePhaseData(damagePhase);
@@ -211,6 +254,10 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 		SetDamagePhase(damagePhase);
 		SetTargetDamagePhase(damagePhase + 1);
 
+		SCR_DamagePhaseData data = GetDamagePhaseData(damagePhase);
+		if (!data)
+			return;
+
 		ScriptCallQueue callQueue = GetGame().GetCallqueue();
 		if (!callQueue)
 			return;
@@ -223,10 +270,6 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 		int delay;
 		if (delayMeshChange)
 			delay = componentData.m_fMeshChangeDelay;
-
-		SCR_DamagePhaseData data = GetDamagePhaseData(damagePhase);
-		if (!data)
-			return;
 
 		callQueue.CallLater(ChangeModel, delay, param1: data.m_PhaseModel, param2: data.m_bUseMaterialsFromParent);
 	}

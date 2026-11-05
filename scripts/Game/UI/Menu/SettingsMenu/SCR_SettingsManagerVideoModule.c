@@ -64,7 +64,7 @@ class SCR_SettingsManagerVideoModule : SCR_SettingsManagerModuleBase
 		{
 			displayUserSettings.Set("OverallQuality", EVideoQualityPreset.PS5_QUALITY);
 			SetConsoleResolution(EVideoQualityPreset.PS5_QUALITY);
-			videoUserSettings.Set("Fsaa", 2);
+			videoUserSettings.Set("Fsaa", 0);
 			videoSettings.Set("m_bNearDofEffect", false);
 			videoSettings.Set("m_iDofType", DepthOfFieldTypes.SIMPLE);
 			videoUserSettings.Set("MaxFps", 30);
@@ -75,7 +75,7 @@ class SCR_SettingsManagerVideoModule : SCR_SettingsManagerModuleBase
 		{
 			displayUserSettings.Set("OverallQuality", EVideoQualityPreset.PS5_PERFORMANCE);
 			SetConsoleResolution(EVideoQualityPreset.PS5_PERFORMANCE);
-			videoUserSettings.Set("Fsaa", 2);
+			videoUserSettings.Set("Fsaa", 0);
 			videoSettings.Set("m_bNearDofEffect", false);
 			videoSettings.Set("m_iDofType", DepthOfFieldTypes.SIMPLE);
 			videoUserSettings.Set("MaxFps", 60);
@@ -86,7 +86,7 @@ class SCR_SettingsManagerVideoModule : SCR_SettingsManagerModuleBase
 		{
 			displayUserSettings.Set("OverallQuality", EVideoQualityPreset.PS5_PRO_QUALITY);
 			SetConsoleResolution(EVideoQualityPreset.PS5_PRO_QUALITY);
-			videoUserSettings.Set("Fsaa", 2);
+			videoUserSettings.Set("Fsaa", 0);
 			videoSettings.Set("m_bNearDofEffect", false);
 			videoSettings.Set("m_iDofType", DepthOfFieldTypes.SIMPLE);
 			videoUserSettings.Set("MaxFps", 30);
@@ -97,7 +97,7 @@ class SCR_SettingsManagerVideoModule : SCR_SettingsManagerModuleBase
 		{
 			displayUserSettings.Set("OverallQuality", EVideoQualityPreset.PS5_PRO_PERFORMANCE);
 			SetConsoleResolution(EVideoQualityPreset.PS5_PRO_PERFORMANCE);
-			videoUserSettings.Set("Fsaa", 2);
+			videoUserSettings.Set("Fsaa", 0);
 			videoSettings.Set("m_bNearDofEffect", false);
 			videoSettings.Set("m_iDofType", DepthOfFieldTypes.SIMPLE);
 			videoUserSettings.Set("MaxFps", 60);

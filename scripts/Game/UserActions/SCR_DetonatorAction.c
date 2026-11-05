@@ -20,6 +20,9 @@ class SCR_RemoteDetonatorAction : SCR_ScriptedUserAction
 		if (!character)
 			return false;
 
+		if (SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
+			return false;
+
 		CharacterControllerComponent characterControllerComp = character.GetCharacterController();
 		if (!characterControllerComp)
 			return false;

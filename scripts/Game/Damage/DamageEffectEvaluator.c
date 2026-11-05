@@ -108,4 +108,10 @@ class DamageEffectEvaluator : ScriptAndConfig
 
 	//------------------------------------------------------------------------------------------------
 	void HandleEffectConsequences(SCR_BlisterDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
+	
+	//------------------------------------------------------------------------------------------------
+	void HandleEffectConsequences(SCR_FlaskStaminaRecoveryDamageEffect effect, ExtendedDamageManagerComponent damageManager);
+	
+	//------------------------------------------------------------------------------------------------
+	void HandleEffectConsequences(SCR_FlaskStaminaRegenBoostDamageEffect effect, ExtendedDamageManagerComponent damageManager);
 }

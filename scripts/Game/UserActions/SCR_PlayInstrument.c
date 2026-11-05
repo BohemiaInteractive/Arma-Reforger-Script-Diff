@@ -23,6 +23,10 @@ class SCR_PlayInstrument : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+		if (character && SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
+			return false;
+
 		if( m_DamageComponent && m_DamageComponent.IsDestroyed() )
 			return false;
 		

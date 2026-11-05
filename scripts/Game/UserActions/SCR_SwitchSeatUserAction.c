@@ -54,6 +54,25 @@ class SCR_SwitchSeatAction : SCR_GetInUserAction
 			return false;
 		}
 
+		if (compartment.IsPiloting())
+		{
+			if (!DlcManager.Get().CanUseEntity(user, compartment.GetOwner()))
+			{
+				World world = GetGame().GetWorld();
+				if (!world)
+					return false;
+
+				SCR_DLCOwnershipSystem ownershipSystem = SCR_DLCOwnershipSystem.Cast(world.FindSystem(SCR_DLCOwnershipSystem));
+				if (!ownershipSystem)
+					return false;
+
+				ownershipSystem.OnOwnershipNegative(SCR_EDLCInteractionType.VEHICLE_DRIVER);
+
+				SetCannotPerformReason("#AR-DLC_Vehicle_Blocked");
+				return false;
+			}
+		}
+
 		return true;
 	}
 

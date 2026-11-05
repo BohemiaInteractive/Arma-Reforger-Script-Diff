@@ -453,4 +453,9 @@ class SCR_CampaignLogisticMapUIBase : SCR_CampaignMapUIBase
 		if (m_Base)
 			m_Base.GetOnSupplyRequestExecutionPriorityChanged().Remove(UpdatePriorityWidgetsValues);
 	}
+	
+	void ~SCR_CampaignLogisticMapUIBase()
+	{
+		s_OnBaseSelected.Clear();
+	}
 }

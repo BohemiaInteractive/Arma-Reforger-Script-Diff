@@ -20,6 +20,10 @@ sealed class WorkshopRevisionBase
 	proto external bool IsCurrent();
 	//! Returns version numbers as a string.
 	proto external string GetVersion();
+	//! Returns the time when this revision was created
+	proto external Timestamp GetCreatedAt();
+	//! Returns count of how many dependencies this revision has.
+	proto external int GetDependencyCount();
 	/*!
 	Returns total size of this revision in KibiBytes.
 	\note If size is less than 1 KB it is always rounded to 1.
@@ -34,6 +38,10 @@ sealed class WorkshopRevisionBase
 	proto external int GetSizeKB();
 	/*!
 	Will request download of this revision.
+	\note Creates a download job for the asset: EWJT_DOWNLOAD (fresh), EWJT_UPDATE (newer revision present)
+	      or EWJT_DOWNGRADE (older revision present), depending on what is already installed.
+	\note At most one job exists per asset. If a job of the same task is already in history for this asset it is
+	      reused; a job of a different task is deleted and a new one is created.
 	\warning State of the asset must be at least SUBSCRIBED before you can download this revision.
 	\throws VME - if download is requested while asset is not subscribed.
 	            - if download is requested while this asset is already processing different job
@@ -41,6 +49,32 @@ sealed class WorkshopRevisionBase
 	\returns WorkshopJob of this task through which download process can be tracked and further controlled.
 	*/
 	proto external WorkshopJob RequestDownload(notnull BackendCallback callback);
+	/*!
+	Will request a read-only validation of the locally installed data of this asset.
+	      The validation mode is decided internally: offline (validate the manifest against
+	      its own header) when not authenticated or running with -noBackend, otherwise full online
+	      (validate against backend-authoritative manifest data).
+	\note Creates a validation job for the asset.
+	\note At most one job exists per asset. If a job of the same task is already in history for this asset it is
+	      reused; a job of a different task is deleted and a new one is created.
+	\note A validation job cannot be truly paused - pausing and resuming it restarts the validation from the
+	      beginning.
+	\warning Asset must have local data present.
+	         Fails if the asset is already processing a different job.
+	\returns WorkshopJob of this task through which the validation can be tracked.
+	         The result is stored on the asset - see WorkshopAssetBase::IsCorrupted()/GetValidationRepairBytes().
+	*/
+	proto external WorkshopJob RequestValidation(notnull BackendCallback callback);
+	/*!
+	Will repair the locally installed data of this asset by re-downloading only the corrupted or missing fragments.
+	\note Creates a repair job for the asset (EWJT_REPAIR).
+	\note At most one job exists per asset. If a job of the same task is already in history for this asset it is
+	      reused; a job of a different task is deleted and a new one is created.
+	\warning Asset must have local data present.
+	         Fails if the asset is already processing a different job.
+	\returns WorkshopJob of this task through which the repair can be tracked.
+	*/
+	proto external WorkshopJob RequestRepair(notnull BackendCallback callback);
 	/*!
 	Will request missing details about this revision. Generally when you have partial revision from assets
 	or outdated data when local asset is loaded at the start of the game.

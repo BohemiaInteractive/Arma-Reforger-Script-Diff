@@ -24,12 +24,12 @@ class AttachToSlotManagerCinematicTrack : CinematicTrackBase
 	override void OnInit(World world)
 	{
 		// Find particle entity by using name of track
-		findEntity(world);
+		FindEntity(world);
 		m_EntityToAttach = GenericEntity.Cast(world.FindEntityByName(m_sEntityToAttach));		
 		globalWorld = world;
 	}
 	
-	void findEntity(World world)
+	void FindEntity(World world)
 	{
 		// Find particle entity by using name of track
 		TStringArray strs = new TStringArray;
@@ -40,11 +40,10 @@ class AttachToSlotManagerCinematicTrack : CinematicTrackBase
 	
 	override void OnApply(float time)
 	{
-		
 		if (globalWorld)
 		{
 			//Finding effect entity each frame for keep working in edit time
-			findEntity(globalWorld);
+			FindEntity(globalWorld);
 			
 			if (m_sEntityToAttach == "player" && GetGame().GetPlayerController())
 				m_EntityToAttach = SCR_ChimeraCharacter.Cast(GetGame().GetPlayerController().GetControlledEntity());
@@ -54,25 +53,40 @@ class AttachToSlotManagerCinematicTrack : CinematicTrackBase
 		
 		//Attaching entity to slot
 		if (m_GeneralEntity && m_EntityToAttach)
-		{			
-			SlotManagerComponent slotManager = SlotManagerComponent.Cast(m_GeneralEntity.FindComponent(SlotManagerComponent));
-			
-			if (slotManager)
+		{
+			ChimeraCharacter char = ChimeraCharacter.Cast(m_EntityToAttach);
+			SCR_BaseCompartmentManagerComponent compartmentManagerComp = SCR_BaseCompartmentManagerComponent.Cast(m_GeneralEntity.FindComponent(SCR_BaseCompartmentManagerComponent));
+
+			if (char && compartmentManagerComp)
 			{
-				EntitySlotInfo entityInSlot = slotManager.GetSlotByName(m_sSlotName);
-				
-				if(entityInSlot)
+				CompartmentAccessComponent compartmentAccessComponent = char.GetCompartmentAccessComponent();
+				BaseCompartmentSlot compartmentSlot = compartmentManagerComp.FindCompartmentByName(m_sSlotName);
+				if (!compartmentSlot)
 				{
-					entityInSlot.AttachEntity(m_EntityToAttach);
-					vector matrix[4];
-					Math3D.AnglesToMatrix(m_Rotation, matrix);
-					matrix[3] = m_Position;
-					Math3D.MatrixScale(matrix,m_fScale);
-					entityInSlot.SetAdditiveTransformLS(matrix);
-					m_GeneralEntity.Update();
-					m_EntityToAttach.Update();
+					Debug.ErrorFormat("AttachToSlotManagerCinematicTrack is misconfigured, cannot find slot by name of \"%1\"", m_sSlotName);
+					return;
 				}
+
+				compartmentAccessComponent.GetInVehicle(m_GeneralEntity, compartmentSlot, true, 0, ECloseDoorAfterActions.CLOSE_DOOR, false);
+				return;
 			}
+
+			SlotManagerComponent slotManager = SlotManagerComponent.Cast(m_GeneralEntity.FindComponent(SlotManagerComponent));
+			if (!slotManager)
+				return;
+
+			EntitySlotInfo entityInSlot = slotManager.GetSlotByName(m_sSlotName);	
+			if(!entityInSlot)
+				return;
+
+			entityInSlot.AttachEntity(m_EntityToAttach);
+			vector matrix[4];
+			Math3D.AnglesToMatrix(m_Rotation, matrix);
+			matrix[3] = m_Position;
+			Math3D.MatrixScale(matrix,m_fScale);
+			entityInSlot.SetAdditiveTransformLS(matrix);
+			m_GeneralEntity.Update();
+			m_EntityToAttach.Update();
 		}
 	}
 }

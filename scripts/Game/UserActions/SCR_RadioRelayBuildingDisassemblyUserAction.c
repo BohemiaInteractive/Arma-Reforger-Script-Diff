@@ -55,7 +55,7 @@ class SCR_RadioRelayBuildingDisassemblyUserAction : SCR_CampaignBuildingDisassem
 		buildingManagerComponent.GetBuildingCompositions(campaignBase, compositions);
 		foreach (SCR_CampaignBuildingCompositionComponent composition : compositions)
 		{
-			if (composition && composition != m_CompositionComponent && HasCompositionLabel(composition, EEditableEntityLabel.SERVICE_ANTENNA))
+			if (composition && composition != m_CompositionComponent && HasCompositionLabel(composition, EEditableEntityLabel.SERVICE_ANTENNA) && composition.IsCompositionSpawned())
 				return true; // if there is more than one relay then player is allowed to dismantle this one
 		}
 

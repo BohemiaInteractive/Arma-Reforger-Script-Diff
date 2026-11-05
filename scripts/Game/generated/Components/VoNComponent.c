@@ -72,6 +72,11 @@ class VoNComponent: GameComponent
 	returns true if the entity is a SCR_EditorManagerEntity that is opened.
 	*/
 	event protected bool IsEntityActiveEditor(IEntity entity);
+	/*!
+	returns editor entity if the player is controlling an active editor entity. Also stores position of the editor on worldLocation.
+	returns null if player doesnt control an active editor entity
+	*/
+	event protected IEntity GetActiveEditorEntity(int playerID);
 }
 
 /*!

@@ -38,10 +38,16 @@ class SCR_PushVehicleAction : SCR_ScriptedUserAction
 #endif
 
 	//------------------------------------------------------------------------------------------------
+	bool IsPull()
+	{
+		return m_bPull;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Called when object is initialized and registered to actions manager
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
-		m_Rpl = RplComponent.Cast(pOwnerEntity.GetRootParent().FindComponent(RplComponent));
+		m_Rpl = SCR_EntityHelper.GetEntityRplComponent(pOwnerEntity.GetRootParent());
 		m_fApplicationInterval = 1 / m_iForceApplicationFrequency;
 #ifdef ENABLE_DIAG
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_VEHICLES_UNFLIP, "", "Visualize push force", "Vehicles");
@@ -102,6 +108,12 @@ class SCR_PushVehicleAction : SCR_ScriptedUserAction
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected vector GetForceDirection(notnull IEntity forceTarget, vector forceTargetPos, vector forceOrigin)
+	{
+		return vector.Direction(forceTargetPos, forceOrigin);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void ApplyForce(IEntity rootEntity, IEntity pUserEntity, float timeSlice, vector forceOffset = vector.Zero)
 	{
 		// Only run where vehicle is being simulated
@@ -117,12 +129,13 @@ class SCR_PushVehicleAction : SCR_ScriptedUserAction
 			return;
 
 		// Get force origin, target and direction
-		vector forceOrigin = character.EyePosition();
+		vector forceOrigin = character.GetOrigin();
 		Physics physics = rootEntity.GetPhysics();
 		vector forceTarget = rootEntity.CoordToParent(physics.GetCenterOfMass());
 		//equal Y to ensure that foce vector isnt going to have odd angle because of the distance between the player and the vehicle
 		forceOrigin[1] = forceTarget[1];
-		vector forceDirection = vector.Direction(forceTarget, forceOrigin);
+		vector forceDirection = GetForceDirection(rootEntity, forceTarget, forceOrigin);
+
 		//normalized to prevent force scaling based on how far player is away from the vehicle
 		forceDirection.Normalize();
 
@@ -164,6 +177,15 @@ class SCR_PushVehicleAction : SCR_ScriptedUserAction
 				m_aShapes.Insert(Shape.CreateArrow(forceTarget, forceTarget - (forceOffset * m_fCounterForceOffsetMultiplier), 0.1, Color.PINK, shapeFlags));
 				m_aShapes.Insert(Shape.CreateArrow(forceTarget - (forceOffset * m_fCounterForceOffsetMultiplier), forceTarget - (forceOffset * m_fCounterForceOffsetMultiplier) + (impulse * COUNTERFORCE_SCALE), 1, Color.BLACK, shapeFlags));
 			}
+
+			Print(string.Format("[Unflip] pull=%1 impulse=<%2,%3,%4> |impulse|=%5 dirZ=%6 forceSign=%7 offsetY=%8 comZ=%9",
+				m_bPull,
+				impulse[0], impulse[1], impulse[2], impulse.Length(),
+				forceDirection[2],
+				force.Sign(),
+				forceOffset[1],
+				forceTarget[2]),
+				LogLevel.NORMAL);
 		}
 #endif
 	}
@@ -211,5 +233,12 @@ class SCR_PushVehicleAction : SCR_ScriptedUserAction
 	override bool CanBroadcastScript()
 	{
 		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Several characters can push the same vehicle at once
+	override bool IsUsableByMultipleUsersScript()
+	{
+		return true;
 	}
 }

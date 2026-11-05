@@ -31,7 +31,7 @@ class SCR_InventoryStorageLBSUI : SCR_InventoryStorageBaseUI
 	
 	//------------------------------------------------------------------------------------------------
 	// ! Getting all items from the storages slotted in the parent storage ( i.e. ALICE has multiple pouches and cartridge boxes )
-	protected override void GetAllItems( out notnull array<IEntity> pItemsInStorage, BaseInventoryStorageComponent pStorage = null )
+	override void GetAllItems( out notnull array<IEntity> pItemsInStorage, BaseInventoryStorageComponent pStorage = null )
 	{
 		array<BaseInventoryStorageComponent> pStorages = new array<BaseInventoryStorageComponent>();
 		array<IEntity> pItems = new array<IEntity>();

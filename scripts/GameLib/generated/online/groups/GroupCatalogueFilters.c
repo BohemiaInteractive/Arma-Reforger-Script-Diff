@@ -24,6 +24,13 @@ class GroupCatalogueFilters: Managed
 	//! Returns current primary language filter
 	proto external string GetPrimaryLanguage();
 	proto external void SetClanTag(string sTag);
+	//! Sets enlistment status filter
+	proto external void SetEnlistmentStatus(EGroupEnlistmentStatus eEnlistmentStatus);
+	/*!
+	Returns current enlistment status filter
+	\note Only Groups with the given enlistment status are listed
+	*/
+	proto external EGroupEnlistmentStatus GetEnlistmentStatus();
 	//! Sets IsMember filter
 	proto external void SetIsMember(EBackendCatalogueBoolFlag eIsMember);
 	/*!
@@ -73,6 +80,13 @@ class GroupCatalogueFilters: Managed
 	\note Only groups with given game regions are listed
 	*/
 	proto external int GetGameRegions();
+	/*!
+	Sets list of group IDs to return
+	\note Only the groups with the listed IDs are returned
+	*/
+	proto external void SetGroupIds(notnull array<int> groupIds);
+	//! Returns current group IDs filter
+	proto external void GetGroupIds(out notnull array<int> outGroupIds);
 }
 
 /*!

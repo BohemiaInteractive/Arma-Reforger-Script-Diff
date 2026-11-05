@@ -43,17 +43,42 @@ class SCR_AdvancedActionRowComponent : SCR_ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	// Displays the action's specified bind for the chosen device and conflicting occurrances
-	void Init(string actionName, string actionPreset, int index, SCR_SettingsManagerKeybindModule settingsKeybindModule, EInputDeviceType device)
+	void Init(string actionName, string actionPreset, int index, SCR_SettingsManagerKeybindModule settingsKeybindModule, EInputDeviceType device, InputBinding inputBinding = null)
 	{
 		m_iKeybindIndex = index;
 		
-		string deviceString = UIConstants.DEVICE_KEYBOARD;
-		if (device == EInputDeviceType.GAMEPAD)
-			deviceString = UIConstants.DEVICE_GAMEPAD;
+		string deviceString;
+		string additionalInfo;
+		switch (device)
+		{
+			case EInputDeviceType.GAMEPAD:
+				deviceString = UIConstants.DEVICE_GAMEPAD;
+				break;
+
+			case EInputDeviceType.JOYSTICK:
+				deviceString = UIConstants.DEVICE_JOYSTICK;
+				BaseContainer binding = SCR_InputHelper.GetInputBinding(actionName, actionPreset, index, inputBinding);
+				if (binding)
+				{
+					string input;
+					binding.Get(SCR_InputHelper.INPUT_CONTAINER_INPUT_NAME, input);
+					if (input.Length() >= 9)
+					{
+						int deviceId = input.Substring(8, 1).ToInt(-1);
+						if (deviceId > -1)
+							additionalInfo = string.Format(SCR_InputHelper.DEVICE_ID_DISPLAY_FORMAT, SCR_InputHelper.DEVICE_ID_DISPLAY_TEXT, deviceId);
+					}
+				}
+				break;
+
+			default:
+				deviceString = UIConstants.DEVICE_KEYBOARD;
+		}
 
 		if (m_wActionBindRichText)
 			m_wActionBindRichText.SetText(string.Format(
-				"<action name='%1' preset='%2' index='%3' device='%4' scale='%5' state ='%6'/>", 
+				"%1 <action name='%2' preset='%3' index='%4' device='%5' scale='%6' state ='%7'/>",
+				additionalInfo,
 				actionName, 
 				actionPreset, 
 				index, 

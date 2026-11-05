@@ -64,7 +64,7 @@ class SCR_HelicopterCollimatorSightComponent : SCR_CollimatorSightsComponent
 	protected void ToggleSightState(float value = 0.0, EActionTrigger reason = 0, string actionName = string.Empty)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
-		if (!character)
+		if (!IsUsedByCharacter(character))
 			return;
 
 		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
@@ -77,6 +77,20 @@ class SCR_HelicopterCollimatorSightComponent : SCR_CollimatorSightsComponent
 
 		ChangeSightDeployedState(!m_bIsDeployed);//this wont cause too much of a desync thus it can be done locally to not wait for network delay
 		controller.ReplicateHelicopterSightState(m_bIsDeployed, rplComp.Id());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks if the character is the pilot of the vehicle that this sight belongs to.
+	//! Listeners are added on every machine when anyone enters the pilot seat, so input callbacks must check this.
+	//! \param[in] character
+	//! \return true if the character is the pilot of this sight's vehicle
+	bool IsUsedByCharacter(IEntity character)
+	{
+		if (!character)
+			return false;
+
+		Vehicle vehicle = Vehicle.Cast(GetOwner().GetRootParent());
+		return vehicle && vehicle.GetPilot() == character;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -164,7 +178,10 @@ class SCR_HelicopterCollimatorSightComponent : SCR_CollimatorSightsComponent
 		if (value == 0)
 			return;
 
-		value /= Math.AbsFloat(value);
+		if (!IsUsedByCharacter(SCR_PlayerController.GetLocalControlledEntity()))
+			return;
+
+		value /=Math.AbsFloat(value);
 		value *= m_fElevationAngleStep;
 		value = Math.Clamp(value + GetVerticalAngularCorrection(), m_fMinSightAngle, m_fMaxSightAngle);
 		SetVerticalAngularCorrection(value);

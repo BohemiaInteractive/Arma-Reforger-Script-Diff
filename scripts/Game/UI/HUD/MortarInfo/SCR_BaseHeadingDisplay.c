@@ -92,7 +92,7 @@ class SCR_BaseHeadingDisplay : SCR_InfoDisplayExtended
 
 		float screenW, screenH;
 		workspace.GetScreenSize(screenW, screenH);
-		screenH = workspace.DPIUnscale(screenH);
+		screenH = workspace.DPIUnscale(screenH) * workspace.GetUserDPIScale();
 
 		float pixelsPerDegree = screenH / fov;
 		float padding = pixelsPerDegree - m_fDegreeWidgetDefaultSize;

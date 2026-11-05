@@ -9,6 +9,10 @@ class SCR_LootDeadBodyAction : SCR_LootAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{
+		ChimeraCharacter userCharacter = ChimeraCharacter.Cast(user);
+		if (userCharacter && SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(userCharacter))
+			return false;
+
 		ChimeraCharacter char = ChimeraCharacter.Cast(GetOwner());
 		if (!char)
 			return false;

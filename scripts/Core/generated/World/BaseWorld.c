@@ -222,25 +222,38 @@ sealed class BaseWorld: global_pointer
 	[Obsolete("use TraceMove instead")]
 	proto external bool TraceLineToEntity(notnull IEntity ent, vector start, vector end, Class placeHolder = null);
 	/*!
-	Traces shape collision at start position, return <0 if we hit something. Results are filled in param object @see TraceParam
+	Traces shape collision at start position, returns <0 if we hit something. Results are filled in param object @see TraceParam
 	\param param object used for both input parameters and output parameters @see TraceParam
 	\param filterCallback callback called for each entity in trace path used to filter them
 	\returns value 0 or negative number as penetration depth
 	*/
 	proto external float TracePosition(inout TraceParam param, TraceFilterCallback filterCallback = null);
 	/*!
-	Traces shape movement along start->end, return 0..1 if trace was sucessfull. Results are filled in param object @see TraceParam
+	Traces shape movement from start to end, returns 0..1 if trace was successful. Results are filled in param object @see TraceParam
 	\param param object used for both input parameters and output parameters @see TraceParam
 	\param filterCallback callback called for each entity in trace path used to filter them
-	\returns	value 0...1, percentage of a path traveled
+	\returns value 0..1, percentage of a path traveled
 	*/
 	proto external float TraceMove(inout TraceParam param, TraceFilterCallback filterCallback = null);
 	/*!
-	Traces shape movement along start->end asynchronously, callbeck is called when finished. Framework is hodling reference to param until callback is called. Results are same as @see BaseWorld.TraceMove.
+	Traces shape movement from start along displacement, return 0..1 if trace was successful. Results are filled in param object @see TraceParam
+	\param param object used for both input parameters and output parameters @see TraceParam
+	\param filterCallback callback called for each entity in trace path used to filter them
+	\returns value 0..1, percentage of a path traveled
+	*/
+	proto external float TraceDisplacement(inout TraceParam param, TraceFilterCallback filterCallback = null);
+	/*!
+	Traces shape movement from start to end asynchronously, callback is called when finished. Framework is holding reference to param until callback is called. Results are same as @see BaseWorld.TraceMove.
 	\param param object used for both input parameters and output parameters @see TraceParam
 	\param finishedCallback callback called when trace is finished
 	*/
 	proto external void AsyncTraceMove(inout TraceParam param, AsyncTraceFinishedCallback finishedCallback);
+	/*!
+	Traces shape movement from start along displacement asynchronously, callback is called when finished. Framework is holding reference to param until callback is called. Results are same as @see BaseWorld.TraceDisplacement.
+	\param param object used for both input parameters and output parameters @see TraceParam
+	\param finishedCallback callback called when trace is finished
+	*/
+	proto external void AsynchTraceDisplacement(inout TraceParam param, AsyncTraceFinishedCallback finishedCallback);
 	//! Returns current lifetime of the World in milliseconds
 	proto external float GetWorldTime();
 	//! Returns current timestamp of the World.

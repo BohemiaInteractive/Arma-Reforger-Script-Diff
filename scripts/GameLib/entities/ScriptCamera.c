@@ -1,10 +1,10 @@
 [EntityEditorProps(category: "GameLib/Scripted", description:"Script camera")]
-class ScriptCameraClass: GenericEntityClass
+class ScriptCameraClass: GenericCameraEntityClass
 {
 
 }
 
-class ScriptCamera: GenericEntity
+class ScriptCamera: GenericCameraEntity
 {
 	[Attribute("60", UIWidgets.Slider, "Field of view", "0 180 1")]
 	float FOV;

@@ -166,9 +166,11 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 	//! \return true If request is allowed, false otherwise.
 	bool CanRequestSpawn_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, out SCR_ESpawnResult result = SCR_ESpawnResult.SPAWN_NOT_ALLOWED)
 	{
+		const int playerId = requestComponent.GetPlayerId();
+		
 		#ifdef _ENABLE_RESPAWN_LOGS
 		Print(string.Format("%1::CanRequestSpawn_S(playerId: %2, handler: %2, data: %3)", Type().ToString(),
-					requestComponent.GetPlayerId(),
+					playerId,
 					handlerComponent,
 					data), LogLevel.NORMAL);
 		#endif
@@ -176,6 +178,12 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 		if (!m_bEnableRespawn)
 		{
 			result = SCR_ESpawnResult.NOT_ALLOWED_SPAWNING_DISABLED;
+			return false;
+		}
+
+		if (!m_SpawnLogic.CanRequestSpawn_S(playerId))
+		{
+			result = SCR_ESpawnResult.SPAWN_NOT_ALLOWED;
 			return false;
 		}
 

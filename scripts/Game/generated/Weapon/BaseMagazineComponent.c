@@ -25,6 +25,7 @@ class BaseMagazineComponent: GameComponent
 	proto external int GetMaxAmmoCount();
 	proto external BaseMagazineWell GetMagazineWell();
 	proto external UIInfo GetUIInfo();
+	proto external bool IsDeletedWhenEmpty();
 }
 
 /*!

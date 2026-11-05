@@ -40,7 +40,6 @@ class ArmaReforgerScripted : ChimeraGame
 	protected ScriptedChatEntity			m_ChatEntity;
 	protected ref SCR_GameCoresManager		m_CoresManager;
 	protected ref SCR_SettingsManager		m_SettingsManager;
-	protected ref SCR_ProfaneFilter		m_ProfanityFilter;
 	protected SCR_BuildingDestructionManagerComponent m_BuildingDestructionManager;
 	protected SCR_SpawnerAIGroupManagerComponent m_SpawnerAIGroupManager;
 	protected bool							m_bHasKeyboard;
@@ -198,16 +197,6 @@ class ArmaReforgerScripted : ChimeraGame
 			m_SettingsManager = new SCR_SettingsManager();
 
 		return m_SettingsManager;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	SCR_ProfaneFilter GetProfanityFilter()
-	{
-		if (!m_ProfanityFilter)
-			m_ProfanityFilter = new SCR_ProfaneFilter();
-
-		return m_ProfanityFilter;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -400,6 +389,12 @@ class ArmaReforgerScripted : ChimeraGame
 			{
 				group = "PLAYER_MANAGER";
 				reason = typename.EnumToString(SCR_PlayerManagerKickReason, reasonInt);
+				return true;
+			}
+			case KickCauseGroup2.STEELSHIELD:
+			{
+				group = "STEELSHIELD";
+				reason = typename.EnumToString(SteelShieldKickReason, reasonInt);
 				return true;
 			}
 		}
@@ -650,13 +645,8 @@ class ArmaReforgerScripted : ChimeraGame
 		if (additionalSettingsComp && ((currentMode == RplMode.Listen || currentMode == RplMode.Dedicated) && System.IsCLIParam("enableNightGrain")))
 			additionalSettingsComp.SetNightNoiseEffectState_S(false);
 
-		//For now, force DPI Scale on handheld, should later become SCR_DPIScaleHelper.LoadSavedDPIScale(workspace)
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
-		
-		if (System.GetPlatform() == EPlatform.WINDOWS_HANDHELD)
-			SCR_DPIScaleHelper.SetDPIScale(workspace, 1.05);
-		else
-			SCR_DPIScaleHelper.SetDPIScale(workspace, 1.0);
+		SCR_DPIScaleHelper.LoadSavedDPIScale(workspace);
 
 		return true;
 	}

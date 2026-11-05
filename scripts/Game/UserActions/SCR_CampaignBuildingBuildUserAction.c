@@ -144,6 +144,10 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 	// The user action is shown when the preview is visible - means player has a building tool ready (but also when he is running around with building tool hiden)
 	override bool CanBeShownScript(IEntity user)
 	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+		if (character && SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
+			return false;
+		
 		m_User = user;	
 		m_bIsShown = m_LayoutComponent && m_LayoutComponent.HasBuildingPreview();
 		return m_bIsShown;

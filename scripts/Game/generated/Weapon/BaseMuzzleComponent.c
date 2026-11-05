@@ -14,6 +14,8 @@ class BaseMuzzleComponent: GameComponent
 	// Returns true if muzzle is suppressed
 	proto external bool IsMuzzleSuppressed();
 	proto external EMuzzleType GetMuzzleType();
+	// Fire modes
+	proto external int SetFireMode(int fireModeIndex);
 	proto external int GetNextFireModeIndex();
 	proto external int GetFireModesCount();
 	proto external int GetFireModeIndex();

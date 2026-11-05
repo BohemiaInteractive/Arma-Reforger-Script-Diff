@@ -18,9 +18,13 @@ sealed class GroupData: Managed
 	proto external GroupMembership GetMyMembership();
 	proto external string GetName();
 	proto external string GetTag();
+	//! Must be fetched via RequestDetails()
 	proto external string GetDescription();
+	//! Must be fetched via RequestDetails()
 	proto external string GetContactInfo();
+	//! Must be fetched via RequestDetails()
 	proto external string GetPrimaryLanguage();
+	//! Must be fetched via RequestDetails()
 	proto external string GetRules();
 	//! Request details of this Group from backend.
 	proto external void RequestDetails(notnull BackendCallback pCallback);
@@ -72,11 +76,22 @@ sealed class GroupData: Managed
 	         Calling this getter on another group clears all cached Audit Log data.
 	*/
 	proto external GroupAuditLogCatalogue GetAuditLogCatalogue();
-	//! Returns current number of members. Must be fetched via RequestDetails()
+	/*!
+	Get Event Catalogue of this group.
+	\warning There is only one instance of GroupEventCatalogue
+	         Calling this getter on another group clears all cached Event data.
+	*/
+	proto external GroupEventCatalogue GetEventCatalogue();
+	/*!
+	Create a new event for this Group.
+	\note Caller must have permission to edit the group.
+	*/
+	proto external void CreateEvent(notnull BackendCallback callback, notnull GroupEventManifest manifest);
+	//! Returns current number of members
 	proto external int GetMemberCount();
 	/*!
-	Get all Gameplay Focuses defined for this Group as bitmask
-	\note Enums must be defined in the gamecode as bitmask flags (1, 2, 4, 8, 18...)
+	Get all Gameplay Approaches defined for this Group as bitmask
+	\note Enums must be defined in the gamecode as bitmask flags (1, 2, 4, 8, 16...)
 			 The values must be defined in the same order as on the backend side.
 	*/
 	proto external EGroupGameplayApproach GetGameplayApproaches();
@@ -87,13 +102,15 @@ sealed class GroupData: Managed
 	*/
 	proto external EGroupGameplayFocus GetGameplayFocuses();
 	/*!
-	Get all Gameplay Focuses defined for this Group as bitmask
+	Get all Game Regions defined for this Group as bitmask
 	\note Enums must be defined in the gamecode as bitmask flags (1, 2, 4, 8, 16...)
 				The values must be defined in the same order as on the backend side.
 	*/
 	proto external EGroupGameRegion GetGameRegions();
 	//! Returns current enlistment status of the Group
 	proto external EGroupEnlistmentStatus GetEnlistmentStatus();
+	//! Returns the time when this group was created
+	proto external Timestamp GetCreatedAt();
 	proto external void Report(notnull BackendCallback pCallback, string sDescription, EGroupReportReason eReason);
 }
 

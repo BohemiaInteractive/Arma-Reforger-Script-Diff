@@ -20,6 +20,9 @@ class SCR_PingEditorUIComponent : SCR_BaseEditorUIComponent
 	//------------------------------------------------------------------------------------------------
 	protected void SendPing(bool unlimitedOnly)
 	{
+		if (SCR_CameraLimitedEditorComponent.IsArmavisionBlocked(SCR_EditorModeEntity.GetInstance()))
+			return;
+
 		vector position;
 		SCR_CursorEditorUIComponent cursorComponent = SCR_CursorEditorUIComponent.Cast(GetRootComponent().FindComponent(SCR_CursorEditorUIComponent, true));
 		if (cursorComponent)

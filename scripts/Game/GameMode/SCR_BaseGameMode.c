@@ -190,6 +190,12 @@ class SCR_BaseGameMode : BaseGameMode
 	[Attribute("30", UIWidgets.Slider, params: "-1 600 1", desc: "Time in seconds after which the mission is reloaded upon completion or -1 to disable it.", category: WB_GAME_MODE_CATEGORY)]
 	private float m_fAutoReloadTime;
 
+	[RplProp(), Attribute(defvalue: SCR_EMagazineRepackingRulesOverride.NO_OVERRIDE.ToString(), desc: "Rule which should be used as an override of default behaviour when player will want to repack magazines.", uiwidget: UIWidgets.ComboBox, enumType: SCR_EMagazineRepackingRulesOverride)]
+	protected SCR_EMagazineRepackingRulesOverride m_eMagazineRepackingRulesOverride;
+
+	[RplProp(), Attribute(defvalue: SCR_EHydrationRules.DISABLED.ToString(), desc: "Enable or disable hydration decay and its stamina drain penalty globally. The mission header can override this setting. Applied at scenario start.", uiwidget: UIWidgets.ComboBox, enumType: SCR_EHydrationRules)]
+	protected SCR_EHydrationRules m_eHydrationRules;
+
 	//------------------------------------------------------------------------------------------------
 	//
 	// Game End Screen States info
@@ -2266,6 +2272,15 @@ class SCR_BaseGameMode : BaseGameMode
 	//! \param position
 	void StartSpawnPreload(vector position)
 	{
+		// Until a game camera exists, the engine camera stays at the default position from the camera manager.
+		// Move it to the spawn so streaming and rendering during the preload work around the spawn position.
+		CameraManager cameraManager = GetGame().GetCameraManager();
+		if (cameraManager && !cameraManager.CurrentCamera())
+		{
+			const float SPAWN_CAMERA_HEIGHT = 1.7;
+			GetGame().GetWorld().SetCamera(0, position + vector.Up * SPAWN_CAMERA_HEIGHT, vector.Zero);
+		}
+
 		m_SpawnPreload = SCR_SpawnPreload.PreloadSpawnPosition(position);
 		if (!m_SpawnPreload && m_OnPreloadFinished)
 			m_OnPreloadFinished.Invoke();
@@ -2276,6 +2291,19 @@ class SCR_BaseGameMode : BaseGameMode
 	bool GetAutotuneEnabled()
 	{
 		return m_bAutotuneEnabled;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_EMagazineRepackingRulesOverride GetMagazineRepackingRulesOverride()
+	{
+		return m_eMagazineRepackingRulesOverride;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return Effective global hydration setting after applying the mission-header override
+	SCR_EHydrationRules GetHydrationRules()
+	{
+		return m_eHydrationRules;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2304,8 +2332,28 @@ class SCR_BaseGameMode : BaseGameMode
 		}
 		#endif
 
+		MissionHeader missionHeader = GetGame().GetMissionHeader();
+		if (missionHeader)
+			ParseHeaderFile(missionHeader);
+
 		Activate();
 		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void ParseHeaderFile(notnull MissionHeader missionHeader)
+	{
+		SCR_MissionHeader header = SCR_MissionHeader.Cast(missionHeader);
+		if (!header)
+			return;
+
+		SCR_EMagazineRepackingRulesOverride tmp = typename.StringToEnum(SCR_EMagazineRepackingRulesOverride, header.m_sMagazineRepackingRulesOverride);
+		if (tmp != SCR_EMagazineRepackingRulesOverride.NO_OVERRIDE)
+			m_eMagazineRepackingRulesOverride = tmp;
+
+		SCR_EHydrationRulesOverride hydrationOverride = typename.StringToEnum(SCR_EHydrationRulesOverride, header.m_sHydrationRulesOverride);
+		if (hydrationOverride != SCR_EHydrationRulesOverride.NO_OVERRIDE)
+			m_eHydrationRules = hydrationOverride;
 	}
 
 	//------------------------------------------------------------------------------------------------

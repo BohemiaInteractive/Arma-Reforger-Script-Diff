@@ -1,8 +1,10 @@
 class SCR_ControllerPresetsSettingsSubmenu: SCR_SettingsSubMenuBase
 {
-	
 	ref array<ref SCR_ControllerPreset> m_aJoystickPresets = {};
-	
+
+	protected const ResourceName JOYSTICK_ID_COMBO_LAYOUT = "{D8E57BEFB1599946}UI/layouts/Menus/SettingsMenu/JoystickSettingEntry.layout";
+	protected const ResourceName JSEPARATOR_WIDGET = "{D379EAA437ED9CED}UI/layouts/Menus/PauseMenu/PauseMenuSeparator.layout";
+
 	//------------------------------------------------------------------------------------------------
 	override void OnTabHide()
 	{
@@ -16,19 +18,9 @@ class SCR_ControllerPresetsSettingsSubmenu: SCR_SettingsSubMenuBase
 	{
 		super.OnTabCreate(menuRoot, buttonsLayout, index);
 		
-		PlatformKind platformKind = GetGame().GetPlatformService().GetLocalPlatformKind(); 
-		if (platformKind == PlatformKind.XBOX || platformKind == PlatformKind.PSN)
-		{
-			HideMenuItem("Devices");
-			HideMenuItem("JoystickPreset");
-		} 
-		else 
-		{
-			//joysticks are for now supported only non non-PS
-			HandleJoystickDevices();
-		}
-		
 		m_aSettingsBindings.Clear();
+
+		HandleJoystickDevices();
 
 		// HEAD TRACKING
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_HeadTrackingSettings", "m_bHeadTrackingFreelook", "HeadTrackingFreelook"));
@@ -144,7 +136,7 @@ class SCR_ControllerPresetsSettingsSubmenu: SCR_SettingsSubMenuBase
 		SCR_ComboBoxComponent component;
 		if (!parent)
 			return;
-		
+
 		Widget joystickPreset = m_wRoot.FindAnyWidget("JoystickPreset");
 		if (!joystickPreset)
 			return;
@@ -154,16 +146,32 @@ class SCR_ControllerPresetsSettingsSubmenu: SCR_SettingsSubMenuBase
 			return;
 		
 		SetupJoystickPresets(component);
-		
+		int numberOfDevices;
+
+		const bool isConsole = !SCR_SystemHelper.IsPC();
+		map<string, int> previouslySavedDevicesMap = GetSavedDevices();
+		bool deviceState[4];
+
+		const JoystickDeviceHandler joystickHandler = inputManager.GetJoystickDeviceHandler();
 		//for now we support up to 4 devices
 		for (int i = 0; i <= 3 ; i++)
 		{
-			deviceName = inputManager.GetJoystickDeviceHandler().GetJoystickProductName(i);
+			deviceState[i] = joystickHandler.IsJoystickConnected(i);
+			if (!deviceState[i])
+				continue;
+
+			if (isConsole)
+			{
+				numberOfDevices++;
+				continue; // JoystickDeviceHandler.GetJoystickProductName is not supported on consoles thus we cannot uniquely identify them, and because of that we only care about the number of connected devices
+			}
+
+			deviceName = joystickHandler.GetJoystickProductName(i);
 			if (deviceName.IsEmpty())
 				continue;
 			
 			//handle joystic combos in here
-			joystickWidget = GetGame().GetWorkspace().CreateWidgets("{D8E57BEFB1599946}UI/layouts/Menus/SettingsMenu/JoystickSettingEntry.layout", parent);
+			joystickWidget = GetGame().GetWorkspace().CreateWidgets(JOYSTICK_ID_COMBO_LAYOUT, parent);
 			joystickIDCombo = joystickWidget.FindAnyWidget("JoystickIDCombo");
 			if (!joystickIDCombo)
 				continue;
@@ -172,13 +180,69 @@ class SCR_ControllerPresetsSettingsSubmenu: SCR_SettingsSubMenuBase
 			if (!component)
 				continue;
 			
+			numberOfDevices++;
 			component.SetLabel(deviceName);
-			component.SetCurrentItem(i);
+			int savedId;
+			if (!previouslySavedDevicesMap.Find(deviceName, savedId))
+				savedId = i;
+
+			component.SetCurrentItem(savedId);
 			component.m_OnChanged.Insert(OnIndexChanged);
-			
 		}	
+
+		if (numberOfDevices < 1)
+		{
+			HideMenuItem("Devices");
+			HideMenuItem("JoystickPreset");
+			return;
+		}
+
+		if (isConsole)
+		{
+			HideMenuItem("Devices");
+			return;
+		}
+
+		BaseContainer controllerSettings = GetGame().GetGameUserSettings().GetModule("SCR_ControllerSettings");
+		if (!controllerSettings)
+			return;
+
+		GetGame().GetWorkspace().CreateWidgets(JSEPARATOR_WIDGET, parent);
+		joystickWidget = GetGame().GetWorkspace().CreateWidgets("{4B5AE6E64037FFB4}UI/layouts/WidgetLibrary/ComboBox/WLib_ComboBox.layout", parent);
+		if (!joystickWidget)
+			return;
+
+		joystickWidget.SetName("FFBDeviceId");
+		component = SCR_ComboBoxComponent.Cast(joystickWidget.FindHandler(SCR_ComboBoxComponent));
+		if (!component)
+			return;
+
+		component.SetLabel("#AR-Settings_Controllers_ForceFeedbackDevice");
+		foreach (int id, bool devicePresenceState : deviceState)
+		{
+			string entryName = id.ToString();
+			if (isConsole && !devicePresenceState)
+				entryName = string.Format("%1 (%2)", id, "#AR-GamepadRemovalDialog_Header");
+
+			component.AddItem(entryName, true);
+		}
+
+		int savedDeviceId;
+		int sessionDeviceId = GamepadEffect.GetDefaultJoystickDeviceIndex();
+		if (controllerSettings.Get("m_iForceFeedbackDeviceId", savedDeviceId) && savedDeviceId != sessionDeviceId)
+			GamepadEffect.SetDefaultJoystickDeviceIndex(savedDeviceId);
+
+		component.SetCurrentItem(savedDeviceId, false, false, false);
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_iForceFeedbackDeviceId", "FFBDeviceId"));
+		component.m_OnChanged.Insert(OnForceFeedbackIdChanged);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnForceFeedbackIdChanged(SCR_ComboBoxComponent component, int index)
+	{
+		GamepadEffect.SetDefaultJoystickDeviceIndex(index);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnIndexChanged(SCR_ComboBoxComponent component, int index)
 	{
@@ -224,6 +288,37 @@ class SCR_ControllerPresetsSettingsSubmenu: SCR_SettingsSubMenuBase
 		GetGame().SaveUserSettings();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected map<string, int> GetSavedDevices()
+	{
+		map<string, int> savedDevices = new map<string, int>();
+		BaseContainer inputDeviceSettings = GetGame().GetEngineUserSettings().GetModule("InputDeviceUserSettings");
+		BaseContainer joystickSetting = inputDeviceSettings.GetObject("JoystickSettings");
+		if (!joystickSetting)
+			return savedDevices;
+
+		BaseContainerList rules = joystickSetting.SetObjectArray("DeviceOrderRules");
+		if (!rules)
+			return savedDevices;
+
+		BaseContainer container;
+		for (int i; i < rules.Count(); i++)
+		{
+			container = rules.Get(i);
+			string name;
+			if (!container.Get("DeviceNameContains", name))
+				continue;
+
+			int deviceSlotId;
+			if (!container.Get("DeviceSlotNumber", deviceSlotId))
+				continue;
+
+			savedDevices.Set(name, deviceSlotId);
+		}
+
+		return savedDevices;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] comp
 	protected void SetupJoystickPresets(SCR_ComboBoxComponent component)

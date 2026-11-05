@@ -82,6 +82,8 @@ sealed class WidgetManager
 	static proto string Translate(string text, void param1 = NULL, void param2 = NULL, void param3 = NULL, void param4 = NULL, void param5 = NULL, void param6 = NULL, void param7 = NULL, void param8 = NULL, void param9 = NULL);
 	//! Return indices of IDs which contains searched text. Search is case insensitive.
 	static proto int SearchLocalized(string text, notnull array<string> IDs, notnull out array<int> outIndices);
+	//! Return all image names of an image set
+	static proto int GetImageSetImages(ResourceName imageSetPath, notnull array<string> imageNames);
 }
 
 /*!

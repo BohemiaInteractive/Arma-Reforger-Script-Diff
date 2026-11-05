@@ -28,7 +28,7 @@ Vector constructor from components.
 	>> <1,2,3>
 \endcode
 */
-proto native vector Vector(float x, float y, float z);
+proto vector Vector(float x, float y, float z);
 
 //! Super root of all classes in Enforce script
 class Class
@@ -285,7 +285,7 @@ class array<Class T>: Managed
 	Swaps the contents of this and `other` arrays.
 	Does not involve copying of the elements.
 	*/
-	proto native void Swap(notnull array<T> other);
+	proto void Swap(notnull array<T> other);
 
 	//! Sorts elements of array, depends on underlying type.
 	proto native void Sort(bool reverse = false);
@@ -453,7 +453,7 @@ class set<Class T>: Managed
 	proto native bool IsIndexValid(int index);
 
 	proto int Copy(set<T> from);
-	proto native void Swap(set<T> other);
+	proto void Swap(set<T> other);
 	proto int Init(T init[]);
 }
 

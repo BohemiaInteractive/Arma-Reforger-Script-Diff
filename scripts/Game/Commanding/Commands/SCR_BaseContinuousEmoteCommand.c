@@ -55,7 +55,7 @@ class SCR_ContinuousLoiterCommand : SCR_BaseRadialCommand
 			characterController.SelectWeapon(null);
 			
 			//Call the animation later when the unequipping of the items is done.
-			GetGame().GetCallqueue().CallLater(StartLoiter, 1500, false);
+			GetGame().GetCallqueue().CallLater(StartLoiter, 2250, false);
 			return true;
 		}
 		
@@ -106,6 +106,13 @@ class SCR_ContinuousLoiterCommand : SCR_BaseRadialCommand
 		
 		SCR_CharacterControllerComponent characterController = SCR_CharacterControllerComponent.Cast(playerControlledEntity.GetCharacterController());
 		if (!characterController)
+			return false;
+		
+		SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.Cast(playerControlledEntity.FindComponent(SCR_GadgetManagerComponent));
+		if (!gadgetManager)
+			return false;
+		
+		if (gadgetManager.GetHeldGadget() || characterController.GetWeaponManagerComponent().GetCurrentWeapon() || characterController.IsGadgetInHands())
 			return false;
 
 		SCR_LoiterCustomAnimData customAnimationDataInstance;

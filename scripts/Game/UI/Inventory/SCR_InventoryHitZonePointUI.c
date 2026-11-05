@@ -204,7 +204,7 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 		m_pDamageHandler.SetParentContainer(this);
 		
 		m_pBloodHitZone = m_pCharDmgManager.GetBloodHitZone();
-		m_pBloodHitZone.GetOnDamageStateChanged().Insert(UpdateHitZoneState);
+		m_pBloodHitZone.GetOnDamageStateChanged().Insert(OnDamageStateChangedCallback);
 		m_aGroupHitZones.Insert(m_pBloodHitZone);
 
 		UpdateHitZoneState(m_pBloodHitZone, updateAttachmentStorage);
@@ -222,7 +222,7 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 			if (!scrHZ)
 				continue;
 
-			scrHZ.GetOnDamageStateChanged().Insert(UpdateHitZoneState);
+			scrHZ.GetOnDamageStateChanged().Insert(OnDamageStateChangedCallback);
 			UpdateHitZoneState(scrHZ, updateAttachmentStorage && i == lastId); // only update attachment storage with the last HZ data to not waste time
 		}
 
@@ -315,7 +315,15 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 		else
 			m_pInventoryMenu.RemoveItemFromAttachmentSelection(GetHitZoneName());
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	// Callback wrapper to pass the default value
+	protected void OnDamageStateChangedCallback(SCR_HitZone hz)
+	{
+	    UpdateHitZoneState(hz);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SetGlowColor(Color color)
 	{
 		if (m_wGlow)

@@ -21,6 +21,7 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	protected IEntity m_TargetCharacter;
 	
 	protected int m_iStoredHealedGroup;
+	protected bool m_bPendingInventoryUse;
 	
 	//------------------------------------------------------------------------------------------------
 	//! Apply consumable effect
@@ -146,6 +147,45 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 				GetOwner().SetObject(asset, "");
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Handles explicit use from inventory for consumables that support it
+	//! \return True when this consumable handled the request
+	bool HandleInventoryUse(notnull IEntity user)
+	{
+		if (!m_ConsumableEffect || !m_ConsumableEffect.AllowsInventoryUseWithoutHitZone())
+			return false;
+	
+		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(user.FindComponent(SCR_CharacterControllerComponent));
+	
+		if (!controller)
+			return true;
+	
+		IEntity item = GetOwner();
+		if (!item)
+			return true;
+	
+		// Already held - just use it
+		if (controller.GetRightHandItem() == item || controller.GetAttachedGadgetAtLeftHandSlot() == item)
+		{
+			m_bPendingInventoryUse = false;
+			ActivateAction();
+			return true;
+		}
+	
+		// Do not start another request while character item state is busy
+		if (controller.IsUsingItem() || controller.IsChangingItem())
+			return true;
+	
+		SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.GetGadgetManager(user);
+		if (!gadgetManager || !CanBeHeld() || !controller.CanEquipGadget(item))
+			return true;
+	
+		m_bPendingInventoryUse = true;
+		gadgetManager.SetGadgetMode(item, EGadgetMode.IN_HAND);
+	
+		return true;
+	}
 
 	//-----------------------------------------------------------------------------
 	// TODO: fix comment
@@ -166,6 +206,12 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 			m_CharController = SCR_CharacterControllerComponent.Cast(charOwner.FindComponent(SCR_CharacterControllerComponent));
 			m_CharController.m_OnItemUseFinishedInvoker.Insert(OnApplyToCharacter);
 			m_CharController.m_OnItemUseBeganInvoker.Insert(OnUseBegan);
+			
+			if (m_bPendingInventoryUse)
+			{
+				m_bPendingInventoryUse = false;
+				ActivateAction();
+			}
 		}
 	}
 
@@ -185,8 +231,15 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	//------------------------------------------------------------------------------------------------
 	override void ActivateAction()
 	{
-		if (!m_ConsumableEffect || !m_ConsumableEffect.CanApplyEffect(m_CharacterOwner, GetOwner()))
+		if (!m_ConsumableEffect)
 			return;
+
+		SCR_EConsumableFailReason failReason;
+		if (!m_ConsumableEffect.CanApplyItemEffect(m_CharacterOwner, m_CharacterOwner, GetOwner(), failReason))
+		{
+			m_ConsumableEffect.OnApplyEffectRejected(failReason);
+			return;
+		}
 
 		m_ConsumableEffect.ActivateEffect(m_CharacterOwner, m_CharacterOwner, GetOwner());
 	}
@@ -211,6 +264,8 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnDelete(IEntity owner)
 	{
+		m_bPendingInventoryUse = false;
+		
 		// Force clear these as we need to ensure that this item is not going to be blocking any healed groups
 		// This is necessary because for proxies this item will be streamed out before ModeClear will be able to call CearInvokers
 		ClearInvokers(-1);

@@ -157,10 +157,14 @@ class SCR_EditorManagerCore : SCR_GameCoreBase
 		if (RplSession.Mode() == RplMode.Client)
 			return;
 		
-		if (!m_aEditorEntities || !m_aEditorEntities.Contains(playerID))
+		if (!m_aEditorEntities)
 			return;
 		
 		SCR_EditorManagerEntity editorManager = m_aEditorEntities.Get(playerID);
+		
+		//entry not found
+		if(!editorManager)
+			return;
 		
 		//--- Remember editor modes so they can be restored upon reconnection
 		if (!m_DisconnectedModes)
@@ -237,10 +241,10 @@ class SCR_EditorManagerCore : SCR_GameCoreBase
 	//! \return Editor manager
 	SCR_EditorManagerEntity GetEditorManager(int playerID)
 	{		
-		if (m_aEditorEntities && m_aEditorEntities.Contains(playerID))
-			return m_aEditorEntities.Get(playerID);
-		else
+		if (!m_aEditorEntities)
 			return null;
+		
+		return m_aEditorEntities.Get(playerID);
 	}
 
 	//------------------------------------------------------------------------------------------------

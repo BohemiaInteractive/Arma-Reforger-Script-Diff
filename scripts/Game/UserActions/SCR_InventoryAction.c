@@ -29,6 +29,10 @@ class SCR_InventoryAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+		if (character && SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
+			return false;
+
 		if (m_Item == null || m_Item.GetParentSlot() != null || m_Item.IsLocked())
 			return false;
 		
@@ -59,8 +63,30 @@ class SCR_InventoryAction : ScriptedUserAction
 		RplComponent genericRpl = RplComponent.Cast(user.FindComponent( RplComponent ));
 		if (!genericRpl)
 			return false;
-		
-		return genericRpl.IsOwner();
+
+		if (!genericRpl.IsOwner())
+			return false;
+
+		if (m_Item)
+		{
+			if (!DlcManager.Get().CanUseEntity(user, m_Item.GetOwner()))
+			{
+				World world = GetGame().GetWorld();
+				if (!world)
+					return false;
+
+				SCR_DLCOwnershipSystem ownershipSystem = SCR_DLCOwnershipSystem.Cast(world.FindSystem(SCR_DLCOwnershipSystem));
+				if (!ownershipSystem)
+					return false;
+
+				ownershipSystem.OnOwnershipNegative(SCR_EDLCInteractionType.ITEM_EQUIP);
+
+				SetCannotPerformReason("#AR-DLC_Item_Blocked");
+				return false;
+			}
+		}
+
+		return true;
  	}
  	//---------------------------------------------------------
  	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity) 

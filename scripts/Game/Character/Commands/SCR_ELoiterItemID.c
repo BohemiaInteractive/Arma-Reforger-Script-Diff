@@ -1,7 +1,0 @@
-enum SCR_ELoiterItemID
-{
-	NONE,
-	CIGAR,
-	CHAIR,
-	TEST_EXAMPLE
-}

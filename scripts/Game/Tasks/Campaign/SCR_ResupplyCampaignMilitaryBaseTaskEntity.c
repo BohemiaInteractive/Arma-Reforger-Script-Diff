@@ -121,6 +121,11 @@ class SCR_ResupplyCampaignMilitaryBaseTaskEntity : SCR_CampaignMilitaryBaseTaskE
 
 		consumerComponent.GetOnResourcesChanged().Remove(OnResourcesChanged);
 		m_MilitaryBase.GetOnSupplyLimitChanged().Remove(OnSupplyLimitChanged);
+		
+		m_OnMilitaryBaseCallsignAssigned = null;
+		m_MilitaryBaseTaskData = null;
+		m_MilitaryBase = null;
+		
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -15,7 +15,7 @@ class SCR_ScriptedCommandsStaticTable
 		m_CommandGesture = animationComponent.BindCommand("CMD_Gestures");
 		m_CustomCinematicCommand = animationComponent.BindCommand("CMD_Gesture_NPC");
 		
-		m_OfficerMissionSpeech = animationComponent.BindVariableInt("NPC_Speech");
+		m_OfficerMissionSpeech = animationComponent.BindVariableInt(CONTROL_VARIABLE_NAME);
 		
 		m_IsLoiteringTag = GameAnimationUtils.RegisterAnimationTag("IsLoitering");
 		m_IsLoiteringStartingTag = GameAnimationUtils.RegisterAnimationTag("IsLoiteringStarting");
@@ -40,6 +40,7 @@ class SCR_ScriptedCommandsStaticTable
 	TAnimGraphTag m_IsLoiteringStartingTag = -1;
 	TAnimGraphTag m_IsChangingWeaponTag = -1;
 	TAnimGraphVariable m_OfficerMissionSpeech = -1;
+	const string CONTROL_VARIABLE_NAME = "NPC_Speech"; 
 	
 	protected bool m_bIsBound = false;
-};
+}

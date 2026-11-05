@@ -16,6 +16,8 @@ enum KickCauseGroup2
 	PLATFORM,
 	//! Kick reason comes from PlayerManagerKickReason.
 	PLAYER_MANAGER,
+	//! Kick reason comes from SteelShieldKickReason
+	STEELSHIELD,
 }
 
 /*!

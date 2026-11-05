@@ -21,6 +21,10 @@ sealed class GroupApplication: Managed
 	proto external GroupData GetGroup();
 	//! Returns ID of the application
 	proto external int GetId();
+	//! Returns the time when this application was created
+	proto external Timestamp GetCreatedAt();
+	//! Returns the time when this application expires
+	proto external Timestamp GetExpireAt();
 	//! Returns the remaining number of seconds until expiration
 	proto external int GetExpireIn();
 	//! Returns game identity of the user the application / invitation belongs to

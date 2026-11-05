@@ -24,6 +24,8 @@ class SCR_AddonTool
 	//! \return array of addon ID strings
 	static array<string> GetResourceAddons(ResourceName prefab, bool ignoreCoreAddons = false)
 	{
+		LoadAddons();
+
 		array<string> addonNames = {};
 
 		if (prefab.IsEmpty())
@@ -124,10 +126,32 @@ class SCR_AddonTool
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Returns true if the given resource is vanilla in Arma Reforger
+	//! \param[in] prefab Prefab path
+	//! \param[in] ignoreCoreAddons if true then ArmaReforger and Core are ignored unless no other addons are found
+	//! \return
+	static bool IsVanillaResource(ResourceName prefab, bool ignoreCoreAddons = false)
+	{
+		LoadAddons();
+
+		array<string> listedAddons = GetResourceAddons(prefab, ignoreCoreAddons);
+
+		for (int i, count = listedAddons.Count(); i < count; i++)
+		{
+			if (!IsVanillaAddon(listedAddons[i]))
+				return false;
+		}
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! \param[in] addonIndex
 	//! \return
 	static bool IsVanillaAddon(int addonIndex)
 	{
+		LoadAddons();
+
 		if (!LOADED_ADDON_GUIDS.IsIndexValid(addonIndex))
 			return false;
 
@@ -139,6 +163,8 @@ class SCR_AddonTool
 	//! \return
 	static bool IsVanillaAddon(string addonID)
 	{
+		LoadAddons();
+
 		int addonIndex = LOADED_ADDON_IDS.Find(addonID);
 		if (addonIndex < 0)
 			return false;
@@ -203,6 +229,12 @@ class SCR_AddonTool
 		foreach (string addonGUID : LOADED_ADDON_GUIDS)
 		{
 			LOADED_ADDON_IDS.Insert(GameProject.GetAddonID(addonGUID));
+		}
+
+		const array<string> DLCAddons = SCR_DLCHelperTools.FetchDLCAddons();
+		foreach (string DLCAddon : DLCAddons)
+		{
+			CORE_ADDONS.Insert(DLCAddon);
 		}
 	}
 

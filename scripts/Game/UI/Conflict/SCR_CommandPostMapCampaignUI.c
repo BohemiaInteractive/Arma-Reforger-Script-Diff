@@ -33,6 +33,12 @@ class SCR_CommandPostMapCampaignUI : SCR_MapUIBaseComponent
 
 		if (m_InputManager)
 			m_InputManager.RemoveActionListener("MapEscape", EActionTrigger.DOWN, OnMapEscape);
+
+		// Remove the pending delayed close here and not in the destructor. In the destructor the weak
+		// reference inside the OnMapEscapeDelayed func pointer is already null, so Remove() throws NullPointerError.
+		ScriptCallQueue callQueue = GetGame().GetCallqueue();
+		if (callQueue)
+			callQueue.Remove(OnMapEscapeDelayed);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -47,6 +53,9 @@ class SCR_CommandPostMapCampaignUI : SCR_MapUIBaseComponent
 	protected void OnMapEscapeDelayed()
 	{
 		MenuManager menuManager = GetGame().GetMenuManager();
+		if (!menuManager)
+			return;
+
 		menuManager.CloseMenuByPreset(ChimeraMenuPreset.CommandPostMapMenu);
 	}
 

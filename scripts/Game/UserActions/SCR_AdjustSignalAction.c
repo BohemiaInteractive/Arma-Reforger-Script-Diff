@@ -79,6 +79,10 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+		if (character && SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
+			return false;
+
 		if (!m_bLoopAction && !m_bManualAdjustment)
 		{
 			if (m_fAdjustmentStep > 0 && SCR_GetCurrentValue() >= SCR_GetMaximumValue())
@@ -93,7 +97,6 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 			return true;
 		
 		// See if character is in vehicle
-		ChimeraCharacter character = ChimeraCharacter.Cast(user);
 		if (!character)
 			return false;
 	

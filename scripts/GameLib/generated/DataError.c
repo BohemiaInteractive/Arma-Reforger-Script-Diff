@@ -23,4 +23,6 @@ enum DataError
 	IS_DEV_BINARY_MISMATCH,
 	//! Addons load (additional/missing addons or load order) differ between client and server.
 	ADDON_LOAD_MISMATCH,
+	//! Replicated script types, their RPCs or properties differ between client and server.
+	SCRIPT_PROTO_MISMATCH,
 }

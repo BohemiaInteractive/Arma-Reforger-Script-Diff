@@ -479,11 +479,13 @@ class SCR_RespawnComponent : RespawnComponent
 
 		Rpc(Rpc_RequestCLISpawn_S, factionId, loadoutId);
 	}
-
+	#endif
+	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void Rpc_RequestCLISpawn_S(int factionIdx, int loadoutIdx)
 	{
+	#ifdef ENABLE_DIAG // this wont work on DS as it doesnt have diags
 		int ok = 0;
 		Faction faction = GetGame().GetFactionManager().GetFactionByIndex(factionIdx);
 		SCR_BasePlayerLoadout loadout = GetGame().GetLoadoutManager().GetLoadoutByIndex(loadoutIdx);
@@ -527,12 +529,14 @@ class SCR_RespawnComponent : RespawnComponent
 		}
 
 		Rpc(Rpc_ResponseCLISpawn_O, ok);
+	#endif
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void Rpc_ResponseCLISpawn_O(int response)
 	{
+	#ifdef ENABLE_DIAG
 		bool faction = (response & (1 << 1));
 		bool loadout = (response & (1 << 2));
 		bool spawn = (response & (1 << 3));
@@ -553,9 +557,9 @@ class SCR_RespawnComponent : RespawnComponent
 			ss = "OK";
 
 		Print(string.Format(msg, fs, ls, ss), LogLevel.NORMAL);
+	#endif
 	}
 
-	#endif
 
 	//------------------------------------------------------------------------------------------------
 	// constructor

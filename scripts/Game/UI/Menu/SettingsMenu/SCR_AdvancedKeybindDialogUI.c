@@ -1,6 +1,8 @@
 //------------------------------------------------------------------------------------------------
 class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 {
+	protected ref array<ref SCR_InputFilterConfiguration> m_aInputFilterConfigurations;
+
 	protected SCR_InputButtonComponent m_Select;
 	
 	protected string m_sActionPreset;
@@ -13,7 +15,18 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 	protected Widget m_wPrefixesCombo;
 	
 	protected const ResourceName KEYBIND_ROW_LAYOUT_PATH = "{25888355688EE402}UI/layouts/Menus/SettingsMenu/BindingMenu/AdvancedKeybindActionRow.layout";
+	protected const string DEVICE_ID_DISPLAY_FORMAT = "%1: %2";
 	
+	//----------------------------------------------------------------------------------------
+	override protected void Init(Widget root, SCR_ConfigurableDialogUiPreset preset, MenuBase proxyMenu)
+	{
+		super.Init(root, preset, proxyMenu);
+
+		SCR_AdvancedKeybindingPresetDialog advancedPreset = SCR_AdvancedKeybindingPresetDialog.Cast(preset);
+		if (advancedPreset)
+			m_aInputFilterConfigurations = advancedPreset.GetInputFilterConfigurations();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
 	{
@@ -40,6 +53,7 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 		if (button)
 			button.m_OnActivated.Insert(UnbindAction);
 		
+		SetupDeviceIdSelector();
 		SetupCaptureButton();
 		SetupPrefixesCombo();
 		SetupBindsCombo();
@@ -48,13 +62,349 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 		ShowBindsForAction();
 		ReselectRow();
 	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetupInputFilterFields(string inputFilterType = string.Empty)
+	{
+		SCR_InputFilterConfiguration validFilter;
+		foreach (SCR_InputFilterConfiguration filterConfig : m_aInputFilterConfigurations)
+		{
+			if (filterConfig.m_sInputFilterClass != inputFilterType)
+				continue;
+
+			validFilter = filterConfig;
+			break;
+		}
+
+		BaseContainer inputSource = SCR_InputHelper.GetInputBinding(m_sActionName, m_sActionPreset, m_iSelectedKeybind, m_SettingsKeybindModule.GetInputBindings());
+		BaseContainer filter;
+		if (inputSource)
+			filter = inputSource.GetObject(SCR_InputHelper.INPUT_CONTAINER_FILTER_NAME);
+
+		ScrollLayoutWidget scrollWidget = ScrollLayoutWidget.Cast(m_wRoot.FindAnyWidget("ModifierScrollLayout"));
+		if (scrollWidget)
+			scrollWidget.SetSliderPos(0, 0);
+
+		if (m_wPrefixesCombo)
+		{
+			array<ref SCR_KeyBindingFilter> filtersConfigs = m_SettingsKeybindModule.GetFilters(m_eActionPrefixType);
+			int id;
+			foreach (int i, SCR_KeyBindingFilter bindingFilterConfig : filtersConfigs)
+			{
+				if (bindingFilterConfig.m_sFilterString != inputFilterType)
+					continue;
+
+				id = i;
+				break;
+			}
+
+			SCR_ComboBoxComponent comp = SCR_ComboBoxComponent.Cast(m_wPrefixesCombo.FindHandler(SCR_ComboBoxComponent));
+			if (comp)
+				comp.SetCurrentItem(id, false, false, false);
+		}
+
+		ButtonWidget invertButtonWidget = ButtonWidget.Cast(m_wRoot.FindAnyWidget("InputFilter_Invert"));
+		if (invertButtonWidget)
+		{
+			bool canUse = filter && validFilter && validFilter.m_bCanInvert;
+			invertButtonWidget.SetEnabled(canUse);
+			invertButtonWidget.SetVisible(canUse);
+			SCR_SpinBoxComponent comp = SCR_SpinBoxComponent.Cast(invertButtonWidget.FindHandler(SCR_SpinBoxComponent));
+			if (comp)
+			{
+				comp.m_OnChanged.Remove(OnInvertElementChanged);
+				if (canUse)
+				{
+					int inverted;
+					if (!filter.Get(SCR_InputHelper.INPUT_CONTAINER_INVERT_NAME, inverted))
+					{
+						float multiplier;
+						filter.Get(SCR_InputHelper.INPUT_CONTAINER_MULTIPLIER_NAME, multiplier);
+						if (multiplier < 0)
+							inverted = true;
+					}
+
+					comp.SetCurrentItem(inverted, false, false, false);
+					comp.m_OnChanged.Insert(OnInvertElementChanged);
+				}
+			}
+		}
+
+		ButtonWidget multiplierButtonWidget = ButtonWidget.Cast(m_wRoot.FindAnyWidget("InputFilter_Multiplier"));
+		if (multiplierButtonWidget)
+		{
+			bool canUse = filter && validFilter && validFilter.m_bCanAdjustMultiplier;
+			multiplierButtonWidget.SetEnabled(canUse);
+			multiplierButtonWidget.SetVisible(canUse);
+			SCR_SliderComponent comp = SCR_SliderComponent.Cast(multiplierButtonWidget.FindHandler(SCR_SliderComponent));
+			if (comp)
+			{
+				comp.GetOnChangedFinal().Remove(OnMultiplierSliderChangedFinal);
+				if (canUse)
+				{
+					float value;
+					filter.Get(SCR_InputHelper.INPUT_CONTAINER_MULTIPLIER_NAME, value);
+					comp.SetValue(Math.AbsFloat(value), false);
+					comp.GetOnChangedFinal().Insert(OnMultiplierSliderChangedFinal);
+				}
+			}
+		}
+
+		ButtonWidget offsetButtonWidget = ButtonWidget.Cast(m_wRoot.FindAnyWidget("InputFilter_Offset"));
+		if (offsetButtonWidget)
+		{
+			bool canUse = filter && validFilter && validFilter.m_bCanAdjustOffset;
+			offsetButtonWidget.SetEnabled(canUse);
+			offsetButtonWidget.SetVisible(canUse);
+			SCR_SliderComponent comp = SCR_SliderComponent.Cast(offsetButtonWidget.FindHandler(SCR_SliderComponent));
+			if (comp)
+			{
+				comp.GetOnChangedFinal().Remove(OnOffsetSliderChangedFinal);
+				if (canUse)
+				{
+					float value;
+					filter.Get(SCR_InputHelper.INPUT_CONTAINER_OFFSET_NAME, value);
+					comp.SetValue(value, false);
+					comp.GetOnChangedFinal().Insert(OnOffsetSliderChangedFinal);
+				}
+			}
+		}
+
+		ButtonWidget thresholdButtonWidget = ButtonWidget.Cast(m_wRoot.FindAnyWidget("InputFilter_Threshold"));
+		if (thresholdButtonWidget)
+		{
+			bool canUse = filter && validFilter && validFilter.m_bCanAdjustThreshold;
+			thresholdButtonWidget.SetEnabled(canUse);
+			thresholdButtonWidget.SetVisible(canUse);
+			SCR_SliderComponent comp = SCR_SliderComponent.Cast(thresholdButtonWidget.FindHandler(SCR_SliderComponent));
+			if (comp)
+			{
+				comp.GetOnChangedFinal().Remove(OnThresholdSliderChangedFinal);
+				if (canUse)
+				{
+					float value;
+					filter.Get(SCR_InputHelper.INPUT_CONTAINER_THRESHOLD_NAME, value);
+					comp.SetValue(value, false);
+					comp.GetOnChangedFinal().Insert(OnThresholdSliderChangedFinal);
+				}
+			}
+		}
+
+		ButtonWidget holdDurationButtonWidget = ButtonWidget.Cast(m_wRoot.FindAnyWidget("InputFilter_HoldDuration"));
+		if (holdDurationButtonWidget)
+		{
+			bool canUse = filter && validFilter && validFilter.m_bCanAdjustHoldDuration;
+			holdDurationButtonWidget.SetEnabled(canUse);
+			holdDurationButtonWidget.SetVisible(canUse);
+			SCR_SliderComponent comp = SCR_SliderComponent.Cast(holdDurationButtonWidget.FindHandler(SCR_SliderComponent));
+			if (comp)
+			{
+				comp.GetOnChangedFinal().Remove(OnHoldDurationSliderChangedFinal);
+				if (canUse)
+				{
+					float value;
+					filter.Get(SCR_InputHelper.INPUT_CONTAINER_HOLD_DURATION_NAME, value);
+					comp.SetValue(value, false);
+					comp.GetOnChangedFinal().Insert(OnHoldDurationSliderChangedFinal);
+				}
+			}
+		}
+
+		ButtonWidget clickDurationButtonWidget = ButtonWidget.Cast(m_wRoot.FindAnyWidget("InputFilter_ClickDuration"));
+		if (clickDurationButtonWidget)
+		{
+			bool canUse = filter && validFilter && validFilter.m_bCanAdjustClickDuration;
+			clickDurationButtonWidget.SetEnabled(canUse);
+			clickDurationButtonWidget.SetVisible(canUse);
+			SCR_SliderComponent comp = SCR_SliderComponent.Cast(clickDurationButtonWidget.FindHandler(SCR_SliderComponent));
+			if (comp)
+			{
+				comp.GetOnChangedFinal().Remove(OnClickDurationSliderChangedFinal);
+				if (canUse)
+				{
+					float value;
+					filter.Get(SCR_InputHelper.INPUT_CONTAINER_CLICK_DURATION_NAME, value);
+					comp.SetValue(value, false);
+					comp.GetOnChangedFinal().Insert(OnClickDurationSliderChangedFinal);
+				}
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnInvertElementChanged(SCR_ChangeableComponentBase comp, int state)
+	{
+		InputBinding inputBinds = m_SettingsKeybindModule.GetInputBindings();
+		BaseContainer inputSource = SCR_InputHelper.GetInputBinding(m_sActionName, m_sActionPreset, m_iSelectedKeybind, inputBinds);
+		if (!inputSource)
+			return;
+
+		BaseContainer filter = inputSource.GetObject(SCR_InputHelper.INPUT_CONTAINER_FILTER_NAME);
+		if (!filter)
+			return;
+
+		bool currentVal
+		if (!filter.Get(SCR_InputHelper.INPUT_CONTAINER_INVERT_NAME, currentVal))
+		{
+			float multiplier;
+			filter.Get(SCR_InputHelper.INPUT_CONTAINER_MULTIPLIER_NAME, multiplier);
+			if (multiplier < 0)
+				currentVal = true;
+		}
+
+		if (currentVal == state)
+			return;
+
+		filter.Set(SCR_InputHelper.INPUT_CONTAINER_INVERT_NAME, state);
+		float multiplier;
+		filter.Get(SCR_InputHelper.INPUT_CONTAINER_MULTIPLIER_NAME, multiplier);
+		multiplier = Math.AbsFloat(multiplier);
+		if (state)
+			multiplier *= -1;
+
+		filter.Set(SCR_InputHelper.INPUT_CONTAINER_MULTIPLIER_NAME, multiplier);
+
+		float offset;
+		filter.Get(SCR_InputHelper.INPUT_CONTAINER_OFFSET_NAME, offset);
+		offset = Math.AbsFloat(offset);
+		if (state)
+			offset *= -1;
+
+		filter.Set(SCR_InputHelper.INPUT_CONTAINER_OFFSET_NAME, offset);
+		inputBinds.Save();
+		SetupInputFilterFields(filter.GetClassName());
+	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void OnMultiplierSliderChangedFinal(SCR_SliderComponent comp, float value)
+	{
+		InputBinding inputBinds = m_SettingsKeybindModule.GetInputBindings();
+		BaseContainer inputSource = SCR_InputHelper.GetInputBinding(m_sActionName, m_sActionPreset, m_iSelectedKeybind, inputBinds);
+		if (!inputSource)
+			return;
+
+		BaseContainer filter = inputSource.GetObject(SCR_InputHelper.INPUT_CONTAINER_FILTER_NAME);
+		if (!filter)
+			return;
+
+		float currentVal
+		filter.Get(SCR_InputHelper.INPUT_CONTAINER_MULTIPLIER_NAME, currentVal);
+
+		bool inverted;
+		if (!filter.Get(SCR_InputHelper.INPUT_CONTAINER_INVERT_NAME, inverted) && currentVal < 0)
+			inverted = true;
+
+		if (inverted)
+			value *= -1;
+
+		if (currentVal == value)
+			return;
+
+		filter.Set(SCR_InputHelper.INPUT_CONTAINER_MULTIPLIER_NAME, value);
+		inputBinds.Save();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnOffsetSliderChangedFinal(SCR_SliderComponent comp, float value)
+	{
+		InputBinding inputBinds = m_SettingsKeybindModule.GetInputBindings();
+		BaseContainer inputSource = SCR_InputHelper.GetInputBinding(m_sActionName, m_sActionPreset, m_iSelectedKeybind, inputBinds);
+		if (!inputSource)
+			return;
+
+		BaseContainer filter = inputSource.GetObject(SCR_InputHelper.INPUT_CONTAINER_FILTER_NAME);
+		if (!filter)
+			return;
+
+		float currentVal
+		filter.Get(SCR_InputHelper.INPUT_CONTAINER_OFFSET_NAME, currentVal);
+		if (currentVal == value)
+			return;
+
+		filter.Set(SCR_InputHelper.INPUT_CONTAINER_OFFSET_NAME, value);
+		inputBinds.Save();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnThresholdSliderChangedFinal(SCR_SliderComponent comp, float value)
+	{
+		InputBinding inputBinds = m_SettingsKeybindModule.GetInputBindings();
+		BaseContainer inputSource = SCR_InputHelper.GetInputBinding(m_sActionName, m_sActionPreset, m_iSelectedKeybind, inputBinds);
+		if (!inputSource)
+			return;
+
+		BaseContainer filter = inputSource.GetObject(SCR_InputHelper.INPUT_CONTAINER_FILTER_NAME);
+		if (!filter)
+			return;
+
+		float currentVal
+		filter.Get(SCR_InputHelper.INPUT_CONTAINER_THRESHOLD_NAME, currentVal);
+		if (currentVal == value)
+			return;
+
+		filter.Set(SCR_InputHelper.INPUT_CONTAINER_THRESHOLD_NAME, value);
+		inputBinds.Save();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnHoldDurationSliderChangedFinal(SCR_SliderComponent comp, float value)
+	{
+		InputBinding inputBinds = m_SettingsKeybindModule.GetInputBindings();
+		BaseContainer inputSource = SCR_InputHelper.GetInputBinding(m_sActionName, m_sActionPreset, m_iSelectedKeybind, inputBinds);
+		if (!inputSource)
+			return;
+
+		BaseContainer filter = inputSource.GetObject(SCR_InputHelper.INPUT_CONTAINER_FILTER_NAME);
+		if (!filter)
+			return;
+
+		float currentVal
+		filter.Get(SCR_InputHelper.INPUT_CONTAINER_HOLD_DURATION_NAME, currentVal);
+		if (currentVal == value)
+			return;
+
+		if (value != 0)
+			filter.Set(SCR_InputHelper.INPUT_CONTAINER_HOLD_DURATION_NAME, value);
+		else
+			filter.ClearVariable(SCR_InputHelper.INPUT_CONTAINER_HOLD_DURATION_NAME);
+
+		inputBinds.Save();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnClickDurationSliderChangedFinal(SCR_SliderComponent comp, float value)
+	{
+		InputBinding inputBinds = m_SettingsKeybindModule.GetInputBindings();
+		BaseContainer inputSource = SCR_InputHelper.GetInputBinding(m_sActionName, m_sActionPreset, m_iSelectedKeybind, inputBinds);
+		if (!inputSource)
+			return;
+
+		BaseContainer filter = inputSource.GetObject(SCR_InputHelper.INPUT_CONTAINER_FILTER_NAME);
+		if (!filter)
+			return;
+
+		float currentVal
+		filter.Get(SCR_InputHelper.INPUT_CONTAINER_CLICK_DURATION_NAME, currentVal);
+		if (currentVal == value)
+			return;
+
+		if (value != 0)
+			filter.Set(SCR_InputHelper.INPUT_CONTAINER_CLICK_DURATION_NAME, value);
+		else
+			filter.ClearVariable(SCR_InputHelper.INPUT_CONTAINER_CLICK_DURATION_NAME);
+
+		inputBinds.Save();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	// Reselect correct keybind row
 	protected void ReselectRow()
 	{
 		if (!m_aBindRowButtons.IsIndexValid(m_iSelectedKeybind))
+		{
+			SetupInputFilterFields();
 			return;
+		}
 		
 		m_FocusedBindRowButton = m_aBindRowButtons[m_iSelectedKeybind];
 		GetGame().GetWorkspace().SetFocusedWidget(m_FocusedBindRowButton.GetRootWidget());
@@ -82,6 +432,7 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 		if (bindCount == 0)
 			UnbindAction();
 		*/
+		const InputBinding inputBindings = m_SettingsKeybindModule.GetInputBindings();
 		m_aBindRowButtons.Clear();	
 		SCR_AdvancedActionRowComponent rowComponent;
 		SCR_ModularButtonComponent rowModularButtonComponent;
@@ -96,7 +447,7 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 			if (!rowComponent)
 				continue;
 			
-			rowComponent.Init(m_sActionName, m_sActionPreset, i, m_SettingsKeybindModule, m_eDevice);
+			rowComponent.Init(m_sActionName, m_sActionPreset, i, m_SettingsKeybindModule, m_eDevice, inputBindings);
 			
 			rowModularButtonComponent = SCR_ModularButtonComponent.FindComponent(rowWidget);
 			if (!rowModularButtonComponent)
@@ -110,13 +461,18 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	protected void ShowBindsForCurrentAction()
+	protected void OnKeyCaptured()
 	{
 		ShowBindsForAction();
 		
 		// Select the last row
 		m_iSelectedKeybind = m_aBindRowButtons.Count() - 1;
 		ReselectRow();
+
+		array<string> bindings = {};
+		m_SettingsKeybindModule.GetInputBindings().GetBindings(m_sActionName, bindings, m_eDevice, m_sActionPreset, false);
+		if (!bindings.IsEmpty() && bindings.IsIndexValid(m_iSelectedKeybind) && bindings[m_iSelectedKeybind].Contains("axis"))
+			SetDefaultFilterForAxis();
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -137,12 +493,23 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 		{
 			comp.SetToggled(comp == modularButtonComp, false);
 		}
+
+		BaseContainer inputSource = SCR_InputHelper.GetInputBinding(m_sActionName, m_sActionPreset, m_iSelectedKeybind, m_SettingsKeybindModule.GetInputBindings());
+		BaseContainer filter;
+		if (inputSource)
+			filter = inputSource.GetObject(SCR_InputHelper.INPUT_CONTAINER_FILTER_NAME);
+
+		string filterClassName;
+		if (filter)
+			filterClassName = filter.GetClassName();
+
+		SetupInputFilterFields(filterClassName);
 	}
 
 	//-----------------------------------------------------------------------------------------------
 	protected void ResetBindings()
 	{
-		m_SettingsKeybindModule.ResetAction(m_sActionName, m_sActionPreset);
+		m_SettingsKeybindModule.ResetAction(m_sActionName, m_sActionPreset, m_eDevice);
 
 		ShowBindsForAction();
 		
@@ -157,7 +524,7 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 	//-----------------------------------------------------------------------------------------------
 	protected void DeleteSelectedBind()
 	{
-		m_SettingsKeybindModule.DeleteActionBindByIndex(m_sActionName, m_iSelectedKeybind, m_sActionPreset);
+		m_SettingsKeybindModule.DeleteActionBindByIndex(m_sActionName, m_iSelectedKeybind, m_sActionPreset, m_eDevice);
 		
 		ShowBindsForAction();
 		
@@ -169,27 +536,27 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 	//-----------------------------------------------------------------------------------------------
 	protected void StartCapturingKeybind()
 	{
-		m_SettingsKeybindModule.StartCaptureForAction(m_sActionName, m_sActionPreset, EInputDeviceType.KEYBOARD, true);
+		m_SettingsKeybindModule.StartCaptureForAction(m_sActionName, m_sActionPreset, m_eDevice, true);
 
 		SCR_SimpleKeybindDialogUI dialog = SCR_KeybindDialogs.CreateSimpleKeybindDialog(
 			m_Entry,
 			m_sDisplayName,
 			m_sActionName,
 			m_SettingsKeybindModule.GetInputBindings(), 
-			EInputDeviceType.KEYBOARD,
+			m_eDevice,
 			false
 		);
 		
 		if (!dialog)
 			return;
 
-		dialog.GetOnKeyCaptured().Insert(ShowBindsForCurrentAction);
+		dialog.GetOnKeyCaptured().Insert(OnKeyCaptured);
 	}
 	
 	//-----------------------------------------------------------------------------------------------
 	protected void UnbindAction()
 	{
-		m_SettingsKeybindModule.UnbindAction(m_sActionName, m_sActionPreset);
+		m_SettingsKeybindModule.UnbindAction(m_sActionName, m_sActionPreset, m_eDevice);
 		
 		ShowBindsForAction();
 		
@@ -226,7 +593,7 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 		if (!comboBoxComponent)
 			return;
 		
-		array<ref SCR_KeyBindingFilter> filters = m_SettingsKeybindModule.GetFilters(m_eActionPrefixType);		
+		array<ref SCR_KeyBindingFilter> filters = m_SettingsKeybindModule.GetFilters(m_eActionPrefixType);
 		
 		foreach (SCR_KeyBindingFilter filter : filters)
 		{
@@ -235,7 +602,125 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 		
 		comboBoxComponent.m_OnChanged.Insert(OnPrefixesComboChanged);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetupDeviceIdSelector()
+	{
+		bool mustBeVisible = m_eDevice == EInputDeviceType.JOYSTICK;
+		Widget deviceIdSelector = m_wRoot.FindAnyWidget("DeviceId");
+		if (!deviceIdSelector)
+		{
+			if (mustBeVisible)
+				Print("SCR_AdvancedKeybindDialogUI: Device id selector is was not found!", LogLevel.WARNING);
+
+			return;
+		}
+
+		deviceIdSelector.SetEnabled(mustBeVisible);
+		deviceIdSelector.SetVisible(mustBeVisible);
+		if (!mustBeVisible)
+			return;
+
+		SCR_ComboBoxComponent comboBoxComponent = SCR_ComboBoxComponent.Cast(deviceIdSelector.FindHandler(SCR_ComboBoxComponent));
+		if (!comboBoxComponent)
+			return;
+
+		BaseContainer inputDeviceSettings = GetGame().GetEngineUserSettings().GetModule("InputDeviceUserSettings");
+		BaseContainer joystickSetting = inputDeviceSettings.GetObject("JoystickSettings");
+		if (!joystickSetting)
+			return;
+
+		BaseContainerList rules = joystickSetting.SetObjectArray("DeviceOrderRules");
+		if (!rules)
+			return;
+
+		const bool isConsole = !SCR_SystemHelper.IsPC();
+
+		const JoystickDeviceHandler joystickHandler = GetGame().GetInputManager().GetJoystickDeviceHandler();
+		array<string> connectedDevices = {};
+		if (isConsole)
+		{
+			bool elementSelected;
+			for (int i; i < 4; i++)
+			{
+				if (joystickHandler.IsJoystickConnected(i))
+				{
+					if (!elementSelected)
+					{
+						elementSelected = true;
+						comboBoxComponent.SetCurrentItem(i, false, false, false);
+					}
+
+					continue;
+				}
+
+				comboBoxComponent.ChangeItemName(string.Format("%1 (%2)", i, "#AR-GamepadRemovalDialog_Header"), i);
+			}
+
+			return;
+		}
+
+		for (int i = 0; i <= 3 ; i++)
+		{
+			string deviceName = joystickHandler.GetJoystickProductName(i);
+			if (!deviceName.IsEmpty())
+				connectedDevices.Insert(deviceName);
+		}
+
+		BaseContainer rule;
+		string name;
+		array<string> options = {string.Empty, string.Empty, string.Empty, string.Empty};
+		bool hasCustomOption;
+		for (int i, count = rules.Count(); i < count; i++)
+		{
+			rule = rules.Get(i);
+			int deviceSlotNumber;
+			rule.Get(SCR_InputHelper.INPUT_DEVICE_CONTAINER_DEVICE_SLOT_NAME, deviceSlotNumber);
+			if (!options[deviceSlotNumber].IsEmpty())
+				continue;
+
+			rule.Get(SCR_InputHelper.INPUT_DEVICE_CONTAINER_DEVICE_NAME, name);
+			if (!connectedDevices.Contains(name))
+				continue;
+
+			connectedDevices.RemoveItemOrdered(name);
+			options[deviceSlotNumber] = string.Format(DEVICE_ID_DISPLAY_FORMAT, deviceSlotNumber, name);
+			hasCustomOption = true;
+		}
+
+		foreach (int i, string optionName : options)
+		{
+			if (!optionName.IsEmpty())
+				continue;
+
+			if (connectedDevices.IsEmpty())
+				break;
+
+			options[i] = string.Format(DEVICE_ID_DISPLAY_FORMAT, i, connectedDevices[0]);
+			connectedDevices.RemoveOrdered(0);
+			hasCustomOption = true;
+		}
+
+		if (hasCustomOption)
+		{
+			comboBoxComponent.ClearAll();
+			bool elementSelected;
+			foreach (int id, string option : options)
+			{
+				if (option.IsEmpty())
+					option = id.ToString();
+
+				comboBoxComponent.AddItem(option);
+				if (elementSelected)
+					continue;
+
+				elementSelected = joystickHandler.IsJoystickConnected(id);
+				if (elementSelected)
+					comboBoxComponent.SetCurrentItem(id, false, false, false);
+			}
+		}
+	}
+
 	//-----------------------------------------------------------------------------------------------
 	protected void SetupBindsCombo()
 	{
@@ -252,7 +737,10 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 		array<ref SCR_KeyBindingBind> binds = m_SettingsKeybindModule.GetCustomBinds();		
 		foreach (SCR_KeyBindingBind bind : binds)
 		{
-			comboBoxComponent.AddItem(bind.m_sBindDisplayName);
+			if (bind.m_eDeviceType != m_eDevice)
+				continue;
+
+			comboBoxComponent.AddItem(bind.GetBindingDisplayName());
 		}
 		
 		comboBoxComponent.m_OnChanged.Insert(OnBindsComboChanged);
@@ -267,42 +755,171 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 			Print("SCR_AdvancedKeybindDialogUI: Combination key combo widget was not found", LogLevel.WARNING);
 			return;
 		}
-		
+
 		SCR_ComboBoxComponent comboBoxComponent = SCR_ComboBoxComponent.Cast(combinationBindCombo.FindHandler(SCR_ComboBoxComponent));
 		if (!comboBoxComponent)
 			return;
-		
+
+		int addedEntries;
 		array<ref SCR_KeyBindingCombo> combos = m_SettingsKeybindModule.GetCustomComboKeys();
 		foreach (SCR_KeyBindingCombo combo : combos)
 		{
-			comboBoxComponent.AddItem(combo.m_sComboDisplayName);
+			if (combo.m_eDeviceType != m_eDevice)
+				continue;
+
+			addedEntries = comboBoxComponent.AddItem(combo.m_sComboDisplayName);
 		}
-		
-		comboBoxComponent.m_OnChanged.Insert(OnCombinationComboChanged);
+
+		comboBoxComponent.m_OnChanged.Remove(OnCombinationComboChanged);
+		if (addedEntries > 0)
+		{
+			combinationBindCombo.SetEnabled(true);
+			combinationBindCombo.SetVisible(true);
+			comboBoxComponent.m_OnChanged.Insert(OnCombinationComboChanged);
+		}
+		else
+		{
+			combinationBindCombo.SetEnabled(false);
+			combinationBindCombo.SetVisible(false);
+		}
 	}
 	
 	//-----------------------------------------------------------------------------------------------
 	protected void OnPrefixesComboChanged(SCR_ComboBoxComponent component, int index)
 	{
-		m_SettingsKeybindModule.SetFilterForActionByIndex(m_sActionName, m_sActionPreset, index, m_iSelectedKeybind, m_eActionPrefixType);
+		m_SettingsKeybindModule.SetFilterForActionByIndex(m_sActionName, m_sActionPreset, index, m_iSelectedKeybind, m_eActionPrefixType, m_eDevice);
 		
 		ShowBindsForAction();
 		
 		ReselectRow();
+		if (component)
+			GetGame().GetWorkspace().SetFocusedWidget(component.GetRootWidget());
 	}
-	
+
+	int GetCurrentlySelectedDeviceId()
+	{
+		if (m_eDevice != EInputDeviceType.JOYSTICK)
+			return -1;
+
+		Widget deviceIdSelector = m_wRoot.FindAnyWidget("DeviceId");
+		if (!deviceIdSelector)
+			return -1;
+
+		SCR_ComboBoxComponent comboBoxComponent = SCR_ComboBoxComponent.Cast(deviceIdSelector.FindHandler(SCR_ComboBoxComponent));
+		if (!comboBoxComponent)
+			return -1;
+
+		return comboBoxComponent.GetCurrentIndex();
+	}
+
 	//-----------------------------------------------------------------------------------------------
 	protected void OnBindsComboChanged(SCR_ComboBoxComponent component, int index)
 	{
-		m_SettingsKeybindModule.AddKeybindToActionByIndex(m_sActionName, m_sActionPreset, index);
+		array<ref SCR_KeyBindingBind> binds = m_SettingsKeybindModule.GetCustomBinds();
+		int filteredIndex = -1;
+		int selectedBindUnfiltered;
+		bool isAxis;
+		foreach (int i, SCR_KeyBindingBind binding : binds)
+		{
+			if (binding.m_eDeviceType != m_eDevice)
+				continue;
+
+			filteredIndex++;
+			if (filteredIndex != index)
+				continue;
+
+			selectedBindUnfiltered = i;
+			isAxis = binding.m_bIsAxis;
+			break;
+		}
+		
+		m_SettingsKeybindModule.AddKeybindToActionByIndex(m_sActionName, m_sActionPreset, selectedBindUnfiltered, deviceId: GetCurrentlySelectedDeviceId());
 		
 		ShowBindsForAction();
 		
 		// Select the last row
 		m_iSelectedKeybind = m_aBindRowButtons.Count() - 1;
 		ReselectRow();
+		if (isAxis)
+			SetDefaultFilterForAxis();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void SetDefaultFilterForAxis()
+	{
+		array<ref SCR_KeyBindingFilter> filters = m_SettingsKeybindModule.GetFilters(m_eActionPrefixType);		
+		
+		int index;
+		foreach (int id, SCR_KeyBindingFilter filter : filters)
+		{
+			if (filter.m_sFilterString != SCR_InputHelper.INPUT_FILTER_VALUE_TYPE_NAME)
+				continue;
+
+			index = id;
+			break;
+		}
+		
+		m_SettingsKeybindModule.SetFilterForActionByIndex(m_sActionName, m_sActionPreset, index, m_iSelectedKeybind, m_eActionPrefixType, m_eDevice);
+
+		InputBinding inputBinds = m_SettingsKeybindModule.GetInputBindings();
+		BaseContainer inputSource = SCR_InputHelper.GetInputBinding(m_sActionName, m_sActionPreset, m_iSelectedKeybind, inputBinds);
+		if (!inputSource)
+			return;
+
+		string input;
+		inputSource.Get(SCR_InputHelper.INPUT_CONTAINER_INPUT_NAME, input);
+		float multiplier;
+		float offset;
+		int inverted;
+		GetDefaultAxisFilterValues(input, multiplier, offset, inverted);
+
+		SetInputFilterValueConfiguration(inputSource, inputBinds, multiplier, offset, inverted);
+		ReselectRow();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void GetDefaultAxisFilterValues(string inputBinding, out float multiplier, out float offset, out int inverted)
+	{
+		multiplier = 1;
+		inverted = -1;
+
+		if (inputBinding.Contains("+"))
+		{
+			inverted = 1;
+		}
+		else if (!inputBinding.Contains("-"))
+		{
+			multiplier = 0.5;
+			offset = 1;
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetInputFilterValueConfiguration(notnull BaseContainer inputSource, notnull InputBinding inputBindings, float multiplier = -1, float offset = -2, int invert = -1)
+	{
+		BaseContainer filter = inputSource.GetObject(SCR_InputHelper.INPUT_CONTAINER_FILTER_NAME);
+		if (!filter)
+			return;
+
+		bool valueSet;
+		if (invert < 0)
+			filter.Get(SCR_InputHelper.INPUT_CONTAINER_INVERT_NAME, invert);
+		else
+			valueSet = filter.Set(SCR_InputHelper.INPUT_CONTAINER_INVERT_NAME, invert);
+
+		if (invert > 0)
+			multiplier *= -1;
+
+		if (multiplier > -2)
+			valueSet = filter.Set(SCR_InputHelper.INPUT_CONTAINER_MULTIPLIER_NAME, multiplier) || valueSet;
+
+		if (offset > -2)
+			valueSet = filter.Set(SCR_InputHelper.INPUT_CONTAINER_OFFSET_NAME, offset) || valueSet;
+
+		if (valueSet)
+			inputBindings.Save();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnCombinationComboChanged(SCR_ComboBoxComponent component, int index)
 	{
@@ -364,9 +981,12 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SCR_AdvancedKeybindDialogUI(SCR_KeyBindingEntry entry, string displayName, string actionName, string actionPreset, SCR_EActionPrefixType prefixType)
+	void SCR_AdvancedKeybindDialogUI(SCR_KeyBindingEntry entry, string displayName, string actionName, string actionPreset, SCR_EActionPrefixType prefixType, EInputDeviceType deviceType = EInputDeviceType.INVALID)
 	{
-		Setup(entry, displayName, actionName, EInputDeviceType.KEYBOARD);
+		if (deviceType == EInputDeviceType.INVALID)
+			deviceType = EInputDeviceType.KEYBOARD;
+
+		Setup(entry, displayName, actionName, deviceType);
 		m_sActionPreset = actionPreset;
 		m_eActionPrefixType = prefixType;
 	}

@@ -174,10 +174,7 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		
 		if (isEditing)
 		{
-			if (m_EditedMarker.GetMarkerID() >= 0)
-				confirmComp.m_OnClicked.Insert(OnPlaceMarkerConfirmed);
-			else
-				confirmComp.m_OnClicked.Insert(OnPlaceMarkerConfirmedPrivate);
+			confirmComp.m_OnClicked.Insert(OnPlaceMarkerConfirmed);
 			
 			confirmComp.SetLabel("#AR-ServerHosting_Edit");
 			
@@ -785,13 +782,17 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	//! SCR_ButtonTextComponent event
 	protected void OnPlaceMarkerConfirmed(SCR_InputButtonComponent button)
 	{
+		bool isLocal = false;
+		
 		if (m_EditedMarker)
 		{
+			isLocal = m_EditedMarker.GetMarkerID() == -1;
+			
 			RemoveOwnedMarker(m_EditedMarker);
 			m_EditedMarker = null;
 		}
 		
-		OnInsertMarker(false);
+		OnInsertMarker(isLocal);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1163,7 +1164,17 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		if (m_ComboBoxComp2 && (m_ComboBoxComp2.IsOpened() || m_ComboBoxComp2.GetRootWidget().FindAnyWidget("ComboButton") == focused))
 			return;
 		
-		if (m_MarkerEditRoot)
+		if (!m_MarkerEditRoot)
+			return;
+		
+		if (m_EditedMarker)
+		{
+			OnPlaceMarkerConfirmed(null);
+			return;
+		}
+		
+		SocialComponent sc = GetSocialComponent();
+		if (sc && sc.IsPrivilegedTo(EUserInteraction.UserGeneratedContent))
 			OnPlaceMarkerConfirmed(null);
 	}
 	
@@ -1171,7 +1182,7 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	//! Menu alternative confirm bind
 	protected void OnInputMenuConfirmAlter(float value, EActionTrigger reason)
 	{
-		if (m_MarkerEditRoot)
+		if (m_MarkerEditRoot && !m_EditedMarker)
 			OnPlaceMarkerConfirmedPrivate(null);
 	}
 	

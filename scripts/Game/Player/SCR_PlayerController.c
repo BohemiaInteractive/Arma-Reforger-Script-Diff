@@ -280,10 +280,26 @@ class SCR_PlayerController : PlayerController
 			bool mouseControlAircraft;
 			if (gameplaySettings.Get("m_bMouseControlAircraft", mouseControlAircraft))
 				CharacterControllerComponent.SetMouseControlAircraft(mouseControlAircraft);
+			
+			bool mouseControlVehicle;
+			if (gameplaySettings.Get("m_bMouseControlVehicle", mouseControlVehicle))
+				CharacterControllerComponent.SetMouseControlVehicle(mouseControlVehicle);
 
-			bool gamepadFreelookInAircraft;
-			if (gameplaySettings.Get("m_bGamepadFreelookInAircraft", gamepadFreelookInAircraft))
-				CharacterControllerComponent.SetGamepadControlAircraft(!gamepadFreelookInAircraft);
+			float mouseSteeringSensitivity;
+			if (gameplaySettings.Get("m_fMouseSteeringSensitivity", mouseSteeringSensitivity))
+				CharacterControllerComponent.SetMouseSteeringSensitivity(mouseSteeringSensitivity);
+			
+			float mouseCenteringDelay;
+			if (gameplaySettings.Get("m_fMouseSteeringCenteringDelay", mouseCenteringDelay))
+				CharacterControllerComponent.SetMouseSteeringCenteringDelay(mouseCenteringDelay);
+
+			bool gamepadFreelookInVehicles;
+			if (gameplaySettings.Get("m_bGamepadFreelookInVehicle", gamepadFreelookInVehicles))
+				CharacterControllerComponent.SetGamepadControlVehicle(!gamepadFreelookInVehicles);
+
+			bool manualClutch;
+			if (gameplaySettings.Get("m_bManualClutch", manualClutch))
+				CharacterControllerComponent.SetManualClutch(manualClutch);
 
 			EVehicleDrivingAssistanceMode drivingAssistance;
 			if (gameplaySettings.Get("m_eDrivingAssistance", drivingAssistance))
@@ -1018,9 +1034,13 @@ class SCR_PlayerController : PlayerController
 		PlatformKind ownPlatformKind = playerMgr.GetPlatformKind(GetLocalPlayerId());
 		
 		// Always show on PSN
-		if (ownPlatformKind == PlatformKind.PSN	)
+		if (ownPlatformKind == PlatformKind.PSN)
+		{
 			SetPlatformImagePSN(targetPlatformKind, image, glow, setVisible);
-		else if (!showOnPC && !showOnXbox)
+			return true;
+		}
+		
+		if (!showOnPC && !showOnXbox)
 			return false;
 		
 		switch (ownPlatformKind)
@@ -1093,20 +1113,15 @@ class SCR_PlayerController : PlayerController
 	//------------------------------------------------------------------------------------------------
 	protected void SetPlatformImagePSN(PlatformKind targetPlatformKind, notnull ImageWidget image, ImageWidget glow = null, bool setVisible = true)
 	{
+		string icon;
 		if (targetPlatformKind == PlatformKind.PSN)
-		{
-			image.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_PLAYSTATION_ICON_NAME);
-			
-			if (glow)
-				glow.LoadImageFromSet(0, UIConstants.ICONS_GLOW_IMAGE_SET, UIConstants.PLATFROM_PLAYSTATION_ICON_NAME);
-		}
+			icon = UIConstants.PLATFROM_PLAYSTATION_ICON_NAME;
 		else
-		{
-			image.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_GENERIC_ICON_NAME);
-			
-			if (glow)
-				glow.LoadImageFromSet(0, UIConstants.ICONS_GLOW_IMAGE_SET, UIConstants.PLATFROM_GENERIC_ICON_NAME);
-		}
+			icon = UIConstants.PLATFROM_GENERIC_ICON_NAME;
+		
+		image.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, icon);
+		if (glow)
+			glow.LoadImageFromSet(0, UIConstants.ICONS_GLOW_IMAGE_SET, icon);
 		
 		if (!setVisible)
 			return;
@@ -1152,21 +1167,10 @@ class SCR_PlayerController : PlayerController
 	protected void SetPlatformImageXbox(PlatformKind targetPlatformKind, notnull ImageWidget image, ImageWidget glow = null, bool setVisible = true)
 	{
 		string icon;
-		switch (targetPlatformKind)
-		{
-			case PlatformKind.STEAM:
-				icon = UIConstants.PLATFROM_PC_ICON_NAME;
-			break;
-			case PlatformKind.XBOX:
-				icon = UIConstants.PLATFROM_XBOX_ICON_NAME;
-			break;
-			case PlatformKind.PSN:
-				icon = UIConstants.PLATFROM_PLAYSTATION_ICON_NAME;
-			break;
-			case PlatformKind.NONE:
-				icon = UIConstants.PLATFROM_PC_ICON_NAME;
-			break;
-		}
+		if (targetPlatformKind == PlatformKind.XBOX)
+			icon = UIConstants.PLATFROM_XBOX_ICON_NAME;
+		else
+			icon = UIConstants.PLATFROM_GENERIC_ICON_NAME;
 		
 		image.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, icon);
 		if (glow)

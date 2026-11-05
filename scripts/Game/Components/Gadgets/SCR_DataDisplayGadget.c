@@ -57,7 +57,7 @@ class SCR_DataDisplayGadgetComponent : SCR_GadgetComponent
 {
 	int m_iOpacityMapId;
 
-	protected RTTextureWidget m_wRenderTargetTexture
+	protected RTTextureWidget m_wRenderTargetTexture;
 	protected Widget m_wRootWidget;
 	protected int m_iNumberOfPages;
 	protected int m_iCurrentPageID;
@@ -153,7 +153,7 @@ class SCR_DataDisplayGadgetComponent : SCR_GadgetComponent
 	protected bool InitializeRenderTarget()
 	{
 		IEntity owner = GetOwner();
-		SCR_BallisticTableComponentClass data = SCR_BallisticTableComponentClass.Cast(GetComponentData(owner));
+		SCR_DataDisplayGadgetComponentClass data = SCR_DataDisplayGadgetComponentClass.Cast(GetComponentData(owner));
 		if (!data)
 			return false;
 
@@ -201,7 +201,7 @@ class SCR_DataDisplayGadgetComponent : SCR_GadgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected override void EOnInit(IEntity owner)
 	{
-		SCR_BallisticTableComponentClass data = SCR_BallisticTableComponentClass.Cast(GetComponentData(GetOwner()));
+		SCR_DataDisplayGadgetComponentClass data = SCR_DataDisplayGadgetComponentClass.Cast(GetComponentData(GetOwner()));
 		if (!data)
 			return;
 

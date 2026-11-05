@@ -291,6 +291,17 @@ class SCR_AIVehicleUsability
 		
 		return damageManager.IsOnFire(damageManager.GetDefaultHitZone());
 	}
+	
+	//--------------------------------------------------------------------------------------------
+	static bool IsVehicleFlipped(IEntity vehicleEntity)
+	{
+		const float maxangle = 45;
+		vector angles = vehicleEntity.GetAngles();
+		if (float.AlmostEqual(0, angles[0], maxangle) && float.AlmostEqual(0, angles[2], maxangle))
+			return false;
+		
+		return true;
+	}
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------

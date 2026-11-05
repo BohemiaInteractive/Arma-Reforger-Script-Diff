@@ -48,6 +48,11 @@ class SCR_TransportUnitComponent : ScriptComponent
 	[RplProp()]
 	protected SCR_EVehicleConditionCheckType m_eVehicleFailedConditionType;
 
+	//! World position of the group for the logistics map. Set by the server in Update (every few seconds),
+	//! so clients know it even when the group members are not streamed in. vector.Zero until the first update.
+	[RplProp()]
+	protected vector m_vMapPosition;
+
 	protected SCR_AIGroup m_AIGroup;
 
 	protected SCR_ResupplyCampaignMilitaryBaseTaskEntity m_PreferableResupplyTask;
@@ -85,9 +90,19 @@ class SCR_TransportUnitComponent : ScriptComponent
 	protected ref ScriptInvokerInt m_OnResupplyTaskSolverStateChanged;
 	protected ref ScriptInvokerFloat m_OnVehicleResourcesValueChanged;
 
+	protected bool m_bGroupLifecyclePinned;
+	protected int m_iImportanceBeforePin = -1;
+
 	protected static int s_iLastGeneratedTaskId;
 
 	protected static const string TRANSPORT_UNIT_HELP_TASK_ID = "%1_TransportUnitHelpTask_%2";
+
+	// Fuel fraction (0-1) set in the truck when a task starts, and when the crew drives with low fuel
+	protected static const float TRUCK_FUEL_PERCENTAGE = 0.75;
+	// When the crew drives the truck and its fuel fraction (0-1) drops below this value, the fuel is set back to TRUCK_FUEL_PERCENTAGE
+	protected static const float TRUCK_FUEL_TOP_UP_THRESHOLD = 0.1;
+	// The map position is replicated again only when the group moved more than 10 m (value is squared, m^2)
+	protected static const float MAP_POSITION_UPDATE_DISTANCE_SQ = 100;
 
 	//------------------------------------------------------------------------------------------------
 	ScriptInvokerFloat GetOnVehicleResourcesValueChanged()
@@ -175,9 +190,32 @@ class SCR_TransportUnitComponent : ScriptComponent
 			m_iSourceBaseCallsign = m_SourceBase.GetCallsign();
 		else
 			m_iSourceBaseCallsign = SCR_CampaignMilitaryBaseComponent.INVALID_BASE_CALLSIGN;
+
+		// On a task, the solver moves the group to the new source base itself
 		m_TaskSolver.SetSourceBase(m_SourceBase);
 
+		CancelReturnToOldSourceBase();
+
 		Replication.BumpMe();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Stops the return trip (not on a task) to the previous source base.
+	//! The next Update calls ReturnToSourceBaseIfNeeded, which sends the group to the new source base.
+	protected void CancelReturnToOldSourceBase()
+	{
+		if (m_eState != SCR_ETransportUnitState.INACTIVE || !m_MoveToSourceBaseWaypoint)
+			return;
+
+		if (m_TaskSolver.GetResupplyTaskSolverState() != SCR_EResupplyTaskSolverState.MOVING_TO_SOURCE_BASE)
+			return;
+
+		// Remove the handler first, so completing the old waypoint does not run it
+		m_AIGroup.GetOnWaypointCompleted().Remove(OnMoveToSourceBaseWaypointCompleted);
+		m_MoveToSourceBaseWaypoint = null;
+
+		m_AIGroup.CompleteAllWaypoints();
+		m_TaskSolver.ResetToInitialState();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -201,7 +239,7 @@ class SCR_TransportUnitComponent : ScriptComponent
 		SCR_ResupplyTaskSolverContext resupplyTaskContext = new SCR_ResupplyTaskSolverContext(m_Vehicle, m_SourceBase);
 		m_TaskSolverManager.StartSolverTask(m_TaskSolver, task, resupplyTaskContext);
 
-		SetTruckFuel(0.75);
+		SetTruckFuel(TRUCK_FUEL_PERCENTAGE);
 
 		SetState(SCR_ETransportUnitState.ON_TASK);
 
@@ -282,13 +320,16 @@ class SCR_TransportUnitComponent : ScriptComponent
 	{
 		m_TaskSolver.Update(timeSlice);
 
+		TopUpTruckFuelIfLow();
+
 		if (GetState() != SCR_ETransportUnitState.ON_TASK)
 		{
 			SetPreferableResupplyTask(SelectPreferableResupplyTask());
 			if (m_PreferableResupplyTask)
 					SetSuppliedBase(m_PreferableResupplyTask.GetMilitaryBase());
 
-			if (!m_Vehicle || !m_VehicleConditionManager.IsVehicleUsable(m_Vehicle))
+			// Also give up the truck when another unit has started a task with it
+			if (!m_Vehicle || !m_VehicleConditionManager.IsVehicleUsable(m_Vehicle) || m_SuppliesTransportSystem.IsVehicleUsed(m_Vehicle, this))
 			{
 				SetVehicle(FindVehicle());
 			}
@@ -296,6 +337,11 @@ class SCR_TransportUnitComponent : ScriptComponent
 
 		SCR_ETransportUnitState previousState = GetState();
 		UpdateState();
+
+		// The vehicle can become unusable without a state change (destroyed, sunk)
+		UpdateGroupLifecyclePin();
+
+		UpdateMapPosition();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -417,6 +463,35 @@ class SCR_TransportUnitComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Keeps the truck from running out of fuel while a member of this group drives it. With no fuel the
+	//! AI driver reports a stuck move, which orders the crew out of the truck and fails the task.
+	//! Not done when somebody else drives the truck, for example a player.
+	protected void TopUpTruckFuelIfLow()
+	{
+		if (!m_Vehicle || !m_FuelManager)
+			return;
+
+		PilotCompartmentSlot pilotSlot = m_Vehicle.GetPilotCompartmentSlot();
+		if (!pilotSlot)
+			return;
+
+		IEntity driver = pilotSlot.GetOccupant();
+		if (!driver)
+			return;
+
+		AIAgent driverAgent = SCR_AIUtils.GetAIAgent(driver);
+		if (!driverAgent || driverAgent.GetParentGroup() != m_AIGroup)
+			return;
+
+		float totalFuel, totalMaxFuel, totalFuelPercentage;
+		m_FuelManager.GetTotalValuesOfFuelNodes(totalFuel, totalMaxFuel, totalFuelPercentage);
+		if (totalMaxFuel <= 0 || totalFuelPercentage >= TRUCK_FUEL_TOP_UP_THRESHOLD)
+			return;
+
+		SetTruckFuel(TRUCK_FUEL_PERCENTAGE);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void OnVehicleDeleted(SCR_AIVehicleUsageComponent vehicleUsageComponent)
 	{
 		SetVehicle(null);
@@ -499,6 +574,8 @@ class SCR_TransportUnitComponent : ScriptComponent
 
 		Replication.BumpMe();
 
+		UpdateGroupLifecyclePin();
+
 		if (m_OnVehicleChanged)
 			m_OnVehicleChanged.Invoke(vehicle, previousVehicle);
 	}
@@ -521,6 +598,81 @@ class SCR_TransportUnitComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! While the group has a usable truck, hold its members materialised (see UpdateGroupLifecyclePin).
+	//! The proximity lifecycle in SCR_AIGroup deletes distant members without saving their vehicle
+	//! seats, so a despawned crew would later respawn on foot while the blacklisted truck keeps
+	//! driving on its own. A permanent LOD pin makes SCR_AIGroup.LifecycleTick hold the group
+	//! (HasPermanentLodMember), and CRITICAL importance keeps ChimeraAIWorld eviction from
+	//! picking the group when the active-AI budget is full.
+	protected void SetGroupLifecyclePinned(bool pinned)
+	{
+		if (m_bGroupLifecyclePinned == pinned)
+			return;
+
+		SCR_GameModeCampaign gameMode = SCR_GameModeCampaign.GetInstance();
+		if (gameMode && gameMode.IsProxy())
+			return;
+
+		if (!m_AIGroup)
+			return;
+
+		m_bGroupLifecyclePinned = pinned;
+
+		array<AIAgent> agents = {};
+		m_AIGroup.GetAgents(agents);
+
+		if (pinned)
+		{
+			m_iImportanceBeforePin = m_AIGroup.GetImportance();
+			m_AIGroup.SetImportance(SCR_EAISpawnImportance.CRITICAL);
+
+			foreach (AIAgent agent : agents)
+			{
+				if (agent)
+					agent.SetPermanentLOD(0);
+			}
+
+			// Members that materialise later (group was dormant when the task was assigned)
+			// must be pinned as well.
+			m_AIGroup.GetOnAgentAdded().Insert(OnPinnedAgentAdded);
+		}
+		else
+		{
+			m_AIGroup.GetOnAgentAdded().Remove(OnPinnedAgentAdded);
+
+			if (m_iImportanceBeforePin != -1)
+			{
+				m_AIGroup.SetImportance(m_iImportanceBeforePin);
+				m_iImportanceBeforePin = -1;
+			}
+
+			foreach (AIAgent agent : agents)
+			{
+				if (agent)
+					agent.SetPermanentLOD(-1);
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! The group never goes dormant while it has a usable truck, in any state (on a task, returning, or idle).
+	//! A crew despawned from a driving truck leaves the truck without a driver, and a dormant idle crew
+	//! cannot start a task without an observer nearby. Without a usable truck the crew is on foot and can go dormant.
+	protected void UpdateGroupLifecyclePin()
+	{
+		// Checked on the own vehicle, m_bIsVehicleUsable can come from checks of other nearby trucks (FindVehicle)
+		bool hasUsableVehicle = m_Vehicle && m_VehicleConditionManager && m_VehicleConditionManager.IsVehicleUsable(m_Vehicle);
+		SetGroupLifecyclePinned(m_eState == SCR_ETransportUnitState.ON_TASK || hasUsableVehicle);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnPinnedAgentAdded(AIAgent agent)
+	{
+		if (agent)
+			agent.SetPermanentLOD(0);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void SetState(SCR_ETransportUnitState state)
 	{
 		if (m_eState == state)
@@ -529,8 +681,41 @@ class SCR_TransportUnitComponent : ScriptComponent
 		m_eState = state;
 		Replication.BumpMe();
 
+		UpdateGroupLifecyclePin();
+
 		if (m_OnStateChanged)
 			m_OnStateChanged.Invoke(m_eState);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return World position of the group for the map, vector.Zero when not known yet
+	vector GetMapPosition()
+	{
+		return m_vMapPosition;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateMapPosition()
+	{
+		if (!m_AIGroup)
+			return;
+
+		// The group entity origin follows the leader only while the group has a move order,
+		// so use the leader entity. It is the vehicle position when the leader sits in the truck.
+		vector position;
+		IEntity leaderEntity = m_AIGroup.GetLeaderEntity();
+		if (leaderEntity)
+			position = leaderEntity.GetOrigin();
+		else if (m_vMapPosition == vector.Zero)
+			position = m_AIGroup.GetOrigin(); // No members (dormant), use the group position until a leader exists
+		else
+			return; // No members (dormant), keep the last known position
+
+		if (vector.DistanceSq(position, m_vMapPosition) < MAP_POSITION_UPDATE_DISTANCE_SQ)
+			return;
+
+		m_vMapPosition = position;
+		Replication.BumpMe();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -911,6 +1096,8 @@ class SCR_TransportUnitComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnDelete(IEntity owner)
 	{
+		SetGroupLifecyclePinned(false);
+
 		if (m_TaskSolver)
 		{
 			m_TaskSolver.GetOnStateChanged().Remove(OnTaskSolverStateChanged);

@@ -50,6 +50,7 @@ class SCR_AIActionBase : AIActionBase
 	const static float PRIORITY_BEHAVIOR_MOVE							= 30;
 	const static float PRIORITY_BEHAVIOR_MOVE_IN_FORMATION				= 30;
 	const static float PRIORITY_BEHAVIOR_ATTACK_DISREGARD_THREATS		= 20;	// Attack, but when we are forbidden to shoot
+	const static float PRIORITY_BEHAVIOR_UNFLIP_VEHICLE					= 15;
 	const static float PRIORITY_BEHAVIOR_WAIT							= 10;
 	const static float PRIORITY_BEHAVIOR_OBSERVE_THREATS_LOW_PRIORITY	= 4;
 	const static float PRIORITY_BEHAVIOR_MOVE_IN_FORMATION_LOW_PRIORITY = 3;	// When we're close to leader who isn't moving
@@ -80,6 +81,7 @@ class SCR_AIActionBase : AIActionBase
 	const static float PRIORITY_ACTIVITY_GET_OUT				= 50;
 	const static float PRIORITY_ACTIVITY_SUPPRESS				= 40;
 	const static float PRIORITY_ACTIVITY_ANIMATE				= 10;
+	const static float PRIORITY_ACTIVITY_UNFLIP_VEHICLE			= 5;
 	
 	
 	// TODO: Get rid of flags we don't neccesarily need	

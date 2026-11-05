@@ -33,35 +33,36 @@ class SCR_KeybindActionDisplayComponent : SCR_ScriptedWidgetComponent
 		
 		string finalPreset;
 		string deviceString;
-		string actionName;
-		string preset;
+		string actionName = entry.m_sActionName;
+		string preset = entry.m_sPreset;
 
 		// Devices
-		if (data.m_eDevice == EInputDeviceType.GAMEPAD) // Gamepad setup
+		switch (data.m_eDevice)
 		{
-			if (!entry.m_sActionNameGamepadOptional.IsEmpty())
-				actionName = entry.m_sActionNameGamepadOptional;
-			else
-				actionName = entry.m_sActionName;
-			
-			if (!entry.m_sPresetGamepadOptional.IsEmpty())
-				preset = entry.m_sPresetGamepadOptional;
-			else
-				preset = entry.m_sPreset;
-			
-			deviceString = UIConstants.DEVICE_GAMEPAD;
+			case EInputDeviceType.GAMEPAD:
+				if (!entry.m_sActionNameGamepadOptional.IsEmpty())
+					actionName = entry.m_sActionNameGamepadOptional;
+				
+				if (!entry.m_sPresetGamepadOptional.IsEmpty())
+					preset = entry.m_sPresetGamepadOptional;
+				
+				deviceString = UIConstants.DEVICE_GAMEPAD;
+				if (!preset.IsEmpty())
+					finalPreset = data.m_SettingsKeybindModule.GetGamepadPresetPrefix() + preset;
 
-			if (!preset.IsEmpty())
-				finalPreset = data.m_SettingsKeybindModule.GetGamepadPresetPrefix() + preset;
-		}
-		else if (data.m_eDevice == EInputDeviceType.KEYBOARD) // Keyboard & mouse setup
-		{
-			actionName = entry.m_sActionName;
-			preset = entry.m_sPreset;
-			deviceString = UIConstants.DEVICE_KEYBOARD;
+				break;
 
-			if (!preset.IsEmpty())
-				finalPreset = data.m_SettingsKeybindModule.GetPrimaryPresetPrefix() + preset;
+			case EInputDeviceType.JOYSTICK:
+				deviceString = UIConstants.DEVICE_JOYSTICK;
+				if (!preset.IsEmpty())
+					finalPreset = data.m_SettingsKeybindModule.GetJoystickPresetPrefix() + preset;
+
+				break;
+
+			default:
+				deviceString = UIConstants.DEVICE_KEYBOARD;
+				if (!preset.IsEmpty())
+					finalPreset = data.m_SettingsKeybindModule.GetPrimaryPresetPrefix() + preset;
 		}
 		
 		// Set Action text

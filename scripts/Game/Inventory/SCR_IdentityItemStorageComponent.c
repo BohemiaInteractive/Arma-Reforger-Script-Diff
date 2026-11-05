@@ -35,8 +35,24 @@ class SCR_IdentityItemStorageComponent : SCR_EquipmentStorageComponent
 	override bool CanStoreItem(IEntity item, int slotID) 
 	{		
 		SCR_IdentityManagerComponent identityManager = SCR_IdentityManagerComponent.GetInstance();
-		
-		return identityManager && identityManager.IsIdentityItemSlotEnabled();
+
+		if (!identityManager || !identityManager.IsIdentityItemSlotEnabled())
+			return false;
+
+		SCR_IdentityInventoryItemComponent iiic = SCR_IdentityInventoryItemComponent.Cast(item.FindComponent(SCR_IdentityInventoryItemComponent));
+		if (!iiic)
+			return false;
+
+		RplId linkedEntity = iiic.GetLinkedIdentityRplId();
+		if (!linkedEntity.IsValid()) // if there is no entity linked check faction
+			return !iiic.GetValuableIntelFaction(); // if faction is also not set then this item is still waiting for initialization
+
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(GetOwner());
+		if (!character)
+			return false;
+
+		RplComponent rplComp = character.GetRplComponent();
+		return rplComp && rplComp.Id() == linkedEntity; // slot can only store documents which belong to this character
 	}
 	
 	//------------------------------------------------------------------------------------------------

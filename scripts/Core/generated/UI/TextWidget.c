@@ -102,6 +102,17 @@ sealed class TextWidget: Widget
 	*/
 	proto external bool GetForceFont();
 	/*!
+	Elides the text
+	\param maxLines indicates max. line, rest of lines are discarded (hidden).
+	\param maxWidth Indicates when the text will be elided. from 0.0 to 1.0.
+
+	e.g. ElideText(GetNumLines(), 1.0, "...") the text will be elided with "..."
+	when reaches maximum width of parent widget.
+
+	only works for left-to-right text, will not elide correctly for right aligned or centered texts.
+	*/
+	proto external void  ElideText(int maxLines, float maxWidth, string obsolete = string.Empty /*obsolete*/);
+	/*!
 	Sets font used for text drawing in this widget.
 
 	Script parameter \b fontResource: Pointer to font. Always use nullptr when you want to set the Default font or work properly with increments and decrements of font reference.

@@ -95,15 +95,22 @@ class SCR_HitZone : HitZone
 
 #ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
+	//!
 	void DrawDebug();
 #endif
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Pass damage based damage context and rules specified in hitzone configuration
-	Receiving hitzones also have to inherit from SCR_HitZone
+	//! Simple getter function to check if the hitzone has rules regarding passing along damage.
+	//! \return 
+	bool DoesUseDamagePassRules()
+	{
+		return !m_aDamagePassRules.IsEmpty();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Pass damage based damage context and rules specified in hitzone configuration
+	//! Receiving hitzones also have to inherit from SCR_HitZone
 	//! param[in] damageContext - Damage context coming from HijackDamageHandling
-	*/
 	void ApplyDamagePassRules(notnull BaseDamageContext damageContext)
 	{
 		if (m_aDamagePassRules.IsEmpty())

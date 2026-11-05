@@ -150,7 +150,7 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	
 	//------------------------------------------------------------------------------------------------
 	// ! 
-	override protected void GetAllItems( out notnull array<IEntity> pItemsInStorage, BaseInventoryStorageComponent pStorage = null )
+	override void GetAllItems( out notnull array<IEntity> pItemsInStorage, BaseInventoryStorageComponent pStorage = null )
 	{
 		if (!m_Player)
 			return;

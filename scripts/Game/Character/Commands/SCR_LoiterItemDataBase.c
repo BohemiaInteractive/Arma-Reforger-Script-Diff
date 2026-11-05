@@ -1,12 +1,12 @@
 [BaseContainerProps(configRoot: true)]
 class SCR_LoiterItemDataBase
 {
-	[Attribute(defvalue: SCR_ELoiterItemID.NONE.ToString(), desc: "Unique id of this loiter animation item data.\nValue NONE will disable that entry.", uiwidget: UIWidgets.ComboBox, enumType: SCR_ELoiterItemID)]
-	protected SCR_ELoiterItemID m_eID;
+	[Attribute(defvalue: SCR_EAnimationItemID.NONE.ToString(), desc: "Unique id of this loiter animation item data.\nValue NONE will disable that entry.", uiwidget: UIWidgets.ComboBox, enumType: SCR_EAnimationItemID)]
+	protected SCR_EAnimationItemID m_eID;
 
 	//------------------------------------------------------------------------------------------------
 	//! \return the id of the config
-	SCR_ELoiterItemID GetId()
+	SCR_EAnimationItemID GetId()
 	{
 		return m_eID;
 	}

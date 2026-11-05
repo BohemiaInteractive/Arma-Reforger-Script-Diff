@@ -1823,7 +1823,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 					{
 						//--- Save stored user camera locations when leaving GM
 						GetGame().UserSettingsChanged();
-						GetGame().SaveUserSettings();
+						//--- User settings will be saved in cpp
+						//--- GetGame().SaveUserSettings() should be avoided as its not safe to call in script right now
 						Event_OnAsyncLoad.Invoke(1);
 						Event_OnClosed.Invoke();
 						Rpc(ToggleOwnerServerCallback, false);

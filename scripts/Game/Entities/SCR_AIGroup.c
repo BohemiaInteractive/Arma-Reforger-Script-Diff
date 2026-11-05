@@ -779,10 +779,7 @@ class SCR_AIGroup : ChimeraAIGroup
 
 	void OnNameFilteredCallback(array<string> resultText)
 	{
-		if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.XBOX)
-			SCR_ProfaneFilter.ReplaceProfanities(resultText.Get(0), m_sCustomName);
-		else
-			m_sCustomName = resultText.Get(0);
+		m_sCustomName = resultText.Get(0);
 
 		s_OnCustomNameChanged.Invoke(this);
 	}
@@ -864,24 +861,41 @@ class SCR_AIGroup : ChimeraAIGroup
 
 	void OnDescFilteredCallback(array<string> resultText)
 	{
-		if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.XBOX)
-			SCR_ProfaneFilter.ReplaceProfanities(resultText.Get(0), m_sCustomDescription);
-		else
-			m_sCustomDescription = resultText.Get(0);
+		m_sCustomDescription = resultText.Get(0);
 
 		s_OnCustomDescChanged.Invoke();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	string GetCustomDescription()
+	// Checks whether custom text may be shown to the local viewer.
+	protected bool CanShowCustomText(int authorID)
 	{
 		const PlayerController playerController = GetGame().GetPlayerController();
-		if (playerController)
-		{
-			const SocialComponent socialComp = SocialComponent.Cast(playerController.FindComponent(SocialComponent));
-			if (socialComp.IsRestricted(m_iDescriptionAuthorID, EUserInteraction.UserGeneratedContent))
-				return string.Empty;
-		}
+		if (!playerController)
+			return true;
+
+		// Preset text and the local player's own text.
+		if (authorID == 0 || authorID == playerController.GetPlayerId())
+			return true;
+
+		if (authorID < 0)
+			return false;
+
+		if (!SocialComponent.IsPrivilegedTo(EUserInteraction.UserGeneratedContent))
+			return false;
+
+		const SocialComponent socialComp = SocialComponent.Cast(playerController.FindComponent(SocialComponent));
+		if (!socialComp)
+			return false;
+
+		return !socialComp.IsRestricted(authorID, EUserInteraction.UserGeneratedContent);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	string GetCustomDescription()
+	{
+		if (!CanShowCustomText(m_iDescriptionAuthorID))
+			return string.Empty;
 
 		return m_sCustomDescription;
 	}
@@ -889,13 +903,8 @@ class SCR_AIGroup : ChimeraAIGroup
 	//------------------------------------------------------------------------------------------------
 	string GetCustomName()
 	{
-		const PlayerController playerController = GetGame().GetPlayerController();
-		if (playerController)
-		{
-			const SocialComponent socialComp = SocialComponent.Cast(playerController.FindComponent(SocialComponent));
-			if (socialComp.IsRestricted(m_iNameAuthorID, EUserInteraction.UserGeneratedContent))
-				return string.Empty;
-		}
+		if (!CanShowCustomText(m_iNameAuthorID))
+			return string.Empty;
 
 		return m_sCustomName;
 	}
@@ -919,19 +928,14 @@ class SCR_AIGroup : ChimeraAIGroup
 		GetCallsigns(company, platoon, squad, character, format);
 		string originalName = string.Format(format, company, platoon, squad, character);
 
-		// added check for player controller, because playercontroler is not on dedicated server
-		const PlayerController playerController = GetGame().GetPlayerController();
-		if (!playerController)
+		if (!GetGame().GetPlayerController())
 			return originalName;
 
-		const SocialComponent socialComp = SocialComponent.Cast(playerController.FindComponent(SocialComponent));
-		if (!socialComp)
+		string customName = GetCustomName();
+		if (customName.IsEmpty())
 			return originalName;
 
-		if (m_sCustomName.IsEmpty() || socialComp.IsRestricted(m_iNameAuthorID, EUserInteraction.UserGeneratedContent))
-			return originalName;
-
-		return m_sCustomName + " ( " + originalName + " )";
+		return customName + " ( " + originalName + " )";
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2677,12 +2681,16 @@ class SCR_AIGroup : ChimeraAIGroup
 	//! \param slotsWanted How many members the queue should ultimately spawn. Pass -1 (default)
 	//!                    to derive from group state: dormantAlive when set (re-materialisation
 	//!                    restores previous size), 1 otherwise (first-time activation - the expand
-	//!                    pass tops up to full size). Each queue dispatch spawns 1 member; if
+	//!                    pass tops up to full size). When ChimeraAIWorld.IsPartialFillEnabled()
+	//!                    is false, first-time activation asks for every live slot at once
+	//!                    instead of 1. Each queue dispatch spawns 1 member; if
 	//!                    slotsWanted > 1 the request is re-enqueued with slotsWanted-1.
 	//! \param observerRange If > 0, the queue will drop the request when no observer is within
 	//!                     this range at dispatch time.
 	void RequestSpawn(int slotsWanted = -1, float observerRange = 0)
 	{
+		ChimeraAIWorld aiWorld = ChimeraAIWorld.Cast(GetGame().GetAIWorld());
+
 		if (slotsWanted < 0)
 		{
 			int dormantAlive = GetDormantAliveCount();
@@ -2693,15 +2701,24 @@ class SCR_AIGroup : ChimeraAIGroup
 				return;                          // group was eliminated - don't respawn
 			}
 			if (dormantAlive > 0)
+			{
 				slotsWanted = dormantAlive;      // re-materialisation: restore previous size
+			}
+			else if (aiWorld && !aiWorld.IsPartialFillEnabled() && m_aUnitPrefabSlots)
+			{
+				// Partial fill disabled: request every slot up front. The queue then spawns all
+				// of them in one dispatch instead of one member per queue tick.
+				slotsWanted = m_aUnitPrefabSlots.Count() - GetDormantDeadCount();
+			}
 			else
+			{
 				slotsWanted = 1;                 // first activation; expand pass tops up
+			}
 		}
 
 		if (slotsWanted <= 0)
 			return;
 
-		ChimeraAIWorld aiWorld = ChimeraAIWorld.Cast(GetGame().GetAIWorld());
 		if (!aiWorld)
 		{
 			// Non-Chimera world - no queue, fall back to direct spawn.
@@ -2908,8 +2925,50 @@ class SCR_AIGroup : ChimeraAIGroup
 				continue;
 			IEntity controlledEnt = agent.GetControlledEntity();
 			if (controlledEnt)
+			{
+				StopVehicleDrivenBy(controlledEnt);
 				RplComponent.DeleteRplEntity(controlledEnt, false);
+			}
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Stops the ground vehicle driven by the character. Used before a dormant transition deletes the
+	//! character, otherwise the vehicle keeps its last controls and drives on without a driver.
+	//! AI drivers release the handbrake and start the engine again when they take the vehicle later.
+	//! Aircraft are not handled: without a pilot they cannot stay in the air anyway.
+	protected void StopVehicleDrivenBy(notnull IEntity character)
+	{
+		CompartmentAccessComponent compartmentAccess = CompartmentAccessComponent.Cast(character.FindComponent(CompartmentAccessComponent));
+		if (!compartmentAccess)
+			return;
+
+		PilotCompartmentSlot pilotSlot = PilotCompartmentSlot.Cast(compartmentAccess.GetCompartment());
+		if (!pilotSlot)
+			return;
+
+		IEntity vehicle = pilotSlot.GetVehicle();
+		if (!vehicle)
+			return;
+
+		BaseVehicleControllerComponent controller = BaseVehicleControllerComponent.Cast(vehicle.FindComponent(BaseVehicleControllerComponent));
+		if (!controller || HelicopterControllerComponent.Cast(controller) || AirplaneControllerComponent.Cast(controller))
+			return;
+
+		CarControllerComponent carController = CarControllerComponent.Cast(controller);
+		if (carController)
+		{
+			carController.SetPersistentHandBrake(true);
+		}
+		else
+		{
+			CarControllerComponent_B carControllerB = CarControllerComponent_B.Cast(controller);
+			if (carControllerB)
+				carControllerB.SetPersistentHandBrake(true);
+		}
+
+		if (controller.IsEngineOn())
+			controller.StopEngine(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2984,6 +3043,51 @@ class SCR_AIGroup : ChimeraAIGroup
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! True when any player-controlled character is within range (2D XZ) of the group position.
+	//! ObserversSystem cannot tell cameras from characters (GM and spectator cameras count as
+	//! observers too), so checks that must react only to real players - like eliminate when
+	//! reached - use this instead of HasObserverInRange.
+	//! There are two quick methods to find players, through TagSystem and by iterating players from playerManager
+	protected bool HasPlayerCharacterInRange(float range)
+	{
+		vector origin = GetOrigin();
+
+		World world = GetWorld();
+		TagSystem tagSystem = TagSystem.Cast(world.FindSystem(TagSystem));
+		if (tagSystem)
+		{
+			array<IEntity> nearbyCharacters = {};
+			tagSystem.GetTagsInRange(nearbyCharacters, origin, range, ETagCategory.Character);
+			foreach (IEntity character : nearbyCharacters)
+			{
+				if (EntityUtils.IsPlayer(character))
+					return true;
+			}
+
+			return false;
+		}
+
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		if (!playerManager)
+			return false;
+
+		float rangeSq = range * range;
+		array<int> playerIds = {};
+		playerManager.GetPlayers(playerIds);
+		foreach (int playerId : playerIds)
+		{
+			IEntity controlledEntity = playerManager.GetPlayerControlledEntity(playerId);
+			if (!controlledEntity)
+				continue;
+
+			if (vector.DistanceSqXZ(controlledEntity.GetOrigin(), origin) <= rangeSq)
+				return true;
+		}
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Periodic proximity check. Asks ObserversSystem (via ChimeraAIGroup::HasObserverInRange)
 	//! whether any observer sits inside the spawn / despawn / veryNear bands and materialises or
 	//! dismisses members accordingly. Invoked from EOnFrame when the accumulated delta-time
@@ -2994,6 +3098,25 @@ class SCR_AIGroup : ChimeraAIGroup
 		RplComponent rpl = RplComponent.Cast(FindComponent(RplComponent));
 		if (rpl && rpl.IsProxy())
 			return;
+
+		// World-level dormancy switch. With dormancy disabled the group must still materialize
+		// (never-spawned groups only ever spawn through this tick), but it never despawns on
+		// distance and ignores the proximity bands.
+		ChimeraAIWorld aiWorld = ChimeraAIWorld.Cast(GetGame().GetAIWorld());
+		if (aiWorld && !aiWorld.IsGroupDormancyEnabled())
+		{
+			// Skip groups with nothing left to spawn (all members killed in combat) and groups the
+			// AI limit blocks right now. Eviction is off without dormancy, so the queue would only
+			// drop or hold such a request, while RequestSpawn still adds waypoints on every call.
+			if (GetAgentsCount() == 0 && !IsExpandComplete() && aiWorld.CanActivateGroup(this))
+			{
+				// observerRange 0 skips the dispatcher observer re-check so groups far from any
+				// player still spawn. EnqueueSpawnRequest skips re-enqueue while already queued.
+				RequestSpawn(-1, 0);
+			}
+
+			return;
+		}
 
 		// Update the previous-tick spawn-range bit before any early returns. wasInRange below
 		// is the value from the prior tick; m_bWasObserverInSpawnRange now carries the current
@@ -3043,15 +3166,15 @@ class SCR_AIGroup : ChimeraAIGroup
 		// the alternative is the user staring at empty terrain.
 		if (wasInSpawnRange && HasObserverInRange(m_fVeryNearBlockDistance))
 		{
-			// The observer crossed the whole spawn ring and reached the group position
-			// without the members ever materialising (the spawn request was dropped,
-			// typically by the active-AI limit). For opted-in groups (remnant patrols),
-			// treat the position as cleared: notify the spawner so it retires itself,
-			// then remove the group entity completely.
-			if (m_bEliminateWhenReached)
+			// Eliminate only in the intended case: a real player character stands on the
+			// empty position AND the AI limit blocks the spawn
+			// - HasPlayerCharacterInRange, checks only player characters, not cameras
+			// - CanActivateGroup: a group that is only waiting in the spawn queue
+			bool spawnBlocked = aiWorld && !aiWorld.CanActivateGroup(this);
+			if (m_bEliminateWhenReached && spawnBlocked && HasPlayerCharacterInRange(m_fVeryNearBlockDistance))
 			{
 				if (DBG_AI_LOGGING)
-					Print(string.Format("[DBG_AI] LifecycleTick: observer reached unspawned group=%1 pos=%2 - eliminating and deleting (dormantAlive was %3)", this, GetOrigin(), GetDormantAliveCount()), LogLevel.NORMAL);
+					Print(string.Format("[DBG_AI] LifecycleTick: player reached unspawned budget-blocked group=%1 pos=%2 - eliminating and deleting (dormantAlive was %3)", this, GetOrigin(), GetDormantAliveCount()), LogLevel.NORMAL);
 
 				// Spawner first, so it can mark itself as retired while the group still
 				// exists. Then delete - this also invalidates any spawn request still
@@ -3066,7 +3189,7 @@ class SCR_AIGroup : ChimeraAIGroup
 			}
 
 			if (DBG_AI_LOGGING)
-				Print(string.Format("[DBG_AI] LifecycleTick: very-near block group=%1 pos=%2 veryNear=%3m dormantAlive=%4", this, GetOrigin(), (int)m_fVeryNearBlockDistance, GetDormantAliveCount()), LogLevel.NORMAL);
+				Print(string.Format("[DBG_AI] LifecycleTick: very-near block group=%1 pos=%2 veryNear=%3m dormantAlive=%4 eliminate=%5 spawnBlocked=%6", this, GetOrigin(), (int)m_fVeryNearBlockDistance, GetDormantAliveCount(), m_bEliminateWhenReached, spawnBlocked), LogLevel.NORMAL);
 			return;
 		}
 

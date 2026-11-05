@@ -47,6 +47,8 @@ class GenericEntityClass
 	static event array<ref ParamEnum> _WB_GetUserEnums(WorldEditorAPI api, IEntitySource src, string varName);
 	//! Any property value has been changed. You can use editor API here and do some additional edit actions which will be part of the same "key changed" action.
 	static event bool _WB_OnKeyChanged(WorldEditorAPI api, IEntitySource src, string key, BaseContainerList ownerContainers, IEntitySource parent);
+	//! Gives an opportunity to enable a variable for editing in-game when a game is running in editor (all properties are disabled there to edit by default). By returning true the variable will be enabled in UI but beside that you must also handle the variable in _WB_OnKeyChanged where you should propagate a change from a source container to an entity itself and return true in order to pervent the entity from re-creating! This is important because re-creating entities at in-game editing when a game is running is generally dangerous (it may cause crashing) !
+	static event bool _WB_IsVariableEditableInGame(IEntitySource src, string varName);
 	//! Some "coords" or "angles" vector property is being to be edited. Entity can provide a world matrix which represents their local space and which is needed by editor to edit the key by a gizmo
 	static event bool _WB_GetKeySpaceMatrixWorld(IEntity owner, BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent, out vector transformSpaceWorld[4]);
 	//! Called after updating world in Workbench. The entity must be visible in frustum, selected or named. You can use editor API here and do some edit actions if needed.
@@ -65,6 +67,8 @@ class GenericEntityClass
 	static event void _WB_OnDelete(WorldEditorAPI api, IEntitySource src);
 	//! This entity has been renamed. You can use editor API here and do some additional edit actions which will be part of the same "entity rename" action.
 	static event void _WB_OnRename(WorldEditorAPI api, IEntitySource src, string oldName);
+	//! Allows to customize which prefab file will be located in the resource browser or in prefab library when "Locate Prefab" or "Locate Prefab in Library" is executed
+	static event ResourceName _WB_GetLocatePrefabResource(WorldEditorAPI api, IEntitySource src);
 }
 
 /*!

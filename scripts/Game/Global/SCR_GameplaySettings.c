@@ -41,11 +41,23 @@ class SCR_GameplaySettings : ModuleGameSettings
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Whether or not the game should automatically equip next placeable item when previous one was placed")]
 	bool m_bAutoEquipNextPlaceableItem;
 
-	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Use mouse input for steering instead of for freelook when piloting aircrafts.")]
+	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Use mouse input for steering instead of for freelook in vehicles.")]
+	bool m_bMouseControlVehicle;
+	
+	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Use mouse input for steering instead of for freelook in aircraft.")]
 	bool m_bMouseControlAircraft;
 
-	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Use gamepad input for freelook instead of for steering when piloting aircrafts.")]
-	bool m_bGamepadFreelookInAircraft;
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0 3 0.01", desc: "Mouse steering sensitivity multiplier in vehicles.")]
+	float m_fMouseSteeringSensitivity;
+	
+	[Attribute(defvalue: "0.1", uiwidget: UIWidgets.Slider, params: "-1 10 0.01", desc: "Mouse steering centering delay in seconds.")]
+	float m_fMouseSteeringCenteringDelay;
+
+	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Use gamepad input for freelook instead of for steering in vehicles.")]
+	bool m_bGamepadFreelookInVehicle;
+
+	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Enable manual clutch control in vehicles.")]
+	bool m_bManualClutch;
 	
 	[Attribute(defvalue: SCR_Enum.GetDefault(ECollectiveModeForSettings.Default), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(ECollectiveModeForSettings), desc: ".")]
 	ECollectiveModeForSettings m_eKeyboardCollective;
@@ -214,19 +226,22 @@ class SCR_HintSettings : ModuleGameSettings
 		{
 			m_aShownHints.Clear();
 			m_aShownHintCounts.Clear();
-			SaveShownHints(container);
+			SaveShownHints(container, false); // dont call UserSettingsChanged again or it will be a recursive loop.
 			Print("Persistent state of hints cleared!", LogLevel.VERBOSE);
 		}
 	}
-	/*!
-	Persistently save shown hints from this settings class.
-	\param container Settings container
-	*/
-	void SaveShownHints(BaseContainer container)
+
+	//------------------------------------------------------------------------------------------------
+	//! Persistently save shown hints from this settings class.
+	//! \param[in] container Settings container
+	//! \param[in] newSetting Does it need to save the settings
+	void SaveShownHints(BaseContainer container, bool newSetting = true)
 	{
 		container.Set("m_aShownHints", m_aShownHints);
 		container.Set("m_aShownHintCounts", m_aShownHintCounts);
-		GetGame().UserSettingsChanged();
+
+		if (newSetting)
+			GetGame().UserSettingsChanged();
 	}
 };
 

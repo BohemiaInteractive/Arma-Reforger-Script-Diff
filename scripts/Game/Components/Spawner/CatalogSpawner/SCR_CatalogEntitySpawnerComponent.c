@@ -22,6 +22,28 @@ class SCR_CatalogEntitySpawnerComponentClass : SCR_SlotServiceComponentClass
 	[Attribute(defvalue: "10", params: "0 inf", desc: "How long should be vehicle locked after spawn", category: "Vehicle lock protection")]
 	protected int m_iVehicleLockedDuration;
 
+	[Attribute(uiwidget: UIWidgets.CurveDialog, desc: "How much [Y - %] of the price should be refunded based on the overall damage state [X - %] of the refunded object", params: "type=Akima, ends=OpenFlat, paramRange=0 1 fixed, valueRange=0 1 fixed", category: "Supplies")]
+	protected ref CurveFloat m_RefundPriceDamageFactorCurve;
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] healthScaled overall health of the vehicle from 0 to 1 (100%)
+	//! \return 0 to 1 percentage of the of the value of the object
+	float GetRefundPriceFactor(float healthScaled)
+	{
+		if (m_RefundPriceDamageFactorCurve.IsEmpty())
+		{ // manual setup of default curve since CurveFloat doesnt support same setup of attribute default values as Curve
+			m_RefundPriceDamageFactorCurve.InitSpline(
+				{0, 0.2, 0.55, 0.9},
+				{0.5, 0.675, 0.8, 1},
+				ECurveType.Akima, 
+				ECurveEnds.OpenFlat,
+				0, 1, 0, 1
+			);
+		}
+
+		return m_RefundPriceDamageFactorCurve.Compute(healthScaled);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	ResourceName GetDefaultWaypointPrefab()
@@ -145,6 +167,18 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	float GetPostGracePeriodRefundMultiplier()
 	{
 		return m_fPostGracePeriodRefundMultiplier;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] healthScaled overall health of the vehicle from 0 to 1 (100%)
+	//! \return 0 to 1 percentage of the of the value of the object
+	float GetRefundPriceFactor(float healthScaled)
+	{
+		SCR_CatalogEntitySpawnerComponentClass data = SCR_CatalogEntitySpawnerComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return 1;
+		
+		return data.GetRefundPriceFactor(healthScaled);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -1,17 +1,16 @@
 class SCR_WorldTools
 {
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check for intersections within given cylinder.
-	Performs 4 diagonal traces along cylinders circumference.
-	\param pos Cylinder center position
-	\param radius Cylinder radius
-	\param height Cylinder full height
-	\param flags Tracing flags
-	\param world World which is being traced
-	\return False if an intersection was found, true if the cylinder is devoid of obstacles
-	*/
-	static bool TraceCilinderUtil(vector pos, float radius = 0.5, float height = 2, TraceFlags flags = TraceFlags.ENTS | TraceFlags.OCEAN, BaseWorld world = null)
+	//! Check for intersections within given cylinder.
+	//! Performs 4 diagonal traces along cylinders circumference.
+	//! \param[in] pos Cylinder center position
+	//! \param[in] radius Cylinder radius
+	//! \param[in] height Cylinder full height
+	//! \param[in] flags Tracing flags
+	//! \param[in] world World which is being traced
+	//! \param[in] debugDrawMgr debug shape manager which will be used to draw trace results. Pass a null if drawing is not desired
+	//! \return False if an intersection was found, true if the cylinder is devoid of obstacles
+	static bool TraceCilinderUtil(vector pos, float radius = 0.5, float height = 2, TraceFlags flags = TraceFlags.ENTS | TraceFlags.OCEAN, BaseWorld world = null, SCR_DebugShapeManager debugDrawMgr = null)
 	{
 		if (!world)
 			world = GetGame().GetWorld();
@@ -24,44 +23,67 @@ class SCR_WorldTools
 		vector dir = Vector(radius, heightHalf, 0);
 		trace.Start = pos + dir;
 		trace.End = pos - dir;
-		if (world.TraceMove(trace, null) < 1)
+		float coef = world.TraceMove(trace, null);
+		if (coef < 1)
+		{
+			if (debugDrawMgr)
+				DrawPositionValidationDebug(debugDrawMgr, trace, coef);
+
 			return false;
+		}
 
 		dir = Vector(-radius, heightHalf, 0);
 		trace.Start = pos + dir;
 		trace.End = pos - dir;
-		if (world.TraceMove(trace, null) < 1)
+		coef = world.TraceMove(trace, null);
+		if (coef < 1)
+		{
+			if (debugDrawMgr)
+				DrawPositionValidationDebug(debugDrawMgr, trace, coef);
+
 			return false;
+		}
 
 		dir = Vector(0, heightHalf, radius);
 		trace.Start = pos + dir;
 		trace.End = pos - dir;
-		if (world.TraceMove(trace, null) < 1)
+		coef = world.TraceMove(trace, null);
+		if (coef < 1)
+		{
+			if (debugDrawMgr)
+				DrawPositionValidationDebug(debugDrawMgr, trace, coef);
+
 			return false;
+		}
 
 		dir = Vector(0, heightHalf, -radius);
 		trace.Start = pos + dir;
 		trace.End = pos - dir;
-		if (world.TraceMove(trace, null) < 1)
+		coef = world.TraceMove(trace, null);
+		if (coef < 1)
+		{
+			if (debugDrawMgr)
+				DrawPositionValidationDebug(debugDrawMgr, trace, coef);
+
 			return false;
+		}
 
 		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Find empty terrain position for a cylinder.
-	Evaluates possible positions within area in hexagonal grid.
-	\param[out] outPosition Variable filled with found position. When none was found, areaCenter will be filled.
-	\param areaCenter Center of queried area. Height is irrelevant, only terrain positions are queried.
-	\param areaRadius Radius of queried area
-	\param cylinderRadius Expected cylinder radius
-	\param cylinderHeight Expected cylinder full height
-	\param flags Tracing flags
-	\param world World which is being traced
-	\return True if position was found
-	*/
-	static bool FindEmptyTerrainPosition(out vector outPosition, vector areaCenter, float areaRadius, float cylinderRadius = 0.5, float cylinderHeight = 2, TraceFlags flags = TraceFlags.ENTS | TraceFlags.OCEAN, BaseWorld world = null)
+	//! Find empty terrain position for a cylinder.
+	//! Evaluates possible positions within area in hexagonal grid.
+	//! \param[out] outPosition Variable filled with found position. When none was found, areaCenter will be filled.
+	//! \param[in] areaCenter Center of queried area. Height is irrelevant, only terrain positions are queried.
+	//! \param[in] areaRadius Radius of queried area
+	//! \param[in] cylinderRadius Expected cylinder radius
+	//! \param[in] cylinderHeight Expected cylinder full height
+	//! \param[in] flags Tracing flags
+	//! \param[in] world World which is being traced
+	//! \param[in] debugDrawMgr debug shape manager which will be used to draw trace results. Pass a null if drawing is not desired
+	//! \return True if position was found
+	static bool FindEmptyTerrainPosition(out vector outPosition, vector areaCenter, float areaRadius, float cylinderRadius = 0.5, float cylinderHeight = 2, TraceFlags flags = TraceFlags.ENTS | TraceFlags.OCEAN, BaseWorld world = null, SCR_DebugShapeManager debugDrawMgr = null)
 	{
 		//--- Incorrect params
 		if (areaRadius <= 0 || cylinderRadius <= 0 || cylinderHeight <= 0)
@@ -71,7 +93,23 @@ class SCR_WorldTools
 		}
 
 		if (!world)
+		{
 			world = GetGame().GetWorld();
+#ifdef WORKBENCH // in workbench if we are not in play mode fetching world via GetGame().GetWorld() may return world from xob/prefab preview in workbench window rather than the one from world editor
+			if (!GetGame().InPlayMode())
+			{
+				WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
+				if (!worldEditor)
+					return false;
+
+				WorldEditorAPI api = worldEditor.GetApi();
+				if (!api)
+					return false;
+
+				world = api.GetWorld();
+			}
+#endif
+		}
 
 		//--- Precalculate vars
 		float cellW = cylinderRadius * Math.Sqrt(3);
@@ -120,15 +158,50 @@ class SCR_WorldTools
 					traceUp.End = traceUp.Start + traceUpOffset;
 					float traceUpCoef = world.TraceMove(traceUp, null);
 					if (traceUpCoef < 1.0 && traceUp.TraceEnt && traceUp.TraceEnt.IsInherited(SCR_IndestructibleEnvironmentalEntity))
-						continue;
+					{
+						if (debugDrawMgr)
+							DrawPositionValidationDebug(debugDrawMgr, traceUp, traceUpCoef);
 
-					if (TraceCilinderUtil(outPosition + cylinderVectorOffset, cylinderRadius, cylinderHeight, flags, world))
+						continue;
+					}
+
+					if (TraceCilinderUtil(outPosition + cylinderVectorOffset, cylinderRadius, cylinderHeight, flags, world, debugDrawMgr))
 						return true;
 				}
 			}
 		}
 		outPosition = areaCenter;
 		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Debug used for providing information about the position where trace has encountered an entity
+	//! \param[in] debugDrawMgr debug shape manager which will hold onto the shape which will indicate the trace location, as well as the position where it hit the object, and what was hit
+	//! \param[in] trace which was used for creation of the trace
+	//! \param[in] traceCoef percentage of the path traveled by the trace, which is returned from TraceMove operation
+	protected static void DrawPositionValidationDebug(notnull SCR_DebugShapeManager debugDrawMgr, notnull TraceParam trace, float traceCoef)
+	{
+		debugDrawMgr.AddArrow(trace.Start, trace.End, 0.3, Color.RED);
+		if (!trace.TraceEnt)
+			return;
+
+		vector hitPos = trace.Start + (trace.End - trace.Start) * traceCoef;
+		debugDrawMgr.AddArrow(hitPos + vector.Up * 5, hitPos, 0.3, Color.PINK);
+		if (!trace.TraceEnt.GetPrefabData())
+			return;
+
+		BaseContainer prefab = trace.TraceEnt.GetPrefabData().GetPrefab();
+		string rn;
+		while (prefab && rn.IsEmpty())
+		{
+			rn = prefab.GetResourceName();
+			prefab = prefab.GetAncestor();
+		}
+
+		if (!rn.IsEmpty())
+			debugDrawMgr.AddText("Collision detected with " + SCR_FileIOHelper.GetShortResourceName(rn), hitPos + vector.Up * 7, 0.5);
+
+		Print("SCR_WorldTools.DrawPositionValidationDebug: Trace obstructed by " + trace.TraceEnt, LogLevel.WARNING);
 	}
 
 	//------------------------------------------------------------------------------------------------

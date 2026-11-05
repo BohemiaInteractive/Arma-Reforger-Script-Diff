@@ -42,7 +42,8 @@ enum EMessageType_Goal
 	OPEN_NAVLINK_DOOR,
 	FIRE_ILLUM_FLARE,
 	ANIMATE,
-	ARTILLERY_SUPPORT
+	ARTILLERY_SUPPORT,
+	UNFLIP_VEHICLE
 };
 
 //----------------- EXPAND MESSAGE TYPES
@@ -757,4 +758,16 @@ class SCR_AIMessage_ArtillerySupport : SCR_AIMessageGoal // MESSAGE_CLASS(Genera
 	{
 		m_MessageType = EMessageType_Goal.ARTILLERY_SUPPORT;
 	}
-};
+}
+
+class SCR_AIMessage_UnflipVehicle : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_UnflipVehicle)
+{
+	IEntity m_Vehicle; 		// VARIABLE(NodePort, VehicleEntity)
+	float m_fRadius; 		// VARIABLE(NodePort, SearchRadius)
+	vector m_vPosition; 	// VARIABLE(NodePort, Position)
+	
+	void SCR_AIMessage_UnflipVehicle()
+	{
+		m_MessageType = EMessageType_Goal.UNFLIP_VEHICLE;
+	}
+}

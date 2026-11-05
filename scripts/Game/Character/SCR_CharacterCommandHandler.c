@@ -12,7 +12,7 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 		{
 			m_MeleeComponent.PerformAttack();
 			GetCommandModifier_Melee().Attack();
-			pInputCtx.SetMeleeAttack(false);		
+			pInputCtx.SetMeleeAttack(false);
 			return true;
 		}
 
@@ -51,13 +51,21 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 	//!
 	void StartCommandLoitering(SCR_LoiterCustomAnimData customAnimData)
 	{
-		if (IsLoitering())
+		bool isCmdRunning = (m_CmdLoiter && !m_CmdLoiter.IsLoiterCommandFinished());
+		
+		if (isCmdRunning || IsLoitering())
 			return;
 		
 		SCR_CharacterControllerComponent scrCharCtrl = SCR_CharacterControllerComponent.Cast(GetControllerComponent());
 		if (!scrCharCtrl)
 			return;
 
+		if (!customAnimData.m_sCommandName.IsEmpty())
+			customAnimData.m_iCommandBindID = m_CharacterAnimComp.BindCommand(customAnimData.m_sCommandName);
+		
+		if (!customAnimData.m_sControlVariableName.IsEmpty())
+			customAnimData.m_iControlVariableID = m_CharacterAnimComp.BindVariableInt(customAnimData.m_sControlVariableName);
+		
 		m_CmdLoiter = new SCR_CharacterCommandLoiter(m_CharacterAnimComp, m_OwnerEntity, GetControllerComponent().GetInputContext(), scrCharCtrl.GetScrInputContext(), m_ScrStaticTable, this, customAnimData);
 		m_CharacterAnimComp.SetCurrentCommand(m_CmdLoiter);
 	}
@@ -76,12 +84,22 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 	//!
 	//! \param[in] terminateFast
 	//terminateFast should be true when we are going into alerted or combat state.
-	void StopLoitering(bool terminateFast)
+	void StopLoitering(bool terminateFast, SCR_LoiterCustomAnimData customAnimData = null)
 	{
+		SCR_LoiterCustomAnimData startLoitering;
 		if (m_CmdLoiter)
-			m_CmdLoiter.StopLoitering(terminateFast);
-		
-		Rpc(Rpc_StopLoiter_S, false);
+			startLoitering = m_CmdLoiter.GetLoiterCustomAnimData();
+
+		if (customAnimData && startLoitering) // copiing spawned items from StartLoitering phase
+			customAnimData.SetItems(startLoitering.GetItems());
+
+		if (m_CmdLoiter)
+			m_CmdLoiter.StopLoitering(terminateFast, customAnimData : customAnimData);
+
+		if (customAnimData)
+			Rpc(Rpc_StopLoiterCustom_S, terminateFast, customAnimData);
+		else
+			Rpc(Rpc_StopLoiter_S, terminateFast);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -90,8 +108,26 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void Rpc_StopLoiter_S(bool terminateFast)
 	{
-		if (m_CmdLoiter)
-			m_CmdLoiter.StopLoitering(terminateFast);
+		if (!m_CmdLoiter)
+			return;
+
+		m_CmdLoiter.StopLoitering(terminateFast);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] terminateFast
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void Rpc_StopLoiterCustom_S(bool terminateFast, SCR_LoiterCustomAnimData customAnimData)
+	{
+		if (!m_CmdLoiter)
+			return;
+		
+		SCR_LoiterCustomAnimData current = m_CmdLoiter.GetLoiterCustomAnimData();
+		if (customAnimData && current)
+			customAnimData.SetItems(current.GetItems());
+		
+		m_CmdLoiter.StopLoitering(terminateFast, customAnimData: customAnimData);
 	}
 
 	//------------------------------------------------------------------------------------------------

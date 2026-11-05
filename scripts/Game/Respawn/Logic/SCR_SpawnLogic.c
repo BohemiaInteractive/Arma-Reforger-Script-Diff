@@ -31,6 +31,8 @@ class SCR_SpawnLogic
 	protected ref array<ref Tuple3<SCR_PlayerController, UUID, UUID>> m_aStoredControlledEntityIds = {};
 	protected ref map<int, UUID> m_mPendingPossessions = new map<int, UUID>();
 
+	protected ref set<int> m_aRespawnEligiblePlayers = new set<int>();
+
 	#ifdef WORKBENCH
 	protected static vector s_vPlayFromCameraPos;
 	protected static vector s_vPlayFromCameraYpr;
@@ -73,6 +75,8 @@ class SCR_SpawnLogic
 		PrintFormat("%1::OnPlayerAuditSuccess_S(playerId: %2)", Type().ToString(), playerId);
 		#endif
 
+		m_aRespawnEligiblePlayers.Insert(playerId);
+
 		if (!m_Persistence)
 			return;
 
@@ -93,6 +97,8 @@ class SCR_SpawnLogic
 		respawnComponent.GetOnRespawnRequestInvoker_S().Remove(OnPlayerSpawnRequest_S);
 		respawnComponent.GetOnRespawnResponseInvoker_S().Remove(OnPlayerSpawnResponse_S);
 
+		m_aRespawnEligiblePlayers.RemoveItem(playerId);
+		
 		if (!m_Persistence)
 			return;
 
@@ -158,8 +164,14 @@ class SCR_SpawnLogic
 			Type().ToString(), playerId, previousEntity, newEntity);
 		#endif
 
-		if (!newEntity)
+		if (newEntity)
+		{
+			m_aRespawnEligiblePlayers.RemoveItem(playerId);
+		}
+		else
+		{
 			OnPlayerEntityLost_S(playerId);
+		}
 
 		if (!m_Persistence)
 			return;
@@ -235,6 +247,8 @@ class SCR_SpawnLogic
 		#ifdef _ENABLE_RESPAWN_LOGS
 		PrintFormat("%1::OnPlayerEntityLost_S(playerId: %2)", Type().ToString(), playerId);
 		#endif
+		
+		m_aRespawnEligiblePlayers.Insert(playerId);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -384,7 +398,7 @@ class SCR_SpawnLogic
 		PersistenceResultCallback callback(OnPlayerCharacterLoaded_S, playerCharContext);
 		m_Persistence.RequestSpawn(request, callback);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerCharacterLoaded_S(EPersistenceStatusCode statusCode, Managed result, bool isLast, Managed context)
 	{
@@ -570,6 +584,12 @@ class SCR_SpawnLogic
 		return false;
 	}
 	#endif
+
+	//------------------------------------------------------------------------------------------------
+	bool CanRequestSpawn_S(int playerId)
+	{
+		return m_aRespawnEligiblePlayers.Contains(playerId);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	SCR_RespawnComponent GetPlayerRespawnComponent_S(int playerId)

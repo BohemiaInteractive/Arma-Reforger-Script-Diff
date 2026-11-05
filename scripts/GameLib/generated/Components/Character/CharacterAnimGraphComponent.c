@@ -21,9 +21,10 @@ sealed class CharacterAnimGraphComponent: BaseAnimationControllerComponent
 	//! \param	bindingName								binding name recognized by the main graph (where to attach)
 	//! \param resNameAttachedGraph				resource name of the attached graph
 	//! \param resNameAttachedInst				resource name of the anim set instance used for the attached graph
-	//! \param attachedNodeIndex					index of the starting node in the attached graph
+	//! \param attachedNodeName						name of the starting node in the attached graph
 	//! \param attachAsManaged						create a separate animation control for the graph (requires setting animation controls directly on the attachment, instead of the main graph)
-	proto external bool SetAttachment(string bindingName, ResourceName resNameAttachedGraph, ResourceName resNameAttachedInst, int attachedNodeIndex, bool attachAsManaged);
+	//! \param copyInputs									automatically copy inputs with matching names from the parent graph
+	proto external bool SetAttachment(string bindingName, ResourceName resNameAttachedGraph, ResourceName resNameAttachedInst, string attachedNodeName, bool attachAsManaged, bool copyInputs = false);
 	//! Remove graph attachment. Returns false when there is no attachment bound under given name.
 	proto external bool RemoveAttachment(string bindingName);
 	proto external void SetExternalIKPose(ResourceName ikPoseResource);

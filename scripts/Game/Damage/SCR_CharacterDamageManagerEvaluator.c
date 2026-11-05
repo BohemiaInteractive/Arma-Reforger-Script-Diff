@@ -236,4 +236,20 @@ class SCR_CharacterDamageManagerEvaluator : DamageEffectEvaluatorWrapper
 
 		charDmgManager.HandleDamage(context);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void HandleEffectConsequences(SCR_FlaskStaminaRecoveryDamageEffect effect, ExtendedDamageManagerComponent damageManager)
+	{
+		IEntity character = damageManager.GetOwner();
+		if (!character)
+			return;
+
+		SCR_CharacterStaminaComponent staminaComponent = SCR_CharacterStaminaComponent.Cast(character.FindComponent(SCR_CharacterStaminaComponent));
+
+		if (!staminaComponent)
+			return;
+
+		staminaComponent.ApplyImmediateStaminaRecovery(effect.GetStaminaRecovery());
+		staminaComponent.ApplyHydrationRecovery(effect.GetHydrationRecovery());
+	}
 }

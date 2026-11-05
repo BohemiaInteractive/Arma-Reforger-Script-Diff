@@ -13,6 +13,9 @@ class SCR_InspectCasualtyUserAction : ScriptedUserAction
 		if (!userChar || !ownerChar)
 			return false;
 		
+		if (SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(userChar))
+			return false;
+		
 		if (userChar == ownerChar)
 			return false;
 		

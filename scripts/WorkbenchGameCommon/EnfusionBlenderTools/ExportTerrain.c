@@ -66,7 +66,7 @@ class ExportTerrain : NetApiHandler
 			bin.ReadArray(indices, 4, 2);
 			bin.ReadArray(coords, 4, req.area);
 			
-			api.BeginTerrainAction(TerrainToolType.HEIGHT_EXACT);
+			api.BeginTerrainAction();
 			api.SetTerrainSurfaceTile(0, indices[0], indices[1], coords);
 			api.EndTerrainAction();
 		}

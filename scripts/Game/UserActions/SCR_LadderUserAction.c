@@ -50,10 +50,12 @@ class SCR_LadderUserAction : ScriptedUserAction
 	
 	protected override bool CanBeShownScript(IEntity user)
 	{		
-		SCR_CharacterCommandHandlerComponent cmdHandler = FindCommandHandler(user);
-		if (cmdHandler && cmdHandler.IsLoitering())
+		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+		if (character && SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
 			return false;
-		
+
+		SCR_CharacterCommandHandlerComponent cmdHandler = FindCommandHandler(user);
+
 		// Already on a ladder
 		return cmdHandler && !cmdHandler.GetCommandLadder();
 	}

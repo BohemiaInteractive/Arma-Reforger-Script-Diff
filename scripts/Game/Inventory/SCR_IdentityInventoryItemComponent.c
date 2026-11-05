@@ -15,7 +15,13 @@ class SCR_IdentityInventoryItemComponent : InventoryItemComponent
 	protected int m_iValuableIntelFaction = -1;
 	
 	protected Faction m_IntelFaction;
-	
+
+	//------------------------------------------------------------------------------------------------
+	RplId GetLinkedIdentityRplId()
+	{
+		return m_RplIdLinkedIdentity;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	void SCR_IdentityInventoryItemComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
@@ -61,7 +67,7 @@ class SCR_IdentityInventoryItemComponent : InventoryItemComponent
 		if (!rootExtendedIdentity)
 			return;
 		
-		RplComponent rplComp = RplComponent.Cast(rootExtendedIdentity.GetOwner().FindComponent(RplComponent));
+		RplComponent rplComp = character.GetRplComponent();
 		if (!rplComp)
 			return;
 		

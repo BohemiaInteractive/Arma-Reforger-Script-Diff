@@ -2,6 +2,8 @@ class SCR_DPIScaleHelper
 {
 	protected const string DPISCALE_SETTING_NAME = "m_fDPIscale";
 	protected const string INTERFACE_SETTINGS_MODULE_NAME = "SCR_InterfaceSettings";
+	
+	protected const float DEFAULT_HANDHELD_SCALE = 1.05;
 
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] workspace
@@ -14,11 +16,20 @@ class SCR_DPIScaleHelper
 	//------------------------------------------------------------------------------------------------
 	static float GetSavedDPIScale()
 	{
-		float scale = 1;
+		float scale = 0;
 
 		BaseContainer interfaceSettings = GetGame().GetGameUserSettings().GetModule(INTERFACE_SETTINGS_MODULE_NAME);
 		if (interfaceSettings)
 			interfaceSettings.Get(DPISCALE_SETTING_NAME, scale);
+		
+		//Set to default scale if there is no saved scale
+		if (scale <= 0)
+		{
+			if (System.GetPlatform() == EPlatform.WINDOWS_HANDHELD)
+				scale = DEFAULT_HANDHELD_SCALE;
+			else
+				scale = 1.0;
+		}
 
 		return scale;
 	}

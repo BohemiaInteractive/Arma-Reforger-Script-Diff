@@ -12,7 +12,8 @@ Do not modify, this script is generated
 class ScriptValueAttribute: UniqueAttribute
 {
 	private typename m_InnerType;
-	void ScriptValueAttribute(typename innerType) { m_InnerType = innerType; }
+	private string m_sUIWidget;
+	void ScriptValueAttribute(typename innerType, string uiWidget = "") { m_InnerType = innerType; m_sUIWidget = uiWidget; }
 
 }
 

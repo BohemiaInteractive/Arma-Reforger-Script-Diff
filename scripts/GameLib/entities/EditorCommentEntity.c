@@ -38,6 +38,8 @@ class EditorCommentEntityClass : GenericEntityClass
 	//------------------------------------------------------------------------------------------------
 	static override void _WB_AfterWorldUpdate(WorldEditorAPI api, IEntitySource src, float timeSlice)
 	{
+		if (!api || !src)
+			return;
 		EditorCommentEntity ent = EditorCommentEntity.Cast(api.SourceToEntity(src));
 		if (!ent)
 			return;

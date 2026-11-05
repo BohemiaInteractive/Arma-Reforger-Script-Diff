@@ -128,7 +128,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 																							{ EGadgetType.CONSUMABLE + GADGET_OFFSET + SCR_EConsumableType.BANDAGE },
 																							{ EGadgetType.CONSUMABLE + GADGET_OFFSET + SCR_EConsumableType.TOURNIQUET },
 																							{ EGadgetType.CONSUMABLE + GADGET_OFFSET + SCR_EConsumableType.MORPHINE, EGadgetType.CONSUMABLE + GADGET_OFFSET + SCR_EConsumableType.SALINE },
-																							{ EGadgetType.RADIO + GADGET_OFFSET }, // Preferably as GadgetRadio action, then it can be saline
+																							{ EGadgetType.CONSUMABLE + GADGET_OFFSET + SCR_EConsumableType.STAMINA_KIT }, // Stamina kit, previously radio slot. Changed due to priority.
 																							{ EGadgetType.BUILDING_TOOL + GADGET_OFFSET } // To be replaced with engineering tool
 																						};
 
@@ -1413,7 +1413,12 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			return;
 
 		// If the item isn't consumable, return
-		if (!SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent)))
+		SCR_ConsumableItemComponent consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
+		if (!consumable)
+			return;
+
+		SCR_ConsumableEffectBase consumableEffect = consumable.GetConsumableEffect();
+		if (!consumableEffect || !consumableEffect.GetDeleteOnUse())
 			return;
 		
 		// restock used medical item back to its quick slot

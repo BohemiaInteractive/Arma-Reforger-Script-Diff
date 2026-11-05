@@ -227,6 +227,18 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	bool ChangeItemName(string newName, int id)
+	{
+		if (!m_aElementNames.IsIndexValid(id))
+			return false;
+
+		m_aElementNames[id] = newName;
+		CloseList();
+		UpdateName();
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateName()
 	{
 		if (!m_wText)

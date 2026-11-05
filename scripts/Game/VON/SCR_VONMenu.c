@@ -195,6 +195,13 @@ class SCR_VONMenu
 		
 		foreach (SCR_VONEntry entry : entries)
 		{
+			SCR_VONEntryRadio radioEntry = SCR_VONEntryRadio.Cast(entry);
+			if (radioEntry && !radioEntry.GetTransceiver())
+			{
+				m_VONController.RemoveEntry(entry);
+				continue;
+			}
+		
 			AddRadialEntry(entry);
 		}
 		
@@ -301,6 +308,20 @@ class SCR_VONMenu
 	protected void OnActiveEntriesChanged(SCR_VONEntry entry, bool isActive)
 	{
 		m_RadialMenu.UpdateEntries();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! SCR_VONController event
+	protected void OnVONEntriesChanged(SCR_VONEntry entry, bool isAdded)
+	{
+		if (isAdded)
+			return;
+
+		if (m_LastSelectedEntry == entry)
+			m_LastSelectedEntry = null;
+
+		if (m_SelectedEntry == entry)
+			m_SelectedEntry = m_LastSelectedEntry;
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -450,6 +471,7 @@ class SCR_VONMenu
 		m_VONController = controllerVON;
 		
 		m_VONController.GetOnEntriesActiveChangedInvoker().Insert(OnActiveEntriesChanged);
+		m_VONController.GetOnEntriesChangedInvoker().Insert(OnVONEntriesChanged);
 		
 		m_RadialController.GetOnInputOpen().Insert(OnInputOpenMenu);
 		m_RadialController.GetOnTakeControl().Insert(OnControllerTakeControl);

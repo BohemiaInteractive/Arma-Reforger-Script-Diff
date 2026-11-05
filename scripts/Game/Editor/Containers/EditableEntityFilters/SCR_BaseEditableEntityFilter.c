@@ -714,7 +714,9 @@ class SCR_BaseEditableEntityFilter
 		{
 			m_Entities.Remove(index);
 			m_iEntitiesCount--;
-			entity.SetEntityState(m_State, false);
+			if (entity)
+				entity.SetEntityState(m_State, false);
+
 			isChange = true;
 
 #ifdef ENTITY_FILTER_DEBUG

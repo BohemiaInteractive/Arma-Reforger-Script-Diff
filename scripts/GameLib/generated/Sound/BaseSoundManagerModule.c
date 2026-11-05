@@ -11,10 +11,10 @@ Do not modify, this script is generated
 
 class BaseSoundManagerModule: SndBaseModule
 {
-	/*!
-	Start an asynchronous preload of the audio resource referenced by the given config.
-	*/
+	/* Start an asynchronous preload of the audio resource referenced by the given config. */
 	proto external void PreloadResourceAsync(AudioSourceConfig config);
+	/* Terminate an audio source by its handle. */
+	proto external void StopSound(int handle);
 }
 
 /*!

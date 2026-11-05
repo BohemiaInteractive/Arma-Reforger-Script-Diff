@@ -17,6 +17,8 @@ sealed class NotificationInfo: Managed
 	//! Can be used as a filter for listing notifications with ID greater than a specific value and to delete / mark as read.
 	proto external int GetId();
 	proto external bool IsMarkedAsRead();
+	//! Returns the time when this notification was created
+	proto external Timestamp GetCreatedAt();
 	/*!
 	Returns type of the notification.
 	\note Type of the notification determines structure of the payload.

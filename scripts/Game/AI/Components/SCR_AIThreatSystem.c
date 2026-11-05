@@ -253,7 +253,7 @@ class SCR_AIThreatSystem
 	//------------------------------------------------------------------------------------------------
 	protected void OnDamageEffectAdded(notnull SCR_DamageEffect dmgEffect)
 	{
-		if (dmgEffect.GetDamageType() != EDamageType.BLEEDING || !DotDamageEffect.Cast(dmgEffect))
+		if (dmgEffect.GetDamageType() != EDamageType.BLEEDING || !SCR_BleedingDamageEffect.Cast(dmgEffect))
 			return;
 		
 		m_fThreatInjury = BLEEDING_FIXED_INCREMENT;
@@ -262,11 +262,21 @@ class SCR_AIThreatSystem
 	//------------------------------------------------------------------------------------------------
 	protected void OnDamageEffectRemoved(notnull SCR_DamageEffect dmgEffect)
 	{
-		if (dmgEffect.GetDamageType() != EDamageType.BLEEDING || !DotDamageEffect.Cast(dmgEffect))
+		if (dmgEffect.GetDamageType() != EDamageType.BLEEDING || !SCR_BleedingDamageEffect.Cast(dmgEffect))
 			return;
 		
-		if (!m_DamageManager.GetAllPersistentEffectsOfType(SCR_BleedingDamageEffect))
-			m_fThreatInjury = 0;
+		array<ref SCR_PersistentDamageEffect> bleeds = m_DamageManager.GetAllPersistentEffectsOfType(SCR_BleedingDamageEffect);
+		if (bleeds)
+		{
+			foreach (SCR_PersistentDamageEffect bleed : bleeds)
+			{
+				// The effect being removed may still be in the list during this callback
+				if (bleed != dmgEffect)
+					return; // another bleed is still active, keep the injury threat
+			}
+		}
+		
+		m_fThreatInjury = 0;
 	}
 	
 	//------------------------------------------------------------------------------------------------

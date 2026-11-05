@@ -102,6 +102,8 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+
 		if (!m_ProviderComponent || !m_MainParent)
 			return false;
 
@@ -129,9 +131,14 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 				return false;
 		}
 
+		if (!character)
+			return false;
+
+		if (SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
+			return false;
+
 		// Don't show the action if player is within any vehicle.
-		ChimeraCharacter char = ChimeraCharacter.Cast(user);
-		if (!char || char.IsInVehicle())
+		if (character.IsInVehicle())
 			return false;
 
 		// No action if the provider is destroyed

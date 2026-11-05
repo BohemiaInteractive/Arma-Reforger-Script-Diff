@@ -11,8 +11,6 @@ Do not modify, this script is generated
 
 sealed class DialogueVariableMappingObject: ScriptAndConfig
 {
-	private void DialogueVariableMappingObject();
-
 	//Setters.
 	proto external void SetName(string name);
 	proto bool SetValue(void value);

@@ -40,6 +40,19 @@ sealed class BaseContainerTools
 	*/
 	static proto ref Resource LoadContainer(ResourceName resourceName);
 	/*!
+	Clone an existing BaseContainer.
+	\code
+		// clone existing container
+		Resource holder = BaseContainerTools.CloneContainer(containerToClone);
+		if (holder)
+		{
+			BaseContainer cloned = holder.GetResource().ToBaseContainer();
+			Print(cloned.GetClassName());
+		}
+	\endcode
+	*/
+	static proto ref Resource CloneContainer(notnull BaseContainer src);
+	/*!
 	Create BaseContainer from object.
 	\code
 		[BaseContainerProps()]

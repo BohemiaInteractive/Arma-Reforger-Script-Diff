@@ -121,6 +121,16 @@ class SCR_GameModeEditor : SCR_BaseGameMode
 	{
 		super.OnGameStart();
 		
+		// Singleplayer GM session: spawn whole groups at once. One-by-one spawning exists to
+		// spread server load across ticks; with one local player it only makes groups visibly
+		// trickle in for the GM camera. Multiplayer sessions keep it. Dormancy is left alone.
+		if (RplSession.Mode() == RplMode.None)
+		{
+			ChimeraAIWorld aiWorld = ChimeraAIWorld.Cast(GetGame().GetAIWorld());
+			if (aiWorld)
+				aiWorld.SetPartialFillEnabled(false);
+		}
+
 		if (RplSession.Mode() == RplMode.Client || !m_Core)
 			return;
 		

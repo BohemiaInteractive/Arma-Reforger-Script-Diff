@@ -24,6 +24,13 @@ Each poll can result in:
 
 This object becomes null after the user leaves the queue, is approved for join,
 or an error occurs.
+
+\note When the user joined with BUSY status, GetType() may return EServerJoinQueueType::UNREADY.
+      In this state:
+       - EACODE_SERVER_QUEUE_WAIT responses carry synthetic queue data which do not contain complete valid info.
+         As if you were alone in queue - position or sizes are meaningless, only the expiration timer.
+       - The expiration timer is NOT refreshed by polling and user needs to transition to READY before it expires.
+       - Call ServerJoinManagerApi::SetUserStatus(true) to transition to READY which moves the user into EServerJoinQueueType::READY which is valid queue.
 */
 sealed class ServerQueueData: ServerQueueInfo
 {
@@ -36,6 +43,19 @@ sealed class ServerQueueData: ServerQueueInfo
 	This value can also be read as how many people are ahead of the user in the queue.
 	*/
 	proto external int GetPosition();
+	/*!
+	Returns the remaining seconds until the user's presence in the queue system expires.
+
+	In a normal queue, the timer is refreshed on each successful poll. Failing to poll before it
+	elapses causes the queue entry to expire and the polling callback to receive
+	EApiCode::EACODE_ERROR_SERVER_QUEUE_EXPIRED.
+
+	In EServerJoinQueueType::UNREADY state, the timer represents the hard deadline for transitioning
+	to READY — it is NOT refreshed by polling. If it elapses, the next poll delivers
+	EApiCode::EACODE_ERROR_SERVER_USER_UNREADY_TOO_LONG and user is kicked out of the queues.
+	Call ServerJoinManagerApi::SetUserStatus(true) to transition to READY before the timer elapses.
+	*/
+	proto external int GetExpireIn();
 	/*!
 	Sets callback to receive queue polling results. While in the queue, the system
 	automatically polls the server at regular intervals. Each poll triggers this callback.
@@ -52,8 +72,14 @@ sealed class ServerQueueData: ServerQueueInfo
 	   - EApiCode::EACODE_SERVER_JOIN — user is approved to join the server. Proceed with connection setup.
 	   - EApiCode::EACODE_SERVER_QUEUE_LEFT — user has left the queue (after calling RequestLeave).
 	 - OnError:
-	   - EApiCode::EACODE_ERROR_SERVER_QUEUE_EXPIRED — the queue slot expired due to inactivity.
-	   - EApiCode::EACODE_ERROR_SERVER_QUEUE_NOT_FOUND — user is not in the queue.
+	   - EApiCode::EACODE_ERROR_SERVER_QUEUE_EXPIRED — the user's queue slot expired due to polling
+	     inactivity. Must call RequestJoin again to re-enter.
+	     \see GetExpireIn()
+	   - EApiCode::EACODE_ERROR_SERVER_QUEUE_NOT_FOUND — the join queue for this server no longer
+	     exists (server may have been unregistered). The join flow cannot continue.
+	   - EApiCode::EACODE_ERROR_SERVER_USER_UNREADY_TOO_LONG — the user remained in UNREADY (BUSY)
+	     state past the backend-configured timeout. Must call RequestJoin again to re-enter.
+	     \see GetExpireIn()
 
 	\warning After any result except EACODE_SERVER_QUEUE_WAIT, this ServerQueueData object
 	         becomes null after the callback finishes. The data is still valid during callback processing.

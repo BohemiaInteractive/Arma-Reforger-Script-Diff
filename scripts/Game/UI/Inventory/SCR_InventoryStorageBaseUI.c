@@ -39,6 +39,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	protected bool												m_bSelected				= false;
 	protected bool												m_bShown				= true;
 	protected bool												m_bIsArsenal;
+	protected bool												m_bRefreshRequested;
 	protected ItemPreviewWidget									m_wItemStorage, m_wTraverseItemStorage;
 	protected RenderTargetWidget								m_wPreviewImage, m_wTraversePreviewImage;
 	
@@ -618,6 +619,9 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			return slotUI;
 		}
 
+		if (InventoryMagazineComponent.Cast(pComponent) && pComponent.GetOwner().FindComponent(SCR_MagazineComponent))
+			return new SCR_InventoryMagazineSlotUI(pComponent, this, false, pAttributes: pAttributes);
+
 		return new SCR_InventorySlotUI(pComponent, this, false);			//creates the slot
 	}
 	
@@ -741,6 +745,31 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			}
 			
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Several items can be added or removed in one frame. The page is rebuilt on the next menu update.
+	void RequestRefresh()
+	{
+		if (!m_widget)
+			return;
+
+		m_bRefreshRequested = true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Rebuilds the page when a refresh was requested. Returns true when a rebuild ran.
+	bool ConsumeRefreshRequest()
+	{
+		if (!m_bRefreshRequested)
+			return false;
+
+		m_bRefreshRequested = false;
+		if (!m_widget)
+			return false;
+
+		Refresh();
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1425,7 +1454,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	// !
-	protected void GetAllItems( out notnull array<IEntity> pItemsInStorage, BaseInventoryStorageComponent pStorage = null )
+	void GetAllItems( out notnull array<IEntity> pItemsInStorage, BaseInventoryStorageComponent pStorage = null )
 	{		
 		if (pStorage)
 		{
@@ -2030,6 +2059,8 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	override event void HandlerDeattached(Widget w)
 	{
+		m_bRefreshRequested = false;
+
 		if (m_ResourceComponent)
 			m_ResourceComponent.TEMP_GetOnInteractorReplicated().Remove(RefreshConsumer);
 		

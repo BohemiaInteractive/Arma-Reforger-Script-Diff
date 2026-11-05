@@ -83,7 +83,13 @@ class SCR_MissionHeader : MissionHeader
 	
 	[Attribute("0", desc: "Armavision is allowed for players without elevated rights in multiplayer")];
 	bool m_bIsArmavisionAllowedInMP;
-	
+
+	[Attribute(defvalue: typename.EnumToString(SCR_EMagazineRepackingRulesOverride, SCR_EMagazineRepackingRulesOverride.NO_OVERRIDE), desc: "Rule which should be used as an override of default behaviour when player will want to repack magazines.", uiwidget: UIWidgets.ComboBox, enumType: SCR_EMagazineRepackingRulesOverride)]
+	string m_sMagazineRepackingRulesOverride;
+
+	[Attribute(defvalue: typename.EnumToString(SCR_EHydrationRulesOverride, SCR_EHydrationRulesOverride.NO_OVERRIDE), desc: "Override hydration decay and its stamina drain penalty. NO_OVERRIDE (-1) keeps the game-mode setting. Applied at scenario start.", uiwidget: UIWidgets.ComboBox, enumType: SCR_EHydrationRulesOverride)]
+	string m_sHydrationRulesOverride;
+
 	bool m_bLoadOnStart;
 	string m_sOwner;
 

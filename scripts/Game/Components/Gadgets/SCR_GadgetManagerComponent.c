@@ -613,19 +613,29 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		if (!invComp)
 			return;
 
+		UnregisterGadget(gadgetComp);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Remove a registered gadget and its associated state
+	//! \param[in] gadgetComp gadget component to unregister
+	//! \return true if the gadget was registered and removed
+	bool UnregisterGadget(notnull SCR_GadgetComponent gadgetComp)
+	{
+		IEntity item = gadgetComp.GetOwner();
+
 		EGadgetType type = gadgetComp.GetType();
 
-		int gadgetArrayID = m_aGadgetArrayMap.Get(gadgetComp.GetType());
+		int gadgetArrayID = m_aGadgetArrayMap.Get(type);
 		if (gadgetArrayID == -1)
-			return;
+			return false;
 
-		int gadgetPos = m_aInventoryGadgetTypes[gadgetArrayID].Find(gadgetComp);
-		if (gadgetPos != -1)
-			m_aInventoryGadgetTypes[gadgetArrayID].Remove(gadgetPos);
+		if (!m_aInventoryGadgetTypes[gadgetArrayID].RemoveItem(gadgetComp))
+			return false;
 
 		m_OnGadgetRemoved.Invoke(gadgetComp);
 
-		if (m_VONController && (type == EGadgetType.RADIO || type == EGadgetType.RADIO_BACKPACK))	// remove entries from VONController
+		if (m_VONController && (type & m_iRadiosFlags))	// remove entries from VONController
 		{
 			array<ref SCR_VONEntry> entries = {};
 			m_VONController.GetVONEntries(entries);
@@ -640,6 +650,8 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 
 		if (item && item == m_HeldGadget)
 			UpdateHeldGadget(null);
+
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------

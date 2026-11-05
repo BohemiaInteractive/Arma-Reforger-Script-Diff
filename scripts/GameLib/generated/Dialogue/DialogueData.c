@@ -14,6 +14,7 @@ class DialogueData: DialogueBaseElement
 	private void DialogueData();
 	private void ~DialogueData();
 
+	// ---
 	proto external bool IsTimeSensitive();
 	// Initial value = true
 	proto external bool CanBeSkipped();
@@ -32,10 +33,12 @@ class DialogueData: DialogueBaseElement
 
 	// Invoked by DialogueGlobalData counterpart during initialization of data.
 	event void InitGlobalData(notnull DialogueGlobalData globalData);
+	event void OnPreStart(IEntity pSpeaker);
 	event void OnStart(IEntity pSpeaker);
 	event void OnStartAt(IEntity pSpeaker, float timeInNode) { OnStart(pSpeaker); };
 	event void OnEnd(IEntity pSpeaker);
 	event void OnUpdate(IEntity pSpeaker, float timeSlice, float timeInNode);
+	event void OnFixedUpdate(IEntity pSpeaker, float timeSlice, float timeInNode);
 	event void OnInterrupt(IEntity pSpeaker) { OnEnd(pSpeaker); };
 	event void OnSkip(IEntity pSpeaker) { OnEnd(pSpeaker); };
 }

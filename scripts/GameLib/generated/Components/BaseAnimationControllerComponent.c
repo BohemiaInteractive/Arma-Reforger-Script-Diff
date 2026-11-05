@@ -11,7 +11,7 @@ Do not modify, this script is generated
 
 class BaseAnimationControllerComponent: GenericComponent
 {
-	//! Rebinding of entity is necessary in case of changed/modified underlying MeshObject
+	//! \deprecated
 	proto external void RebindEntity(IEntity owner);
 	//! Binds anim command and returns it's ID
 	proto external int BindCommand(string commandName);

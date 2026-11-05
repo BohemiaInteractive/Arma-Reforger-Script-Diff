@@ -136,6 +136,14 @@ sealed class System
 	static proto void GetNativeResolution(out int width, out int height);
 	static proto void GetRenderingResolution(out int width, out int height);
 	static proto void GetSupportedResolutions(out notnull array<int> widths, out notnull array<int> heights);
+	//! Returns ids and display names of all super resolution methods supported on the current hardware.
+	static proto void GetSupportedSRMethods(out notnull array<string> ids, out notnull array<string> displayNames);
+	//! Returns versions available for the given super resolution method id.
+	static proto void GetSRMethodVersions(string id, out notnull array<string> versions);
+	//! Id of the currently active super resolution method, empty string if none is active.
+	static proto string GetActiveSRMethod();
+	//! Version currently used by the given super resolution method id, empty string if not found.
+	static proto string GetSRMethodCurrentVersion(string id);
 	/*!
 	Takes screenshot and stores it in a BMP format at specified path.
 	\param path Path where screenshot should be written. If you use absolute path or $NamedFileSystem:

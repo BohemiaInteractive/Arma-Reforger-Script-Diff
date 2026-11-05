@@ -13,6 +13,7 @@ class SCR_VoNComponent : VoNComponent
 	ref ScriptInvoker m_OnReceivedVON = new ScriptInvoker();
 	ref ScriptInvoker m_OnCaptureVON = new ScriptInvoker();
 	protected static ref ScriptInvokerInt m_OnVoNUsed;
+	protected static SCR_EditorManagerCore m_EditorManagerCore = null;
 	
 	//------------------------------------------------------------------------------------------------
 	static ScriptInvokerInt GetOnVoNUsed()
@@ -95,7 +96,7 @@ class SCR_VoNComponent : VoNComponent
 	//------------------------------------------------------------------------------------------------
 	override protected event IEntity GetEditorEntity(int playerId)
 	{
-		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+		const SCR_EditorManagerCore core = GetEditorManagerCore();
 		if (!core)
 			return null;
 
@@ -105,7 +106,7 @@ class SCR_VoNComponent : VoNComponent
 	//------------------------------------------------------------------------------------------------
 	override protected event vector GetEditorWorldLocation(int playerId)
 	{	
-		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+		const SCR_EditorManagerCore core = GetEditorManagerCore();
 		if (!core)
 			return vector.Zero;
 		
@@ -134,7 +135,7 @@ class SCR_VoNComponent : VoNComponent
 	//------------------------------------------------------------------------------------------------
 	bool IsLocalActiveEditor()
 	{
-		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+		const SCR_EditorManagerCore core = GetEditorManagerCore();
 		if (!core)
 			return false;
 		
@@ -143,5 +144,29 @@ class SCR_VoNComponent : VoNComponent
 			return false;
 		
 		return editorManager.IsOpened();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected IEntity GetActiveEditorEntity(int playerID)
+	{
+		const IEntity ent = GetEditorEntity(playerID);
+
+		//entity is already nullchecked here
+		const bool isActive = IsEntityActiveEditor(ent);
+		if (!isActive)
+			return null;
+		
+		return ent;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected static SCR_EditorManagerCore GetEditorManagerCore()
+	{
+		//if editor manager core exists we return it
+		if(m_EditorManagerCore)
+			return m_EditorManagerCore;
+		
+		m_EditorManagerCore = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+		return m_EditorManagerCore;
 	}
 };

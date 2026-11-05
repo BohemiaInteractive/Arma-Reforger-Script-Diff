@@ -655,6 +655,51 @@ class GetResourceInfo : NetApiHandler
 }
 
 
+class GetResourceValidityRequest : JsonApiStruct
+{
+    ref array<ResourceName> resources = new array<ResourceName>;
+
+    void GetResourceValidityRequest()
+    {
+        RegV("resources");
+    }
+}
+
+class GetResourceValidityResponse : JsonApiStruct
+{
+	ref array<bool> validity = new array<bool>;
+
+	void GetResourceValidityResponse()
+	{
+		RegV("validity");
+	}
+}
+
+class GetResourceValidity: NetApiHandler
+{
+    override JsonApiStruct GetRequest()
+    {
+        return new GetResourceValidityRequest();
+    }
+
+    override JsonApiStruct GetResponse(JsonApiStruct request)
+    {
+		GetResourceValidityRequest req = GetResourceValidityRequest.Cast(request);
+		GetResourceValidityResponse response = new GetResourceValidityResponse;
+
+		foreach (string resourceName : req.resources)
+		{
+			Resource resource = BaseContainerTools.LoadContainer(resourceName);
+			
+			if (resource == null || !resource.IsValid()) response.validity.Insert(false);
+			else response.validity.Insert(true);
+		}
+		
+		return response;
+	}
+}
+
+
 /*
 	PREFAB CHILD
 */
@@ -787,6 +832,77 @@ class GetGameMaterials: NetApiHandler
 		
 		return response;
 	}
+}
+
+class GetMaterialsByClassRequest : JsonApiStruct
+{
+    string matClass;
+
+    void GetMaterialsByClassRequest()
+    {
+        RegV("matClass");
+    }
+}
+
+class GetMaterialsByClassResponse : JsonApiStruct
+{
+	InfoStatus status;
+	string message;
+	ref array<ResourceName> data = new array<ResourceName>;
+
+	void GetMaterialsByClassResponse()
+	{
+		RegAll();
+	}
+}
+
+class GetMaterialsByClass: NetApiHandler
+{
+    override JsonApiStruct GetRequest()
+    {
+        return new GetMaterialsByClassRequest();
+    }
+
+    override JsonApiStruct GetResponse(JsonApiStruct request)
+    {
+        GetMaterialsByClassRequest req = GetMaterialsByClassRequest.Cast(request);
+        GetMaterialsByClassResponse response = new GetMaterialsByClassResponse();
+
+        // Get addons
+        array<string> addons = new array<string>;
+        GameProject.GetLoadedAddons(addons);
+
+        // Register Filter
+        SearchResourcesFilter filter = new SearchResourcesFilter();
+        filter.fileExtensions = {"emat"};
+
+        for (int i = 0; i < addons.Count(); i++)
+        {
+            // Search Filter for every addon
+            string addonName = GameProject.GetAddonID(addons[i]);
+			string path = "$" + addonName + ":";
+            filter.rootPath = path;
+			// Get resources
+            array<string> resources = {};
+            ResourceDatabase.SearchResources(filter, resources.Insert);
+            foreach (string resName : resources)
+            {
+                // Filter our resources
+                Resource resource = Resource.Load(resName);
+				if (!resource.IsValid()) continue;
+                BaseContainer ematCont = resource.GetResource().ToBaseContainer();
+				if (!ematCont) continue;
+                string className = ematCont.GetClassName();
+
+                if (className == req.matClass && !response.data.Contains(className))
+                {
+                    response.data.Insert(resName);
+                }
+            }
+        }
+		response.status = InfoStatus.OK;
+        return response;
+    }
 }
 
 /*
@@ -964,6 +1080,152 @@ class ExportMaterialResource : NetApiHandler
 }
 
 /*
+	Animation Export Profile Info
+*/
+
+//----------------------------------------------------------------------------------------------
+class AnimationProfileCollector
+{
+	ref array<string> m_Aprs = new array<string>();
+
+	void OnFound(ResourceName resourceName, string exactPath)
+	{		
+		string absPath;
+		if (!Workbench.GetAbsolutePath(exactPath, absPath, false) || absPath.IsEmpty())
+			return;
+		
+		m_Aprs.Insert(absPath);
+	}
+}
+
+//----------------------------------------------------------------------------------------------
+static array<string> FindAnimationProfilesInProject()
+{
+	AnimationProfileCollector collector = new AnimationProfileCollector();
+
+	SearchResourcesFilter filter = new SearchResourcesFilter();
+	filter.fileExtensions = {"apr"};
+	ResourceDatabase.SearchResources(filter, collector.OnFound);
+
+	return collector.m_Aprs;
+}
+
+class GetAnimationExportProfilesResponse : JsonApiStruct
+{
+	ref array<string> animationExportProfiles = new array<string>;
+
+	//----------------------------------------------------------------------------------------------
+	void GetAnimationExportProfilesResponse(array<string> inAnimationExportProfiles)
+	{
+		animationExportProfiles = inAnimationExportProfiles;
+		RegAll();
+	}
+}
+
+class GetAnimationExportProfileInfosInProject : NetApiHandler
+{
+	//----------------------------------------------------------------------------------------------
+	override JsonApiStruct GetRequest()
+	{
+		return null;
+	}
+	
+	//----------------------------------------------------------------------------------------------
+	override JsonApiStruct GetResponse(JsonApiStruct request)
+	{
+		return new GetAnimationExportProfilesResponse(FindAnimationProfilesInProject());
+	}
+}
+
+class AnimationExportProfileChannelInfo: JsonApiStruct
+{
+	string name;
+	string genFn;
+	
+	//----------------------------------------------------------------------------------------------
+	void AnimationExportProfileChannelInfo(string inName, string inGenFn)
+	{
+		name = inName;
+		genFn = inGenFn;
+		RegAll();
+	}
+}
+
+class GetAnimationExportProfilesChannelsInfoRequest: JsonApiStruct
+{
+	string animationExportProfile;
+
+	//----------------------------------------------------------------------------------------------
+	void GetAnimationExportProfilesChannelsInfoRequest()
+	{
+		RegAll();
+	}
+}
+
+class GetAnimationExportProfilesChannelsInfoResponse: JsonApiStruct
+{
+	string status;
+	string message;
+	ref array<ref AnimationExportProfileChannelInfo> channelInfos;
+
+	//----------------------------------------------------------------------------------------------
+	void GetAnimationExportProfilesChannelsInfoResponse(string inStatus, string inMessage, array<ref AnimationExportProfileChannelInfo> inChannelInfos)
+	{
+		status = inStatus;
+		message = inMessage;
+		channelInfos = inChannelInfos;
+		RegAll();
+	}
+}
+
+
+class GetAnimationExporProfileChannelsInfo : NetApiHandler
+{
+	override JsonApiStruct GetRequest()
+	{
+		return new GetAnimationExportProfilesChannelsInfoRequest();
+	}
+
+	override JsonApiStruct GetResponse(JsonApiStruct request)
+	{
+		auto req = GetAnimationExportProfilesChannelsInfoRequest.Cast(request);
+		
+		string folderName = FilePath.StripFileName(req.animationExportProfile);
+		string fileName = FilePath.StripPath(req.animationExportProfile);
+		string profileName = FilePath.StripExtension(fileName);
+		
+		TxaExporter txaExporter = new TxaExporter();
+		txaExporter.LoadProfiles(folderName);
+		
+		int profileIndex = txaExporter.GetProfileIndex(profileName);
+		
+		auto channelInfos = new array<ref AnimationExportProfileChannelInfo>;
+		if (profileIndex == -1)
+		{
+			return new GetAnimationExportProfilesChannelsInfoResponse("error", "Requested profile does not exist", null);
+		}
+		
+		else
+		{
+			for (int channelIndex = 0; channelIndex < txaExporter.GetProfileChannelCount(profileIndex); channelIndex++)
+			{
+				channelInfos.Insert(
+					new AnimationExportProfileChannelInfo(
+						txaExporter.GetProfileChannelName(profileIndex, channelIndex),
+						txaExporter.GetProfileChannelGenFn(profileIndex, channelIndex)
+					)
+				);
+			}
+				
+		}
+		return new GetAnimationExportProfilesChannelsInfoResponse("", "", channelInfos);
+	}
+	
+	
+}
+
+
+/*
 	IMPORT FBX
 */
 
@@ -985,6 +1247,7 @@ class FBXImportRequest : JsonApiStruct
 	bool exportMorphs;
 	bool exportSceneHierarchy;
 	bool exportSkinning;
+	string validationMode;
 	ref array<ref MaterialOverride> materialOverrides = new array<ref MaterialOverride>;
 	
 	//----------------------------------------------------------------------------------------------
@@ -1014,6 +1277,36 @@ class ExportFBXResource : NetApiHandler
 		if (defaultValue == currentValue)
 			container.ClearVariable(varName);
 	}
+
+	//----------------------------------------------------------------------------------------------
+	void SetValidationModeTag(MetaFile meta, string validationMode)
+		{
+			const string permissiveTag = "EBTPermissiveExport";
+
+			string tagsStr;
+			meta.Get("Tags", tagsStr);
+
+			array<string> tags = {};
+			tagsStr.Split(" ", tags, true);
+
+			bool tagsChanged = false;
+			if (validationMode == "Normal")
+			{
+				tagsChanged = tags.RemoveItemOrdered(permissiveTag);
+			}
+			else if (validationMode == "Permissive")
+			{
+				if (!tags.Contains(permissiveTag))
+				{
+					tags.Insert(permissiveTag);
+					tagsChanged = true;
+				}
+			}
+
+			if (tagsChanged)
+				meta.Set("Tags", string.Join(" ", tags, true));
+		}
+
 	
 	//----------------------------------------------------------------------------------------------
 	override JsonApiStruct GetResponse(JsonApiStruct request)
@@ -1075,6 +1368,8 @@ class ExportFBXResource : NetApiHandler
 			
 			
 		}
+	
+		SetValidationModeTag(meta, req.validationMode);
 		
 		meta.Save();
 
@@ -1108,42 +1403,11 @@ class ExportTextureResource : NetApiHandler
 	override JsonApiStruct GetResponse(JsonApiStruct request)
 	{
 		ExportTextureResourceRequest req = ExportTextureResourceRequest.Cast(request);
-		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
-	    
-		string resourcePath = "";
-	    
-		if (req.sourcePath == "")
-			return ExportResult(ExportStatus.ERROR, "", "Resource could not be registered. Missing source path.");
-		else if (req.destinationPath == "")
-			return ExportResult(ExportStatus.ERROR, "", "Resource could not be registered. Missing destination path.");
-		else if (req.sourcePath == req.destinationPath)
-	        resourcePath = req.sourcePath;
-	    else
-	    {
-	        FileIO.CopyFile(req.sourcePath, req.destinationPath);
-	        resourcePath = req.destinationPath;
-	    }
-				
-		// TODO: check if path is in project
-		// TODO: do not copy if destination is outside of project
 		
-		MetaFile meta = resourceManager.GetMetaFile(resourcePath);
+		if (!ResourceUtils.RegisterTextureResource(req.sourcePath, req.destinationPath))
+			return ExportResult(ExportStatus.ERROR, req.destinationPath, "Failed to register texture");
 
-		if (!meta)
-		{
-			if (resourceManager.RegisterResourceFile(resourcePath, false))
-				meta = resourceManager.GetMetaFile(resourcePath);
-		}
-		
-		if (!meta)	
-			return ExportResult(ExportStatus.ERROR, resourcePath, string.Format("Resource could not be registered: %1", resourcePath));
-	
-		TextureTypes textureTypes = new TextureTypes();
-		textureTypes.DoChecks(TextureIssueOp.Fix, meta.GetResourceID(), meta);
-		meta.Save();
-
-		resourceManager.RebuildResourceFile(resourcePath, "PC", false);
-		return ExportResult(ExportStatus.OK, resourcePath);
+		return ExportResult(ExportStatus.OK, req.destinationPath);
 	}
 }
 
@@ -1161,15 +1425,14 @@ enum TxaErrorCode
 
 class ExportTXAResourceRequest : JsonApiStruct
 {
-	string  ProfileDirectory; 
-	string	SourceFile;
-	string 	TargetFile;
-	string	Profile;
-	int		NumChannels;
-	int		NumKeyframes;
-	int		Fps;
-	ref array<float> 	KeyData = {};
-	ref array<float>	DiffData = {};
+	string	sourceFile;
+	string	targetFile;
+	string	profile;
+	int		numberOfChannels;
+	int		numberOfKeyframes;
+	int		fps;
+	ref array<float>	keyData = {};
+	ref array<float>	diffData = {};
 	
 	//----------------------------------------------------------------------------------------------
 	void ExportTXAResourceRequest()
@@ -1193,52 +1456,54 @@ class ExportTXAResource : NetApiHandler
 		TxaExporter txaExporter = new TxaExporter();
 		
 		
-		MetaFile meta = GetMetaFileFromString(req.TargetFile);
+		MetaFile meta = GetMetaFileFromString(req.targetFile);
 		ResourceName resourceName;
 		string absolutePath;
-		
+
 		if (meta)
 		{
 			resourceName = meta.GetResourceName();
 			Workbench.GetAbsolutePath(resourceName.GetPath(), absolutePath, true);
 		}
-		
-		TxaErrCode err = txaExporter.LoadProfiles(req.ProfileDirectory);
+
+		string profileDirectory = FilePath.StripFileName(req.profile);
+		string profileName = FilePath.StripExtension(FilePath.StripPath(req.profile));
+
+		TxaErrCode err = txaExporter.LoadProfiles(profileDirectory);
 		if (err == TxaErrorCode.ERROR)
-			return ExportResult(ExportStatus.ERROR, req.TargetFile, txaExporter.ErrMsg());
-		
-		int profileIdx = txaExporter.GetProfileIndex(req.Profile);
-		
+			return ExportResult(ExportStatus.ERROR, req.targetFile, txaExporter.ErrMsg());
+
+		int profileIdx = txaExporter.GetProfileIndex(profileName);
+
 		if (profileIdx == -1)
-			return ExportResult(ExportStatus.ERROR, req.TargetFile, "Missing export profile");
-		
-		err = txaExporter.TrackReset(profileIdx, req.NumKeyframes, req.Fps, req.SourceFile, req.TargetFile);
-		
+			return ExportResult(ExportStatus.ERROR, req.targetFile, "Missing export profile");
+
+		err = txaExporter.TrackReset(profileIdx, req.numberOfKeyframes, req.fps, req.sourceFile, req.targetFile);
+
 		if (err == TxaErrorCode.ERROR)
-			return ExportResult(ExportStatus.ERROR, req.TargetFile, txaExporter.ErrMsg());
-		
-		err = txaExporter.TrackSetChannels(req.NumChannels, req.NumKeyframes, req.KeyData, req.DiffData);
+			return ExportResult(ExportStatus.ERROR, req.targetFile, txaExporter.ErrMsg());
+
+		err = txaExporter.TrackSetChannels(req.numberOfChannels, req.numberOfKeyframes, req.keyData, req.diffData);
 		if (err == TxaErrorCode.ERROR)
-			return ExportResult(ExportStatus.ERROR, req.TargetFile, txaExporter.ErrMsg());
+			return ExportResult(ExportStatus.ERROR, req.targetFile, txaExporter.ErrMsg());
 		
 		err = txaExporter.TrackExport();
 		if (err == TxaErrorCode.ERROR)
-			return ExportResult(ExportStatus.ERROR, req.TargetFile, txaExporter.ErrMsg());
+			return ExportResult(ExportStatus.ERROR, req.targetFile, txaExporter.ErrMsg());
 		
 		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
 		
 		if (!meta)
 		{
-			resourceManager.RegisterResourceFile(req.TargetFile, false);
-			meta = GetMetaFileFromString(req.TargetFile);
+			resourceManager.RegisterResourceFile(req.targetFile, false);
+			meta = GetMetaFileFromString(req.targetFile);
 		}
 			
-		
 		if (!meta)
-			return ExportResult(ExportStatus.ERROR, req.TargetFile, "Could not register TXA resource");
+			return ExportResult(ExportStatus.ERROR, req.targetFile, "Could not register TXA resource");
 		
-		resourceManager.RebuildResourceFile(req.TargetFile, "PC", false);
-		return ExportResult(ExportStatus.OK,req.TargetFile);
+		resourceManager.RebuildResourceFile(req.targetFile, "PC", false);
+		return ExportResult(ExportStatus.OK,req.targetFile);
 	}
 }
 
@@ -1323,5 +1588,543 @@ class RegisterResource : NetApiHandler
 			response.Output = Register(req.path[i]);
 		}
 		return response;
+	}
+}
+
+
+/*
+	Selected Entities
+*/
+
+
+class SelectedEntityInfo : JsonApiStruct
+{
+	ResourceName resourceName;
+	ref array<float> transform = {};
+
+	void SelectedEntityInfo()
+	{
+		RegAll();
+	}
+}
+
+class GetSelectedEntitiesResponse : JsonApiStruct
+{
+	ref array<ref SelectedEntityInfo> entities = {};
+
+	void GetSelectedEntitiesResponse()
+	{
+		RegAll();
+	}
+}
+
+class GetSelectedEntities : NetApiHandler
+{
+	override JsonApiStruct GetResponse(JsonApiStruct request)
+	{
+		GetSelectedEntitiesResponse response = new GetSelectedEntitiesResponse();
+		WorldEditor we = Workbench.GetModule(WorldEditor);
+		auto api = we.GetApi();
+
+		int count = api.GetSelectedEntitiesCount();
+
+		for (int i = 0; i < count; i++)
+		{
+			IEntitySource entity_source = api.GetSelectedEntity(i);
+			
+			if (!entity_source)
+				continue;
+
+			IEntity entity = api.SourceToEntity(entity_source);
+
+			if (!entity)
+				continue;
+			
+			auto ancestor = entity_source.GetAncestor();
+			
+			if (!ancestor || !ancestor.GetResourceName())  
+			{
+				continue;
+			}
+	
+			SelectedEntityInfo info = new SelectedEntityInfo();
+
+			vector matrix[4];
+			entity.GetWorldTransform(matrix);
+
+			for (int j = 0; j < 4; j++)
+			{
+				for (int k = 0; k < 3; k++) 
+				{
+					info.transform.Insert(matrix[j][k]);
+				}
+			}
+			
+			info.resourceName = ancestor.GetResourceName();
+			
+			response.entities.Insert(info);
+		}
+
+		return response;
+	}
+}
+
+
+/*
+	Terrain
+*/
+
+class GetTerrainInfoRequest : JsonApiStruct
+{
+	int terrainIndex;
+
+	void GetTerrainInfoRequest()
+	{
+		RegAll();
+	}
+}
+
+class GetTerrainInfoResponse : JsonApiStruct
+{
+	int resolutionX;
+	int resolutionY;
+	int tilesX;
+	int tilesY;
+	float unitScale;
+
+	void GetTerrainInfoResponse()
+	{
+		RegAll();
+	}
+}
+
+class GetTerrainInfo : NetApiHandler
+{
+	override JsonApiStruct GetRequest()
+	{
+		return new GetTerrainInfoRequest();
+	}
+
+	override JsonApiStruct GetResponse(JsonApiStruct request)
+	{
+		GetTerrainInfoRequest req = GetTerrainInfoRequest.Cast(request);
+		GetTerrainInfoResponse response = new GetTerrainInfoResponse();
+		WorldEditor we = Workbench.GetModule(WorldEditor);
+
+		if (!we) 
+		{
+			return response;
+		}
+
+		auto api = we.GetApi();
+
+		if (!api) 
+		{
+			return response;
+		}
+
+		response.resolutionX = api.GetTerrainResolutionX(req.terrainIndex);
+		response.resolutionY = api.GetTerrainResolutionY(req.terrainIndex);
+		response.tilesX = api.GetTerrainTilesX(req.terrainIndex);
+		response.tilesY = api.GetTerrainTilesY(req.terrainIndex);
+		response.unitScale = api.GetTerrainUnitScale(req.terrainIndex);
+
+		return response;
+	}
+}
+
+class GetTileHeightmapRequest : JsonApiStruct
+{
+	int terrainIndex;
+	int tileX;
+	int tileY;
+
+	void GetTileHeightmapRequest()
+	{
+		RegAll();
+	}
+}
+
+class GetTileHeightmapResponse : JsonApiStruct
+{
+	ref array<float> heightMap = {};
+
+	void GetTileHeightmapResponse()
+	{
+		RegAll();
+	}
+}
+
+class GetTileHeightmap : NetApiHandler
+{
+	override JsonApiStruct GetRequest()
+	{
+		return new GetTileHeightmapRequest();
+	}
+
+	override JsonApiStruct GetResponse(JsonApiStruct request)
+	{
+		GetTileHeightmapRequest req = GetTileHeightmapRequest.Cast(request);
+		GetTileHeightmapResponse response = new GetTileHeightmapResponse();
+		WorldEditor we = Workbench.GetModule(WorldEditor);
+
+		if (!we)
+		{
+			return response;
+		}
+
+		auto api = we.GetApi();
+
+		if (!api) 
+		{
+			return response;
+		}
+
+		api.BeginTerrainAction();
+		api.GetTerrainSurfaceTile(req.terrainIndex, req.tileX, req.tileY, response.heightMap);
+		api.EndTerrainAction();
+
+		return response;
+	}
+}
+
+
+/*
+	Satellite Map
+*/
+
+class GetSurfaceMaterialsRequest : JsonApiStruct
+{
+	int terrainIndex;
+
+	void GetSurfaceMaterialsRequest()
+	{
+		RegAll();
+	}
+}
+
+class GetSurfaceMaterialsResponse : JsonApiStruct
+{
+	ref array<string> materials = new array<string>();
+
+	void GetSurfaceMaterialsResponse()
+	{
+		RegAll();
+	}
+}
+
+class GetSurfaceMaterials : NetApiHandler
+{
+	override JsonApiStruct GetRequest()
+	{
+		return new GetSurfaceMaterialsRequest();
+	}
+
+	override JsonApiStruct GetResponse(JsonApiStruct request)
+	{
+		GetSurfaceMaterialsRequest req = GetSurfaceMaterialsRequest.Cast(request);
+		GetSurfaceMaterialsResponse response = new GetSurfaceMaterialsResponse();
+
+		WorldEditor we = Workbench.GetModule(WorldEditor);
+		if (!we) 
+		{
+			return null;	
+		}
+
+		WorldEditorAPI api = we.GetApi();
+		if (!api) 
+		{
+			return null;
+		}
+
+		array<ResourceName> paths = new array<ResourceName>();
+		api.GetSurfaceMaterials(req.terrainIndex, paths);
+
+		foreach (ResourceName rn : paths)
+		{
+			response.materials.Insert(rn);
+		}
+
+		return response;
+	}
+}
+
+
+class ExportSurfaceMasksRequest : JsonApiStruct
+{
+	int terrainIndex;
+	string exportDirectory;
+
+	void ExportSurfaceMasksRequest()
+	{
+		RegAll();
+	}
+}
+
+class ExportSurfaceMasksResponse : JsonApiStruct
+{
+	bool success;
+
+	void ExportSurfaceMasksResponse()
+	{
+		RegAll();
+	}
+}
+
+class ExportSurfaceMasks : NetApiHandler
+{
+	override JsonApiStruct GetRequest()
+	{
+		return new ExportSurfaceMasksRequest();
+	}
+
+	override JsonApiStruct GetResponse(JsonApiStruct request)
+	{
+		ExportSurfaceMasksRequest req = ExportSurfaceMasksRequest.Cast(request);
+		ExportSurfaceMasksResponse response = new ExportSurfaceMasksResponse();
+
+		WorldEditor we = Workbench.GetModule(WorldEditor);
+		
+		if (!we) 
+		{
+			return null;	
+		}
+
+		WorldEditorAPI api = we.GetApi();
+
+		if (!api) 
+		{
+			return null;
+		}
+
+		response.success = api.ExportSurfaceMasks(req.terrainIndex, req.exportDirectory);
+		return response;
+	}
+}
+
+class ResourceUtils
+{
+	static MetaFile GetMetaFileForPath(string absPath)
+	{
+		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
+		return resourceManager.GetMetaFile(absPath);
+	}
+
+	static string GetAbsolutePathForResourceName(ResourceName resourceName)
+	{
+		string absPath;
+		if (Workbench.GetAbsolutePath(resourceName.GetPath(), absPath))
+			return absPath;
+		
+		return string.Empty;
+	}
+
+	static MetaFile GetMetaFileForResourceName(ResourceName resourceName)
+	{
+		string absPath = ResourceUtils.GetAbsolutePathForResourceName(resourceName);
+
+		if (absPath == string.Empty)
+			return null;
+
+		return GetMetaFileForPath(absPath);
+	}
+
+	static ResourceName GetResourceNameForAbsolutePath(string absPath)
+	{
+		MetaFile meta = ResourceUtils.GetMetaFileForPath(absPath);
+
+		if (!meta)
+			return string.Empty;
+		
+		return meta.GetResourceID();
+	}
+
+	static map<string, ResourceName> GetMaterialAssignsFromXOBMeta(notnull MetaFile meta)
+	{
+		map<string, ResourceName> materialMap = new map<string, ResourceName>();
+
+		BaseContainerList configurations = meta.GetObjectArray("Configurations");
+		if (!configurations || configurations.Count() == 0)
+			return materialMap;
+
+		BaseContainer cfg = configurations.Get(0);
+		if (!cfg)
+			return materialMap;
+
+		BaseContainerList materialAssigns = cfg.GetObjectArray("MaterialAssigns");
+		if (!materialAssigns)
+			return materialMap;
+
+		for (int i = 0, count = materialAssigns.Count(); i < count; i++)
+		{
+			BaseContainer materialAssign = materialAssigns.Get(i);
+			if (!materialAssign)
+				continue;
+
+			string sourceMaterial;
+			if (!materialAssign.Get("SourceMaterial", sourceMaterial) || sourceMaterial == string.Empty)
+				continue;
+
+			ResourceName assignedMaterial;
+			materialAssign.Get("AssignedMaterial", assignedMaterial);
+			materialMap.Set(sourceMaterial, assignedMaterial);
+		}
+
+		return materialMap;
+	}
+
+	static bool GetMlodMaterialResourceFromXOBMeta(notnull MetaFile meta, out ResourceName mlodMaterial)
+	{
+		mlodMaterial = string.Empty;
+
+		map<string, ResourceName> materialMap = GetMaterialAssignsFromXOBMeta(meta);
+
+		int foundCount = 0;
+
+		foreach (string sourceMaterial, ResourceName assignedMaterial : materialMap)
+		{
+			if (!assignedMaterial || !assignedMaterial.GetPath())
+				continue;
+
+			string materialPath = FilePath.StripExtension(assignedMaterial.GetPath());
+			materialPath.ToLower();
+
+			// Interior MLODs are never baked into, so they have to be skipped before the "mlod" suffix test.
+			if (materialPath.Contains("int_mlod") || materialPath.Contains("mlod_int"))
+				continue;
+
+			if (!materialPath.EndsWith("mlod"))
+				continue;
+
+			// Found an MLOD assigned material -> validate its source material name.
+			string sourceName = sourceMaterial;
+			sourceName.ToLower();
+
+			if (!sourceName.Contains("mlod"))
+				Print(string.Format("MLOD material '%1' has source material '%2' without 'mlod' in its name.", assignedMaterial.GetPath(), sourceMaterial), LogLevel.WARNING);
+
+			foundCount++;
+
+			if (foundCount == 1)
+				mlodMaterial = assignedMaterial; // Keep the first.
+			else
+				Print(string.Format("Multiple MLOD materials found in XOB; ignoring '%1' and using the first.", assignedMaterial.GetPath()), LogLevel.WARNING);
+		}
+
+		return foundCount > 0;
+	}
+
+	static string GetMaterialClassName(ResourceName materialResource)
+	{
+		if (!materialResource || !materialResource.GetPath())
+			return string.Empty;
+
+		Resource resource = Resource.Load(materialResource);
+		if (!resource || !resource.IsValid())
+		{
+			Print(string.Format("Could not load material resource '%1'.", materialResource.GetPath()), LogLevel.WARNING);
+			return string.Empty;
+		}
+
+		BaseContainer material = resource.GetResource().ToBaseContainer();
+		if (!material)
+		{
+			Print(string.Format("Material resource '%1' has no container.", materialResource.GetPath()), LogLevel.WARNING);
+			return string.Empty;
+		}
+
+		return material.GetClassName();
+	}
+
+	static const int RESOURCE_WAIT_TIMEOUT_MS = 30000;
+
+	static bool WaitForResourceFile(string absPath, int timeoutMs = RESOURCE_WAIT_TIMEOUT_MS)
+	{
+		if (absPath == string.Empty)
+			return false;
+
+		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
+		int elapsedMs = 0;
+		while (!resourceManager.WaitForFile(absPath, 1000))
+		{
+			Sleep(100);
+			elapsedMs += 1100;
+
+			if (elapsedMs >= timeoutMs)
+			{
+				Print(string.Format("Gave up after %1 ms waiting for RDB file: %2", elapsedMs, absPath), LogLevel.ERROR);
+				return false;
+			}
+		}
+
+		Print(string.Format("Waited %1 ms for RDB file: %2", elapsedMs, absPath), LogLevel.NORMAL);
+		return true;
+	}
+
+	
+	static ResourceName GetTextureResourceFromMaterialSlot(ResourceName materialResource, string slotName)
+	{
+		if (materialResource == string.Empty || slotName == string.Empty)
+			return string.Empty;
+
+		Resource resource = BaseContainerTools.LoadContainer(materialResource);
+		if (!resource || !resource.IsValid())
+			return string.Empty;
+
+		BaseContainer materialContainer = resource.GetResource().ToBaseContainer();
+		if (!materialContainer || materialContainer.GetVarIndex(slotName) == -1)
+			return string.Empty;
+
+		string value;
+		materialContainer.Get(slotName, value);
+
+		if (value == string.Empty || value == " 0")
+			return string.Empty;
+
+		array<string> tokens = {};
+		value.Split(" ", tokens, true);
+
+		if (tokens.IsEmpty())
+			return string.Empty;
+
+		return tokens[0];
+	}
+
+	/*!
+	Copies an image to its destination inside the project and registers it as a texture resource.
+	\param sourcePath Absolute path of the source image
+	\param destinationPath Absolute path to copy the image to, may be the source path itself
+	*/
+	static bool RegisterTextureResource(string sourcePath, string destinationPath)
+	{
+		if (sourcePath == string.Empty)
+			return false;
+
+		if (destinationPath == string.Empty)
+			return false;
+		
+		if (sourcePath != destinationPath)
+		{
+			FileIO.CopyFile(sourcePath, destinationPath);
+		}
+
+		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
+
+		MetaFile meta = resourceManager.GetMetaFile(destinationPath);
+		if (!meta)
+		{
+			if (resourceManager.RegisterResourceFile(destinationPath, false))
+				meta = resourceManager.GetMetaFile(destinationPath);
+		}
+
+		if (!meta)
+			return false;
+
+		TextureTypes textureTypes = new TextureTypes();
+		textureTypes.DoChecks(TextureIssueOp.Fix, meta.GetResourceID(), meta);
+		meta.Save();
+
+		resourceManager.RebuildResourceFile(destinationPath, "PC", false);
+		return true;
 	}
 }

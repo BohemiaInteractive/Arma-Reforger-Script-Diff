@@ -1,8 +1,5 @@
-class SCR_WheelSlotInfo : RegisteringComponentSlotInfo
+class SCR_WheelSlotInfo : WheelSlotInfo
 {
-	[Attribute("-1", UIWidgets.Slider, "VehicleWheeledSimulation wheel index", "-1 1000 1")]
-	protected int m_iWheelIndex;
-	
 	//------------------------------------------------------------------------------------------------
 	override void OnAttachedEntity(IEntity entity)
 	{
@@ -12,7 +9,7 @@ class SCR_WheelSlotInfo : RegisteringComponentSlotInfo
 		
 		SCR_WheelHitZone hitZone = SCR_WheelHitZone.Cast(hitzoneContainer.GetDefaultHitZone());
 		if (hitZone)
-			hitZone.SetWheelIndex(m_iWheelIndex);
+			hitZone.SetWheelIndex(GetWheelIndex());
 	}
 	
 	//------------------------------------------------------------------------------------------------

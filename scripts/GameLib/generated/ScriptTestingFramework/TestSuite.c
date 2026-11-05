@@ -23,6 +23,7 @@ class TestSuite: Managed
 	}
 
 	proto external void SetFailure(TestFailureBase failure);
+	proto external TestFailureBase GetFailure();
 	//! Enables/Disables the suites. Disabled suites won't run at all.
 	proto external void SetEnabled(bool val);
 	//! Enabled flag getter.

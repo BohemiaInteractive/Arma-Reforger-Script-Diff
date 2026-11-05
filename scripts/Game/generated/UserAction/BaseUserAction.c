@@ -54,6 +54,9 @@ class BaseUserAction: ScriptAndConfig
 	//! is called from.
 	//! This comes handly in situations when the use action wants to use data that is only available on the server.
 	proto external bool CheckOnServerFirst();
+	//! Is this action meant to be used by multiple users at the same time?
+	//! If true, IsInProgress() only reflects the locally controlled user, so other users starting or canceling it do not change it.
+	proto external bool IsUsableByMultipleUsers();
 	//! Should this action be performed every frame the input action is triggered?
 	proto external bool ShouldPerformPerFrame();
 	//! Return the name of this action.

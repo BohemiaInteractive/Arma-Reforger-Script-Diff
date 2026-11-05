@@ -122,7 +122,10 @@ enum EEditableEntityLabel
 	TRAIT_ESSENTIAL = 296,
 	TRAIT_GUARD = 297,
 	TRAIT_LOGISTICS = 298,	
-	
+
+	TRAIT_BUILDING_OVERRIDE_CLEAR_BUSH = 301,	// This trait dictates that when this entity is built, it will *ALWAYS* clear nearby bushes
+	TRAIT_BUILDING_OVERRIDE_KEEP_BUSH = 302, // This trait dictates that when this entity is built, it will *NEVER* clear nearby bushes
+
 	SERVICE_ANTENNA = 901,
 	SERVICE_ARMORY = 902,
 	SERVICE_FUEL = 903,

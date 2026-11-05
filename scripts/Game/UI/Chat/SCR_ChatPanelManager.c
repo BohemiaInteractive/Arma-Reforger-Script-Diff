@@ -373,14 +373,7 @@ class SCR_ChatPanelManager : SCR_GameCoreBase
 		// We may get back multiple lines if the input used \n, so join them together.
 		const string multiLineString = SCR_StringHelper.Join("\n", filteredTexts, true);
 
-		if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.XBOX)
-		{
-			SCR_ProfaneFilter.ReplaceProfanities(multiLineString, originalMessage.m_sMessage);
-		}
-		else
-		{
-			originalMessage.m_sMessage = multiLineString;
-		}
+		originalMessage.m_sMessage = multiLineString;
 
 		m_aMessages.Insert(originalMessage);
 		

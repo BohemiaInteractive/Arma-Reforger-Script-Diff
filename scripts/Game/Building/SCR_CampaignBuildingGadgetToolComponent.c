@@ -30,7 +30,11 @@ class SCR_CampaignBuildingGadgetToolComponent : SCR_GadgetComponent
 	protected bool m_bHasMoreItemsToPlace;
 	protected bool m_bHasMoreVariantsToChoose;
 
-//	protected SCR_CampaignBuildingLayoutComponent m_LayoutComponent;
+	protected IEntity m_SelectedFoliage;
+	protected bool m_bSelectedNewFoliage;
+	protected const float FOLIAGE_DETECTION_RADIUS = 5;
+	protected const float FOLIAGE_DETECTION_ORIGIN_RANGE_FROM_CAMERA = 1.5;
+	protected vector m_vFoliageDetectionOrigin;
 
 	//------------------------------------------------------------------------------------------------
 	override void Update(float timeSlice)
@@ -41,6 +45,7 @@ class SCR_CampaignBuildingGadgetToolComponent : SCR_GadgetComponent
 			return;
 
 		TraceCompositionToShowPreview();
+		FoliageDetection();
 
 		m_fTraceDelay = 0.0;
 	}
@@ -958,5 +963,71 @@ class SCR_CampaignBuildingGadgetToolComponent : SCR_GadgetComponent
 
 		data.SetPreviewState(SCR_EPreviewState.PLACEABLE);
 		placementComp.SetPreviewEntity(previewEnt, false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void FoliageDetection()
+	{
+		const IEntity owner = GetOwner();
+
+		const PlayerController playerController = GetGame().GetPlayerController();
+		if (!playerController)
+			return;
+
+		const ChimeraCharacter character = ChimeraCharacter.Cast(playerController.GetControlledEntity());
+		if (!character)
+			return;
+
+		const CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return;
+
+		const CharacterHeadAimingComponent headAiming = controller.GetHeadAimingComponent();
+		if (!headAiming)
+			return;
+
+		vector direction = headAiming.GetAimingDirectionWorld();
+		m_vFoliageDetectionOrigin =  character.GetOrigin() + vector.Up + direction * FOLIAGE_DETECTION_ORIGIN_RANGE_FROM_CAMERA;
+
+		owner.GetWorld().QueryEntitiesBySphere(m_vFoliageDetectionOrigin, FOLIAGE_DETECTION_RADIUS, EvaluateBush, FilterFoliage);
+
+		SCR_FoliageDestructionComponent foliageDestructionComp = SCR_FoliageDestructionComponent.Cast(playerController.FindComponent(SCR_FoliageDestructionComponent));
+
+		if (foliageDestructionComp && (m_bSelectedNewFoliage || (m_SelectedFoliage && !foliageDestructionComp.VerifyFoliageSync(m_SelectedFoliage))))
+		{
+			foliageDestructionComp.RequestSetHelperTree(m_SelectedFoliage.GetID());
+
+			m_bSelectedNewFoliage = false;
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool FilterFoliage(IEntity ent)
+	{
+		Tree tree = Tree.Cast(ent);
+		if (!tree)
+			return false;
+
+		if (m_SelectedFoliage == ent)
+			return false;
+
+		TreeClass treeClass = TreeClass.Cast(tree.GetPrefabData());
+		if (!treeClass || !treeClass.m_bDestructibleByHand)
+			return false;
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool EvaluateBush(IEntity ent)
+	{
+		// check distance from player
+		if (m_SelectedFoliage && vector.DistanceSqXZ(m_vFoliageDetectionOrigin, ent.GetOrigin()) > vector.DistanceSqXZ(m_vFoliageDetectionOrigin, m_SelectedFoliage.GetOrigin()))
+			return true;
+
+		m_SelectedFoliage = ent;
+		m_bSelectedNewFoliage = true;
+
+		return true;
 	}
 }

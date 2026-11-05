@@ -552,17 +552,30 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override protected bool ShouldForbidRemoveByInstigator(InventoryStorageManagerComponent instigatorManager, BaseInventoryStorageComponent fromStorage, IEntity item)
+	override protected bool HandleAccessValidation(InventoryStorageManagerComponent instigatorManager, IEntity item, EInventoryManagerOperation operation)
 	{
-		//in case of health items, permit medics to donate healing items to targets
-		SCR_ConsumableItemComponent consumableItemComp = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
-		if (consumableItemComp)
+		const ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (!character)
+			return true; // Access to non player storages and items is always ok
+
+		if (character.GetCharacterController().GetLifeState() != ECharacterLifeState.ALIVE)
+			return true; // Dead or unconscious body access is also always okay
+
+		// Allow medics to hand consumeables to other players for healing
+		if (!item.FindComponent(SCR_ConsumableItemComponent))
 			return false;
-		
-		if (m_CharacterController && m_CharacterController.GetLifeState() == ECharacterLifeState.ALIVE)
-			return true;
-		
-		return false;
+
+		const InventoryItemComponent itemComp = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+		if (!itemComp)
+			return false;
+
+		const InventoryStorageSlot slot = itemComp.GetParentSlot();
+		BaseInventoryStorageComponent storage = null;
+		if (slot)
+			storage = slot.GetStorage();
+
+		// Item comes from somewhere out of our hierarchy so it is not theft
+		return !storage || storage.GetHierarchyManager() != this;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -650,6 +663,19 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	{
 		if (!IsAnimationReady() || IsInventoryLocked())
 			return false;
+
+		if (!DlcManager.Get().CanUseEntity(GetOwner(), item))
+		{
+			World world = GetGame().GetWorld();
+			if (world)
+			{
+				SCR_DLCOwnershipSystem ownershipSystem = SCR_DLCOwnershipSystem.Cast(world.FindSystem(SCR_DLCOwnershipSystem));
+				if (ownershipSystem)
+					ownershipSystem.OnOwnershipNegative(SCR_EDLCInteractionType.ITEM_EQUIP);
+			}
+
+			return false;
+		}
 
 		array<BaseInventoryStorageComponent> pStorages = {};
 		storage.GetOwnedStorages( pStorages, 1, false );
@@ -742,7 +768,20 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	{
 		if (!pItem || !IsAnimationReady() || IsInventoryLocked())
 			return;
-		
+
+		if (!DlcManager.Get().CanUseEntity(GetOwner(), pItem))
+		{
+			World world = GetGame().GetWorld();
+			if (world)
+			{
+				SCR_DLCOwnershipSystem ownershipSystem = SCR_DLCOwnershipSystem.Cast(world.FindSystem(SCR_DLCOwnershipSystem));
+				if (ownershipSystem)
+					ownershipSystem.OnOwnershipNegative(SCR_EDLCInteractionType.ITEM_EQUIP);
+			}
+
+			return;
+		}
+
 		SetInventoryLocked(true);
 
 		bool canInsert = true;
@@ -1196,7 +1235,20 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		InventoryItemComponent itemComp = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
 		if (!itemComp)
 			return false;
-		
+
+		if (!DlcManager.Get().CanUseEntity(storage.GetOwner(), item))
+		{
+			World world = GetGame().GetWorld();
+			if (world)
+			{
+				SCR_DLCOwnershipSystem ownershipSystem = SCR_DLCOwnershipSystem.Cast(world.FindSystem(SCR_DLCOwnershipSystem));
+				if (ownershipSystem)
+					ownershipSystem.OnOwnershipNegative(SCR_EDLCInteractionType.ITEM_EQUIP);
+			}
+
+			return false;
+		}
+
 		InventoryStorageSlot m_TargetSlot = storage.FindSuitableSlotForItem(item);
 		// Storage doesn't have suitable slot for item (therefore any future opearation would fail)
 		if (!m_TargetSlot)

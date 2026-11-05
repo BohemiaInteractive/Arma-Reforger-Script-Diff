@@ -4,37 +4,8 @@ class SendToBlenderPlugin : WorkbenchPlugin
 	//------------------------------------------------------------------------------------------------
 	[Attribute("true", UIWidgets.CheckBox, "Import the mesh with the Import Settings of gamemats and layer presets from engine, that were overwritten by the user. This will overwrite the previous FBX settings.")]
 	bool ImportColliderSettings;
-	
-	override void OnResourceContextMenu(notnull array<ResourceName> resources)
-	{
-		if (!EBTConfigPlugin.HasBlenderRegistered())
-			return;
-		if (resources.IsEmpty())
-		{
-			Print("No selected resources", LogLevel.WARNING);
-			return;
-		}
-		
-		BlenderOperatorDescription operatorDescription = new BlenderOperatorDescription("core");
-	
-		operatorDescription.blIDName = "ebt.import_fbx";
-		if (resources[0].EndsWith(".et"))
-			operatorDescription.blIDName = "ebt.import_prefab";		
-		
-		string absPath; 
-	
-		if (GetPathToResource(resources[0], absPath))
-		{	
-			operatorDescription.AddParam("filepath", absPath); // ImportHelper is using self.file_path
-			operatorDescription.AddParam("remove_all_objects", true);
-			StartBlenderWithOperator(operatorDescription, false);
-			return;	
-	
-		Print("Resource couldn't be imported to blender because requested resource file is missing or is locked", LogLevel.WARNING);
-		}
-		
-	}
-	
+
+
 	protected bool GetPathToResource(ResourceName resource, inout string absPath)
 	{
 		string path = resource.GetPath();
@@ -55,6 +26,51 @@ class SendToBlenderPlugin : WorkbenchPlugin
 		
 		return true;
 	}
+
+	protected void OpenFBXWithBlender(string resource, string pathToBlenderExecutable)
+	{
+		string cmd = string.Format("\"%1\" --python-expr \"import bpy; bpy.ops.wm.read_homefile(use_empty=True); bpy.ops.ebt.import_fbx('EXEC_DEFAULT', filepath = r'%2')\"",
+					 pathToBlenderExecutable, 
+					 resource);
+
+		Workbench.RunProcess(cmd);	
+	}
+
+	protected void OpenPrefabWithBlender(string resource, string pathToBlenderExecutable)
+	{
+		string cmd = string.Format("\"%1\" --python-expr \"import bpy; bpy.ops.wm.read_homefile(use_empty=True); bpy.ops.ebt.import_prefab('EXEC_DEFAULT', filepath = r'%2')\"", 
+					 pathToBlenderExecutable,
+					 resource);
+
+		Workbench.RunProcess(cmd);
+	}
+	
+	override void OnResourceContextMenu(notnull array<ResourceName> resources)
+	{
+		string pathToExecutable;
+		string resourceAbsPath; 
+
+		if (!EBTConfigPlugin.GetBlenderPathOrWarn(pathToExecutable))
+			return;
+
+		if (resources.IsEmpty())
+		{
+			Print("No selected resources", LogLevel.WARNING);
+			return;
+		}
+		
+		if(GetPathToResource(resources[0], resourceAbsPath))
+		{	
+			if(resources[0].EndsWith(".xob"))
+				OpenFBXWithBlender(resourceAbsPath, pathToExecutable);
+			else if(resources[0].EndsWith(".et"))
+				OpenPrefabWithBlender(resourceAbsPath, pathToExecutable);
+		}
+		else
+			Print("Resource couldn't be imported to blender because requested resource file is missing or is locked", LogLevel.WARNING);
+	}
+	
+	
 
 	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("Send")]

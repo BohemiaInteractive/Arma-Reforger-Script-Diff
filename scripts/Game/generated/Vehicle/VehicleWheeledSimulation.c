@@ -15,6 +15,21 @@ class VehicleWheeledSimulation: VehicleBaseSimulation
 	Forcibly enables simulation of vehicle, only meant for cinematics, not to be used in any game logic!
 	*/
 	proto external void ForceEnableSimulation();
+	/*!
+	Updates the vehicle configuration for the specified part.
+	NOTE! The changes are NOT replicated.
+
+	\param config hashmap of configured values, where key is the property name in the prefab. Only float properties can be modified.
+	\param index component index. Paired components (e.g. wheels, suspensions and tyres) are indexed as: 0=Axle0L, 1=Axle0R, 2=Axle1L, 3=Axle1R, ... (i.e. left is even, right is odd)
+	\return true if update was successful
+	*/
+	proto external bool UpdateEngineConfiguration(map<string,float> config, int index = 0);
+	proto external bool UpdateClutchConfiguration(map<string,float> config, int index = 0);
+	proto external bool UpdateIADConfiguration(map<string,float> config, int index = 0);
+	proto external bool UpdateDiffConfiguration(map<string,float> config, int index = 0);
+	proto external bool UpdateWheelConfiguration(map<string,float> config, int index = 0);
+	proto external bool UpdateSuspensionConfiguration(map<string,float> config, int index = 0);
+	proto external bool UpdateTyreConfiguration(map<string,float> config, int index = 0);
 	//! Returns current steering input in range < -1, 1 >
 	proto external float GetSteering();
 	//! Sets steering input.
@@ -29,6 +44,8 @@ class VehicleWheeledSimulation: VehicleBaseSimulation
 	proto external void SetClutch(float in);
 	//! Returns current brake input in range < 0, 1 >
 	proto external float GetBrake();
+	//! Returns current handbrake input in range < 0, 1 >
+	proto external float GetHandbrake();
 	//! Sets brake inputs
 	//! \param in should be in range < 0, 1 >
 	//! \param hb indicating whether handbrake should be applied
@@ -58,6 +75,8 @@ class VehicleWheeledSimulation: VehicleBaseSimulation
 	proto external float EngineGetRPMPeakPower();
 	//! Returns maximal working rpm before engine explodes
 	proto external float EngineGetRPMMax();
+	//! Returns the redline RPM
+	proto external float EngineGetRPMRedline();
 	//! Returns current engine's RPM
 	proto external float EngineGetRPM();
 	//! Returns RPM that is feeded back from rest of the powertrain

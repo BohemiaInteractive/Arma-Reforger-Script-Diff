@@ -557,8 +557,14 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 			default:
 				wLayout = HorizontalLayoutWidget.Cast(GetRootWidget().FindAnyWidget(m_sWidgetNameButtonsCenter)); break;
 		}
-		
-		Widget wButton = GetGame().GetWorkspace().CreateWidgets(m_sNavigationButtonLayout, wLayout);
+
+		Widget wButton;
+
+		if (buttonPreset.m_sButtonPrefabOverride.IsEmpty())
+			wButton = GetGame().GetWorkspace().CreateWidgets(m_sNavigationButtonLayout, wLayout);
+		else
+			wButton = GetGame().GetWorkspace().CreateWidgets(buttonPreset.m_sButtonPrefabOverride, wLayout);
+
 		wButton.SetName(buttonPreset.m_sTag);
 		
 		//! Handle padding
@@ -587,7 +593,7 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 			return null;
 		
 		comp.SetVisible(buttonPreset.m_bShowButton, false);
-		comp.SetLabel(buttonPreset.m_sLabel);
+		comp.SetLabel(buttonPreset.GetLabel());
 		comp.SetAction(buttonPreset.m_sActionName);
 		
 		comp.SetHoverSound(buttonPreset.m_sSoundHovered);
@@ -735,14 +741,17 @@ enum EConfigurableDialogStyle
 [BaseContainerProps(configRoot : true), SCR_BaseContainerCustomTitleField("m_sTag")]
 class SCR_ConfigurableDialogUiButtonPreset
 {
+	[Attribute(defvalue: "", desc: "Button Prefab Override", uiwidget: UIWidgets.ResourcePickerThumbnail, params: "layout")]
+	ResourceName m_sButtonPrefabOverride;
+
 	[Attribute("", UIWidgets.Auto, "Custom tag, used for finding this button at run time")]
 	string m_sTag;
-	
+
 	[Attribute("", UIWidgets.Auto, "Action name the button will listen to")]
 	string m_sActionName;
 	
 	[Attribute("", UIWidgets.Auto, "Label of the button")]
-	string m_sLabel;
+	protected string m_sLabel;
 	
 	[Attribute("0", UIWidgets.ComboBox, "Alignment of the button", "", ParamEnumArray.FromEnum(EConfigurableDialogUiButtonAlign))]
 	EConfigurableDialogUiButtonAlign m_eAlign;
@@ -755,7 +764,40 @@ class SCR_ConfigurableDialogUiButtonPreset
 	
 	[Attribute("1", UIWidgets.CheckBox)]
 	bool m_bShowButton;
-};
+
+	//------------------------------------------------------------------------------------------------
+	//! Return the label for this specific button
+	//! \return String with the label
+	string GetLabel()
+	{
+		return m_sLabel;
+	}
+}
+
+//! Configuration for a button with platform specific support
+[BaseContainerProps(configRoot : false), SCR_BaseContainerCustomTitleField("m_sTag")]
+class SCR_PlatformSpecificConfigurableDialogUiButtonPreset : SCR_ConfigurableDialogUiButtonPreset
+{
+	[Attribute("", UIWidgets.Auto, "Microsoft specific label of the button")]
+	protected string m_sMicrosoftLabel;
+
+	[Attribute("", UIWidgets.Auto, "Playstation specific label of the button")]
+	protected string m_sPlaystationLabel;
+
+	//------------------------------------------------------------------------------------------------
+	override string GetLabel()
+	{
+		PlatformKind platform = GetGame().GetPlatformService().GetLocalPlatformKind();
+
+		if (platform == PlatformKind.XBOX)
+			return m_sMicrosoftLabel;
+
+		if (platform == PlatformKind.PSN)
+			return m_sPlaystationLabel;
+
+		return m_sLabel;
+	}
+}
 
 //-------------------------------------------------------------------------------------------
 //! Configuration for a dialog

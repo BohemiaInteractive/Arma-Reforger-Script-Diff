@@ -55,8 +55,8 @@ sealed class WorkshopAssetBase
 	/*!
 	Returns true if asset has some data locally on the drive.
 	\note Asset can have data even in state in which it would not be expected to have them.
-	      States like NONE or BLOCKED should expect no data but if they are present they would
-	      be considered as HANGING DATA which should be either removed or change state into
+	      States like BLOCKED should expect no data but if they are present they would
+	      be considered as STALE DATA which should be either removed or change state into
 	      appropriate one for which it is valid to have some data present.
 	*/
 	proto external bool HasData();
@@ -75,6 +75,8 @@ sealed class WorkshopAssetBase
 	proto external string GetName();
 	//! Returns short summary text of this asset.
 	proto external string GetSummary();
+	//! Returns the time when this asset was created
+	proto external Timestamp GetCreatedAt();
 	/*!
 	Returns visibility of this asset.
 	\note Almost all assets will have public visibility and only author, administrator

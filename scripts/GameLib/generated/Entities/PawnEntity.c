@@ -30,6 +30,7 @@ class PawnEntity: GenericEntity
 	// callbacks
 
 	event protected void OnFramePhaseMainLogic(float timeSlice);
+	event protected void OnFramePhaseProxyLogic(float timeSlice);
 	event protected void OnFramePhasePreAnim(float timeSlice);
 	event protected void OnFramePhasePostAnim(float timeSlice);
 	event protected void OnPossession(RplIdentity rplIdentity);

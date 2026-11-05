@@ -60,7 +60,8 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	CreateGroupSettingsDialog,
 	CommandPostMapMenu,
 	VolunteerForGroupLeaderDialog,
-	CampaignMenu
+	CampaignMenu,
+	DLCMenu
 };
 
 //------------------------------------------------------------------------------------------------

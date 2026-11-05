@@ -121,6 +121,29 @@ class SCR_KeyBindingBind
 	
 	[Attribute("", UIWidgets.Auto, "Display name of bind", "")]
 	string m_sBindDisplayName;
+
+	[Attribute(defvalue: EInputDeviceType.KEYBOARD.ToString(), desc: "For which device type this binding will be available", uiwidget: UIWidgets.ComboBox, enumType: EInputDeviceType)]
+	EInputDeviceType m_eDeviceType;
+
+	[Attribute(defvalue: "0", desc: "Is this an axis")]
+	bool m_bIsAxis;
+
+	string GetBindingDisplayName()
+	{
+		return m_sBindDisplayName;
+	}
+}
+
+[BaseContainerProps("", "Custom keybinds"),  BaseContainerCustomTitleField("m_sBindString")]
+class SCR_JoystickAxisBindig : SCR_KeyBindingBind
+{
+	[Attribute(defvalue: "0", desc: "Axis Id", params: "0 inf")]
+	int m_iAxisId;
+
+	override string GetBindingDisplayName()
+	{
+		return WidgetManager.Translate(m_sBindDisplayName, m_iAxisId);
+	}
 }
 
 [BaseContainerProps("", "Custom bindable combo keys"), BaseContainerCustomTitleField("m_sComboString")]
@@ -131,6 +154,9 @@ class SCR_KeyBindingCombo
 	
 	[Attribute("", UIWidgets.Auto, "Display name of combo", "")]
 	string m_sComboDisplayName;
+
+	[Attribute(defvalue: EInputDeviceType.KEYBOARD.ToString(), desc: "For which device type this binding will be available", uiwidget: UIWidgets.ComboBox, enumType: EInputDeviceType)]
+	EInputDeviceType m_eDeviceType;
 }
 
 enum SCR_EActionPrefixType

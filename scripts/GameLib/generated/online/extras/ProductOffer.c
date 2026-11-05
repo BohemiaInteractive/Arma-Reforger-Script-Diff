@@ -16,9 +16,13 @@ class ProductOffer: Managed
 
 	proto external bool IsActive();
 	proto external int GetSortOrder();
-	proto external string GetLabel();
+	proto external void GetLabels(out notnull array<OfferLabel> outLabels);
 	proto external string GetSaleStartStr();
 	proto external string GetSaleEndStr();
+	//! Returns the time when this offer becomes valid
+	proto external Timestamp GetValidFrom();
+	//! Returns the time when this offer stops being valid
+	proto external Timestamp GetValidTo();
 	proto external EOfferPlatformFlags GetAllowedPlatforms();
 	proto external ExtraProduct GetProduct();
 }

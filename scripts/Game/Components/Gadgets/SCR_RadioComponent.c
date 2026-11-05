@@ -430,6 +430,20 @@ class SCR_RadioComponent : SCR_GadgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{
+		ChimeraCharacter characterOwner = GetCharacterOwner();
+		if (characterOwner && characterOwner == SCR_PlayerController.GetLocalControlledEntity())
+		{
+			SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.GetGadgetManager(characterOwner);
+			if (gadgetManager)
+				gadgetManager.UnregisterGadget(this);
+		}
+	
+		super.OnDelete(owner);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);

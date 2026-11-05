@@ -33,16 +33,13 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	[Attribute("0.1", UIWidgets.EditBox, desc: "In meters, light ignores objects up to set distance to avoid unwanted shadows", params: "0.1 5", category: "Light near plane")]
 	protected float m_fLightNearPlaneVehicle;
 
-	[Attribute("0 0 -0.03", UIWidgets.EditBox, desc: "When strapped light entity is being aligned with weapon to adjust light angle, this entity is offset to avoid it visibly floating", category: "Flashlight")]
-	protected vector m_vFlashlightAdjustOffset;
+	[Attribute(defvalue: "4", desc: "Multiplier which determines how quickly flashlight light source is going to be adjusting its direction to match the direction in which player is aiming", params: "0.1 inf 0.01", category: "Flashlight")]
+	protected float m_fLightDirectionLerpMultiplier;
 
 	protected bool m_bLastLightState;	// remember the last light state for cases where you put your flashlight into storage but there is no slot available -> true = active
 	protected bool m_bIsSlottedVehicle;	// char owner is in vehicle while flashlight is slotted
 	protected bool m_bIsOccluded;
 	protected int m_iCurrentLenseColor;
-	protected vector m_vAnglesCurrent;	// current local angles
-	protected vector m_vAnglesTarget;	// target local angles used to align flashlight with aiming angles while strapped
-	protected vector m_ItemMat[4];		// owner transformation matrix
 	protected LightEntity m_Light;
 	protected ParametricMaterialInstanceComponent m_EmissiveMaterial;
 	protected SCR_CompartmentAccessComponent m_CompartmentComp;
@@ -329,41 +326,6 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//------------------------------------------------------------------------------------------------
-	//! Write only the translation column of m_Light's local transform, preserving its rotation.
-	//! Update() rewrites the rotation each tick via SetYawPitchRoll, so we must not stomp it here.
-	protected void SetLightLocalOffset(vector offset)
-	{
-		if (!m_Light)
-			return;
-
-		vector mat[4];
-		m_Light.GetLocalTransform(mat);
-		mat[3] = offset;
-		m_Light.SetLocalTransform(mat);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override protected void ActivateGadgetUpdate()
-	{
-		super.ActivateGadgetUpdate();
-
-		// Offset only the child light entity, not the gadget body. The Update() loop rotates m_Light
-		// to follow aim while strapped; this offset compensates so the rotated beam does not appear
-		// to float relative to the model. Touching the slot transform here would visibly shift the
-		// whole flashlight on the character whenever the light is toggled.
-		SetLightLocalOffset(m_vFlashlightAdjustOffset);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override protected void DeactivateGadgetUpdate()
-	{
-		super.DeactivateGadgetUpdate();
-
-		SetLightLocalOffset(vector.Zero);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	override EGadgetType GetType()
 	{
 		return EGadgetType.FLASHLIGHT;
@@ -416,17 +378,14 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 			return;
 		}
 
-		// adjust angle of the flashlight to provide usable angle within various poses
-		m_Light.GetTransform(m_ItemMat);
-		m_vAnglesCurrent = m_Light.GetLocalYawPitchRoll();
-		m_vAnglesTarget = (Math.RAD2DEG * m_CharController.GetInputContext().GetAimingAngles() - Math3D.MatrixToAngles(m_ItemMat)) + m_vAnglesCurrent;	// diff between WS aiming and item angles, add local to the result
-		m_vAnglesTarget[0] = SCR_Math.FixAngle(m_vAnglesTarget[0], 180);
-		m_vAnglesTarget[1] = Math.Clamp(m_vAnglesTarget[1], 0, 30);	// only need too offset upwards, also avoid glitches with some stances
-		m_vAnglesTarget[2] = 0;	// no roll
-
-		m_vAnglesTarget[0] = Math.Lerp(m_vAnglesCurrent[0], m_vAnglesTarget[0], timeSlice* 4);
-		m_vAnglesTarget[1] = Math.Lerp(m_vAnglesCurrent[1], m_vAnglesTarget[1], timeSlice* 4);
-		m_Light.SetYawPitchRoll(m_vAnglesTarget); // sets local angles
+		vector aimAngle = m_CharController.GetInputContext().GetAimingAngles() * Math.RAD2DEG;
+		vector aimMat[4];
+		Math3D.AnglesToMatrix(aimAngle, aimMat);
+		vector currentLightMat[4];
+		m_Light.GetWorldTransform(currentLightMat);
+		aimMat[3] = currentLightMat[3];
+		SCR_Global.LerpMatrix(currentLightMat, aimMat, currentLightMat, timeSlice * m_fLightDirectionLerpMultiplier);
+		m_Light.SetWorldTransform(currentLightMat);
 	}
 
 	//------------------------------------------------------------------------------------------------

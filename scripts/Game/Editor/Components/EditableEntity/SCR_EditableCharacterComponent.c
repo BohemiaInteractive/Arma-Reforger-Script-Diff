@@ -429,11 +429,17 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 							AddUsableVehicle(parentOwner);
 
 						ChimeraWorld world = GetGame().GetWorld();
+
+						//AI does not need to own the DLC to pilot the vehicle
+						bool canUsePilotSeat = isAi;
+						if (!canUsePilotSeat)
+							canUsePilotSeat = DlcManager.Get().CanUseEntity(GetOwner(), parentOwner);
+
 						//~ Try placing character into vehicle
 						if (!m_aForceVehicleCompartments || m_aForceVehicleCompartments.IsEmpty())
 						{
 							//~ Try to add character to any free vehicle slot
-							if (compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.PILOT, world.IsGameTimePaused()))
+							if (canUsePilotSeat && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.PILOT, world.IsGameTimePaused()))
 							{
 								UpdateCompartment(parentOwner);
 								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);
@@ -456,7 +462,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 						//~ Force character into vehicle. Will delete the character if it fails to find a valid empty compartment
 						else
 						{
-							if (m_aForceVehicleCompartments.Contains(ECompartmentType.PILOT) && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.PILOT, world.IsGameTimePaused()))
+							if (canUsePilotSeat && m_aForceVehicleCompartments.Contains(ECompartmentType.PILOT) && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.PILOT, world.IsGameTimePaused()))
 							{
 								UpdateCompartment(parentOwner);
 								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);

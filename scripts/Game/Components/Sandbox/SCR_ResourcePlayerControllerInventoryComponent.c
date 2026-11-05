@@ -457,7 +457,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		}
 
 		// Spatial validation check to see if player can interact with this arsenal
-		if (!inventoryManagerComponent.ValidateStorageRequest(resourcesOwner))
+		if (!inventoryManagerComponent.ValidateItemRequest(resourcesOwner))
 			return;
 		
 		//~ Get Supply cost only if arsenal has supplies enabled
@@ -548,6 +548,22 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	//! \param[in] resourceType
 	void RpcAsk_ArsenalRequestItem(RplId resourceComponentRplId, RplId storageComponentRplId, ResourceName resourceNameItem, EResourceType resourceType)
 	{
+		SCR_PlayerController controller = SCR_PlayerController.Cast(GetOwner());
+		SCR_ChimeraCharacter buyer = SCR_ChimeraCharacter.Cast(controller.GetControlledEntity());
+
+		if (buyer && !DlcManager.Get().CanUseResource(buyer, resourceNameItem)) // DLC checks can only be performed locally, hence we put it here
+		{
+			World world = GetGame().GetWorld();
+			if (world)
+			{
+				SCR_DLCOwnershipSystem ownershipSystem = SCR_DLCOwnershipSystem.Cast(world.FindSystem(SCR_DLCOwnershipSystem));
+				if (ownershipSystem) // only on client
+					ownershipSystem.OnOwnershipNegative(SCR_EDLCInteractionType.ITEM_EQUIP);
+			}
+
+			return;
+		}
+
 		Rpc(RpcAsk_ArsenalRequestItem_, resourceComponentRplId, storageComponentRplId, resourceNameItem, resourceType);
 	}
 
@@ -622,7 +638,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 			return;
 
 		InventoryStorageManagerComponent sellerInventoryManagerComponent = seller.GetCharacterController().GetInventoryStorageManager();
-		if (!sellerInventoryManagerComponent || !sellerInventoryManagerComponent.ValidateStorageRequest(resourcesOwner))
+		if (!sellerInventoryManagerComponent || !sellerInventoryManagerComponent.ValidateItemRequest(resourcesOwner))
 		{
 			PrintFormat("SCR_ResourcePlayerControllerInventoryComponent.RpcAsk_ArsenalRefundItem: Player %1 tried to sell an item in the arsenal which too far away from him.", SCR_PlayerIdentityUtils.GetPlayerLogInfo(controller.GetPlayerId()), level: LogLevel.WARNING);
 			return;
@@ -651,15 +667,20 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		SCR_ArsenalManagerComponent arsenalManager;
 		if (arsenalFaction && arsenalFaction == seller.GetFaction() && SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager) && arsenalManager.IsMilitarySupplyAllocationEnabled())
 			personalResourceCost = arsenalManager.GetItemMilitarySupplyAllocationRefundAmount(inventoryItemEntity, arsenalComponent);
-
-		//~ On item refunded just before the item is deleted
-		SCR_ArsenalManagerComponent.OnItemRefunded_S(inventoryItemEntity, PlayerController.Cast(GetOwner()), arsenalComponent);
 		
 		IEntity parentEntity = inventoryItemEntity.GetParent();
 		SCR_InventoryStorageManagerComponent inventoryManagerComponent;
 		if (parentEntity)
+		{
 			inventoryManagerComponent = SCR_InventoryStorageManagerComponent.Cast(parentEntity.FindComponent(SCR_InventoryStorageManagerComponent));
-		
+			BaseInventoryStorageComponent parentStorage = inventoryItemComponent.GetParentSlot().GetStorage();
+			if (inventoryManagerComponent && parentStorage && !inventoryManagerComponent.CanRemoveItemFromStorage(inventoryItemEntity, parentStorage))
+				return;
+		}
+
+		//~ On item refunded just before the item is deleted
+		SCR_ArsenalManagerComponent.OnItemRefunded_S(inventoryItemEntity, PlayerController.Cast(GetOwner()), arsenalComponent);
+
 		if (inventoryManagerComponent && !inventoryManagerComponent.TryDeleteItem(inventoryItemEntity))
 			return;
 		else if (!inventoryManagerComponent)

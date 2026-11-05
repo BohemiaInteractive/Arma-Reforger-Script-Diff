@@ -56,7 +56,8 @@ class SCR_FeedbackDialogContentWidgets
 		m_wAttachFileVertialLayout = VerticalLayoutWidget.Cast(root.FindWidget("m_wAttachFileVertialLayout"));
 
 		m_wAttachFileButton = ButtonWidget.Cast(root.FindWidget("m_wAttachFileVertialLayout.AttachFileButtonSize.m_wAttachFileButton"));
-		m_AttachFileButtonComponent = SCR_ModularButtonComponent.Cast(m_wAttachFileButton.FindHandler(SCR_ModularButtonComponent));
+		if (m_wAttachFileButton)
+			m_AttachFileButtonComponent = SCR_ModularButtonComponent.Cast(m_wAttachFileButton.FindHandler(SCR_ModularButtonComponent));
 
 
 		m_wAttachLogsButton = ButtonWidget.Cast(root.FindWidget("m_wAttachFileVertialLayout.SizeLayout0.m_wAttachLogsButton"));

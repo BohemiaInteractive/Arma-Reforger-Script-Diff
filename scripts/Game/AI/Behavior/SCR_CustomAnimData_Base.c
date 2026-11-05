@@ -46,6 +46,12 @@ class SCR_CustomAnimData_Properties
 	[Attribute("0", desc: "Use root motion")]
 	bool m_bAllowRootMotion;
 	
+	[Attribute(defvalue: "1", desc: "Allow Environment Exit, meaning the animation can get stopped by isSwimming or isFalling checks")]
+	bool m_bAllowEnvironmentExit;
+
+	[Attribute(defvalue: SCR_EAnimationItemID.NONE.ToString(), desc: "Id of the predefined item configuration which should be used during animation playback.\nConfiguration is stored in {911269C6C40E808B}Configs/Character/LoiterItemPresets.conf", uiwidget: UIWidgets.ComboBox, enumType: SCR_EAnimationItemID)]
+	SCR_EAnimationItemID m_eItemPresetID;
+	
 	TAnimGraphCommand m_iCommandBindID = -1; 	// this is the ID that will return the Bind method of anim graph for command
 	TAnimGraphCommand m_iControlVariableID = -1; // this is the ID that will return the Bind method of anim graph for control variable
 	
@@ -54,7 +60,7 @@ class SCR_CustomAnimData_Properties
 	{
 		bool stringsEmpty =  m_sGraphName.IsEmpty() && m_sGraphInstanceName.IsEmpty() && m_sControlVariableName.IsEmpty();
 		bool stringsDefault = m_sGraphBindingName == BINDING_NAME_NPC && m_sCommandName == BINDING_COMMAND_NAME;
-		bool intsDefault = m_iCommandValue == -1 && m_iControlVariableValue == -1 && m_iCommandBindID == -1 && m_iControlVariableID == -1;
+		bool intsDefault = m_iCommandValue == -1 && m_iControlVariableValue == -1 && m_iCommandBindID == -1 && m_iControlVariableID == -1 && m_eItemPresetID == SCR_EAnimationItemID.NONE; 
 		
 		return stringsEmpty && stringsDefault && intsDefault && !m_bAllowRootMotion;
 	}

@@ -229,7 +229,7 @@ class SCR_AIFireIllumFlareBehaviorParameters : SCR_AIGetActionParameters
 	static ref TStringArray s_aVarsOut = (new SCR_AIFireIllumFlareBehavior(null, null, vector.Zero, null, null, 0)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	static override bool VisibleInPalette() { return true; }
-};
+}
 
 class SCR_AIGetSuppressBehaviorParameters : SCR_AIGetActionParameters
 {
@@ -237,7 +237,7 @@ class SCR_AIGetSuppressBehaviorParameters : SCR_AIGetActionParameters
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	static override bool VisibleInPalette() { return true; }
-};
+}
 
 class SCR_AIGetSuppressActivityParameters : SCR_AIGetActionParameters
 {
@@ -245,4 +245,25 @@ class SCR_AIGetSuppressActivityParameters : SCR_AIGetActionParameters
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	static override bool VisibleInPalette() { return true; }
+}
+
+//------------------------------------------------------------------------------------------------
+class SCR_AIUnflipVehicleBehaviorParameters : SCR_AIGetActionParameters
+{
+	static ref TStringArray s_aVarsOut = (new SCR_AIUnflipVehicle(null, null, null)).GetPortNames();
+	override TStringArray GetVariablesOut() { return s_aVarsOut; }
+	
+	static override bool VisibleInPalette() { return true; }
+}
+
+//------------------------------------------------------------------------------------------------
+class SCR_AIGetUnflipActivityParameters : SCR_AIGetActionParameters
+{
+	static ref TStringArray s_aVarsOut = (new SCR_AIUnflipVehicleActivity(null, null, null)).GetPortNames();
+	override TStringArray GetVariablesOut()
+	{
+		return s_aVarsOut;
+	}
+	
+	protected static override bool VisibleInPalette() { return true; }
 }

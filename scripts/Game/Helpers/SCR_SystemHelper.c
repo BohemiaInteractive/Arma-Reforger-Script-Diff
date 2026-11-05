@@ -17,7 +17,30 @@ class SCR_SystemHelper
 		
 		return SCR_EResolutionName.INVALID;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! \return true when this client is on PC, otherwise false
+	static bool IsPC()
+	{
+		EPlatform platform = System.GetPlatform();
+		return platform == EPlatform.WINDOWS || platform == EPlatform.LINUX || platform == EPlatform.WINDOWS_HANDHELD || platform == EPlatform.UNKNOWN;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return true when this client is on PlayStation, otherwise false
+	static bool IsPlayStation()
+	{
+		EPlatform platform = System.GetPlatform();
+		return platform == EPlatform.PS5 || platform == EPlatform.PS5_PRO || platform == EPlatform.PS4;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return true when this client is on Xbox, otherwise false
+	static bool IsXbox()
+	{
+		EPlatform platform = System.GetPlatform();
+		return platform == EPlatform.XBOX_ONE || platform == EPlatform.XBOX_ONE_S || platform == EPlatform.XBOX_ONE_X || platform == EPlatform.XBOX_SERIES_S || platform == EPlatform.XBOX_SERIES_X;
+	}
 }
 
 enum SCR_EResolutionName 

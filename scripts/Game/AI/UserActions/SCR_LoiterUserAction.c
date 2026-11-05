@@ -97,7 +97,15 @@ class SCR_LoiterUserAction: SCR_UserActionWithOccupancy
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
-		return true;
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(user);
+		if (!character)
+			return true;
+
+		if (!SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
+			return true;
+
+		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+		return controller && controller.IsLoiteringOnEntity(GetOwner());
 	}
 	
 	//------------------------------------------------------------------------------------------------

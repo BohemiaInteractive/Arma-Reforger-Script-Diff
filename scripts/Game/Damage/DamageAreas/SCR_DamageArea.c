@@ -72,7 +72,7 @@ class SCR_DamageArea : DamageArea
 			}
 		}
 		
-		if (m_bRemoveEffectWhenLeavingTheArea)
+		if (!m_bRemoveEffectWhenLeavingTheArea)
 		{
 			super.OnAreaExit(entity);
 			return;
@@ -80,7 +80,6 @@ class SCR_DamageArea : DamageArea
 		
 		RemoveEffect(entity);
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------
 	//! if amphibious vehicles protect from the area damage, we need to update the effect when they get in and out of the vehicle.

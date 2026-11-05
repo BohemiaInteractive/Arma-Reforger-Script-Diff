@@ -351,14 +351,16 @@ class SCR_EditableEntityComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	//! Sets AuthorID (player that modified this entity last) in Session
 	//! \param[in] authorID
-	void SetAuthor(int playerID)
+	void SetAuthor(int playerID, bool isGM = false)
 	{
 		if (!m_Author)
 			m_Author = new SCR_EditableEntityAuthor();
 		
 		m_Author.m_iAuthorID = playerID;
 		m_iAuthorLastUpdated = System.GetUnixTime();
-		
+
+		m_Author.m_bIsGM = isGM; // not replciated, because this information can only be trusted when it was set by the server like from SCR_PlacingEditorComponent.CreateEntityServer
+
 		Rpc(OnAuthorChangedServer, m_Author.m_sAuthorUID, m_Author.m_iAuthorID, "", -1, m_iAuthorLastUpdated);
 	}
 	
@@ -2393,6 +2395,7 @@ class SCR_EditableEntityAuthor
 	PlatformKind m_ePlatform;
 	int m_iAuthorID; // Author's Player ID (PlayerManager PlayerID), if the value is -1 it means it was loaded from a save.
 	int m_iEntityCount;
+	bool m_bIsGM;
 	
 	//------------------------------------------------------------------------------------------------
 	void Initialize(string authorUID, string platformID, PlatformKind platform, int authorID)

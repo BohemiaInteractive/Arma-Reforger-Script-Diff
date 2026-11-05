@@ -225,7 +225,7 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 		GameMaterial material = contactMat;
 		ParticleEffectInfo effectInfo = material.GetParticleEffectInfo();
 		
-		ResourceName resource = effectInfo.GetVehicleDustResource(m_iEffectIndex);
+		ResourceName resource = effectInfo.GetVehicleDustResource(VehicleDustEffectType.RotorCollision);
 		if (!resource || resource.IsEmpty())
 			resource = m_sDefaultParticlePath;		
 

@@ -102,6 +102,8 @@ sealed class AudioSystem
 	static proto bool MusicProjectResetSelection(int handle);
 	//! Overrides the next segment to transition to. Takes effect at the nearest exit point of the currently playing segment, bypassing the project's default routing.
 	static proto bool MusicProjectSetNextSegment(int handle, string segment);
+	//! Enables or disables music project state logging in the console.
+	static proto void MusicProjectEnableLogging(bool enable, LogLevel logLevel);
 }
 
 /*!

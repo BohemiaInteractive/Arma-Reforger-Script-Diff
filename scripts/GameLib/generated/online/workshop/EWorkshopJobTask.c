@@ -18,8 +18,10 @@ enum EWorkshopJobTask
 	UPDATE,
 	//! Some revision is already present and job is downloading older one.
 	DOWNGRADE,
-	//! Job is doing deep validation where it attempts to find if any fragment is corrupted
-	VALIDATE,
+	//! Deep validation against the local manifest header - detects corrupted/missing fragments without a connection.
+	VALIDATE_OFFLINE,
+	//! Deep validation against backend-authoritative manifest data - re-fetches manifest metadata.
+	VALIDATE_ONLINE,
 	//! Job is fixing corrupted fragments
 	REPAIR,
 }

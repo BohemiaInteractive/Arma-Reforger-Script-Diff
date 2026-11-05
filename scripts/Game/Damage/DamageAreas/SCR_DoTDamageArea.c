@@ -32,27 +32,22 @@ class SCR_DotDamageArea : SCR_DamageArea
 	//------------------------------------------------------------------------------------------------
 	override void OnAreaExit(IEntity entity)
 	{
-		if (!entity)
-			return;
-		
-		if (m_bRemoveEffectWhenLeavingTheArea)
-		{
-			super.OnAreaExit(entity);
-			return;
-		}
+		super.OnAreaExit(entity);
 
 		if (!m_bAddDurationOnExit)
 			return;
 
-		RemoveEffect(entity);
+		ExtendEffectDuration(entity);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void RemoveEffect(notnull IEntity entity)
+	//! Increases effect duration 
+	//! \param[in] entity	
+	protected void ExtendEffectDuration(notnull IEntity entity)
 	{
 		if(!m_DamageEffect)
 			return;
-		
+
 		const SCR_ExtendedDamageManagerComponent dmgMgr = SCR_ExtendedDamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(entity));
 		if (!dmgMgr)
 			return;

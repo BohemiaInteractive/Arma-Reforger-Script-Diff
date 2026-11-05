@@ -52,11 +52,17 @@ class SCR_AIEnemyMarkingSystem : GameSystem
 		for (int idx = m_mPlacedMarkersFactions.Count() - 1; idx >= 0; idx--)
 		{
 			marker = m_mPlacedMarkersFactions.GetKey(idx);
+			if (!marker)
+			{
+				m_mPlacedMarkersFactions.RemoveElement(idx);
+				continue;
+			}
+
 			previousTime = marker.GetTimestamp();
 			if (previousTime.PlusSeconds(m_fTimeUntilMarkerDeletion).Less(currentTime))
 			{
-				m_MarkerMgr.RemoveStaticMarker(marker);
 				m_mPlacedMarkersFactions.Remove(marker);
+				m_MarkerMgr.RemoveStaticMarker(marker);
 			}
 		}
 	}
@@ -85,7 +91,8 @@ class SCR_AIEnemyMarkingSystem : GameSystem
 		float minimumSqDistance = Math.Pow(GetMinimumMarkDistanceFromType(Icon), 2);
 		foreach (SCR_MapMarkerBase thisMarker, EMilitarySymbolIdentity thisFactionIdentitySymbol : m_mPlacedMarkersFactions)
 		{
-			if (Icon != thisMarker.GetFlags() // no need to compare distance if its a different "type" of marker (faction spotted, faction set or infantry / motorized)
+			if (!thisMarker
+			|| Icon != thisMarker.GetFlags() // no need to compare distance if its a different "type" of marker (faction spotted, faction set or infantry / motorized)
 			|| identity != thisFactionIdentitySymbol
 			|| thisMarker.GetMarkerFactionFlags() != Math.Pow(2, spottingGroup.GetFactionIndex()))
 				continue;
@@ -125,8 +132,9 @@ class SCR_AIEnemyMarkingSystem : GameSystem
 		for (int idx = overriddenMarkers.Count() - 1; idx >= 0; idx--)
 		{
 			SCR_MapMarkerBase overriddenMarker = overriddenMarkers[idx];
-			m_MarkerMgr.RemoveStaticMarker(overriddenMarker);
+
 			m_mPlacedMarkersFactions.Remove(overriddenMarker);
+			m_MarkerMgr.RemoveStaticMarker(overriddenMarker);
 		}
 	}
 
@@ -159,9 +167,16 @@ class SCR_AIEnemyMarkingSystem : GameSystem
 
 			case "USSR":
 				return EMilitarySymbolIdentity.OPFOR;
+
+			case "FIA":
+				return EMilitarySymbolIdentity.INDFOR;
+
+			// keep in mind AI only marks enemy factions so the following is unlikely
+			case "CIV":
+				return EMilitarySymbolIdentity.CIVILIAN;
 		}
 
-		return EMilitarySymbolIdentity.INDFOR;
+		return EMilitarySymbolIdentity.UNKNOWN;
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -1318,10 +1318,11 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		IEntity owner = GetOwner();
 		foreach (Tuple2<vector, bool> entry : m_aLocalCollisions)
 		{
+			vector worldPos = owner.CoordToParent(entry.param1);
 			if (entry.param2)
-				m_DebugShape.AddSphere(owner.CoordToParent(entry.param1), 0.25, Color.GREEN, ShapeFlags.WIREFRAME | ShapeFlags.ONCE);
+				m_DebugShape.AddSphere(worldPos, 0.25, Color.GREEN, ShapeFlags.WIREFRAME | ShapeFlags.ONCE);
 			else
-				m_DebugShape.AddSphere(owner.CoordToParent(entry.param1), 0.3, Color.RED, ShapeFlags.WIREFRAME | ShapeFlags.ONCE);
+				m_DebugShape.AddSphere(worldPos, 0.3, Color.RED, ShapeFlags.WIREFRAME | ShapeFlags.ONCE);
 		}
 	}
 #endif

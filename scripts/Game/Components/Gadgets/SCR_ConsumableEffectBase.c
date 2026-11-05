@@ -7,7 +7,8 @@ enum SCR_EConsumableType
 	TOURNIQUET,
 	SALINE,
 	MORPHINE,
-	MED_KIT
+	MED_KIT,
+	STAMINA_KIT
 }
 
 //! Reason why consumable cannot be applied
@@ -19,7 +20,10 @@ enum SCR_EConsumableFailReason
 	NOT_BLEEDING = 11,
 	ALREADY_APPLIED = 12,
 	DAMAGED = 13,
-	UNDAMAGED = 14
+	UNDAMAGED = 14,
+	NOT_DEHYDRATED = 15,
+	CONSUMABLE_EMPTY = 16,
+	NOT_APPLICABLE = 17
 }
 
 //! Effect assigned to the consumable gadget
@@ -51,6 +55,9 @@ class SCR_ConsumableEffectBase : Managed
 	[Attribute(defvalue: "0", desc: "Penalty to the usage speed for character not having at least one label, nor his group matching the role.\nIt is used as a divider of the value from ApplyTo<target>Duration.\n0 means that there is no penalty, and default speed will be used.", params: "0 inf 0.01", category: "General")]
 	protected float m_fRoleSpeedPenalty;
 
+	[Attribute("0", UIWidgets.CheckBox, "Allows this consumable to bypass hit-zone targeting when used from inventory and apply its effect directly to the user.", category: "General")]
+	protected bool m_bAllowInventoryUseWithoutHitZone;
+	
 	SCR_EConsumableType m_eConsumableType;
 	
 	//------------------------------------------------------------------------------------------------
@@ -97,6 +104,17 @@ class SCR_ConsumableEffectBase : Managed
 	//! \param[in] failReason is reason why CanApplyEffect returned false
 	//! \return
 	bool CanApplyEffect(notnull IEntity target, notnull IEntity user, out SCR_EConsumableFailReason failReason = SCR_EConsumableFailReason.NONE);
+
+	//------------------------------------------------------------------------------------------------
+	//! Item-aware condition used when the consumable item is activated.
+	bool CanApplyItemEffect(notnull IEntity target, notnull IEntity user, notnull IEntity item, out SCR_EConsumableFailReason failReason = SCR_EConsumableFailReason.NONE)
+	{
+		return CanApplyEffect(target, user, failReason);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Called only when an actual item activation is rejected.
+	void OnApplyEffectRejected(SCR_EConsumableFailReason failReason);
 	
 	//------------------------------------------------------------------------------------------------
 	//! Update the animCommands for all animations related to consumable
@@ -192,5 +210,12 @@ class SCR_ConsumableEffectBase : Managed
 	{
 		UpdateAnimationCommands(user);
 		return m_iPlayerApplyToOtherCmdId;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return Whether inventory use bypasses hit-zone targeting and applies the effect directly to the user.
+	bool AllowsInventoryUseWithoutHitZone()
+	{
+		return m_bAllowInventoryUseWithoutHitZone;
 	}
 }

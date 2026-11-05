@@ -37,6 +37,13 @@ class SCR_ShapeNextPointHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return anchor points count
+	int GetAnchorPointsCount()
+	{
+		return m_iAnchorPointsCount;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! \return anchor point tesselated indices
 	array<int> GetAnchorPointIndices()
 	{

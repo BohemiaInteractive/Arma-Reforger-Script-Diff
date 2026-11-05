@@ -100,7 +100,7 @@ class SCR_FilterCategory
 	
 	
 	//-----------------------------------------------------------------------------------------------------------
-	protected void SCR_FilterCategory()
+	void SCR_FilterCategory()
 	{
 		// Register the back-pointer of all child filters
 		

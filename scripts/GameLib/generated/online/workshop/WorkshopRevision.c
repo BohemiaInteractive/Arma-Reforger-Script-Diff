@@ -38,6 +38,21 @@ sealed class WorkshopRevision: WorkshopRevisionBase
 	      license and the most restrictive rules apply for this revision.
 	*/
 	proto external WorkshopLicense GetLicense();
+	/*!
+	Provides all direct dependencies of this revision as WorkshopAssetBase.
+	\note You must first request data about dependencies via RequestDependencies().
+	\return false if not all dependencies are currently cached - request them first.
+	*/
+	proto external bool GetDependencies(out notnull array<WorkshopAssetBase> dependenciesOut);
+	/*!
+	Will request data about all direct dependencies as WorkshopAssetBase.
+	\note If all dependencies are already cached then this will finish immediately without sending request.
+	      It can be performed every time before retrieving and showing dependencies to ensure that they
+	      will be always cached and available.
+	\warning This will request only direct dependencies as assets but depending on which revision of that
+	         asset will be downloaded it might require additional (nested) dependencies.
+	*/
+	proto external void RequestDependencies(notnull BackendCallback callback);
 }
 
 /*!

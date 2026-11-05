@@ -234,11 +234,68 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 		SCR_EditableEntityComponent entity = SCR_EditableEntityComponent.GetEditableEntity(ent);
 		if (entity)
 		{
+			if (DoesEntityDestroyFoliage(entity))
+				DestroyFoliage();
+
 			SCR_EditorPreviewParams params = SCR_EditorPreviewParams.CreateParams(spawnParams.Transform, verticalMode: EEditorTransformVertical.TERRAIN);
 			SCR_RefPreviewEntity.SpawnAndApplyReference(entity, params);
 		}
 
 		SCR_EntityHelper.DeleteEntityAndChildren(GetOwner());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Test if the entity currently being placed needs to clear nearby foliage
+	//! \param[in] entityComponent
+	protected bool DoesEntityDestroyFoliage(SCR_EditableEntityComponent entityComponent)
+	{
+		SCR_EditableEntityUIInfo EntityInfo = SCR_EditableEntityUIInfo.Cast(entityComponent.GetInfo());
+		if (!EntityInfo)
+			return false;
+
+		// Trait overrides that can be used by entities to override wanted behaviour
+		if (EntityInfo.HasEntityLabel(EEditableEntityLabel.TRAIT_BUILDING_OVERRIDE_KEEP_BUSH))
+			return false;
+
+		if (EntityInfo.HasEntityLabel(EEditableEntityLabel.TRAIT_BUILDING_OVERRIDE_CLEAR_BUSH))
+			return true;
+
+		// "default behaviour", everything should clear nearby bushes outside of:
+		// small emplacements (SIZE_XS) and single objects (ENTITYTYPE_OBJECT)
+		if (EntityInfo.HasEntityLabel(EEditableEntityLabel.SIZE_XS) || EntityInfo.HasEntityLabel(EEditableEntityLabel.ENTITYTYPE_OBJECT))
+			return false;
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Destroy the foliage within the building area of the entity
+	protected void DestroyFoliage()
+	{
+		// we get the first child (one of the stakes in the ground) to base the size of the radious to destroy foliage in
+		IEntity child = GetOwner().GetChildren();
+		if (!child)
+			return;
+
+		float compositionRadius = vector.Distance(child.GetOrigin(), GetOwner().GetOrigin());
+
+		GetGame().GetWorld().QueryEntitiesBySphere(GetOwner().GetOrigin(), compositionRadius, EvaluatePreviewEntity);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool EvaluatePreviewEntity(IEntity ent)
+	{
+		Tree tree = Tree.Cast(ent);
+
+		if (!tree)
+			return true;
+
+		TreeClass treeClass = TreeClass.Cast(tree.GetPrefabData());
+		if (!treeClass || !treeClass.m_bDestructibleByHand)
+			return true;
+
+		tree.ForceKill_S();
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------

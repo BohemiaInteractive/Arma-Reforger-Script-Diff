@@ -39,8 +39,8 @@ class InventoryStorageManagerComponent: GameComponent
 	//! Spawn and insert into inventory
 	//! if provided storage is null then most suitable storage would be chosen from owned storages
 	proto external bool TrySpawnPrefabToStorage(ResourceName prefab, BaseInventoryStorageComponent storage = null, int slotID = -1,EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY, InventoryOperationCallback cb = null, int count = 1);
-	//! Validate that the storage is near the player to eliminate potentual message tampering
-	proto external bool ValidateStorageRequest( IEntity storageOwner );
+	//! Validate that the entity is near the player
+	proto external bool ValidateItemRequest(IEntity entity);
 	//! Get all managed storages
 	proto external int GetStorages(out notnull array<BaseInventoryStorageComponent> outStorages, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY);
 	//! Get all items from all managed storages
@@ -124,8 +124,8 @@ class InventoryStorageManagerComponent: GameComponent
 	event protected void FillInitialStorages(out array<BaseInventoryStorageComponent> storagesToAdd);
 	//! Override this method and fill in prefabsToSpawn array if you have some items you'd like to store in inventory at initialization time
 	event protected void FillInitialPrefabsToStore(out array<ResourceName> prefabsToSpawn);
-	//! Virtual method that allows verification of item removal as a result of move operation on inventory level
-	event protected bool ShouldForbidRemoveByInstigator(InventoryStorageManagerComponent instigatorManager, BaseInventoryStorageComponent fromStorage, IEntity item) { return false; };
+	//! Override to control access of another storage manager to an item that is currently managed by this instance.
+	event protected bool HandleAccessValidation(InventoryStorageManagerComponent instigatorManager, IEntity item, EInventoryManagerOperation operation) { return true; };
 }
 
 /*!

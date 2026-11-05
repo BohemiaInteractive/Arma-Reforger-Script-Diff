@@ -27,6 +27,12 @@ sealed class ServerLobbyApi
 	\note this returns valid value only on server side.
 	*/
 	static proto bool IsEnabled();
+	//! Returns current state of the online server registration.
+	static proto EServerState GetState();
+	//! Returns type of currently registered server.
+	static proto EServerType GetType();
+	//! Returns unique ID of this server.
+	static proto string GetId();
 	/*!
 	Returns current instance of the ServerInfo of the server.
 	It represents partial data which are provided to clients in ServerCatalogueApi

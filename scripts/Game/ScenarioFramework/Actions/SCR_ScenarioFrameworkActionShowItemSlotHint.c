@@ -33,8 +33,12 @@ class SCR_ScenarioFrameworkActionShowItemSlotHint : SCR_ScenarioFrameworkActionS
 			return string.Empty;
 		
 		// Index needs to be increased +1 as the slots are numbered 1 to 10.
-		int itemIndex = PlayerInventoryManager.GetEntityIndexInQuickslots(item) +1;
+		int itemIndex = PlayerInventoryManager.GetEntityIndexInQuickslots(item) + 1;
 		
-		return "InventoryQuickSlot" + string.ToString(itemIndex);
+		//SwitchWeaponCategory 10 equals 0, representing keyboard buttons
+		if (itemIndex == 10)
+			itemIndex = 0;
+		
+		return "SwitchWeaponCategory" + string.ToString(itemIndex);
 	}
 }

@@ -11,7 +11,20 @@ class SCR_CameraManager : CameraManager
 	override protected void OnInit() 
 	{
 		SetupFOV();
+		SetupViewDistance();
 		GetGame().OnUserSettingsChangedInvoker().Insert(SetupFOV);
+		GetGame().OnUserSettingsChangedInvoker().Insert(SetupViewDistance);
+	}
+
+	protected void SetupViewDistance()
+	{
+		BaseContainer videoSettings = GetGame().GetGameUserSettings().GetModule("SCR_VideoSettings");
+		if (!videoSettings)
+			return;
+
+		int viewDistance;
+		if (videoSettings.Get("m_iViewDistance", viewDistance))
+			GetGame().SetViewDistance(viewDistance);
 	}
 	
 	protected void SetupFOV()

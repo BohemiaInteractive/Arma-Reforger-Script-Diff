@@ -21,8 +21,6 @@ class SCR_CameraLimitedEditorComponent : SCR_CameraEditorComponent
 	
 	protected bool m_bIsLocked;
 	protected bool m_bIsLimited;
-	protected bool m_bIsMultiplayer;
-	protected bool m_bIsArmavisionAllowedInMP;
 	protected ChimeraCharacter m_Player;
 	protected SCR_EditorManagerEntity m_editorManager;
 	protected CharacterControllerComponent m_PlayerController;
@@ -46,10 +44,18 @@ class SCR_CameraLimitedEditorComponent : SCR_CameraEditorComponent
 		}
 #endif
 
-		if (m_bIsLimited)
-			return m_LimitedCameraPrefab;
-		else
+		if (!m_bIsLimited)
 			return super.GetCameraPrefab();
+	
+		SCR_AdditionalGameModeSettingsComponent settings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
+		if (settings)
+		{
+			ResourceName prefabOverride = settings.GetLimitedArmavisionCameraPrefabOverride();
+			if (!prefabOverride.IsEmpty())
+				return prefabOverride;
+		}
+	
+		return m_LimitedCameraPrefab;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -81,31 +87,20 @@ class SCR_CameraLimitedEditorComponent : SCR_CameraEditorComponent
 		if (m_bIsLocked)
 			SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PHOTOMODE_IS_LOCKED);
 		
+#ifdef ENABLE_DIAG
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_MANUAL_CAMERA_UNLIMITED, "", "Unlimited Movement", "Manual Camera");
+#endif
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override protected void EOnEditorPreActivate()
 	{
-		m_bIsLimited = false;
-		m_Player = ChimeraCharacter.Cast(EntityUtils.GetPlayer());
-		if (m_Player)
-			m_PlayerController = m_Player.GetCharacterController();
-		
-		SCR_MissionHeader missionHeader = SCR_MissionHeader.Cast(GetGame().GetMissionHeader());
-		if (missionHeader)
-			m_bIsArmavisionAllowedInMP = missionHeader.m_bIsArmavisionAllowedInMP;
-		
 		m_editorManager = SCR_EditorManagerEntity.GetInstance();
 		if (m_editorManager)
-		{
 			m_editorManager.GetOnLimitedChange().Insert(ReplaceCamera);
-			m_bIsLimited = m_editorManager.IsLimited() && !DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_MANUAL_CAMERA_UNLIMITED);
-		}
 
-		m_bIsMultiplayer = RplSession.Mode() != RplMode.None;
-		m_bIsLocked = m_bIsLimited && m_bIsMultiplayer && !m_bIsArmavisionAllowedInMP;
-		if (m_bIsLocked && (!m_PlayerController || m_PlayerController.IsUnconscious()))
+		UpdateCameraRestrictions();
+		if (m_bIsLocked && m_editorManager && (!m_PlayerController || m_PlayerController.IsUnconscious()))
 			m_editorManager.Close();
 
 		super.EOnEditorPreActivate();
@@ -127,8 +122,48 @@ class SCR_CameraLimitedEditorComponent : SCR_CameraEditorComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// Whether multiplayer rules block the camera and entity overlays of this ArmaVision mode
+	static bool IsArmavisionBlocked(SCR_EditorModeEntity mode)
+	{
+		if (!mode || (mode.GetModeType() != EEditorMode.PHOTO && mode.GetModeType() != EEditorMode.PHOTO_SAVE))
+			return false;
+
+		SCR_EditorManagerEntity editorManager = mode.GetManager();
+		if (!editorManager || !editorManager.IsLimited())
+			return false;
+
+#ifdef ENABLE_DIAG
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_MANUAL_CAMERA_UNLIMITED))
+			return false;
+#endif
+
+		if (RplSession.Mode() == RplMode.None)
+			return false;
+
+		SCR_MissionHeader missionHeader = SCR_MissionHeader.Cast(GetGame().GetMissionHeader());
+		return !missionHeader || !missionHeader.m_bIsArmavisionAllowedInMP;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// Re-evaluate rights whenever the camera is opened or replaced
+	protected void UpdateCameraRestrictions()
+	{
+		m_Player = ChimeraCharacter.Cast(EntityUtils.GetPlayer());
+		m_PlayerController = null;
+		if (m_Player)
+			m_PlayerController = m_Player.GetCharacterController();
+
+		m_bIsLimited = m_editorManager && m_editorManager.IsLimited();
+#ifdef ENABLE_DIAG
+		m_bIsLimited = m_bIsLimited && !DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_MANUAL_CAMERA_UNLIMITED);
+#endif
+		m_bIsLocked = IsArmavisionBlocked(SCR_EditorModeEntity.Cast(GetOwner()));
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void CreateCamera()
 	{
+		UpdateCameraRestrictions();
 		if (m_bIsLocked)
 		{
 			delete m_Camera;

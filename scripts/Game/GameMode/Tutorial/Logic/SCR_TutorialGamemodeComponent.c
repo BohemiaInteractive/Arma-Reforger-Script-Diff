@@ -892,8 +892,14 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 		if (!loadout)
 			return;
 		
+		SCR_EntityHelper.DeleteEntityAndChildren(m_Player);
+		
 		SCR_FreeSpawnData data = new SCR_FreeSpawnData(loadout.GetLoadoutResource(), spawnpos.GetOrigin(), spawnpos.GetAngles());
-		SCR_RespawnComponent.Cast(pc.FindComponent(SCR_RespawnComponent)).RequestSpawn(data);
+		SCR_RespawnComponent respawnComponent = SCR_RespawnComponent.Cast(pc.FindComponent(SCR_RespawnComponent));
+		if (!respawnComponent)
+			return;
+		
+		respawnComponent.RequestSpawn(data);
 		
 		spawnpos = spawnpos.GetChildren();
 		if (spawnpos)

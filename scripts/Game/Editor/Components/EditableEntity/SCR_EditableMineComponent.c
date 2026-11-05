@@ -28,8 +28,10 @@ class SCR_EditableMineComponent : SCR_EditableSystemComponent
 		SCR_PressureTriggerComponent pressureTriggerComponent = SCR_PressureTriggerComponent.Cast(GetOwner().FindComponent(SCR_PressureTriggerComponent));
 		if (!pressureTriggerComponent)
 			return;
-		
-		SetInstigator(GetAuthorPlayerID());
+
+		// if there is no author, then it was spawned by the scenario, and in such case we need to claim that damage was done by the editor, otherwise player will be blamed for suicide in case of death
+		bool isGM = !m_Author || m_Author && m_Author.m_bIsGM;
+		SetInstigator(GetAuthorPlayerID(), isGM);
 		pressureTriggerComponent.ActivateTrigger();
 		if (pressureTriggerComponent.GetArmingTime() > 0)
 			pressureTriggerComponent.ResetTimeout();
@@ -58,7 +60,8 @@ class SCR_EditableMineComponent : SCR_EditableSystemComponent
 		SCR_PressureTriggerComponent pressureTriggerComponent = SCR_PressureTriggerComponent.Cast(GetOwner().FindComponent(SCR_PressureTriggerComponent));
 		if (pressureTriggerComponent)
 		{
-			SetInstigator(editorPlayerID);
+			bool isGM = GetGame().GetPlayerManager().HasPlayerRole(editorPlayerID, EPlayerRole.GAME_MASTER);
+			SetInstigator(editorPlayerID, isGM);
 			pressureTriggerComponent.TriggerManuallyServer();
 			return true;
 		}
@@ -67,18 +70,24 @@ class SCR_EditableMineComponent : SCR_EditableSystemComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void SetAuthor(int playerID)
+	override void SetAuthor(int playerID, bool isGM = false)
 	{
-		super.SetAuthor(playerID);
-		
-		SetInstigator(GetAuthorPlayerID());
+		super.SetAuthor(playerID, isGM);
+
+		int id = GetAuthorPlayerID();
+		SetInstigator(id, isGM);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetInstigator(int playerID)
+	void SetInstigator(int playerID, bool isGM = false)
 	{
 		SCR_PressureTriggerComponent pressureTriggerComponent = SCR_PressureTriggerComponent.Cast(GetOwner().FindComponent(SCR_PressureTriggerComponent));
-		if (pressureTriggerComponent)
+		if (!pressureTriggerComponent)
+			return;
+
+		if (isGM)
 			pressureTriggerComponent.SetInstigator(Instigator.CreateInstigatorGM(playerID));
+		else
+			pressureTriggerComponent.GetInstigator().SetInstigatorByPlayerID(playerID);
 	}
 }

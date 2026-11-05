@@ -114,6 +114,22 @@ class SCR_MainMenuTileComponent: SCR_TileBaseComponent
 		if (comp)
 			 comp.SetImageSaturation(!m_bDisabled);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void EnableTile()
+	{
+		m_bDisabled = false;
+		
+		m_DisabledTileShadow.SetVisible(false);
+		
+		m_Play.SetEnabled(true);
+		m_Continue.SetEnabled(true);
+		m_Restart.SetEnabled(true);
+		
+		SCR_ButtonImageComponent comp = SCR_ButtonImageComponent.Cast(m_wRoot.FindHandler(SCR_ButtonImageComponent));
+		if (comp)
+			comp.SetImageSaturation(!m_bDisabled);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)

@@ -267,9 +267,9 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 		if (!character)
 			return false;
 
-		// No interactions when menu is open
+		// No interactions when a menu or dialog is open
 		MenuManager menuManager = GetGame().GetMenuManager();
-		if (menuManager && menuManager.IsAnyMenuOpen())
+		if (menuManager && (menuManager.IsAnyMenuOpen() || menuManager.IsAnyDialogOpen()))
 			return false;
 
 		SCR_CharacterControllerComponent characterController = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
@@ -749,7 +749,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			if (m_bIsPerforming)
 			{
 				selectedAction = m_pLastUserAction;
-				if (actions.Count() > prevActionIndex && actions[prevActionIndex] == m_pLastUserAction)
+				if (actions.IsIndexValid(prevActionIndex) && actions[prevActionIndex] == m_pLastUserAction)
 					canPerformSelectedAction = canPerform[prevActionIndex];
 				else if (m_pLastUserAction)
 					canPerformSelectedAction = m_pLastUserAction.CanBeShown(character) && m_pLastUserAction.CanBePerformed(character);

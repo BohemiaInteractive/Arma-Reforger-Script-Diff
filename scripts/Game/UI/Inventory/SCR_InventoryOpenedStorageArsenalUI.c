@@ -1,7 +1,7 @@
 class SCR_InventoryOpenedStorageArsenalUI : SCR_InventoryOpenedStorageUI
 {
 	//------------------------------------------------------------------------------------------------
-	override protected void GetAllItems(out notnull array<IEntity> pItemsInStorage, BaseInventoryStorageComponent pStorage = null)
+	override void GetAllItems(out notnull array<IEntity> pItemsInStorage, BaseInventoryStorageComponent pStorage = null)
 	{
 		if (pStorage)
 		{

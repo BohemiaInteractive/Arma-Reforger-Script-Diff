@@ -26,8 +26,10 @@ class VehicleHelicopterSimulation: VehicleBaseSimulation
 	proto external void RotorSetForceScaleState(int rotorIdx, float forceScale);
 	//! Sets scaling factor of rotor torque
 	proto external void RotorSetTorqueScaleState(int rotorIdx, float torqueScale);
-	//! Returns rotor transform in local space
+	//! Returns rotor transform in model space
 	proto external void RotorGetTransform(int rotorIdx, out vector transform[4]);
+	//! Returns rotor position in model space
+	proto external void RotorGetPosition(int rotorIdx, out vector pos);
 	//! Returns rotor axis in local space
 	proto external void RotorGetAxis(int rotorIdx, out vector axis);
 	//! Returns rotor radius

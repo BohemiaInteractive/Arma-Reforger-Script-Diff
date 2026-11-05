@@ -18,6 +18,15 @@ should only interact with those provided by ServerCatalogueApi.
 */
 sealed class ServerInfo
 {
+	/** \name Constants
+	 * Populated by the engine.
+	 */
+	///@{
+
+	//! Interval of how often can player list be requested in seconds.
+	static const int REQUEST_PLAYER_LIST_INTERVAL_S;
+	///@}
+
 	private void ServerInfo();
 	private void ~ServerInfo();
 
@@ -116,6 +125,12 @@ sealed class ServerInfo
 	proto external ServerPingSite GetPingSite();
 	//! Returns count of how many queues are known for this server.
 	proto external int GetQueueInfoCount();
+	/*!
+	Returns true if the server has a join queue system enabled.
+	Servers with disabled queue system might not support other functionalities
+	which specifically requires enabled queues.
+	*/
+	proto external bool IsQueueEnabled();
 	//! Returns specific queue by type for this server.
 	proto external ServerQueueInfo GetQueueInfoByType(EServerJoinQueueType type);
 	//! Returns all available queues for this server.
@@ -142,13 +157,21 @@ sealed class ServerInfo
 	 - OnSuccess:
 	   - EApiCode::EACODE_SERVER_JOIN — join approved, request a game state transition
 	     to connect to the server.
-	   - EApiCode::EACODE_SERVER_QUEUE_WAIT — server is full, the user has been placed
-	     in a queue. Use ServerJoinManagerApi.GetQueueData() to access queue info
+	   - EApiCode::EACODE_SERVER_QUEUE_WAIT — the user was placed in a queue or entered
+	     UNREADY limbo. Occurs when the server is full (user is queued), or when the
+	     user joined with BUSY status while a slot was available (UNREADY state).
+	     Use ServerJoinManagerApi.GetQueueData() to access queue info
 	     and set up a polling callback for status updates.
 	 - OnError:
 	   - EApiCode::EACODE_ERROR_SERVER_NOT_FOUND — server no longer exists.
 	   - EApiCode::EACODE_ERROR_SERVER_PASSWORD_MISMATCH — incorrect password.
 	   - EApiCode::EACODE_ERROR_SERVER_IS_FULL — server is full and has no queue.
+	   - EApiCode::EACODE_ERROR_SERVER_JOIN_UNREADY_DENIED — the user attempted to join
+	     with BUSY status but the server does not have a queue enabled. Transition to
+	     READY via ServerJoinManagerApi::SetUserStatus(true) and retry.
+	   - EApiCode::EACODE_ERROR_PLAYER_IS_BANNED — the local player is banned from this
+	     server. Use ServerJoinManagerApi.GetLastJoinBanEntry() to retrieve the ban
+	     details (scope, reason, expiry).
 
 	\see ServerJoinManagerApi
 	\see ServerQueueData
@@ -225,6 +248,44 @@ sealed class ServerInfo
 	      null.
 	*/
 	proto external ServerGameDataBase GetGameData();
+	/*!
+	Requests the list of connected and queued players on this server from the backend.
+
+	\note On success, existing ServerPlayerInfo instances for players still on the server are reused
+	      and updated in place. Instances for players who have left are removed from the list.
+	      Re-fetch via GetConnectedPlayers() or GetQueuedPlayers() after the callback to get current state.
+	\warning The request can be performed at most once per REQUEST_PLAYER_LIST_INTERVAL_S seconds.
+	         If called sooner, the callback fires OnSuccess immediately without a network request.
+	         The interval resets from the last successful request.
+	*/
+	proto external void RequestPlayerList(notnull BackendCallback callback);
+	/*!
+	Returns the list of players currently connected to this server.
+	Data must first be requested via RequestPlayerList().
+
+	\note The list is rebuilt on each successful RequestPlayerList() call. Existing instances for
+	      players still connected are reused and updated; instances for players who left are removed.
+	      Re-fetch this list after each callback to reflect the current server state.
+	*/
+	proto external void GetConnectedPlayers(out array<ServerPlayerInfo> playerListOut);
+	/*!
+	Returns the list of players currently waiting in queue on this server.
+	Data must first be requested via RequestPlayerList().
+
+	\note The list is rebuilt on each successful RequestPlayerList() call. Existing instances for
+	      players still queued are reused and updated; instances for players who left are removed.
+	      Re-fetch this list after each callback to reflect the current server state.
+	*/
+	proto external void GetQueuedPlayers(out array<ServerPlayerInfo> playerListOut);
+	/*!
+	Fetch and cache the local (authenticated) player's bans that are active on this server.
+	Calls pCallback on completion. Results can then be retrieved via GetLocalUserBans().
+	*/
+	proto external void RequestLocalUserBans(notnull BackendCallback pCallback);
+	//! Fills the output array with the local player's bans on this server loaded by RequestLocalUserBans().
+	proto external void GetLocalUserBans(out array<BanEntry> bansOut);
+	//! Returns true if local user bans have been loaded for this server.
+	proto external bool AreLocalUserBansLoaded();
 }
 
 /*!

@@ -181,11 +181,13 @@ class SCR_InvCallBack : ScriptedInventoryOperationCallback
 				if ( m_pStorageTo == m_pMenu.GetStorageList() )
 				{
 					shouldUpdateStorageList = true;
-
-					auto itemStorage = BaseInventoryStorageComponent.Cast(m_pItem.FindComponent(BaseInventoryStorageComponent));
-					SCR_InventoryOpenedStorageUI open = m_pMenu.GetOpenedStorage(itemStorage);
-					if (open)
-						open.CloseStorage();
+					if (m_pItem)
+					{
+						auto itemStorage = BaseInventoryStorageComponent.Cast(m_pItem.FindComponent(BaseInventoryStorageComponent));
+						SCR_InventoryOpenedStorageUI open = m_pMenu.GetOpenedStorage(itemStorage);
+						if (open)
+							open.CloseStorage();
+					}
 				}
 				else
 				{
@@ -449,6 +451,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	protected const LocalizedString GAMEPAD_HINT_CLOSE = "#AR-Inventory_Close";
 	protected const LocalizedString GAMEPAD_HINT_SELECT = "#AR-Inventory_Select";
 	protected const LocalizedString GAMEPAD_HINT_DESELECT = "#AR-Inventory_Deselect";
+	protected const LocalizedString HINT_REPACK_MAG = "#AR-Inventory_RepackMagazine";
 	
 	protected static ref ScriptInvokerInventorySlotHover m_OnItemHover;
 	protected static ref ScriptInvoker m_OnItemHoverEnd;
@@ -846,10 +849,54 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			return;
 		}
 
+		AcceptStorageRefreshRequests();
+
 		if (m_pCharacterWidgetHelper && m_pPreviewManager && m_PlayerRenderAttributes && m_pCharacterWidgetHelper.Update(tDelta, m_PlayerRenderAttributes))
 		{
 			UpdatePreview();
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void AcceptStorageRefreshRequests()
+	{
+		if (m_pWeaponStorage)
+			m_pWeaponStorage.ConsumeRefreshRequest();
+		if (m_pStorageLootUI)
+			m_pStorageLootUI.ConsumeRefreshRequest();
+		if (m_pStorageListUI)
+			m_pStorageListUI.ConsumeRefreshRequest();
+		if (m_pStorageBaseUI)
+			m_pStorageBaseUI.ConsumeRefreshRequest();
+		if (m_pGadgetsBaseUI)
+			m_pGadgetsBaseUI.ConsumeRefreshRequest();
+		if (m_pQuickSlotStorage)
+			m_pQuickSlotStorage.ConsumeRefreshRequest();
+		if (m_pAttachmentStorageUI)
+			m_pAttachmentStorageUI.ConsumeRefreshRequest();
+
+		foreach (SCR_InventoryStorageBaseUI storageUI : m_aStorages)
+		{
+			if (storageUI)
+				storageUI.ConsumeRefreshRequest();
+		}
+
+		foreach (SCR_InventoryOpenedStorageUI openedStorageUI : m_aOpenedStoragesUI)
+		{
+			if (openedStorageUI)
+				openedStorageUI.ConsumeRefreshRequest();
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuFocusGained()
+	{
+		super.OnMenuFocusGained();
+
+		// OnMenuUpdate runs only while this menu is on top. Apply requests collected while another menu or dialog
+		// was on top before the slots are drawn or receive input again. Skip the same states as OnMenuUpdate.
+		if (!m_bProcessInitQueue && !m_InspectionScreen)
+			AcceptStorageRefreshRequests();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1069,6 +1116,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 
 	//------------------------------------------------------------------------------------------------
 	//! Attempts to focus on a slot from provided storage
+	//! Applies a pending rebuild of the storage first, so slotIndex refers to its current slots.
 	//! \param[in] storageUi
 	//! \param[in] slotIndex of the slot which should be focused
 	//! \return true if focus transfer should be considered as successful, otherwise returns false
@@ -1076,6 +1124,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	{
 		if (!storageUi)
 			return false;
+
+		storageUi.ConsumeRefreshRequest();
 
 		array<SCR_InventorySlotUI> slots = {};
 		storageUi.GetSlots(slots);
@@ -1640,7 +1690,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (!m_pVicinity || !m_pStorageLootUI)
 			return;
 		
-		m_pStorageLootUI.Refresh();
+		// Vicinity can update once per streamed item. Rebuild the loot page once on the menu update.
+		m_pStorageLootUI.RequestRefresh();
+
 		if (m_aOpenedStoragesUI.IsEmpty())
 			return;
 		
@@ -2363,6 +2415,56 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		return false;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateMagazineRepackingHint()
+	{
+		if (m_bIsUsingGamepad)
+		{
+			if (m_bStorageSwitchMode)
+				return;
+
+			SCR_InventoryMagazineSlotUI selectedMagazine = SCR_InventoryMagazineSlotUI.Cast(m_pSelectedSlotUI);
+			if (!selectedMagazine)
+				return;
+
+			SCR_InventoryMagazineSlotUI focusedMagazine = SCR_InventoryMagazineSlotUI.Cast(m_pFocusedSlotUI);
+			if (!focusedMagazine)
+			{
+				m_pNavigationBar.SetButtonActionName(BUTTON_MOVE, GAMEPAD_HINT_MOVE); // reset it to its default value
+				return;
+			}
+
+			if (focusedMagazine.GetCompatibilityState() != SCR_ECompatibilityState.COMPATIBLE)
+				return;
+
+			if (focusedMagazine == selectedMagazine)
+			{
+				if (selectedMagazine.GetStackNumber() <= 1)
+					return;
+
+				SCR_MagazineComponent magazineComp = selectedMagazine.GetMagazineComponent();
+				if (!magazineComp)
+					return;
+
+				int currentAmmoCount = magazineComp.GetAmmoCount();
+				if (currentAmmoCount <= 0 || currentAmmoCount >= magazineComp.GetMaxAmmoCount())
+					return;
+			}
+
+			m_pNavigationBar.SetButtonEnabled(BUTTON_MOVE, true);
+			m_pNavigationBar.SetButtonActionName(BUTTON_MOVE, HINT_REPACK_MAG);
+		}
+		else if (SCR_InventoryMagazineSlotUI.Cast(m_DraggedSlot))
+		{
+			SCR_InventoryMagazineSlotUI otherMagazine = SCR_InventoryMagazineSlotUI.Cast(m_pFocusedSlotUI);
+			if (otherMagazine && otherMagazine.GetCompatibilityState() == SCR_ECompatibilityState.COMPATIBLE)
+			{
+				m_pNavigationBar.SetButtonEnabled(BUTTON_SELECT, true);
+				m_pNavigationBar.SetButtonActionName(BUTTON_SELECT, HINT_REPACK_MAG);
+			}
+		}
+	}
+
 	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//------------------------------------------------------------------------------------------------
 	//! Update the states of the navigation buttons used in the inventory
@@ -2384,7 +2486,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			m_pNavigationBar.SetButtonEnabled(BUTTON_SELECT, !m_DraggedSlot);
 	
 			SCR_InventoryHitZoneUI hzSlot = SCR_InventoryHitZoneUI.Cast(m_pActiveHoveredStorageUI);
-			m_pNavigationBar.SetButtonEnabled(BUTTON_REMOVE_TOURNIQUET, (hzSlot && hzSlot.IsTourniquetted()));			
+			m_pNavigationBar.SetButtonEnabled(BUTTON_REMOVE_TOURNIQUET, (hzSlot && hzSlot.IsTourniquetted()));
+			UpdateMagazineRepackingHint();
 		}
 
 		//if player is dragging a slotted item then we dont want to show hints for items that will happen to be under the cursor
@@ -2439,6 +2542,15 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			isTargetingArsenal = false;
 
 		bool allowItemTransfer = !m_bIsUsingGamepad || m_pActiveStorageUI != m_pQuickSlotStorage;
+		if (allowItemTransfer)
+		{
+			InventoryStorageSlot parentSlot = itemComp.GetParentSlot();
+			if (parentSlot)
+			{
+				BaseInventoryStorageComponent parentStorage = parentSlot.GetStorage();
+				allowItemTransfer = allowItemTransfer && parentStorage && parentStorage.CanRemoveItem(item);
+			}
+		}
 
 		if (!m_bIsUsingGamepad || !m_pSelectedSlotUI)
 		{
@@ -2523,6 +2635,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			m_pNavigationBar.SetButtonEnabled(BUTTON_MOVE, m_pSelectedSlotUI && m_pFocusedSlotUI && (transferringSupplies || isTargetingDifferentStorage));
 
 			m_pNavigationBar.SetButtonActionName(BUTTON_BACK, GAMEPAD_HINT_BACK);
+			UpdateMagazineRepackingHint();
 		}
 
 		bool isWeaponQuickSlot = SCR_InventorySlotWeaponSlotsUI.Cast(m_pFocusedSlotUI);
@@ -3065,6 +3178,10 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 
 		if (m_InventoryManager)
 			m_InventoryManager.OnInventoryMenuClosed();
+
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(m_Player);
+		if (character && character.IsRepackingMagazines())
+			character.AskStopTransferingRoundsFromMagazine();
 	}
 				
 	//------------------------------------------------------------------------------------------------
@@ -3772,8 +3889,12 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	{
 		if (MoveBetweenFromVicinity_VirtualArsenal())
 			return;
-			
-		IEntity pItem = m_pSelectedSlotUI.GetInventoryItemComponent().GetOwner();
+		
+		InventoryItemComponent pItemComponent = m_pSelectedSlotUI.GetInventoryItemComponent();
+		if (!pItemComponent)
+			return;
+		
+		IEntity pItem = pItemComponent.GetOwner();
 		if (!m_InventoryManager.CanMoveItem(pItem))
 			return;
 		
@@ -4326,7 +4447,11 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (!m_pSelectedSlotUI)
 			return false;
 		
-		IEntity draggedEntity = m_pSelectedSlotUI.GetInventoryItemComponent().GetOwner();
+		InventoryItemComponent itemComponent = m_pSelectedSlotUI.GetInventoryItemComponent();
+		if (!itemComponent)
+			return false;
+		
+		IEntity draggedEntity = itemComponent.GetOwner();
 		
 		if (!draggedEntity)
 			return false;
@@ -4508,6 +4633,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	{
 		if (!m_pSelectedSlotUI)
 			return;
+
+		if (SCR_InventoryMagazineSlotUI.Cast(m_pSelectedSlotUI))
+			ResetMagazineHighlights();
 
 		m_pSelectedSlotUI.SetSelected(false);
 		m_pSelectedSlotUI = null;
@@ -4723,12 +4851,23 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		// Ignore if we cannot interact
 		if (!GetCanInteract())
 			return;
+
 		SimpleFSM( EMenuAction.ACTION_SELECT );
+
+		if (!m_bIsUsingGamepad)
+			return;
+
+		SCR_InventoryMagazineSlotUI magazineSlot = SCR_InventoryMagazineSlotUI.Cast(m_pSelectedSlotUI);
+		if (magazineSlot)
+			HighlightCompatibleMags(magazineSlot);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void Action_DeselectItem()
 	{
+		if (SCR_InventoryMagazineSlotUI.Cast(m_pSelectedSlotUI))
+			ResetMagazineHighlights();
+
 		SimpleFSM(EMenuAction.ACTION_DESELECT);
 		ResetHighlightsOnAvailableStorages();
 	}
@@ -4774,54 +4913,61 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	//!
 	protected void Action_UseItem()
 	{
-		if (m_pFocusedSlotUI)
+		if (!m_pFocusedSlotUI)
+			return;
+	
+		InventoryItemComponent itemComponent = m_pFocusedSlotUI.GetInventoryItemComponent();
+		if (!itemComponent)
+			return;
+	
+		IEntity item = itemComponent.GetOwner();
+		if (!item)
+			return;
+	
+		// Allow consumables with explicit inventory-use handling to process the request themselves.
+		SCR_ConsumableItemComponent consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
+		if (consumable && consumable.HandleInventoryUse(m_Player))
+			return;
+	
+		// TODO: Currently won't work if there are no HitzonePointContainers. (Won't work for saline bag if the player is not injured in any way)
+		SCR_InventoryHitZonePointContainerUI hzContainer = SCR_InventoryHitZonePointContainerUI.Cast(m_AttachmentSpinBox.GetCurrentItemData());
+		if (hzContainer)
 		{
-			// TODO: Currently won't work if there are no HitzonePointContainers. (Won't work for saline bag if the player is not injured in any way)
-			SCR_InventoryHitZonePointContainerUI hzContainer = SCR_InventoryHitZonePointContainerUI.Cast(m_AttachmentSpinBox.GetCurrentItemData());
-			if (hzContainer)
+			SCR_InventoryHitZoneUI hzStorage = hzContainer.GetStorage();
+			if (!hzStorage)
+				return;
+	
+			if (hzStorage.CanApplyItem(item))
 			{
-				SCR_InventoryHitZoneUI hzStorage = hzContainer.GetStorage();
-				if (!hzStorage)
-					return;
-				
-				IEntity item = m_pFocusedSlotUI.GetInventoryItemComponent().GetOwner();
-				if (!item)
-					return;
-				
-				if (hzStorage.CanApplyItem(item))
-				{
-					hzStorage.OnDrop(m_pFocusedSlotUI);
-				}
-				else
-				{
-					hzContainer = null;
-					hzStorage = null;
-					
-					for (int i = 0, max = m_AttachmentSpinBox.GetNumItems(); i < max; i++)
-					{
-						hzContainer = SCR_InventoryHitZonePointContainerUI.Cast(m_AttachmentSpinBox.GetItemData(i));
-						if (!hzContainer)
-							continue;
-						
-						hzStorage = hzContainer.GetStorage();
-						if (hzStorage && hzStorage.CanApplyItem(item))
-							hzStorage.OnDrop(m_pFocusedSlotUI)
-					}
-				}
+				hzStorage.OnDrop(m_pFocusedSlotUI);
 			}
-
-			SCR_InventorySlotGearInspectionUI point = SCR_InventorySlotGearInspectionUI.Cast(m_AttachmentSpinBox.GetCurrentItemData());
-			if (point)
+			else
 			{
-				m_pGearInspectionPointUI.SetSlotFocused(point);
-				point.OnDrop(m_pFocusedSlotUI);
-			}
-			
-			if (m_pFocusedSlotUI && (!hzContainer || !point))
-			{
-				m_pFocusedSlotUI.UseItem(m_Player, SCR_EUseContext.FROM_INVENTORY);
+				hzContainer = null;
+				hzStorage = null;
+	
+				for (int i = 0, max = m_AttachmentSpinBox.GetNumItems(); i < max; i++)
+				{
+					hzContainer = SCR_InventoryHitZonePointContainerUI.Cast(m_AttachmentSpinBox.GetItemData(i));
+					if (!hzContainer)
+						continue;
+	
+					hzStorage = hzContainer.GetStorage();
+					if (hzStorage && hzStorage.CanApplyItem(item))
+						hzStorage.OnDrop(m_pFocusedSlotUI);
+				}
 			}
 		}
+	
+		SCR_InventorySlotGearInspectionUI point = SCR_InventorySlotGearInspectionUI.Cast(m_AttachmentSpinBox.GetCurrentItemData());
+		if (point)
+		{
+			m_pGearInspectionPointUI.SetSlotFocused(point);
+			point.OnDrop(m_pFocusedSlotUI);
+		}
+	
+		if (m_pFocusedSlotUI && (!hzContainer || !point))
+			m_pFocusedSlotUI.UseItem(m_Player, SCR_EUseContext.FROM_INVENTORY);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -4868,6 +5014,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			m_pFocusedSlotUI.Type() != SCR_InventorySlotQuickSlotUI &&
 			m_pFocusedSlotUI.Type() != SCR_InventorySlotWeaponSlotsUI &&
 			m_pFocusedSlotUI.Type() != SCR_InventorySlotGearInspectionUI &&
+			m_pFocusedSlotUI.Type() != SCR_InventoryMagazineSlotUI &&
 			m_pFocusedSlotUI.Type() != SCR_ArsenalInventorySlotUI &&
 			m_pFocusedSlotUI.Type() != SCR_SupplyInventorySlotUI)
 			return;
@@ -4931,6 +5078,11 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			if ( m_pPreviewManager && m_pSelectedSlotUI )
 			{
 				HighlightAvailableStorages(m_pSelectedSlotUI);
+
+				SCR_InventoryMagazineSlotUI magazineSlot = SCR_InventoryMagazineSlotUI.Cast(m_DraggedSlot);
+				if (magazineSlot)
+					HighlightCompatibleMags(magazineSlot);
+
 				IEntity previewEntity = null;
 				InventoryItemComponent pComp = m_pSelectedSlotUI.GetInventoryItemComponent();
 				if ( pComp )
@@ -4954,11 +5106,16 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	{
 		GetGame().GetInputManager().RemoveActionListener( "Inventory_Drag", EActionTrigger.PRESSED, Action_OnDrag );
 		GetGame().GetInputManager().RemoveActionListener( "Inventory_Drag", EActionTrigger.UP, Action_DragUp );
+		if (SCR_InventoryMagazineSlotUI.Cast(m_DraggedSlot))
+			ResetMagazineHighlights();
+
 		if (m_pPreviewManager)
 			m_pPreviewManager.SetPreviewItem(m_pDragDropPreviewImage, null);
+
 		GetGame().GetCallqueue().CallLater(m_wDragDropContainer.SetVisible, 0, false, false);
 		if (m_DraggedSlot)
 			SimpleFSM( EMenuAction.ACTION_DROPPED );
+
 		m_bDraggingEnabled = false;
 		m_DraggedSlot = null;
 		ResetHighlightsOnAvailableStorages();
@@ -5079,19 +5236,19 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if ( storage.Type() == EquipedWeaponStorageComponent )	//we are updating the weapon storage on character
 		{			
 			if ( m_pWeaponStorage )
-				m_pWeaponStorage.Refresh();
+				m_pWeaponStorage.RequestRefresh();
 		}
 		else if ( storage.Type() == WeaponAttachmentsStorageComponent )	// we are updating a weapon ( attachement / magazin inserted )
 		{
 			//if ( m_pWeaponStorage && m_pWeaponStorage.GetCurrentNavigationStorage() == storage )
 			if ( m_pWeaponStorage )
-				m_pWeaponStorage.Refresh();
+				m_pWeaponStorage.RequestRefresh();
 		}
 		else
 		{
 			SCR_InventoryStorageBaseUI storageUI = GetStorageUIByBaseStorageComponent(storage);
 			if (storageUI)
-				storageUI.Refresh();
+				storageUI.RequestRefresh();
 		}
 
 		if (m_StorageManager.GetEntityIndexInQuickslots(item) > -1)
@@ -5103,7 +5260,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		{
 			if (m_pWeaponStorageComp.Get(0) || m_pWeaponStorageComp.Get(1))
 			{
-				m_pWeaponStorage.Refresh();
+				m_pWeaponStorage.RequestRefresh();
 			}
 		}
 	}
@@ -5129,10 +5286,10 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (consumable && consumable.GetConsumableEffect() && consumable.GetConsumableEffect().GetDeleteOnUse()) // consumables require different handling
 		{
 			if (m_wAttachmentStorage && m_pAttachmentStorageUI)
-				m_pAttachmentStorageUI.Refresh();
+				m_pAttachmentStorageUI.RequestRefresh();
 			SCR_InventoryStorageBaseUI storageUI = GetStorageUIByBaseStorageComponent(storage);
 			if (storageUI)
-				storageUI.Refresh();
+				storageUI.RequestRefresh();
 			ShowQuickSlotStorage();
 		}
 		
@@ -5144,7 +5301,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 
 		SCR_InventoryStorageBaseUI storageUI = GetStorageUIByBaseStorageComponent(storage);
 		if (storageUI)
-			storageUI.Refresh();
+			storageUI.RequestRefresh();
 
 		UpdateTotalWeightText();
 		
@@ -5152,9 +5309,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		{
 			if (m_pWeaponStorageComp.Get(0) || m_pWeaponStorageComp.Get(1))
 			{
-				m_pWeaponStorage.Refresh();
+				m_pWeaponStorage.RequestRefresh();
 			}
-		}		
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -5310,7 +5467,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		
 		delete smallestContainerEntity;	
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void ResetHighlightsOnAvailableStorages()
 	{
@@ -5322,6 +5479,144 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			storageBaseUI.UpdateVolumePercentage(storageBaseUI.GetOccupiedVolumePercentage(storageBaseUI.GetStorage()));
 			storageBaseUI.UpdateTotalWeight(storageBaseUI.GetTotalRoundedUpWeight(storageBaseUI.GetStorage()));
 			storageBaseUI.SetStorageAsHighlighted(true);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void HighlightCompatibleMags(notnull SCR_InventoryMagazineSlotUI magazineSlot)
+	{
+		typename storageUiType = magazineSlot.GetStorageUI().Type();
+		if (storageUiType != SCR_InventoryStorageBackpackUI && storageUiType != SCR_InventoryStorageLBSUI)
+			return;
+
+		SCR_MagazineComponent thisMagazineComp = magazineSlot.GetMagazineComponent();
+		if (!thisMagazineComp)
+			return;
+
+		array<SCR_InventorySlotUI> itemSlots;
+		SCR_InventoryMagazineSlotUI otherMagazineSlot;
+		SCR_MagazineComponent otherMagazineComp;
+		foreach (SCR_InventoryStorageBaseUI storageUI : m_aStorages)
+		{
+			if (!storageUI)
+				continue;
+
+			storageUiType = storageUI.Type();
+			if (storageUiType != SCR_InventoryStorageBackpackUI && storageUiType != SCR_InventoryStorageLBSUI)
+				continue;
+
+			itemSlots = storageUI.GetUISlots();
+			foreach (SCR_InventorySlotUI itemSlot : itemSlots)
+			{
+				if (itemSlot == magazineSlot)
+					continue;
+
+				otherMagazineSlot = SCR_InventoryMagazineSlotUI.Cast(itemSlot);
+				if (!otherMagazineSlot)
+					continue;
+
+				otherMagazineComp = otherMagazineSlot.GetMagazineComponent();
+				if (!otherMagazineComp)
+					continue;
+
+				otherMagazineSlot.SetSlotCompatibilityState(otherMagazineComp.CanBeRepacked(thisMagazineComp));
+			}
+		}
+
+		// check yourself to be sure that magazine repacking is not disabled
+		magazineSlot.SetSlotCompatibilityState(magazineSlot.GetStackNumber() > 1 && thisMagazineComp.CanBeRepacked(thisMagazineComp));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void ResetMagazineHighlights()
+	{
+		typename storageUiType;
+		array<SCR_InventorySlotUI> itemSlots;
+		SCR_InventoryMagazineSlotUI targetMagazineSlot;
+		foreach (SCR_InventoryStorageBaseUI storageUI : m_aStorages)
+		{
+			if (!storageUI)
+				continue;
+
+			storageUiType = storageUI.Type();
+			if (storageUiType != SCR_InventoryStorageBackpackUI && storageUiType != SCR_InventoryStorageLBSUI)
+				continue;
+
+			itemSlots = storageUI.GetUISlots();
+			foreach (SCR_InventorySlotUI itemSlot : itemSlots)
+			{
+				targetMagazineSlot = SCR_InventoryMagazineSlotUI.Cast(itemSlot);
+				if (!targetMagazineSlot)
+					continue;
+
+				targetMagazineSlot.SetSlotCompatibilityState();
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Updates the ui of repackaged magazines to reflect their current ammo count
+	//! \param[in] sourceMag magazine from which bullets are removed
+	//! \param[in] targetMag magazine to which bullets are inserted
+	void UpdateRepackagedMagazines(notnull SCR_MagazineComponent sourceMagazine, notnull SCR_MagazineComponent targetMagazine)
+	{
+		InventoryItemComponent magazineItem = InventoryItemComponent.Cast(sourceMagazine.GetOwner().FindComponent(InventoryItemComponent));
+		if (!magazineItem)
+			return;
+
+		InventoryStorageSlot slot = magazineItem.GetParentSlot();
+		if (!slot)
+			return;
+
+		BaseInventoryStorageComponent srcStorage = slot.GetStorage();
+		SCR_InventoryStorageBaseUI uiStorage = GetStorageUIByBaseStorageComponent(srcStorage);
+		if (!uiStorage)
+			return;
+
+		bool refreshedWholeStorageUi;
+		SCR_InventoryMagazineSlotUI magazineUiSlot;
+		array<SCR_InventorySlotUI> outSlots = {};
+		uiStorage.GetSlots(outSlots);
+		foreach (SCR_InventorySlotUI uiSlot : outSlots)
+		{
+			magazineUiSlot = SCR_InventoryMagazineSlotUI.Cast(uiSlot);
+			if (!magazineUiSlot)
+				continue;
+
+			if (magazineUiSlot.GetMagazineComponent() != sourceMagazine)
+				continue;
+
+			magazineUiSlot.UpdateAmmoCount(refreshedWholeStorageUi);
+		}
+
+		magazineItem = InventoryItemComponent.Cast(targetMagazine.GetOwner().FindComponent(InventoryItemComponent));
+		if (!magazineItem)
+			return;
+
+		slot = magazineItem.GetParentSlot();
+		if (!slot)
+			return;
+
+		BaseInventoryStorageComponent trgStorage = slot.GetStorage();
+		if (!trgStorage || refreshedWholeStorageUi && trgStorage == srcStorage)
+			return; // no need to update a target slot if it is from the storage while it was completely recreated
+
+		uiStorage = GetStorageUIByBaseStorageComponent(trgStorage);
+		if (!uiStorage)
+			return;
+
+		outSlots.Clear();
+		uiStorage.GetSlots(outSlots);
+		foreach (SCR_InventorySlotUI uiSlot : outSlots)
+		{
+			magazineUiSlot = SCR_InventoryMagazineSlotUI.Cast(uiSlot);
+			if (!magazineUiSlot)
+				continue;
+
+			if (magazineUiSlot.GetMagazineComponent() != targetMagazine)
+				continue;
+
+			magazineUiSlot.UpdateAmmoCount(refreshedWholeStorageUi);
 		}
 	}
 	

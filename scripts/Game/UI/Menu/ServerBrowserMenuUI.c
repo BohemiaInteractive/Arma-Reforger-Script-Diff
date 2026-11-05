@@ -1113,7 +1113,8 @@ class ServerBrowserMenuUI : MenuRootBase
 		
 		// Cross play privilege missing
 		bool isCrossEnabled = GetGame().IsCrossPlayEnabled();
-		
+		Print(string.Format("SCR_ServerBrowserMenuUI: FilterCrossplayCheck - isCrossEnabled: %1", isCrossEnabled));
+
 		if (crossPlay.m_wCategoryTitleWidget)
 			crossPlay.m_wCategoryTitleWidget.SetVisible(isCrossEnabled);
 				
@@ -1982,14 +1983,6 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Setup join dialog
 		SetupJoinDialogs();
 
-		//this case shouldnt happen as filter cannot be changed when crossplay is disabled
-		if (m_JoinProcessTargetRoom.IsCrossPlatform() && !GetGame().IsCrossPlayEnabled())
-		{
-			//i dont think we have different dialog?
-			//m_Dialogs.DisplayDialog(EJoinDialogState.MOD_UGC_PRIVILEGE_MISSING);
-			return;
-		}
-
 		//Quick Join: Next step check version
 		if (m_bQuickJoin)
 			JoinProcess_CheckVersion();
@@ -2738,6 +2731,8 @@ class ServerBrowserMenuUI : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnCrossPlayPrivilegeResult(UserPrivilege privilege, UserPrivilegeResult result)
 	{
+		Print(string.Format("SCR_ServerBrowserMenuUI: OnCrossPlayPrivilegeResult - privilege: %1, result: %2", privilege, result));
+
 		// Sucessful
 		if (privilege == UserPrivilege.CROSS_PLAY && result == UserPrivilegeResult.ALLOWED)
 			Refresh();

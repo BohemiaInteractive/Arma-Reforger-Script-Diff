@@ -51,6 +51,7 @@ enum ECommonItemType
 	NIGHT_VISION = 59,
 	GPS = 60,
 	HAND_SLOT_ITEM = 61,
+	CANTEEN = 62,
 	IDENTITY_ITEM = 70,
 };
 

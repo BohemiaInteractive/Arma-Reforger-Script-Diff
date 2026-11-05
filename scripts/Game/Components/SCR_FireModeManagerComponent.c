@@ -176,6 +176,28 @@ class SCR_FireModeManagerComponent : FireModeManagerComponent
 			return;
 		}
 
+		// When no weapon groups are configured, fall back to cycling the current weapon's
+		// individual fire modes (e.g. 100 RPM / 200 RPM on the M242).
+		if (GetNumberOfAvailableWeaponGroups() == 0)
+		{
+			TurretControllerComponent turretCtrl = GetTurretController();
+			if (turretCtrl)
+			{
+				BaseWeaponManagerComponent weaponMgr = turretCtrl.GetWeaponManager();
+				if (weaponMgr)
+				{
+					BaseWeaponComponent weapon = weaponMgr.GetCurrentWeapon();
+					if (weapon)
+					{
+						BaseMuzzleComponent muzzle = weapon.GetCurrentMuzzle();
+						if (muzzle && muzzle.GetFireModesCount() > 1)
+							muzzle.SetFireMode(muzzle.GetNextFireModeIndex());
+					}
+				}
+			}
+			return;
+		}
+
 		NextFireMode();
 	}
 

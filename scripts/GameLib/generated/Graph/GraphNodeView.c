@@ -16,6 +16,8 @@ class GraphNodeView: Managed
 	proto external float GetZoom();
 	//! Scale view matrix, returns new zoom
 	proto external float SetZoom(float zoom);
+	//! Returns center position of the view
+	proto external vector GetCenterPosition();
 	//! Check if rectangle is in view of the view matrix, position and size should be in scene space
 	proto external bool IsRectangleInView(vector scenePos, vector sceneSize);
 	//! Translate view matrix

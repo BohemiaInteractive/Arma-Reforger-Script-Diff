@@ -561,27 +561,48 @@ class SCR_CampaignBuildingPlacingObstructionEditorComponent : SCR_BaseEditorComp
 		vector dir = {radius, heightHalf, 0};
 		trace.Start = pos + dir;
 		trace.End = pos - dir;
-		if (world.TraceMove(trace, null) < 1)
+
+		if (world.TraceMove(trace, EvaluatePotentialBlockingEntity) < 1)
 			return false;
 
 		dir = {-radius, heightHalf, 0};
 		trace.Start = pos + dir;
 		trace.End = pos - dir;
-		if (world.TraceMove(trace, null) < 1)
+		if (world.TraceMove(trace, EvaluatePotentialBlockingEntity) < 1)
 			return false;
 
 		dir = {0, heightHalf, radius};
 		trace.Start = pos + dir;
 		trace.End = pos - dir;
-		if (world.TraceMove(trace, null) < 1)
+		if (world.TraceMove(trace, EvaluatePotentialBlockingEntity) < 1)
 			return false;
 
 		dir = {0, heightHalf, -radius};
 		trace.Start = pos + dir;
 		trace.End = pos - dir;
-		if (world.TraceMove(trace, null) < 1)
+		if (world.TraceMove(trace, EvaluatePotentialBlockingEntity) < 1)
 			return false;
 
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool EvaluatePotentialBlockingEntity(notnull IEntity ent)
+	{
+		// destructible bushes (Tree class with destructible by hand enabled) or characters shouldnt be blocking the placement of new buildings
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(ent);
+		if (character)
+			return false;
+
+		Tree tree = Tree.Cast(ent);
+
+		if (!tree)
+			return true;
+
+		TreeClass treeClass = TreeClass.Cast(tree.GetPrefabData());
+		if (!treeClass || !treeClass.m_bDestructibleByHand)
+			return true;
+
+		return false;
 	}
 }

@@ -24,7 +24,7 @@ class SCR_InventoryOpenedStorageUI : SCR_InventoryStorageBaseUI
 		return 0;
 	}
 	
-	protected override void GetAllItems(out notnull array<IEntity> pItemsInStorage, BaseInventoryStorageComponent pStorage = null)
+	override void GetAllItems(out notnull array<IEntity> pItemsInStorage, BaseInventoryStorageComponent pStorage = null)
 	{
 		super.GetAllItems(pItemsInStorage, pStorage);
 	}

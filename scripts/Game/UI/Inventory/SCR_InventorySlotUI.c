@@ -265,8 +265,8 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 			}
 			
 			m_ProgressBar.FlipColors();
-			m_ProgressBar.SetProgressRange(0, magComp.GetMaxAmmoCount());
-			m_ProgressBar.SetCurrentProgress(magComp.GetAmmoCount());		
+			m_ProgressBar.SetProgressRange(0, m_aAmmoCountMax);
+			m_ProgressBar.SetCurrentProgress(m_aAmmoCountActual);		
 		}
 	}
 	
@@ -736,7 +736,8 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 			return;
 		} 
 
-		if (SCR_GadgetComponent.Cast(item.FindComponent(SCR_GadgetComponent)))
+		Managed component = item.FindComponent(SCR_GadgetComponent);
+		if (SCR_GadgetComponent.Cast(component) && !SCR_MagazineGadgetComponent.Cast(component))
 		{
 			m_eSlotFunction = ESlotFunction.TYPE_GADGET;
 			if (MagazineComponent.Cast(item.FindComponent(MagazineComponent)))

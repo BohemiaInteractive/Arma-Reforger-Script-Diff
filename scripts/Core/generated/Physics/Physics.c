@@ -123,7 +123,7 @@ sealed class Physics: NativeComponent
 	proto external vector GetTotalTorque();
 	/*!
 	Changes index to response matrix, see "project settings/physics/interactions/response matrix".
-	Usually this index is set by physics component property, but can be overriden at runtime.
+	Usually this index is set by physics component property, but can be overridden at runtime.
 	*/
 	proto external void SetResponseIndex(int responseIndex);
 	//! Returns actual index to response matrix.
@@ -149,7 +149,21 @@ sealed class Physics: NativeComponent
 	proto external int GetGeom(string name);
 	//! Returns number of geometries of the entity
 	proto external int GetNumGeoms();
-	//! Returns world space transformation of a geometry element
+	/*!
+	Rebuilds the physics collision geometries from the mesh currently attached to the entity.
+	Use this after the entity's model changed so the collision shapes match the new visual geometry.
+
+	The interaction (collision) layer of every geometry element is recomputed from its authored value as:
+	finalLayer = (authoredLayer & interactionLayerAnd) | interactionLayerOr
+	With the default arguments the authored layers are kept unchanged. Clearing bits in interactionLayerAnd
+	removes interaction layers, setting bits in interactionLayerOr forces additional interaction layers on.
+	Note that overriding the layers with non-default masks may prevent the shared collision shape from being
+	instanced, in which case a per-entity copy of the geometry is created.
+
+	\param interactionLayerAnd AND mask applied to each element's authored interaction layer; bits set to 0 clear the corresponding layer. Defaults to all bits set (keep all layers).
+	\param interactionLayerOr OR mask forcing additional interaction layers on after the AND mask. Defaults to 0 (add none).
+	\return true if the geometries were updated (or already up to date), false if the entity has no valid mesh/geometry to update from.
+	*/
 	proto external bool UpdateGeometries(int interactionLayerAnd = 0xffffffff, int interactionLayerOr = 0);
 	//! Returns world space transformation of a geometry element
 	proto external void GetGeomWorldTransform(int index, out vector mat[4]);

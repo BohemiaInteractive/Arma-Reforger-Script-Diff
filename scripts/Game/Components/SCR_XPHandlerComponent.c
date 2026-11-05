@@ -25,6 +25,12 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	[Attribute("1", UIWidgets.EditBox, "Ratio of XP awarded to supplies spent in repair action (ratio of 0.5: 10 supplies spent on repair rewards 5 XP", params: "0 inf 1")]
 	protected float m_fVehicleRepairXPMultiplier;
 
+	[Attribute("0.15", UIWidgets.Slider, "XP bonus per additional crew member (0.15 = 20%). Total XP = base * (1 + (crewCount-1) * bonus).\nTotal XP is then divided by number of crewmembers and each receives the portion, except the killer who always recives the default amount for given kill.\n2 crew = 115%, 3 crew = 130%, 4 crew = 145%.", "0 inf")]
+	protected float m_fCrewVehicleKillXpBonusPerMember;
+
+	[Attribute("200", desc: "If the player is less than this distance to the squad member who killed an enemy, then he will get squad kill assist XP bonus")]
+	protected float m_fDistanceThresholdForSquadLeaderProximityXpMultiplier;
+
 	static protected bool s_bXpSystemEnabled;
 	
 	//static const int SKILL_LEVEL_MAX = 10;
@@ -35,6 +41,8 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	protected static const float TRANSPORT_POINTS_TO_XP_RATIO = 0.01;
 	protected static const float TRANSPORT_HELI_MULTIPLIER = 0.25;
 	protected static const int TRANSPORT_XP_PAYOFF_THRESHOLD = 15;
+	protected static const int MIN_ASSIST_DELAY_MS = 3000;
+	protected static const int MAX_ASSIST_DELAY_MS = 5000;
 
 	protected ref array<ref SCR_XPRewardInfo> m_aXPRewardList = {};
 
@@ -44,6 +52,7 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	protected float m_fBaseSeizingCheckTimer;
 
 	protected float m_fXpMultiplier = 1;
+	protected float m_fDistanceThresholdForSquadLeaderProximityXpMultiplierSq;
 
 	protected const int BASE_SEIZING_CHECK_INTERVAL = 5;
 	protected const int RELAY_SEIZING_RADIUS = 50;
@@ -232,7 +241,7 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnCharacterKilled(notnull SCR_InstigatorContextData instigatorContextData)
-	{	
+	{
 		// Handle XP for kills of players
 		if (instigatorContextData.GetInstigator().GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
 			return;
@@ -270,22 +279,62 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 			//~ Killer gets bigger XP reward for killing enemy commander
 			int victimID = instigatorContextData.GetVictimPlayerID();
 			SCR_Faction victimFaction = SCR_Faction.Cast(SCR_FactionManager.SGetPlayerFaction(victimID));
+			SCR_EXPRewards rewardType = SCR_EXPRewards.ENEMY_KILL;
 			if (victimFaction && victimFaction.GetCommanderId() == victimID)
-			{
-				AwardXP(killerId, SCR_EXPRewards.ENEMY_COMMANDER_KILL);
-				return;
-			}
-			
+				rewardType = SCR_EXPRewards.ENEMY_COMMANDER_KILL;
+
+			array<int> crewIds();
 			//~ Check if player is in vehicle
 			//~ TODO: This logic is incomplete. If the player places a mine then gets into a vehicle and kills a enemy with the mine they will get the vehicle XP
 			SCR_ChimeraCharacter instigatorChar = SCR_ChimeraCharacter.Cast(instigatorContextData.GetKillerEntity());
 			if (instigatorChar && instigatorChar.IsInVehicle())
-				AwardXP(killerId, SCR_EXPRewards.ENEMY_KILL_VEH);
-			//~ Character not in vehicle so give normal reward
-			else 
-				AwardXP(killerId, SCR_EXPRewards.ENEMY_KILL);
+			{
+				IEntity compartmentOwner = CompartmentAccessComponent.GetVehicleIn(instigatorChar);
+				if (compartmentOwner)
+					GetVehicleCrew(compartmentOwner, crewIds);
+
+				if (rewardType != SCR_EXPRewards.ENEMY_COMMANDER_KILL)
+					rewardType = SCR_EXPRewards.ENEMY_KILL_VEH;
+
+				int crewCount = crewIds.Count();
+				if (crewCount < 2)
+				{
+					AwardXP(killerId, rewardType);
+				}
+				else
+				{
+					int baseXP = GetXPRewardAmount(rewardType);
+					float crewBonusMultiplier = 1 + (crewCount - 1) * m_fCrewVehicleKillXpBonusPerMember;
+					float totalXP = baseXP * GetXPMultiplier() * crewBonusMultiplier;
+					int xpPerCrew = Math.Max(1, Math.Round(totalXP / crewCount));
+
+					PlayerManager playerMgr = GetGame().GetPlayerManager();
+					PlayerController playerController;
+					foreach (int crewPlayerId : crewIds)
+					{
+						if (crewPlayerId == killerId)
+						{
+							AwardXP(crewPlayerId, rewardType); // give killer full XP so it doesnt seem like crewmembers are stealing from him
+							continue;
+						}
+
+						playerController = playerMgr.GetPlayerController(crewPlayerId);
+						if (!playerController)
+							continue;
+
+						// to other crewmembers show it only as a simple vehicle kill, even if player killed the commander so they dont see the XP notification
+						AwardXP(playerController, SCR_EXPRewards.ENEMY_KILL_VEH, 1, false, xpPerCrew);
+					}
+				}
+			}
+			else //~ Character not in vehicle so give normal reward
+			{
+				AwardXP(killerId, rewardType);
+			}
+
 			
-			return;
+			if(instigatorChar)
+				ProcessSquadKillAssist(killerId, instigatorChar, crewIds);
 		}
 	}
 
@@ -582,7 +631,7 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 			return;
 
 		// Don't make player renegade just by suiciding
-		int penalty = GetXPRewardAmount(SCR_EXPRewards.SUICIDE);
+		int penalty = Math.Round(GetXPRewardAmount(SCR_EXPRewards.SUICIDE) * GetXPMultiplier());
 		int playerXPWithPenalty = compXPPlayer.GetPlayerXP() + penalty;
 		SCR_ECharacterRank newRank = ranks.GetRankByXP(playerXPWithPenalty);
 		if (ranks.IsRankRenegade(newRank))
@@ -610,7 +659,7 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 		SCR_RankContainer ranks = fm.GetFactionRanks(playerId);
 
 		// Don't make player renegade just by dying
-		int penalty = GetXPRewardAmount(SCR_EXPRewards.DEATH);
+		int penalty = Math.Round(GetXPRewardAmount(SCR_EXPRewards.DEATH) * GetXPMultiplier());
 		int playerXPWithPenalty = compXPPlayer.GetPlayerXP() + penalty;
 		SCR_ECharacterRank newRank = ranks.GetRankByXP(playerXPWithPenalty);
 		if (ranks.IsRankRenegade(newRank))
@@ -618,6 +667,139 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 		AwardXP(pc.GetPlayerId(), SCR_EXPRewards.DEATH);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Awards nearby squad members with XP when one of them kills an enemy
+	//! \param[in] killerPlayerId id of the player who was the killer
+	//! \param[in] killerEntity character that did the killing
+	//! \param[in] ignoredPlayerIds ids of players who should not receive the award
+	protected void ProcessSquadKillAssist(int killerPlayerId, notnull ChimeraCharacter killerEntity, array<int> ignoredPlayerIds = null)
+	{
+		const PlayerManager playerManager = GetGame().GetPlayerManager();
+		if (!playerManager)
+			return;
+
+		if (!IsCharacterAliveOrIncapacitated(killerEntity))
+			return;
+
+		const SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager)
+			return;
+
+		const SCR_AIGroup aiGroup = groupManager.GetPlayerGroup(killerPlayerId);
+		if (!aiGroup)
+			return;
+
+		array<int> playerIds = aiGroup.GetPlayerIDs();
+		if (playerIds.Count() <= 1)
+			return;
+
+		const vector killerPos = killerEntity.GetOrigin();
+		ChimeraCharacter memberCharacter;
+		foreach (int memberId : playerIds)
+		{
+			if (memberId == killerPlayerId)
+				continue;
+
+			if (ignoredPlayerIds && ignoredPlayerIds.Contains(memberId))
+				continue;
+
+			memberCharacter = ChimeraCharacter.Cast(playerManager.GetPlayerControlledEntity(memberId));
+			if (!memberCharacter || !IsCharacterAliveOrIncapacitated(memberCharacter))
+				continue;
+
+			if (vector.DistanceSq(memberCharacter.GetOrigin(), killerPos) >= m_fDistanceThresholdForSquadLeaderProximityXpMultiplierSq)
+				continue;
+
+			// delayed to ensure that even if player would rank up because of that, then he wont know the moment someone is shot and killed
+			int delayMs = Math.RandomInt(MIN_ASSIST_DELAY_MS, MAX_ASSIST_DELAY_MS);
+			GetGame().GetCallqueue().CallLater(AwardSquadKillAssistXP, delayMs, param1: memberId);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Wrapper for delayed kill assist award
+	//! \param[in] playerId of the player who will receive the XP for the assist
+	protected void AwardSquadKillAssistXP(int playerId)
+	{
+		AwardXP(playerId, SCR_EXPRewards.SQUAD_KILL_ASSIST);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Fetches players from all crew compartments present in provided vehicle
+	//! \param[in] vehicle
+	//! \param[out] playerIds list of player ids who are present in compartments
+	protected void GetVehicleCrew(notnull IEntity vehicle, notnull out array<int> playerIds)
+	{
+		BaseCompartmentManagerComponent compartmentMgr = BaseCompartmentManagerComponent.Cast(vehicle.FindComponent(BaseCompartmentManagerComponent));
+		if (!compartmentMgr)
+			return;
+
+		const PlayerManager playerMgr = GetGame().GetPlayerManager();
+
+		IEntity occupant;
+		array<BaseCompartmentSlot> outCompartments();
+		SCR_BaseCompartmentManagerComponent scriptedCompartmentMgr = SCR_BaseCompartmentManagerComponent.Cast(compartmentMgr);
+		if (scriptedCompartmentMgr)
+		{
+			scriptedCompartmentMgr.GetCompartmentsOfTypes(outCompartments, SCR_BaseCompartmentManagerComponent.CREW_COMPARTMENT_TYPES);
+			foreach (BaseCompartmentSlot compartment : outCompartments)
+			{
+				if (!compartment || !compartment.IsOccupied())
+					continue;
+
+				occupant = compartment.GetOccupant();
+				if (!occupant)
+					continue;
+
+				int playerId = playerMgr.GetPlayerIdFromControlledEntity(occupant);
+				if (playerId <= 0 || playerIds.Contains(playerId))
+					continue;
+
+				playerIds.Insert(playerId);
+			}
+		}
+		else
+		{
+			compartmentMgr.GetCompartments(outCompartments);
+			foreach (BaseCompartmentSlot compartment : outCompartments)
+			{
+				if (!compartment)
+					continue;
+
+				if (!SCR_BaseCompartmentManagerComponent.CREW_COMPARTMENT_TYPES.Contains(compartment.GetType()))
+					continue;
+
+				if (!compartment.IsOccupied())
+					continue;
+
+				occupant = compartment.GetOccupant();
+				if (!occupant)
+					continue;
+
+				int playerId = playerMgr.GetPlayerIdFromControlledEntity(occupant);
+				if (playerId <= 0 || playerIds.Contains(playerId))
+					continue;
+
+				playerIds.Insert(playerId);
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks if provided character is not dead, meaning that he can be incapacitated
+	//! \param[in] character
+	//! \return true if character is not dead, otherwise false
+	protected bool IsCharacterAliveOrIncapacitated(notnull ChimeraCharacter character)
+	{
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return false;
+
+		ECharacterLifeState state = controller.GetLifeState();
+		return state != ECharacterLifeState.DEAD;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected void AwardTransportXP(int playerId)
 	{
@@ -831,9 +1013,17 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 		SCR_CampaignMilitaryBaseComponent.GetOnBaseUnderAttack().Insert(OnBaseAttackStarted);
 		SCR_CampaignMilitaryBaseComponent.GetOnBaseAttackEnd().Insert(OnBaseAttackEnded);
 
-		SetEventMask(GetOwner(), EntityEvent.FRAME);
+		SetEventMask(GetOwner(), EntityEvent.FRAME | EntityEvent.INIT);
 
 		s_bXpSystemEnabled = true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void EOnInit(IEntity owner)
+	{
+		super.EOnInit(owner);
+		
+		m_fDistanceThresholdForSquadLeaderProximityXpMultiplierSq = m_fDistanceThresholdForSquadLeaderProximityXpMultiplier * m_fDistanceThresholdForSquadLeaderProximityXpMultiplier;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -923,4 +1113,5 @@ enum SCR_EXPRewards
 
 	STARTING_RANK,
 	DEATH,
+	SQUAD_KILL_ASSIST,
 }

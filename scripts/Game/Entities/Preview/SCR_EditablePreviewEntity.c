@@ -70,7 +70,21 @@ class SCR_EditablePreviewEntity: SCR_GenericPreviewEntity
 		TraceParam trace;
 		array<IEntity> excludeArray = {};
 		if (SCR_Enum.HasFlag(flags, EPreviewEntityFlag.GEOMETRY))
+		{
+			foreach (SCR_EditableEntityComponent entity: entities)
+			{
+				IEntity owner = entity.GetOwner();
+				excludeArray.Insert(owner);
+				// Technically, if we wanted be super safe that the trace does not hit the the moved entities
+				// we would need to exclude all children of the entity as well. However, when moving entities
+				// with a ton of children, this can be a performance issue. Therefore, we will only exclude
+				// the entity itself. Still way beter than not excluding anything at all.
+				//SCR_EntityHelper.GetHierarchyEntityList(owner, excludeArray);
+			}
+			
 			trace = new TraceParam();
+			trace.ExcludeArray = excludeArray;
+		}
 		
 		array<ref SCR_BasePreviewEntry> entries = {};
 		set<SCR_EditableEntityComponent> entitiesCopy = new set<SCR_EditableEntityComponent>;
@@ -109,8 +123,20 @@ class SCR_EditablePreviewEntity: SCR_GenericPreviewEntity
 			spawnParams = new EntitySpawnParams();
 		
 		TraceParam trace;
+		array<IEntity> excludeArray = {};
 		if (SCR_Enum.HasFlag(flags, EPreviewEntityFlag.GEOMETRY))
+		{
+			IEntity owner = entity.GetOwner();
+			excludeArray.Insert(owner);
+			// Technically, if we wanted be super safe that the trace does not hit the the moved entities
+			// we would need to exclude all children of the entity as well. However, when moving entities
+			// with a ton of children, this can be a performance issue. Therefore, we will only exclude
+			// the entity itself. Still way beter than not excluding anything at all.
+			//SCR_EntityHelper.GetHierarchyEntityList(owner, excludeArray);
+
 			trace = new TraceParam();
+			trace.ExcludeArray = excludeArray;
+		}
 		
 		array<ref SCR_BasePreviewEntry> entries = {};
 		GetPreviewEntries(entity, entries, spawnParams.Transform, -1, flags, trace);

@@ -4,7 +4,7 @@ class SCR_ScenarioFrameworkActionRemoveTaskProgress : SCR_ScenarioFrameworkActio
 	[Attribute(desc: "Which task to work with - Use GetTask")]
 	ref SCR_ScenarioFrameworkGetTask m_Getter;
 
-	[Attribute(defvalue: "0", desc: "Progress in percent", UIWidgets.Graph, "0 100 1")]
+	[Attribute(defvalue: "0", desc: "Progress in percent", UIWidgets.GradientDialog, "0 100 1")]
 	float m_iPercentage;
 
 	//------------------------------------------------------------------------------------------------

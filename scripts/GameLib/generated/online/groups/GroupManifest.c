@@ -23,6 +23,17 @@ sealed class GroupManifest: Managed
 	proto external void SetGameplayApproaches(EGroupGameplayApproach eApproaches);
 	proto external void SetGameplayFocuses(EGroupGameplayFocus eFocuses);
 	proto external void SetGameRegions(EGroupGameRegion eRegions);
+	proto external bool GetCreatedAtPublic();
+	proto external string GetName();
+	proto external string GetClanTag();
+	proto external string GetDescription();
+	proto external EGroupEnlistmentStatus GetGroupEnlistmentStatus();
+	proto external string GetPrimaryLanguage();
+	proto external string GetContactInfo();
+	proto external string GetRules();
+	proto external EGroupGameplayApproach GetGameplayApproaches();
+	proto external EGroupGameplayFocus GetGameplayFocuses();
+	proto external EGroupGameRegion GetGameRegions();
 }
 
 /*!

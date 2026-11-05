@@ -97,25 +97,7 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 		CameraBase currentCamera = m_CameraManager.CurrentCamera();
 		if (!currentCamera)
 		{
-			//--- Use one of pre-defined defaults (if available)
-			SCR_EditorCameraDefaultsComponent cameraDefaults = SCR_EditorCameraDefaultsComponent.GetInstance();
-			if (cameraDefaults)
-			{
-				if (cameraDefaults.GetRandomPosition(m_vInitCameraTransform))
-					return;
-			}
-			
-			//--- Use world center
-			BaseWorld world = GetGame().GetWorld();
-			if (!world) return;
-			
-			vector mins, maxs;
-			world.GetBoundBox(mins, maxs);
-			vector center = mins + (maxs - mins) / 2;
-			center[1] = world.GetSurfaceY(center[0], center[2]);
-			center += m_vDefaultOffset;
-			m_vInitCameraTransform[3] = center;
-			Math3D.AnglesToMatrix(m_vDefaultAngle, m_vInitCameraTransform);
+			GetDefaultTransform(m_vInitCameraTransform);
 			return;
 		}
 		
@@ -123,6 +105,57 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 			return; // Wait for player camera to be assigned to inital entity before grabbing the transform
 		
 		currentCamera.GetWorldTransform(m_vInitCameraTransform);		
+	}
+
+	//! Get camera transformation used when no game camera exists - one of pre-defined defaults, or the world center.
+	//! \param[out] transform Transformation matrix
+	//! \return True if the transformation was found
+	protected bool GetDefaultTransform(out vector transform[4])
+	{
+		//--- Use one of pre-defined defaults (if available)
+		SCR_EditorCameraDefaultsComponent cameraDefaults = SCR_EditorCameraDefaultsComponent.GetInstance();
+		if (cameraDefaults)
+		{
+			if (cameraDefaults.GetRandomPosition(transform))
+				return true;
+		}
+
+		//--- Use world center
+		BaseWorld world = GetGame().GetWorld();
+		if (!world) return false;
+
+		vector mins, maxs;
+		world.GetBoundBox(mins, maxs);
+		vector center = mins + (maxs - mins) / 2;
+		center[1] = world.GetSurfaceY(center[0], center[2]);
+		center += m_vDefaultOffset;
+		transform[3] = center;
+		Math3D.AnglesToMatrix(m_vDefaultAngle, transform);
+		return true;
+	}
+
+	//! When the editor will open on its own, move the engine camera to the editor start position now
+	protected void PrepareEngineCamera()
+	{
+		if (!m_CameraManager || m_CameraManager.CurrentCamera())
+			return;
+
+		//--- Saved camera data decides the position on its own
+		if (m_CameraData && m_CameraData.IsSave())
+			return;
+
+		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
+		if (!editorManager || !editorManager.IsAutoInit() || editorManager.IsLimited())
+			return;
+
+		//--- Use the transformation the editor camera will be created with
+		vector transform[4];
+		if (m_vInitCameraTransform[3] != vector.Zero)
+			transform = m_vInitCameraTransform;
+		else if (!GetDefaultTransform(transform))
+			return;
+
+		GetGame().GetWorld().SetCameraEx(0, transform);
 	}
 
 	protected void TryCreateCamera()
@@ -270,6 +303,8 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 		SCR_EditorManagerEntity editorManagerEntity = GetEditorManagerEntity();
 		if (editorManagerEntity)
 			editorManagerEntity.EnableCameraNwkSimulation(false);
+
+		PrepareEngineCamera();
 	}
 	override protected void EOnEditorPreActivate()
 	{

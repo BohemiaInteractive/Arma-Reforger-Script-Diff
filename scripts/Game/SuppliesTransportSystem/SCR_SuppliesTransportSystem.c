@@ -244,6 +244,10 @@ class SCR_SuppliesTransportSystem : GameSystem
 		SCR_TransportUnitComponent closestTransportUnit;
 		foreach (SCR_TransportUnitComponent transportUnit : units)
 		{
+			// Another unit can have started a task with the same truck earlier in this evaluation
+			if (IsVehicleUsed(transportUnit.GetVehicle(), transportUnit))
+				continue;
+
 			float sqDistance = vector.DistanceSqXZ(task.GetOrigin(), transportUnit.GetOwner().GetOrigin());
 			if (sqDistance < minSqDistance)
 			{

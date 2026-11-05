@@ -70,6 +70,15 @@ class SCR_SuppliesTransportSystemUI : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Highlights the given unit in the list by focusing its entry
+	void HighlightTransportUnit(notnull SCR_TransportUnitComponent transportUnit)
+	{
+		SCR_TransportUnitUI transportUnitUI = m_mTransportUnits.Get(transportUnit);
+		if (transportUnitUI)
+			transportUnitUI.FocusButton();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void CreateTransportUnit(notnull SCR_TransportUnitComponent transportUnit)
 	{
 		if (!m_wTransportUnitsContainer)

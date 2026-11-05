@@ -21,6 +21,12 @@ class ChimeraAIWorld: AIWorld
 	proto external void PurgeSpawnRequestsForGroup(AIGroup group);
 	// Diagnostic read-only: number of evictions performed in the last ProcessSpawnQueue pass.
 	proto external int GetLastTickEvictions();
+	// Runtime override for one-by-one spawning. When false, one queue dispatch spawns the whole group.
+	proto external void SetPartialFillEnabled(bool enabled);
+	// When false, SCR_AIGroup.RequestSpawn requests all live slots on first activation.
+	proto external bool IsPartialFillEnabled();
+	// World dormancy switch (AIWorld prefab or -disableAIDormancy). False = no distance despawn.
+	proto external bool IsGroupDormancyEnabled();
 	proto external int GetCurrentAmountOfLimitedAIsForFaction(FactionKey factionKey);
 	// Returns the Limit for the specified faction. Returns -1 if such limit is not defined
 	proto external int GetAILimitForFaction(FactionKey factionKey);

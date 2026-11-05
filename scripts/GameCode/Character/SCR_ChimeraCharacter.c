@@ -50,11 +50,19 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 	[RplProp(), NonSerialized()]
 	protected bool m_bIsRecruited = 0;
 
+	[RplProp(onRplName: "OnRepackingStateChanged"), NonSerialized()]
+	protected float m_fBulletTransferTime;
+
+	[RplProp(onRplName: "OnRepackingStateChanged"), NonSerialized()]
+	protected bool m_bIsRepackingMagazines;
+
 	protected static const string SIGNAL_NAME_SPECIAL_CONTACT = "SpecialContact";
 	protected static const string SIGNAL_NAME_SPECIAL_ENTITY_HEIGHT = "SpecialContactEntityHeight";
 
 	protected ref map<Managed, float> m_mSpeedReferences = new map<Managed, float>();
 	protected float m_fTargetSpeed, m_fCurrentSpeed = 1;
+	protected SCR_MagazineComponent m_LocalRepackingMagazineSource;
+	protected SCR_MagazineComponent m_LocalRepackingMagazineTarget;
 
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
@@ -657,5 +665,144 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 	{
 		m_fCurrentSpeed = speed;
 		GetCharacterController().OverrideMaxSpeed(speed);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnRepackingStateChanged()
+	{
+		SCR_MagazineRepackingSystem system = SCR_MagazineRepackingSystem.GetInstance();
+		if (!system)
+			return;
+
+		if (m_bIsRepackingMagazines)
+		{
+			system.StartRepackingMagazines(this, null, null, m_fBulletTransferTime);
+		}
+		else
+		{
+			m_LocalRepackingMagazineSource = null;
+			m_LocalRepackingMagazineTarget = null;
+			system.StopRepackingMagazines(this);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Updates magazine slot ui to reflect current repacking state
+	//! \param[in] srcMagazineComp magazine component of the source magazine. Since system doesnt have such information on proxy, then it will use local reference if this is not set.
+	//! \param[in] trgMagazineComp magazine component of the target magazine. Since system doesnt have such information on proxy, then it will use local reference if this is not set.
+	[Friend(SCR_MagazineRepackingSystem)]
+	protected void UpdateLocalMagazineUi(SCR_MagazineComponent srcMagazineComp = null, SCR_MagazineComponent trgMagazineComp = null)
+	{
+		if (!srcMagazineComp)
+		{
+			srcMagazineComp = m_LocalRepackingMagazineSource;
+			if (!srcMagazineComp)
+				return;
+		}
+
+		if (!trgMagazineComp)
+		{
+			trgMagazineComp = m_LocalRepackingMagazineTarget;
+			if (!trgMagazineComp)
+				return;
+		}
+
+		SCR_InventoryMenuUI inventoryMenu = SCR_InventoryMenuUI.GetInventoryMenu();
+		if (inventoryMenu)
+			inventoryMenu.UpdateRepackagedMagazines(srcMagazineComp, trgMagazineComp);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] isRepacking
+	//! \param[in] transferTime total time in seconds that it takes to transfer a single projectile from source mag to the target mag
+	void SetRepackingState_S(bool isRepacking, float transferTime = 0)
+	{
+		m_bIsRepackingMagazines = isRepacking;
+		m_fBulletTransferTime = transferTime;
+		Replication.BumpMe();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return true if this character is currently repacking magazines, otherwise false
+	bool IsRepackingMagazines()
+	{
+		return m_bIsRepackingMagazines;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Sends a request to the server to start repacking provided magazines
+	//! \param[in] sourceMag magazine from which bullets will be removed
+	//! \param[in] targetMag magazine to which bullets will be inserted
+	void AskStartRepackingMagazines(notnull SCR_MagazineComponent sourceMag, notnull SCR_MagazineComponent targetMag)
+	{
+		RplComponent sourceMagazineRplComp = SCR_EntityHelper.GetEntityRplComponent(sourceMag.GetOwner());
+		if (!sourceMagazineRplComp)
+			return;
+
+		RplComponent targetMagazineRplComp = SCR_EntityHelper.GetEntityRplComponent(targetMag.GetOwner());
+		if (!targetMagazineRplComp)
+			return;
+
+		m_LocalRepackingMagazineSource = sourceMag;
+		m_LocalRepackingMagazineTarget = targetMag;
+		Rpc(RpcAsk_StartRepackingMagazines, sourceMagazineRplComp.Id(), targetMagazineRplComp.Id());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Sends a request to the server to stop repacking of magazines
+	void AskStopTransferingRoundsFromMagazine()
+	{
+		m_LocalRepackingMagazineSource = null;
+		m_LocalRepackingMagazineTarget = null;
+		Rpc(RpcAsk_StopTransferingRoundsFromMagazine);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void RpcAsk_StopTransferingRoundsFromMagazine()
+	{
+		SCR_MagazineRepackingSystem system = SCR_MagazineRepackingSystem.GetInstance();
+		if (system)
+			system.StopRepackingMagazines(this);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] sourceMagazineRplId
+	//! \param[in] targetMagazineRplId
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void RpcAsk_StartRepackingMagazines(RplId sourceMagazineRplId, RplId targetMagazineRplId)
+	{
+		if (!sourceMagazineRplId.IsValid() || !targetMagazineRplId.IsValid())
+			return;
+
+		if (sourceMagazineRplId == targetMagazineRplId)
+			return;
+
+		RplComponent sourceMagazineRplComp = RplComponent.Cast(Replication.FindItem(sourceMagazineRplId));
+		if (!sourceMagazineRplComp)
+			return;
+
+		RplComponent targetMagazineRplComp = RplComponent.Cast(Replication.FindItem(targetMagazineRplId));
+		if (!targetMagazineRplComp)
+			return;
+
+		IEntity sourceMag = sourceMagazineRplComp.GetEntity();
+		IEntity targetMag = targetMagazineRplComp.GetEntity();
+		array<IEntity> items = {};
+		GetCharacterController().GetInventoryStorageManager().FindItemsWithComponents(items, {SCR_MagazineComponent});
+		if (!items.Contains(sourceMag) || !items.Contains(targetMag))
+			return; // player can only repackage magazines which are currently in his inventory
+
+		SCR_MagazineComponent sourceMagComp = SCR_MagazineComponent.Cast(sourceMag.FindComponent(SCR_MagazineComponent));
+		if (!sourceMagComp)
+			return;
+
+		SCR_MagazineComponent targetMagComp = SCR_MagazineComponent.Cast(targetMag.FindComponent(SCR_MagazineComponent));
+		if (!targetMagComp)
+			return;
+
+		SCR_MagazineRepackingSystem system = SCR_MagazineRepackingSystem.GetInstance();
+		if (system)
+			system.StartRepackingMagazines(this, sourceMagComp, targetMagComp);
 	}
 }

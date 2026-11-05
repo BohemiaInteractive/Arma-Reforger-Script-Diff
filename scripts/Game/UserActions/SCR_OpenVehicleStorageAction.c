@@ -34,6 +34,9 @@ class SCR_OpenVehicleStorageAction : SCR_InventoryAction
 		ChimeraCharacter character = ChimeraCharacter.Cast(user);
 		if (character)
 		{
+			if (SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
+				return false;
+
 			CompartmentAccessComponent compAccess = character.GetCompartmentAccessComponent();
 			if (compAccess && (compAccess.IsGettingIn() || compAccess.IsGettingOut()))
 				return false;

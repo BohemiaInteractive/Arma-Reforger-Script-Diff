@@ -393,11 +393,20 @@ class SCR_DebugShapeManager
 	//! \return
 	DebugTextWorldSpace AddText(string text, vector worldPos, float size = 2.0, int colour = DEFAULT_TEXT_COLOUR, int backgroundColour = DEFAULT_TEXT_BACKGROUND_COLOUR)
 	{
-#ifdef WORKBENCH
-		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
-		BaseWorld world = worldEditor.GetApi().GetWorld();
-#else	// normal game
 		BaseWorld world = GetGame().GetWorld();
+#ifdef WORKBENCH
+		if (!GetGame().InPlayMode())
+		{
+			WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
+			if (!worldEditor)
+				return null;
+
+			WorldEditorAPI api = worldEditor.GetApi();
+			if (!api)
+				return null;
+
+			world = api.GetWorld();
+		}
 #endif	// WORKBENCH
 
 		if (!world)

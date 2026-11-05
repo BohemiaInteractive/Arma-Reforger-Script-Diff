@@ -1631,6 +1631,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	void ~SCR_CampaignMapUIBase()
 	{
 		s_SelectedElement = null;
+		m_Base = null;
 		SCR_MapEntity.GetOnMapClose().Remove(OnMapClose);
 	}
 };

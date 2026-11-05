@@ -80,10 +80,20 @@ class TextDrawCommand : CanvasWidgetCommand
 	int m_iColor = 0xff000000;
 	vector m_Position; //!< Only in XY, Z is ignored
 	string m_sText;
-	int m_iFontPropertiesId;
+	int m_iFontPropertiesId; //!< Index into the CanvasWidget FontProperties array; system font is used when out of range
 	float m_fSize = 24;
 	vector m_Pivot; //!< Only in XY, Z is ignored
-	float m_fRotation;
+	float m_fRotation; //!< Rotation in degrees around the pivot
+}
+
+class CurvedTextDrawCommand : CanvasWidgetCommand
+{
+	int m_iColor = 0xff000000;
+	vector m_Position; //!< Only in XY, Z is ignored
+	string m_sText;
+	int m_iFontPropertiesId; //!< Index into the CanvasWidget FontProperties array; system font is used when out of range
+	float m_fSize = 24;
+	vector m_vCurve[3]; //!< Quadratic Bezier: [0] start, [1] control point, [2] end; only XY used, Z is ignored
 }
 
 class LineDrawCommand : CanvasWidgetCommand
@@ -95,7 +105,7 @@ class LineDrawCommand : CanvasWidgetCommand
 	int m_iOutlineColor;
 	ref SharedItemRef m_pTexture; //!< If null only filled line is drawn
 	vector m_UVScale; //!< Only in XY, Z is ignored
-	bool m_bShouldEnclose;
+	bool m_bShouldEnclose; //!< If true, connects the last vertex back to the first, closing the polyline
 }
 
 class PolygonDrawCommand : CanvasWidgetCommand
@@ -118,9 +128,9 @@ class TriMeshDrawCommand : CanvasWidgetCommand
 class ImageDrawCommand : CanvasWidgetCommand
 {
 	int m_iColor = 0xffffffff;
-	float m_fRotation;
+	float m_fRotation; //!< Rotation in degrees around the pivot
 	float m_fUV[4] = {0, 0, 1, 1}; //!< TopLeft.U, TopLeft.V, BottomRight.U, BottomRight.V
-	vector m_Pivot;
+	vector m_Pivot; //!< Only in XY, Z is ignored
 	ref SharedItemRef m_pTexture;
 	vector m_Position; //!< Only in XY, Z is ignored
 	vector m_Size; //!< Only in XY, Z is ignored

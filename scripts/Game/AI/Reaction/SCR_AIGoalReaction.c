@@ -640,3 +640,33 @@ class SCR_AIGoalReaction_ArtillerySupport : SCR_AIGoalReaction
 		utility.AddAction(b);
 	}
 };
+
+[BaseContainerProps()]
+class SCR_AIGoalReaction_UnflipVehicle : SCR_AIGoalReaction
+{
+	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
+	{
+		auto msg = SCR_AIMessage_UnflipVehicle.Cast(message);
+		if (!msg)
+			return;
+		
+		if (!msg.m_Vehicle)
+			return;
+		
+		float delay = s_AIRandomGenerator.RandFloat01() * 10.0;
+		
+		auto behavior = new SCR_AIUnflipVehicle(utility, msg.m_RelatedGroupActivity, msg.m_Vehicle, delay_s: delay, position: msg.m_vPosition, priority: SCR_AIActionBase.PRIORITY_BEHAVIOR_UNFLIP_VEHICLE, priorityLevel: msg.m_fPriorityLevel);
+		utility.AddAction(behavior);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void PerformReaction(notnull SCR_AIGroupUtilityComponent utility, SCR_AIMessageBase message)
+	{
+		auto msg = SCR_AIMessage_UnflipVehicle.Cast(message);
+		if (!msg)
+			return;
+		
+		auto activity = new SCR_AIUnflipVehicleActivity(utility, msg.m_RelatedWaypoint, msg.m_Vehicle, priorityLevel: msg.m_fPriorityLevel, radius: msg.m_fRadius, origin: msg.m_vPosition);
+		utility.AddAction(activity);
+	}
+}

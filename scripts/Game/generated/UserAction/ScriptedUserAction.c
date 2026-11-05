@@ -39,6 +39,9 @@ class ScriptedUserAction: BaseUserAction
 	event bool CanBeShownScript(IEntity user) { return true; };
 	//! Does this action only have client side effect?
 	event bool HasLocalEffectOnlyScript() { return false; };
+	//! Is this action meant to be used by multiple users at the same time?
+	//! If true, IsInProgress() only reflects the locally controlled user.
+	event bool IsUsableByMultipleUsersScript() { return false; };
 	//! If SCR_CheckOnServerFirst returns true, the action is first sent to be verified on the server. Only if the function
 	//! succeeds on the server it will can be executed on other machines.
 	//! This does not mean that actions are not verified on the server otherwise. However, the path the action takes

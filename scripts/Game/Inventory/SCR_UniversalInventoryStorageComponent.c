@@ -55,11 +55,11 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	//! \param[in] weight
 	protected bool CheckParentWeightLimit(float weight)
 	{
-		IEntity parent = GetOwner().GetParent();
-		if (!parent || ChimeraCharacter.Cast(parent))
+		InventoryStorageSlot parentSlot = GetParentSlot();
+		if (!parentSlot)
 			return true;
 
-		SCR_UniversalInventoryStorageComponent parentStorage = SCR_UniversalInventoryStorageComponent.Cast(parent.FindComponent(SCR_UniversalInventoryStorageComponent));
+		SCR_UniversalInventoryStorageComponent parentStorage = SCR_UniversalInventoryStorageComponent.Cast(parentSlot.GetStorage());
 		if (!parentStorage)
 			return true;
 

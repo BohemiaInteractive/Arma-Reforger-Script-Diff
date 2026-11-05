@@ -5,33 +5,40 @@ class SCR_SpawnPointSpawnData : SCR_SpawnData
 	protected RplId m_RplId;
 	protected SCR_SpawnPoint m_SpawnPoint;
 
-	override ResourceName GetPrefab() 
-	{ 
+	override ResourceName GetPrefab()
+	{
 		return m_Prefab;
 	}
-	override vector GetPosition() 
-	{ 
+
+	override vector GetPosition()
+	{
 		return m_SpawnPoint.GetOrigin();
-	} 
-	override vector GetAngles() 
-	{ 
+	}
+
+	override vector GetAngles()
+	{
 		return m_SpawnPoint.GetAngles();
 	}
-	
+
+	override bool IsValid()
+	{
+		return m_SpawnPoint != null;
+	}
+
 	RplId GetRplId()
-	{ 
+	{
 		return m_RplId;
 	}
-	
+
 	SCR_SpawnPoint GetSpawnPoint()
 	{
 		return m_SpawnPoint;
 	}
-	
+
 	void SCR_SpawnPointSpawnData(ResourceName prefab, RplId rplId)
 	{
 		m_Prefab = prefab;
 		m_RplId = rplId;
 		m_SpawnPoint = SCR_SpawnPoint.GetSpawnPointByRplId(rplId);
 	}
-};
+}

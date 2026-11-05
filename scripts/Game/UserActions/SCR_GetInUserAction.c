@@ -33,8 +33,7 @@ class SCR_GetInUserAction : SCR_CompartmentUserAction
 		if (!character)
 			return;
 
-		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
-		if (controller && controller.IsLoitering())
+		if (SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
 			return;
 
 		BaseCompartmentSlot targetCompartment = GetCompartmentSlot();
@@ -65,8 +64,7 @@ class SCR_GetInUserAction : SCR_CompartmentUserAction
 		if (!character)
 			return false;
 
-		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
-		if (controller && controller.IsLoitering())
+		if (SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
 			return false;
 
 		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
@@ -82,6 +80,22 @@ class SCR_GetInUserAction : SCR_CompartmentUserAction
 				SetCannotPerformReason(OCCUPIED_BY_SUPPLIES);
 				return false;
 			}
+		}
+
+		if (!DlcManager.Get().CanUseEntity(user, compartment.GetOwner()) && compartment.IsPiloting())
+		{
+			World world = GetGame().GetWorld();
+			if (!world)
+				return false;
+			
+			SCR_DLCOwnershipSystem ownershipSystem = SCR_DLCOwnershipSystem.Cast(world.FindSystem(SCR_DLCOwnershipSystem));
+			if (!ownershipSystem)
+				return false;
+		
+			ownershipSystem.OnOwnershipNegative(SCR_EDLCInteractionType.VEHICLE_DRIVER);
+			
+			SetCannotPerformReason("#AR-DLC_Vehicle_Blocked");
+			return false;
 		}
 		
 		IEntity owner = compartment.GetOwner();
@@ -129,6 +143,10 @@ class SCR_GetInUserAction : SCR_CompartmentUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+		if (character && SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
+			return false;
+
 		if (m_DamageManager && m_DamageManager.GetState() == EDamageState.DESTROYED)
 			return false;
 
@@ -144,7 +162,6 @@ class SCR_GetInUserAction : SCR_CompartmentUserAction
 				return false;
 		}
 		
-		ChimeraCharacter character = ChimeraCharacter.Cast(user);
 		if (character && character.IsInVehicle())
 			return false;
 		

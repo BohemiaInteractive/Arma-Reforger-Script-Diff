@@ -803,7 +803,7 @@ class SCR_AICombatComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void Event_OnDamageEffectAdded(notnull SCR_DamageEffect dmgEffect)
 	{
-		if (!m_Utility || !m_Utility.m_AIInfo || dmgEffect.GetDamageType() != EDamageType.BLEEDING || !DotDamageEffect.Cast(dmgEffect))
+		if (!m_Utility || !m_Utility.m_AIInfo || dmgEffect.GetDamageType() != EDamageType.BLEEDING || !SCR_BleedingDamageEffect.Cast(dmgEffect))
 			return;
 		
 		SCR_AIActionBase currentAction = SCR_AIActionBase.Cast(m_Utility.GetCurrentAction());

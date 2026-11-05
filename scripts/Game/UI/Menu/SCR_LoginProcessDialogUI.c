@@ -168,7 +168,7 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 		SCR_ConnectionUICommon.ForceConnectionButtonEnabled(m_TOSButton, SCR_ServicesStatusHelper.IsBackendConnectionAvailable(), false);
 		SCR_ConnectionUICommon.ForceConnectionButtonEnabled(m_CreateAccount, SCR_ServicesStatusHelper.IsBackendConnectionAvailable(), false);
 
-		SCR_ConnectionUICommon.SetConnectionButtonEnabled(m_ConfirmButton, service, m_bForceConfirmButtonDisabled || ! SCR_ServicesStatusHelper.IsBackendConnectionAvailable(), false);
+		SCR_ConnectionUICommon.SetConnectionButtonEnabled(m_ConfirmButton, service, m_bForceConfirmButtonDisabled || !SCR_ServicesStatusHelper.IsBackendConnectionAvailable(), false);
 	
 		string identity = BackendAuthenticatorApi.GetIdentityId();
 		

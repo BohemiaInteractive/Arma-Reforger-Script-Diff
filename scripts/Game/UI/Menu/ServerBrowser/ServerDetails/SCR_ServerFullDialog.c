@@ -10,10 +10,14 @@ class SCR_ServerFullDialog : SCR_ConfigurableDialogUi
 {
 	protected const string WIDGET_BACKGROUND_IMAGE =	"BackgroundImageBackend";
 	protected const string WIDGET_SIDE_SPINNER =		"SideSpinner";
+	protected const string WIDGET_INFO_RECONNECTION =	"ExplanationEnqueued_ReconnectQueue";
+	protected const string WIDGET_INFO_WAITING =		"ExplanationEnqueued_Functionality";
 
 	protected const string INPUT_BUTTON_FIELD_MANUAL = 	"FieldManual";
 	protected const string INPUT_BUTTON_FAVORITES = 	"Favorites";
 	protected const string MOUSE_BUTTON_FAVORITES = 	"FavoriteButton";
+
+	protected const string QUEUE_TYPE_RECONNECTING =	"RECONNECTING";
 	
 	protected const int ENQUEUED_TIME_UPDATE_FREQUENCY = 1000;
 	
@@ -29,6 +33,10 @@ class SCR_ServerFullDialog : SCR_ConfigurableDialogUi
 	protected const string MESSAGE_QUEUE_WAIT_TIME =		"#AR-ServerQueue_AvgWaitTime";
 	protected const string MESSAGE_QUEUE_EXPLANATION =		"#AR-ServerQueue_Enqueued_Message";
 	protected const string MESSAGE_QUEUE_EXPLANATION_TIME =	"#AR-ServerQueue_Enqueued_Message_Time";
+
+	protected const string MESSAGE_RECONNECTING_TITLE =	"#AR-ServerReconnectingQueue_Reconnecting_Message";
+	protected const string MESSAGE_RECONNECTING_POSITION =	"#AR-ServerReconnectionQueue_CurrentPosition";
+	protected const string MESSAGE_RECONNECTING_INFO =		"#AR-ServerReconnectionQueue_InfoMessage";
 	
 	protected const string LABEL_LEAVE_QUEUE = 	"#AR-ServerQueue_LeaveQueue_Button";
 	protected const string LABEL_CANCEL =		"#AR-Workshop_ButtonCancel";
@@ -205,13 +213,20 @@ class SCR_ServerFullDialog : SCR_ConfigurableDialogUi
 		int count = m_Room.GetQueueUserPosition() + 1; // backend value starts from 0
 		int limit = m_Room.GetQueueMaxSize();
 		bool showPosition = count > 0;
-		
+
+		bool reconnecting = m_Room.GetQueueType() == QUEUE_TYPE_RECONNECTING;
+
 		m_Widgets.m_wQueueState.SetVisible(showPosition);
 		if (showPosition)
-			m_Widgets.m_wQueueState.SetTextFormat(MESSAGE_ENQUEUED_POSITION, SCR_RichTextTags.TagColor(count.ToString(), UIColors.CopyColor(UIColors.CONTRAST_COLOR)));
+		{
+			if (reconnecting)
+				m_Widgets.m_wQueueState.SetTextFormat(MESSAGE_RECONNECTING_POSITION, SCR_RichTextTags.TagColor(count.ToString(), UIColors.CopyColor(UIColors.CONTRAST_COLOR)));
+			else
+				m_Widgets.m_wQueueState.SetTextFormat(MESSAGE_ENQUEUED_POSITION, SCR_RichTextTags.TagColor(count.ToString(), UIColors.CopyColor(UIColors.CONTRAST_COLOR)));
+		}
 		
 		// --- Queue max size
-		m_Widgets.m_wQueueMaxSizeOverlay.SetVisible(showPosition);
+		m_Widgets.m_wQueueMaxSizeOverlay.SetVisible(showPosition && !reconnecting);
 		if (showPosition)
 			m_Widgets.m_wQueueMaxSize.SetTextFormat(MESSAGE_QUEUE_MAX_SIZE, limit);
 		
@@ -331,7 +346,7 @@ class SCR_ServerFullDialog : SCR_ConfigurableDialogUi
 	{
 		m_Room = room;
 		m_eMode = mode;
-		
+
 		SetTitle(room.Name());
 		SetScenarioImage(scenario);
 		SetIPAddressText(SCR_WorkshopUiCommon.LABEL_IP_ADDRESS + " " + room.HostAddress());
@@ -342,18 +357,30 @@ class SCR_ServerFullDialog : SCR_ConfigurableDialogUi
 
 		if (onFavoritesResponse)
 			onFavoritesResponse.Insert(OnRoomSetFavoriteResponseDialog);
-		
+
 		// --- Static widgets
 		switch (m_eMode)
 		{
 			case SCR_EJoinFailUI.ENQUEUED:
 			{
-				m_Widgets.m_wCurrentState.SetText(MESSAGE_ENQUEUED);
+				bool reconnecting = m_Room.GetQueueType() == QUEUE_TYPE_RECONNECTING;
+				if (reconnecting)
+					m_Widgets.m_wCurrentState.SetText(MESSAGE_RECONNECTING_TITLE);
+				else
+					m_Widgets.m_wCurrentState.SetText(MESSAGE_ENQUEUED);
+
 				m_Widgets.m_wCurrentState.SetColor(UIColors.CopyColor(UIColors.CONTRAST_COLOR));
 				
 				m_Widgets.m_wQueueState.SetColor(UIColors.CopyColor(UIColors.NEUTRAL_INFORMATION));
 				
 				m_Widgets.m_wExplanationEnqueuedWrapper.SetVisible(true);
+				Widget reconnectInfo = m_Widgets.m_wExplanationEnqueuedWrapper.FindWidget(WIDGET_INFO_RECONNECTION);
+				if (reconnectInfo)
+					reconnectInfo.SetVisible(reconnecting);
+
+				Widget waitingInfo = m_Widgets.m_wExplanationEnqueuedWrapper.FindWidget(WIDGET_INFO_WAITING);
+				if (waitingInfo)
+					waitingInfo.SetVisible(!reconnecting);
 				
 				if (m_Widgets.m_wExplanationFull)
 					m_Widgets.m_wExplanationFull.SetVisible(false);

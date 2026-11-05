@@ -1,7 +1,7 @@
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkVehicleActionDamageHitZoneByName : SCR_ScenarioFrameworkVehicleActionBase
 {
-	[Attribute(defvalue: "100", desc: "Health Percentage to be set for target hit zone", UIWidgets.Graph, "0 100 1")]
+	[Attribute(defvalue: "100", desc: "Health Percentage to be set for target hit zone", UIWidgets.GradientDialog, "0 100 1")]
 	int m_iHealthPercentage;
 	
 	[Attribute(defvalue: "", desc: "HitZone Name")]

@@ -61,6 +61,9 @@ class LightUserAction : BaseLightUserAction
 		if (!character)
 			return false;
 
+		if (SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
+			return false;
+
 		//check only if user is inside same vehicle as long as we require that
 		return SCR_InteractionHandlerComponent.CanBeShownInVehicle(character, this, false, false, m_bInteriorOnly, m_aDefinedCompartmentSectionsOnly, m_aExcludeDefinedCompartmentSections);
 	}

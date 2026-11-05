@@ -18,15 +18,35 @@ class SCR_ResourceEntityRefundAction : SCR_ScriptedUserAction
 	[Attribute("#AR-ActionInvalid_HostileFaction", desc: "Invalid reason shown when the user is not friendly with the base the entity is in")]
 	protected LocalizedString m_sInvalidEnemyBase;
 
+	[Attribute(defvalue: "1", desc: "Determines if supplies that are still in this object should be redistributed when object is refunded.")]
+	protected bool m_bAccountForStoredSupplies;
+
+	[Attribute(defvalue: "0", desc: "Determines if overall damage state of the object should play a role in calculation of the refund price.")]
+	protected bool m_bEvaluateDamageWhenCalculatingPrice;
+
+	[Attribute(defvalue: "1", desc: "Factor used for calculating the overall state of the vehicle when computing the impact of undamaged hit zone.\nFactor of individual hit zone is calculated by multipling damageStateFactor by MaxHtiZoneHealth.\nFactors from all physical hit zones are added and then divided by the total amount of max health of all these hit zones.", params: "0 1 0.01")]
+	protected float m_fUndamagedStateFactor;
+
+	[Attribute(defvalue: "0.6", desc: "Factor used for calculating the overall state of the vehicle when computing the impact of damaged hit zone.\nFactor of individual hit zone is calculated by multipling damageStateFactor by MaxHtiZoneHealth.\nFactors from all physical hit zones are added and then divided by the total amount of max health of all these hit zones.", params: "0 1 0.01")]
+	protected float m_fDamagedStateFactor;
+	
+	[Attribute(defvalue: "0.1", desc: "Factor used for calculating the overall state of the vehicle when computing the impact of destroyed hit zone.\nFactor of individual hit zone is calculated by multipling damageStateFactor by MaxHtiZoneHealth.\nFactors from all physical hit zones are added and then divided by the total amount of max health of all these hit zones.", params: "0 1 0.01")]
+	protected float m_fDestroyedStateFactor;
+
 	protected SCR_Faction m_Faction;
 	protected SCR_EntityCatalogManagerComponent m_EntityCatalogManager;
 	protected SCR_CatalogEntitySpawnerComponent m_CatalogEntitySpawnerComponent;
 	protected RplComponent m_ReplicationComponent;
 	protected SCR_ResourceGenerator m_ResourceGenerator;
+	protected SCR_ResourceComponent m_OwnerResourceComp;
+	protected SCR_DamageManagerComponent m_DamageManagerComp;
 	protected float m_fResourceCost = -1;
+	protected float m_fTimeUntilNextDamageCheck;
+	protected float m_fLastOverallDamageState = 1;
 	
 	protected bool m_bIsResourceEnabled = true;
 	
+	protected static const int DAMAGE_STATE_EVALUATION_COOLDOWN_SECONDS = 5;
 	protected static ref ScriptInvokerEntity2 s_OnRefundPerformed;//Entity refundedEntity, Entity playerEntity
 
 	//~ For vehicles it sets the compartment manager to check if it is occupied
@@ -62,19 +82,120 @@ class SCR_ResourceEntityRefundAction : SCR_ScriptedUserAction
 
 		//~ Refund if resource is enabled
 		if (m_bIsResourceEnabled)
-		{
-			if (m_CatalogEntitySpawnerComponent.IsInGracePeriod(GetOwner()))
-				m_ResourceGenerator.RequestGeneration(SCR_ResourceSystemHelper.RoundRefundSupplyAmount(m_fResourceCost * m_ResourceGenerator.GetResourceMultiplier()));
-			else
-				m_ResourceGenerator.RequestGeneration(SCR_ResourceSystemHelper.RoundRefundSupplyAmount(m_fResourceCost * m_CatalogEntitySpawnerComponent.GetPostGracePeriodRefundMultiplier()));
-		}
+			m_ResourceGenerator.RequestGeneration(CalculateObjectRefundValue());
 		
 		if (s_OnRefundPerformed)
 			s_OnRefundPerformed.Invoke(pOwnerEntity, pUserEntity);
 
 		RplComponent.DeleteRplEntity(GetOwner(), false);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	protected float GetAmountOfStoredSupplies()
+	{
+		if (!m_bAccountForStoredSupplies)
+			return 0;
+
+		if (!m_OwnerResourceComp)
+		{
+			m_OwnerResourceComp = SCR_ResourceComponent.FindResourceComponent(GetOwner());
+			if (!m_OwnerResourceComp)
+				return 0;
+		}
+
+		float storedResources;
+		SCR_ResourceSystemHelper.GetStoredResources(m_OwnerResourceComp, storedResources, m_eResourceType);
+		return storedResources;
+	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void CalculateOverallDamageState()
+	{
+		if (!m_bEvaluateDamageWhenCalculatingPrice)
+			return;
+
+		const IEntity owner = GetOwner();
+		if (!owner)
+			return;
+
+		const ChimeraWorld world = ChimeraWorld.CastFrom(owner.GetWorld());
+		if (!world)
+			return;
+
+		const TimeAndWeatherManagerEntity timeAndWeatherManager = world.GetTimeAndWeatherManager();
+		if (!timeAndWeatherManager)
+			return;
+
+		const float currentTime = timeAndWeatherManager.GetEngineTime();
+		if (currentTime < m_fTimeUntilNextDamageCheck)
+			return;
+
+		m_fTimeUntilNextDamageCheck = currentTime + DAMAGE_STATE_EVALUATION_COOLDOWN_SECONDS;
+		m_fLastOverallDamageState = 1; // reset to pristine state to not penalize if damage manager is not present
+		if (!m_DamageManagerComp)
+		{
+			m_DamageManagerComp = SCR_DamageManagerComponent.GetDamageManager(owner);
+			if (!m_DamageManagerComp)
+				return;
+		}
+
+		array<HitZone> physicalHitZones();
+		m_DamageManagerComp.GetPhysicalHitZones(physicalHitZones);
+		float totalMaxHealth;
+		float totalFactor;
+		foreach (HitZone hz : physicalHitZones)
+		{
+			// Health scaled cannot be used for this, as there is no guarantee that it will be correct on all clients, thus states must be used 
+			EDamageState state = hz.GetDamageState();
+			float maxHealth = hz.GetMaxHealth();
+			float factor;
+			switch (state)
+			{
+				case EDamageState.DESTROYED:
+					factor = m_fDestroyedStateFactor;
+					break;
+
+				case EDamageState.INTERMEDIARY:
+					factor = m_fDamagedStateFactor;
+					break;
+
+				default:
+					factor = m_fUndamagedStateFactor;
+			}
+
+			totalFactor += factor * maxHealth;
+			totalMaxHealth += maxHealth;
+		}
+
+		if (totalMaxHealth > 0)
+			totalFactor /= totalMaxHealth;
+		else
+			totalFactor = 1;
+
+		m_fLastOverallDamageState = totalFactor;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected float CalculateObjectRefundValue()
+	{
+		if (!m_CatalogEntitySpawnerComponent)
+			return 0;
+
+		const IEntity owner = GetOwner();
+		float resourceCost = GetAmountOfStoredSupplies();
+		CalculateOverallDamageState();
+
+		if (m_CatalogEntitySpawnerComponent.IsInGracePeriod(owner))
+			resourceCost += m_fResourceCost * m_ResourceGenerator.GetResourceMultiplier();
+		else
+		{
+			float priceFactor = m_CatalogEntitySpawnerComponent.GetRefundPriceFactor(m_fLastOverallDamageState);
+			resourceCost += m_fResourceCost * m_CatalogEntitySpawnerComponent.GetPostGracePeriodRefundMultiplier() * priceFactor;
+		}
+
+		return SCR_ResourceSystemHelper.RoundRefundSupplyAmount(resourceCost);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override bool GetActionNameScript(out string outName)
 	{
@@ -83,13 +204,8 @@ class SCR_ResourceEntityRefundAction : SCR_ScriptedUserAction
 		
 		if (m_bIsResourceEnabled)
 		{
-			float resourceCost;
-			
-			if (m_CatalogEntitySpawnerComponent.IsInGracePeriod(GetOwner()))
-				resourceCost = SCR_ResourceSystemHelper.RoundRefundSupplyAmount(m_fResourceCost * m_ResourceGenerator.GetResourceMultiplier());
-			else
-				resourceCost = SCR_ResourceSystemHelper.RoundRefundSupplyAmount(m_fResourceCost * m_CatalogEntitySpawnerComponent.GetPostGracePeriodRefundMultiplier());
-		
+			float resourceCost = CalculateObjectRefundValue();
+
 			if (resourceCost > 0)
 			{
 				ActionNameParams[0] = SCR_ResourceSystemHelper.SuppliesToString(resourceCost);
@@ -305,6 +421,8 @@ class SCR_ResourceEntityRefundAction : SCR_ScriptedUserAction
 		
 		//~ Get compartment manager if vehicle
 		m_CompartmentManager = SCR_BaseCompartmentManagerComponent.Cast(pOwnerEntity.FindComponent(SCR_BaseCompartmentManagerComponent));
+		m_OwnerResourceComp = SCR_ResourceComponent.FindResourceComponent(pOwnerEntity);
+		m_DamageManagerComp = SCR_DamageManagerComponent.GetDamageManager(pOwnerEntity);
 		
 		SCR_EditableEntityUIInfo uiInfo = SCR_EditableEntityUIInfo.Cast(entry.GetEntityUiInfo());
 		if (uiInfo)

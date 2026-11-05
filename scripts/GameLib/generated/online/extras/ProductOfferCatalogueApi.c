@@ -15,6 +15,11 @@ sealed class ProductOfferCatalogueApi
 	private void ~ProductOfferCatalogueApi();
 
 	/*!
+	Fetches all labels from the backend.
+	\note This should be called before using the catalogue to properly view labels of all products.
+	*/
+	static proto void RequestLabels(notnull BackendCallback pCallback);
+	/*!
 	Sets filters for the catalogue.
 	If set to null then no filters will be applied.
 	*/
@@ -68,11 +73,6 @@ sealed class ProductOfferCatalogueApi
 	static proto int GetCurrentItemCount();
 	//! Getter for items of the currently loaded page/offset.
 	static proto int GetItems(out notnull array<ProductOffer> offersOut);
-	/*!
-	Fetches all labels from the backend.
-	\note This should be called before using the catalogue to properly view labels of all products.
-	*/
-	static proto void RequestLabels(notnull BackendCallback pCallback);
 }
 
 /*!

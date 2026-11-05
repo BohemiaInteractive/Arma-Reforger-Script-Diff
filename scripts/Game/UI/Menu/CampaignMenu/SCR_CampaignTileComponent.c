@@ -17,10 +17,12 @@ class SCR_CampaignTileComponent: SCR_MainMenuTileComponent
 			return;
 		
 		m_wFinished = w.FindAnyWidget(WIDGET_NAME_FINISHED);
-		m_wFinished.SetVisible(false);
+		if (m_wFinished)
+			m_wFinished.SetVisible(false);
 		
 		m_wLocked = m_wRoot.FindAnyWidget(WIDGET_NAME_LOCKED);
-		m_wLocked.SetVisible(false);
+		if (m_wLocked)
+			m_wLocked.SetVisible(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -41,7 +43,7 @@ class SCR_CampaignTileComponent: SCR_MainMenuTileComponent
 	
 	//------------------------------------------------------------------------------------------------
 	bool UpdateCampaignButtons()
-	{		
+	{				
 		if (SCR_ScenarioSequenceProgress.IsScenarioLocked(m_Item))
 			DisableTile();
 		else if (SCR_ScenarioSequenceProgress.IsNextScenarioLocked(m_Item))
@@ -73,6 +75,14 @@ class SCR_CampaignTileComponent: SCR_MainMenuTileComponent
 		super.DisableTile();
 		
 		m_wLocked.SetVisible(true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void EnableTile()
+	{
+		super.EnableTile();
+		
+		m_wLocked.SetVisible(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------

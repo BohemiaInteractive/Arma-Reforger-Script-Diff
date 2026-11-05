@@ -63,7 +63,7 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 		// is dropped without ever reaching the game.
 		if (!ValidateData_S(requestComponent, data))
 			return SCR_ESpawnResult.CANNOT_VALIDATE;
-		
+
 		// See if player can be spawned with provided data,
 		// this can be e.g. based on gamemodes
 		SCR_ESpawnResult requestResult;
@@ -92,7 +92,7 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 		SCR_ESpawnResult canSpawn = CanHandleRequest_S(requestComponent, data);
 		if (canSpawn != SCR_ESpawnResult.OK)
 			return canSpawn;
-		
+
 		#ifdef ENABLE_DIAG
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_COMPONENT_TIME))
 			Debug.BeginTimeMeasure();
@@ -107,7 +107,7 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 
 			result = SCR_ESpawnResult.INTERNAL_ERROR;
 		}
-		
+
 		#ifdef ENABLE_DIAG
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_COMPONENT_TIME))
 			Debug.EndTimeMeasure("SpawnEntity_S");
@@ -122,7 +122,7 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 	{
 		if (data && data.GetSkipPreload())
 			return;
-		
+
 		if (SCR_BaseGameMode.Cast(GetGame().GetGameMode()).CanStartSpawnPreload())
 			requestComponent.StartSpawnPreload(data.GetPosition());
 	}
@@ -161,7 +161,7 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 		OnFinalizeDone_S(requestComponent, data, entity);
 		return SCR_ESpawnResult.OK;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Request finalized (player spawned).
 	//! \param[in] requestComponent
@@ -179,7 +179,14 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 		#ifdef _ENABLE_RESPAWN_LOGS
 		Print(string.Format("%1::ValidateData_S(playerId: %1, data: %2)", Type().ToString(), requestComponent.GetPlayerId(), data), LogLevel.NORMAL);
 		#endif
-		return data.IsValid();
+		
+		if (!data.IsValid())
+			return false;
+
+		if (!SCR_Global.IsPositionWithinTerrainBounds(data.GetPosition(), 2.0))
+	    	return false;
+
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -238,10 +245,10 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_COMPONENT_TIME))
 			Debug.BeginTimeMeasure();
 		#endif
-		
+
 		// Spawn
 		Resource res = Resource.Load(prefab);
-		
+
 		#ifdef ENABLE_DIAG
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_COMPONENT_TIME))
 		{
@@ -249,9 +256,9 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 			Debug.BeginTimeMeasure();
 		}
 		#endif
-		
+
 		IEntity entity = GetGame().SpawnEntityPrefab(res, null, params);
-		
+
 		#ifdef ENABLE_DIAG
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_COMPONENT_TIME))
 			Debug.EndTimeMeasure("Game::SpawnEntityPrefab");
@@ -270,7 +277,7 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	//! Verifies provided prefab.
 	//! \param[in] resourceName
-	//! \return true if provided prefab is a valid and has a controller component.
+	//! \return true if provided prefab is a valid and has a character controller component.
 	protected bool ValidatePrefab_S(ResourceName resourceName)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
@@ -288,8 +295,8 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 		if (!rplComponent)
 			return false;
 
-		IEntityComponentSource baseControllerComponent = SCR_BaseContainerTools.FindComponentSource(res, RplComponent);
-		if (!baseControllerComponent)
+		IEntityComponentSource charController = SCR_BaseContainerTools.FindComponentSource(res, CharacterControllerComponent);
+		if (!charController)
 			return false;
 
 		return true;
@@ -358,14 +365,14 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 		Print(string.Format("%1::HandleSpawnEntityFailure_S(playerId: %2, entity: %2, data: %3, res: %4)", Type().ToString(),
 					requestComponent.GetPlayerId(), entity, data, typename.EnumToString(SCR_ESpawnResult, reason)), LogLevel.NORMAL);
 		#endif
-		
+
 		SCR_RespawnSystemComponent respawnSystem = GetRespawnSystemComponent();
 		respawnSystem.OnSpawnPlayerEntityFailure_S(requestComponent, this, entity, data, reason);
 
 		if (entity && ShouldDeleteEntityOnSpawnFailure_S(requestComponent, entity, data, reason))
 			RplComponent.DeleteRplEntity(entity, false);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Check whether spawned entity should be deleted if the spawn process failed.
 	//! \param[in] requestComponent

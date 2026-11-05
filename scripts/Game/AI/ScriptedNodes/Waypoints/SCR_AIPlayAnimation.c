@@ -40,7 +40,7 @@ class SCR_AIPlayAnimation : AITaskScripted
 				return ENodeResult.FAIL;
 			GetVariableIn(PORT_RELATED_INVOKER, m_OnAnimationBehaviorAction);
 			if (m_OnAnimationBehaviorAction)
-				m_OnAnimationBehaviorAction.Invoke(owner, true, m_iAnimationIndex);
+				m_OnAnimationBehaviorAction.Invoke(owner, true, false, m_iAnimationIndex);
 			
 			m_AIAnimation.StartAnimation(owner.GetControlledEntity(), mat);
 			m_bInPlayed = true;
@@ -57,7 +57,7 @@ class SCR_AIPlayAnimation : AITaskScripted
 			bool abortFast;
 			GetVariableIn(PORT_ABORT_FAST, abortFast);
 			if (m_OnAnimationBehaviorAction)
-				m_OnAnimationBehaviorAction.Invoke(owner, false, m_iAnimationIndex);
+				m_OnAnimationBehaviorAction.Invoke(owner, false, abortFast, m_iAnimationIndex);
 			m_AIAnimation.StopAnimation(owner.GetControlledEntity(), abortFast);
 		}	
 		m_bAbortDone = true;

@@ -48,6 +48,9 @@ class SCR_VehicleActionBase : ScriptedUserAction
 		if (!character)
 			return false;
 
+		if (SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
+			return false;
+
 		// We cannot be pilot nor interior, if we are not seated in vehicle at all.
 		if (!character.IsInVehicle())
 			return !(m_bInteriorOnly || m_bPilotOnly);

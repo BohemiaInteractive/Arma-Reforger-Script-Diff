@@ -1,6 +1,9 @@
 //! Script entry for garbage system modding
 class SCR_GarbageSystem : GarbageSystem
 {
+	[Attribute(defvalue: "0.25", desc: "Multiplier applied to the initial amount of lifetime of empty magazines", params: "0 inf 0.01")]
+	protected float m_fEmptyMagazineInitialLiftimeMultiplier;
+
 	protected const float RESOURCE_LIFETIME_PERCENTAGE = 0.25;
 
 	//------------------------------------------------------------------------------------------------
@@ -24,7 +27,18 @@ class SCR_GarbageSystem : GarbageSystem
 			}
 		}
 
+		const MagazineComponent magazine = MagazineComponent.Cast(entity.FindComponent(MagazineComponent));
+		if (magazine)
+			HandleMagazine(magazine, lifetime);
+
 		return lifetime;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void HandleMagazine(notnull MagazineComponent magazine, inout float lifetime)
+	{
+		if (magazine.GetAmmoCount() == 0)
+			lifetime *= m_fEmptyMagazineInitialLiftimeMultiplier;
 	}
 
 	//------------------------------------------------------------------------------------------------

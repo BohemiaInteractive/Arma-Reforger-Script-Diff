@@ -34,6 +34,7 @@ class ExtBaseCompartmentSlot: ScriptAndConfig
 	proto external EntitySlotInfo GetPassengerPointInfo();
 	proto external bool GetForceFreeLook();
 	proto external bool GetMouseSteering();
+	proto external bool GetGamepadSteering();
 	// Otherwise they will stay in the compartment and play the unconscious animation.
 	proto external bool ShouldEjectUnconsciousDeadCharacters();
 	proto external void SetCharacterIsStrappedIn(bool val);

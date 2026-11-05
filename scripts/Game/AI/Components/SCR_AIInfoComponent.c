@@ -352,7 +352,7 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnDamageEffectAdded(notnull SCR_DamageEffect dmgEffect)
 	{
-		if (dmgEffect.GetDamageType() != EDamageType.BLEEDING || !DotDamageEffect.Cast(dmgEffect))
+		if (dmgEffect.GetDamageType() != EDamageType.BLEEDING || !SCR_BleedingDamageEffect.Cast(dmgEffect))
 			return;
 		
 		EvaluateWoundedState();
@@ -361,7 +361,7 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnDamageEffectRemoved(notnull SCR_DamageEffect dmgEffect)
 	{
-		if (dmgEffect.GetDamageType() != EDamageType.BLEEDING || !DotDamageEffect.Cast(dmgEffect))
+		if (dmgEffect.GetDamageType() != EDamageType.BLEEDING || !SCR_BleedingDamageEffect.Cast(dmgEffect))
 			return;
 		
 		EvaluateWoundedState();

@@ -16,6 +16,7 @@ class SCR_EffectsModuleComponent : ScriptComponent
 	protected ref SCR_EffectsModule m_EffectConfig;
 	
 	protected bool m_bDoneExecuting;
+	protected SCR_EditableEntityComponent m_EditableComponent;
 	
 	protected ref EffectsModuleOnChanged m_OnDeleted = new EffectsModuleOnChanged();
 	protected ref EffectsModuleOnChanged m_OnEditorOnRemovedFromParent= new EffectsModuleOnChanged();
@@ -228,10 +229,19 @@ class SCR_EffectsModuleComponent : ScriptComponent
 			delete spawnedEntity.GetOwner();
 			return;
 		}
-		
+
+		SCR_EditableEntityAuthor author;
+		if (m_EditableComponent)
+			author = m_EditableComponent.GetAuthor();
+
+		SCR_EditableEntityComponent editableComp = SCR_EditableEntityComponent.Cast(spawnedEntity.GetOwner().FindComponent(SCR_EditableEntityComponent));
+		if (editableComp)
+			editableComp.SetAuthor(author);
+
 		spawnedEntity.InitChildServer(this, m_EffectConfig);
+		spawnedEntity.SetInstigator(author);
 		m_EffectConfig.OnEntitySpawned(spawnedEntity, targetPosition);
-		
+
 		//~ On Spawn broadcast and logic
 		Rpc(OnEntitySpawnedBroadcast, rplComp.Id(), targetPosition);
 	}
@@ -385,6 +395,8 @@ class SCR_EffectsModuleComponent : ScriptComponent
 
 		if (!m_bExecuteOnInit)
 			return;
+
+		m_EditableComponent = SCR_EditableEntityComponent.Cast(owner.FindComponent(SCR_EditableEntityComponent));
 
 		m_EffectConfig.OnModulePreExecute();
 	}

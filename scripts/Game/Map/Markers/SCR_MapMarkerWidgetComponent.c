@@ -150,15 +150,7 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 	protected void OnFilteredCallback(array<string> text)
 	{
 		string resultText;
-		
-		if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.XBOX == PlatformKind.XBOX)
-		{
-			SCR_ProfaneFilter.ReplaceProfanities(text.Get(0), resultText);
-		}
-		else
-		{
-			resultText = text.Get(0);
-		}
+		resultText = text.Get(0);
 		
 		if (!resultText.IsEmpty())
 			m_wMarkerText.SetText(resultText);

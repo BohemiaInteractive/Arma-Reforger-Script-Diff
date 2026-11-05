@@ -115,7 +115,7 @@ class SCR_ScenarioFrameworkLogicCounterClass : SCR_ScenarioFrameworkLogicClass
 
 class SCR_ScenarioFrameworkLogicCounter : SCR_ScenarioFrameworkLogic
 {	
-	[Attribute(defvalue: "1", desc: "Threshold", UIWidgets.Graph, category: "Counter")]
+	[Attribute(defvalue: "1", desc: "Threshold", UIWidgets.GradientDialog, category: "Counter")]
 	int	m_iCountTo;
 	
 	[Attribute(desc: "What to do once value is increased", category: "OnIncrease")]

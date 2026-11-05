@@ -19,7 +19,7 @@ class SCR_ScenarioFrameworkActionSpawnObjectBasedOnDistance : SCR_ScenarioFramew
 	[Attribute(defvalue: "0", UIWidgets.ComboBox, desc: "Spawn all objects, only random one or random multiple ones?", "", ParamEnumArray.FromEnum(SCR_EScenarioFrameworkSpawnChildrenType))]
 	SCR_EScenarioFrameworkSpawnChildrenType m_SpawnObjects;
 
-	[Attribute(defvalue: "100", desc: "If the RANDOM_MULTIPLE option is selected, what's the percentage? ", UIWidgets.Graph, "0 100 1")]
+	[Attribute(defvalue: "100", desc: "If the RANDOM_MULTIPLE option is selected, what's the percentage? ", UIWidgets.GradientDialog, "0 100 1")]
 	int m_iRandomPercent;
 
 	//------------------------------------------------------------------------------------------------

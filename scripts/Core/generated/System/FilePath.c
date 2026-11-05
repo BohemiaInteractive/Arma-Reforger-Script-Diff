@@ -25,12 +25,14 @@ sealed class FilePath
 	\param c Single char string to check
 	\return true if c is system path delimiter, false otherwise
 	*/
+	[Obsolete("Will be removed")]
 	static proto bool IsSystemDelimiter(string c);
 	/*!
 	Converts given delimiter to system delimiter.
 	\param c Single char string to convert
 	\return System delimiter if IsDelimiter(c), c otherwise
 	*/
+	[Obsolete("Will be removed")]
 	static proto string ToSystemDelimiter(string c);
 	/*!
 	Removes extension from given path.

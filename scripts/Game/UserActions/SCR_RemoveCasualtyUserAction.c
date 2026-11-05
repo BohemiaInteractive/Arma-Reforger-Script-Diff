@@ -27,8 +27,7 @@ class SCR_RemoveCasualtyUserAction : SCR_CompartmentUserAction
 		if (!user)
 			return;
 
-		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(user.GetCharacterController());
-		if (controller && controller.IsLoitering())
+		if (SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(user))
 			return;
 
 		CompartmentAccessComponent userCompartmentAccess = user.GetCompartmentAccessComponent();
@@ -60,8 +59,7 @@ class SCR_RemoveCasualtyUserAction : SCR_CompartmentUserAction
 		if (!character)
 			return false;
 
-		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
-		if (controller && controller.IsLoitering())
+		if (SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
 			return false;
 
 		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
@@ -118,6 +116,9 @@ class SCR_RemoveCasualtyUserAction : SCR_CompartmentUserAction
 
 		ChimeraCharacter character = ChimeraCharacter.Cast(user);
 		if (!character)
+			return false;
+
+		if (SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
 			return false;
 
 		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();

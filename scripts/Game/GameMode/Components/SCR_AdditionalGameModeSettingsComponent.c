@@ -49,6 +49,9 @@ class SCR_AdditionalGameModeSettingsComponent : SCR_BaseGameModeComponent
 	[RplProp(onRplName: "OnNightNoiseSettingChanged"), Attribute(defvalue: "1", desc: "Disable noise effect which will be visible in dark places")]
 	protected bool m_bDisableNightNoiseEffect;
 	
+	[Attribute("", UIWidgets.ResourceNamePicker, "Optional Limited ArmaVision camera prefab override. Empty uses the default prefab.", "et", category: "ArmaVision")]
+	protected ResourceName m_LimitedArmavisionCameraPrefabOverride;
+	
 	protected ref ScriptInvokerInt m_OnNametagRelationFilterUpdated;
 	protected ref ScriptInvokerInt m_OnNametagControllerFilterUpdated;
 	
@@ -63,6 +66,13 @@ class SCR_AdditionalGameModeSettingsComponent : SCR_BaseGameModeComponent
 		return s_Instance;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return Limited ArmaVision camera override prefab
+	ResourceName GetLimitedArmavisionCameraPrefabOverride()
+	{
+		return m_LimitedArmavisionCameraPrefabOverride;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	bool GetProjectileBallisticInfoVisibility()
 	{

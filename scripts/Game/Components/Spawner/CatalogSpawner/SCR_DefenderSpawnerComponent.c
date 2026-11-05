@@ -51,7 +51,7 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, category: "Defender Spawner", desc: "Enable spawning"), RplProp()]
 	protected bool m_bEnableSpawning;
 	
-	[Attribute(defvalue: "30", params: "0 inf", desc: "Minimum distance to hostile players for spawner to work", "et")]
+	[Attribute(defvalue: "300", params: "0 inf", desc: "Minimum distance to hostile players for spawner to work", "et")]
 	protected float m_fMinHostilePlayerDistance;
 	
 	[Attribute(desc: "Enables supplies usage.", category: "Supplies")]
@@ -614,7 +614,7 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 		if (!world)
 			return SCR_EDefenderSpawnerState.DEFENDERS_DESPAWN;
 
-		float spawnDistanceSq = Math.Clamp(Math.Pow(GetGame().GetViewDistance() * 0.5, 2), SPAWN_RADIUS_MAX, SPAWN_RADIUS_MIN);
+		float spawnDistanceSq = Math.Clamp(Math.Pow(GetGame().GetViewDistance() * 0.5, 2), SPAWN_RADIUS_MIN, SPAWN_RADIUS_MAX);
 		float minSpawnDistanceSq = m_fMinHostilePlayerDistance * m_fMinHostilePlayerDistance;
 
 		vector origin = GetOwner().GetOrigin();
@@ -699,16 +699,21 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 			}
 			
 			// Reinforce existing or create new defender group. Also handles respawning of despawned defenders
-			if (m_iDespawnedGroupMembers > 0 || replicationTime.Greater(m_fNextRespawnTime))
+			bool respawnTimerExpired = replicationTime.Greater(m_fNextRespawnTime);
+			if (m_iDespawnedGroupMembers > 0 || respawnTimerExpired)
 			{
-				m_fNextRespawnTime = replicationTime.PlusSeconds(m_fRespawnDelay);
+				// Reset the timer only when it really expired. The despawned-members path
+				// must not delay or skip the paid respawn cycle of combat losses.
+				if (respawnTimerExpired)
+					m_fNextRespawnTime = replicationTime.PlusSeconds(m_fRespawnDelay);
+
 				if (m_AIgroup && (m_AIgroup.m_aUnitPrefabSlots.Count() != m_AIgroup.GetAgentsCount()))
 					ReinforceGroup();
 
 				if (!m_AIgroup)
 					SpawnGroup();
 			}
-			
+
 			//Spawn queued units
 			if (m_aRefillQueue && !m_aRefillQueue.IsEmpty())
 			{
@@ -716,6 +721,13 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 				{
 					SpawnUnit(m_aRefillQueue[0], false);
 					m_iDespawnedGroupMembers--;
+
+					// Free respawns only restore members that were despawned for performance.
+					// Once those are back, drop the rest of the queue: any combat losses in it
+					// are queued again by ReinforceGroup on the next respawn delay expiry and
+					// then go through the supply-paid path instead of respawning right away.
+					if (m_iDespawnedGroupMembers == 0)
+						m_aRefillQueue = null;
 				}
 				else
 				{
@@ -727,7 +739,12 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 		//Despawn units that are too far away from players
 		if (distanceState == SCR_EDefenderSpawnerState.DEFENDERS_DESPAWN)
 		{
-			if (m_AIgroup && !m_AIgroup.HasHeldMember())
+			// Respect the world-level dormancy switch: with dormancy disabled, defenders stay
+			// spawned. Cleanup of groups from previous owners below still runs.
+			ChimeraAIWorld chimeraAIWorld = ChimeraAIWorld.Cast(aiWorld);
+			bool dormancyEnabled = !chimeraAIWorld || chimeraAIWorld.IsGroupDormancyEnabled();
+
+			if (dormancyEnabled && m_AIgroup && !m_AIgroup.HasHeldMember())
 			{
 				// Keep the group entity and drop it to Dormant so GM still sees it, and a later
 				// SpawnGroup / ReinforceGroup trickles members back from the refill queue.

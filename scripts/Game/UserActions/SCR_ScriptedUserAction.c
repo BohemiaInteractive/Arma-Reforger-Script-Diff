@@ -25,9 +25,28 @@ class SCR_ScriptedUserAction : ScriptedUserAction
 	protected float m_fLoopProgress;
 	protected float m_fLoopProgressSmoothVelocity;
 
+	//------------------------------------------------------------------------------------------------
+	static bool IsUserPlayingBlockingAnimation(notnull ChimeraCharacter character)
+	{
+		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+		return controller && (controller.IsLoitering() || controller.IsPlayingGesture());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! A wrapper around IsUserPlayingBlockingAnimation to allow ignoring some special cases for children of base class 
+	//! - since static method cannot be overriden
+	protected bool IsUserPlayingBlockingAnimation_Wrapper(notnull ChimeraCharacter character)
+	{
+		return IsUserPlayingBlockingAnimation(character);
+	}
+
 	//================================================== CAN SHOW ==================================================\\
 	override bool CanBeShownScript(IEntity user)
 	{
+		ChimeraCharacter userCharacter = ChimeraCharacter.Cast(user);
+		if (userCharacter && IsUserPlayingBlockingAnimation_Wrapper(userCharacter))
+			return false;
+
 		if (m_eShownInVehicleState == EUserActionInVehicleState.IGNORE)
 			return true;
 
@@ -35,7 +54,7 @@ class SCR_ScriptedUserAction : ScriptedUserAction
 		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
 		if (!character)
 		{
-			character = ChimeraCharacter.Cast(user);
+			character = userCharacter;
 			if (!character)
 				return true;
 		}

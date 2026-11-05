@@ -104,7 +104,7 @@ class SCR_ScenarioFrameworkAIActionOnAnimationWaypointStarted : SCR_ScenarioFram
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnAnimationStarted(AIAgent agent, bool startingAnimation, int animationIndex)
+	void OnAnimationStarted(AIAgent agent, bool startingAnimation, bool abortFast, int animationIndex)
 	{
 		if (!m_Waypoint)
 			return;

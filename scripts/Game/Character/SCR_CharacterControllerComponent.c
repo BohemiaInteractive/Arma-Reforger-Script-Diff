@@ -338,7 +338,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState, bool isJIP)
 	{
-		m_OnLifeStateChanged.Invoke(previousLifeState, newLifeState, isJIP);
+		m_OnLifeStateChanged.Invoke(previousLifeState, newLifeState, isJIP, this);
 				
 		IEntity vehicle = CompartmentAccessComponent.GetVehicleIn(GetCharacter());
 		if (!vehicle)
@@ -499,6 +499,10 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 
 		SCR_HelicopterCollimatorSightComponent collimator = SCR_HelicopterCollimatorSightComponent.Cast(owner.FindComponent(SCR_HelicopterCollimatorSightComponent));
 		if (!collimator)
+			return;
+
+		// Only the pilot of the vehicle that owns the sight may change its state
+		if (!collimator.IsUsedByCharacter(GetOwner()))
 			return;
 
 		collimator.OwnerSyncSightState(newState);
@@ -729,6 +733,70 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	//------------------------------------------------------------------------------------------------
 	#ifdef ENABLE_DIAG
 		//------------------------------------------------------------------------------------------------
+		private void DrawHydrationDebug(ChimeraCharacter character)
+		{
+			DbgUI.Begin("Character hydration / stamina boost");
+
+			SCR_CharacterStaminaComponent staminaComponent = SCR_CharacterStaminaComponent.Cast(character.FindComponent(SCR_CharacterStaminaComponent));
+			if (!staminaComponent)
+			{
+				DbgUI.Text("Hydration: unavailable (missing stamina component)");
+				DbgUI.End();
+				return;
+			}
+
+			if (staminaComponent.IsHydrationEnabled())
+				DbgUI.Text("Hydration system: ENABLED");
+			else
+				DbgUI.Text("Hydration system: DISABLED");
+
+			float hydration = staminaComponent.GetHydration();
+			DbgUI.Text(string.Format("Hydration: %1 / %2 (%3%%)", hydration.ToString(-1, 3), SCR_CharacterStaminaComponent.HYDRATION_MAXIMUM.ToString(-1, 3), (hydration / SCR_CharacterStaminaComponent.HYDRATION_MAXIMUM * 100).ToString(-1, 1)));
+			DbgUI.Spacer(6);
+
+			SCR_CharacterDamageManagerComponent damageManager = SCR_CharacterDamageManagerComponent.Cast(character.FindComponent(SCR_CharacterDamageManagerComponent));
+			if (!damageManager)
+			{
+				DbgUI.Text("Stamina boost: unavailable (missing damage manager)");
+				DbgUI.End();
+				return;
+			}
+
+			array<ref SCR_PersistentDamageEffect> boostEffects = damageManager.GetAllPersistentEffectsOfType(SCR_FlaskStaminaRegenBoostDamageEffect);
+			int boostEffectCount = boostEffects.Count();
+			SCR_FlaskStaminaRegenBoostDamageEffect boostEffect;
+			if (boostEffectCount > 0)
+				boostEffect = SCR_FlaskStaminaRegenBoostDamageEffect.Cast(boostEffects[0]);
+
+			bool boostActive = boostEffect && boostEffect.IsActive();
+			if (boostActive)
+				DbgUI.Text("Stamina boost: ACTIVE");
+			else
+				DbgUI.Text("Stamina boost: INACTIVE");
+			DbgUI.Text("Effect instances: " + boostEffectCount);
+
+			if (boostEffect)
+			{
+				float regenerationBonus = boostEffect.GetRegenerationBonus();
+				DbgUI.Text(string.Format("Regeneration bonus: +%1%% (x%2)", (regenerationBonus * 100).ToString(-1, 1), (1 + regenerationBonus).ToString(-1, 2)));
+
+				float maximumDuration = boostEffect.GetMaxDuration();
+				if (boostEffect.HasFiniteDuration())
+				{
+					float remainingDuration = boostEffect.GetRemainingDuration();
+					if (maximumDuration > 0)
+						DbgUI.Text(string.Format("Remaining duration: %1 s / %2 s", remainingDuration.ToString(-1, 1), maximumDuration.ToString(-1, 1)));
+					else
+						DbgUI.Text(string.Format("Remaining duration: %1 s", remainingDuration.ToString(-1, 1)));
+				}
+				else
+					DbgUI.Text("Remaining duration: infinite");
+			}
+
+			DbgUI.End();
+		}
+
+		//------------------------------------------------------------------------------------------------
 		override void OnDiag(IEntity owner, float timeslice)
 		{
 			ChimeraCharacter character = GetCharacter();
@@ -740,6 +808,9 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 
 			bool diagTransform = DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_TRANSFORMATION);
 			bool bIsLocalCharacter = SCR_PlayerController.GetLocalControlledEntity() == character;
+
+			if (bIsLocalCharacter && DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_HYDRATION_STAMINA_BOOST))
+				DrawHydrationDebug(character);
 
 			// Character Transformation Diag
 			if (bIsLocalCharacter && diagTransform)
@@ -1102,6 +1173,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_ADDITIONAL_CAMERASHAKE_DISABLE, "", "Disable additional cam shake", "Character");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_CAMERASHAKE_TEST_WINDOW, "", "Show shake diag", "Character");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_WEAPONS_ALLOW_INSPECTION_LOOKAT, "", "Inspection LookAt", "Character");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_HYDRATION_STAMINA_BOOST, "", "Hydration / stamina boost", "Character");
 			s_bDiagRegistered = true;
 		}
 		#endif
@@ -1641,28 +1713,43 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	//!
 	//! \param[in] terminateFast should be true when going into alerted or combat state.
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RPC_StopLoitering_S(bool terminateFast)
+	void RPC_StopLoitering_S(bool terminateFast, SCR_LoiterCustomAnimData customAnimData)
 	{
 		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetAnimationComponent().GetCommandHandler());
-		scrCmdHandler.StopLoitering(terminateFast);
+		scrCmdHandler.StopLoitering(terminateFast, customAnimData : customAnimData);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] terminateFast
 	//terminateFast should be true when we are going into alerted or combat state.
-	void StopLoitering(bool terminateFast)
+	void StopLoitering(bool terminateFast, SCR_LoiterCustomAnimData customAnimData = null)
 	{
+		if (m_pScrInputContext && m_pScrInputContext.m_CustomAnimData && !customAnimData)
+			customAnimData = m_pScrInputContext.m_CustomAnimData;
+		
 		ChimeraCharacter character = GetCharacter();
 		RplComponent rplComponent = character.GetRplComponent();
 		if (rplComponent && !rplComponent.IsOwner())
 			return;
 		
 		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetAnimationComponent().GetCommandHandler());
-		scrCmdHandler.StopLoitering(terminateFast);
 		
-		if (rplComponent && rplComponent.IsProxy())
-			Rpc(RPC_StopLoitering_S, terminateFast);
+		// if Loitering did not start - e.g. due to deffered Start when holstering weapon, we reset loitering type and align 
+		if (scrCmdHandler && !scrCmdHandler.IsLoitering() && m_pScrInputContext && m_pScrInputContext.m_iLoiteringType >= 0)
+		{
+			m_pScrInputContext.m_iLoiteringType = -1;
+			CharacterHeadingAnimComponent headingComponent = GetAnimationComponent().GetHeadingComponent();
+			if (headingComponent)
+				headingComponent.ResetAligning();
+			
+			return;
+		}
+		
+		scrCmdHandler.StopLoitering(terminateFast, customAnimData : customAnimData);
+		
+		if (rplComponent && rplComponent.IsProxy() && customAnimData)
+			Rpc(RPC_StopLoitering_S, terminateFast, customAnimData);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1672,7 +1759,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		if (!handler)
 			return false;
 		else
-			return handler.IsLoitering();		
+			return handler.IsLoitering();
 	}
 
 	//------------------------------------------------------------------------------------------------

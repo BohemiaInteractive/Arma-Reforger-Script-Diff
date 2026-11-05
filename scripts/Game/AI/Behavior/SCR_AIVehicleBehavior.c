@@ -104,7 +104,7 @@ class SCR_AIGetInVehicle : SCR_AIVehicleBehavior
 
 class SCR_AIGetOutVehicle : SCR_AIVehicleBehavior
 {
-	ref SCR_BTParam<float> m_fDelay = new SCR_BTParam<float>("Delay");
+	ref SCR_BTParam<float> m_fDelay = new SCR_BTParam<float>(SCR_AIActionTask.DELAY_PORT);
 		
 	//------------------------------------------------------------------------------------------------
 	void SCR_AIGetOutVehicle(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, IEntity vehicleEntity, float delay_s = 0, float priority = PRIORITY_BEHAVIOR_GET_OUT_VEHICLE, float priorityLevel = PRIORITY_LEVEL_NORMAL)
@@ -119,5 +119,21 @@ class SCR_AIGetOutVehicle : SCR_AIVehicleBehavior
 	override string GetActionDebugInfo()
 	{
 		return this.ToString() + " leaving " + m_Vehicle.m_Value.ToString();
+	}
+};
+
+class SCR_AIUnflipVehicle : SCR_AIVehicleBehavior
+{
+	ref SCR_BTParam<float> m_fDelay = new SCR_BTParam<float>(SCR_AIActionTask.DELAY_PORT);
+	ref SCR_BTParam<vector> m_vPosition = new SCR_BTParam<vector>(SCR_AIActionTask.POSITION_PORT);
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_AIUnflipVehicle(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, IEntity vehicleEntity, float delay_s = 0, vector position = vector.Zero, float priority = PRIORITY_BEHAVIOR_UNFLIP_VEHICLE, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	{
+		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/UnflipVehicle.bt";
+		SetPriority(priority);
+		m_fPriorityLevel.m_Value = priorityLevel;
+		m_fDelay.Init(this, delay_s);
+		m_vPosition.Init(this, position);
 	}
 };

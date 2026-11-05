@@ -515,6 +515,12 @@ class SCR_DeployMultiPartInventoryItemAction : SCR_DeployInventoryItemAction
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override bool IsUsableByMultipleUsersScript()
+	{
+		return m_bCanBePerformedByMultipleUsers;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	// destructor
 	void ~SCR_DeployMultiPartInventoryItemAction()
 	{

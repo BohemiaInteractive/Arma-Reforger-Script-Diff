@@ -216,28 +216,8 @@ class SCR_GadgetComponent : ScriptGameComponent
 			if (mode != EGadgetMode.IN_HAND)
 			{			
 				InventoryStorageSlot slot = itemComponent.GetParentSlot();
-				ItemAnimationAttributes animAttr = ItemAnimationAttributes.Cast(itemComponent.FindAttribute(ItemAnimationAttributes));
-				if (slot && animAttr)
-				{
-					vector matLS[4];
-					animAttr.GetAdditiveTransformLS(matLS);
-					matLS[3] = matLS[3] + m_vEquipmentSlotOffset;
-
-					// Push the gadget forward in slot-local space to match clothing thickness,
-					// so it sits flush on the surface of any equipped jacket/vest rather than floating.
-					// Use m_CharacterOwner instead of GetRootParent() — root parent may be a vehicle
-					// when the character is seated, which has no BaseLoadoutManagerComponent.
-					if (m_CharacterOwner)
-					{
-						BaseLoadoutManagerComponent loadoutManager = BaseLoadoutManagerComponent.Cast(m_CharacterOwner.FindComponent(BaseLoadoutManagerComponent));
-						if (loadoutManager)
-						{
-							matLS[3][1] = matLS[3][1] + (loadoutManager.GetClothesOffsetFront() * m_fClothesOffsetStrength);
-						}
-					}
-
-					slot.SetAdditiveTransformLS(matLS);
-				}
+				if (slot)
+					UpdateSlottedPosition(itemComponent, slot);
 				
 				EquipmentStorageSlot equipSlot = EquipmentStorageSlot.Cast(slot);
 				if (equipSlot && equipSlot.IsOccluded())
@@ -258,7 +238,35 @@ class SCR_GadgetComponent : ScriptGameComponent
 				itemComponent.HideOwner();
 		}
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Changes the position within the slot based on equipment offsets
+	//! \param[in] itemComponent of this enttiy
+	//! \param[in] slot in which this entity is currently located
+	protected void UpdateSlottedPosition(notnull InventoryItemComponent itemComponent, notnull InventoryStorageSlot slot)
+	{
+		ItemAnimationAttributes animAttr = ItemAnimationAttributes.Cast(itemComponent.FindAttribute(ItemAnimationAttributes));
+		if (!animAttr)
+			return;
+
+		vector matLS[4];
+		animAttr.GetAdditiveTransformLS(matLS);
+		matLS[3] = matLS[3] + m_vEquipmentSlotOffset;
+
+		// Push the gadget forward in slot-local space to match clothing thickness,
+		// so it sits flush on the surface of any equipped jacket/vest rather than floating.
+		// Use m_CharacterOwner instead of GetRootParent() — root parent may be a vehicle
+		// when the character is seated, which has no BaseLoadoutManagerComponent.
+		if (m_CharacterOwner)
+		{
+			BaseLoadoutManagerComponent loadoutManager = BaseLoadoutManagerComponent.Cast(m_CharacterOwner.FindComponent(BaseLoadoutManagerComponent));
+			if (loadoutManager)
+				matLS[3][1] = matLS[3][1] + (loadoutManager.GetClothesOffsetFront() * m_fClothesOffsetStrength);
+		}
+
+		slot.SetAdditiveTransformLS(matLS);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Synchronise gadget state
 	//! \param[in] state is target state true = active, false = inactive

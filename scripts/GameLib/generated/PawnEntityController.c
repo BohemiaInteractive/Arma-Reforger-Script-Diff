@@ -15,6 +15,7 @@ class PawnEntityController: ScriptAndConfig
 	proto external void ClearFlags(int flags);
 	proto external bool IsFlagSet(int flag);
 	// movement input
+	proto external void SetMovementInput(vector movementInput);
 	proto external void AddMovementInput(vector movementInput);
 	proto external vector GetCurrentMovementInput();
 	proto external vector GetLastMovementInput();
@@ -33,7 +34,6 @@ class PawnEntityController: ScriptAndConfig
 	event protected void OnDeinit(PawnEntity owner);
 	event protected void OnPrepare(PawnEntity owner, float timeSlice);
 	event protected void OnUpdate(PawnEntity owner, float timeSlice);
-	event protected int ResetPackedControls();
 	event protected int OnPackControls(PawnEntity owner);
 	event protected void OnUnpackControls(PawnEntity owner, int packedControls);
 	event protected bool OnPackUserActions(PawnEntity owner, ScriptBitWriter bitWriter);

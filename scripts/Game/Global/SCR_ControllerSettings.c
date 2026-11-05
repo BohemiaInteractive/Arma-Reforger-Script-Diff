@@ -144,6 +144,12 @@ class SCR_ControllerSettings : ModuleGameSettings
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0 2 0.01", desc: "Rumble multiplier")]
 	float m_fRumbleIntensity;
 
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "-3 3 0.01", desc: "Force feedback intensity multiplier")]
+	float m_fForceFeedbackIntensity;
+
+	[Attribute(defvalue: "0", uiwidget: UIWidgets.Slider, params: "0 3 1", desc: "Id of the device which is going to be used for force feedback")]
+	int m_iForceFeedbackDeviceId;
+
 	[Attribute(defvalue: SCR_Enum.GetDefault(SCR_EGyroAxisDirection.ENABLED), uiwidget: UIWidgets.ComboBox, desc: "Gyro yaw direction", enumType: SCR_EGyroAxisDirection)]
 	SCR_EGyroAxisDirection m_eGyroDirectionYaw;
 
@@ -156,6 +162,8 @@ class SCR_ControllerSettings : ModuleGameSettings
 	//------------------------------------------------------------------------------------------------
 	static void SetControllerSettings()
 	{
+		GamepadEffect.SetDefaultGamepadDeviceIndex(0);
+		
 		BaseContainer controllerSettings = GetGame().GetGameUserSettings().GetModule("SCR_ControllerSettings");
 		if (controllerSettings)
 		{
@@ -225,6 +233,18 @@ class SCR_ControllerSettings : ModuleGameSettings
 			if (controllerSettings.Get("m_fRumbleIntensity", rumbleIntensity))
 			{
 				GamepadRumbleEffect.SetRumbleIntensity(rumbleIntensity);
+			}
+
+			float forceFeedbackIntensity;
+			if (controllerSettings.Get("m_fForceFeedbackIntensity", forceFeedbackIntensity))
+			{
+				JoystickForceEffect.SetForceIntensity(forceFeedbackIntensity);
+			}
+
+			int savedForceFeedbackDeviceId;
+			if (controllerSettings.Get("m_iForceFeedbackDeviceId", savedForceFeedbackDeviceId))
+			{
+				GamepadEffect.SetDefaultJoystickDeviceIndex(savedForceFeedbackDeviceId);
 			}
 		}
 	}

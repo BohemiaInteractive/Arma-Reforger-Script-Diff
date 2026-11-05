@@ -15,9 +15,10 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 	protected SCR_CharacterCommandHandlerComponent m_pCommandHandler;
 	protected ref SCR_LoiterCustomAnimData m_customAnimData;
 	protected RplComponent m_rplComponent;
-	protected ELoiterCommandState m_eState;
-	protected bool m_bWasTag;
+	protected ELoiterCommandState m_eState = -1;
+	protected bool m_bWasTag, m_bUsingGraphAttachment;
 	protected float m_fVelocityThreshold = 0.2;
+	protected int m_iLoiterAbortType = -1;		// -1 is soft exit.
 	
 	//------------------------------------------------------------------------------------------------
 	// constructor
@@ -42,6 +43,9 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
+		if (!m_pCharacter)
+			return;
+		
 		m_bWasTag = false;
 		if (!m_rplComponent)
 			m_rplComponent = m_pCharacter.GetRplComponent();
@@ -55,7 +59,19 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 		if (m_customAnimData)
 		{
 			if (m_customAnimData.m_sGraphBindingName != string.Empty && m_customAnimData.m_sGraphName != string.Empty)
+			{
+				SCR_CharacterControllerComponent charController = SCR_CharacterControllerComponent.Cast(m_pCharacter.FindComponent(SCR_CharacterControllerComponent));
+				if (charController)
+				{
+					charController.GetOnAnimationEvent().Remove(OnAnimationEvent);
+					charController.GetOnAnimationEvent().Insert(OnAnimationEvent);
+					charController.m_OnLifeStateChanged.Remove(OnLifeStateChanged);
+					charController.m_OnLifeStateChanged.Insert(OnLifeStateChanged);					
+				}
+				
 				PreAnim_SetAttachment(m_customAnimData.m_sGraphBindingName, m_customAnimData.m_sGraphName, m_customAnimData.m_sGraphInstanceName, "MasterControl");
+				m_bUsingGraphAttachment = true;
+			}
 			
 			m_customAnimData.SpawnItem(m_pCharacter);
 		}
@@ -89,6 +105,12 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	SCR_LoiterCustomAnimData GetLoiterCustomAnimData()
+	{
+		return m_customAnimData;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnDeactivate()
 	{
 		// If loitering was terminated without properly releasing the ownership of the loiter action, do it now
@@ -96,20 +118,57 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 		
 		if (m_eState == ELoiterCommandState.LOITERING)
 			StopLoitering(true);
-		
-		if (!IsFlagFinished())
-		{
-			FinishLoiter();
-			m_pCommandHandler.BroadCastLoiterFinish();
-		}
+	}
 	
-		if (m_customAnimData)
-		{
-			if (m_customAnimData.m_iCommandBindID != -1 && m_customAnimData.m_sGraphName != string.Empty)
-				PreAnim_SetAttachment(m_customAnimData.m_sGraphBindingName, string.Empty, string.Empty, string.Empty);
-
+	//------------------------------------------------------------------------------------------------
+	protected void OnAnimationEvent(AnimationEventID animEventType, AnimationEventID animUserString, int intParam, float timeFromStart, float timeToEnd)
+	{
+		if (!m_customAnimData)
+			return;
+		
+		string eventName = GameAnimationUtils.GetEventString(animEventType);
+		if (eventName == "ItemHide")
 			m_customAnimData.DeleteItem();
+		else if (eventName == "Gesture_End")
+			DetachGraphAttachmentAndFinish(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void DetachGraphAttachmentAndFinish(bool deleteItem)
+	{
+		if (!m_customAnimData || !m_pCommandHandler)
+			return;
+		
+		if (deleteItem)
+			m_customAnimData.DeleteItem();
+		
+		if (m_bUsingGraphAttachment)
+			PreAnim_SetAttachment(m_customAnimData.m_sGraphBindingName, string.Empty, string.Empty, string.Empty);
+
+		FinishLoiter();
+		m_pCommandHandler.BroadCastLoiterFinish();
+		
+		SCR_CharacterControllerComponent charController = SCR_CharacterControllerComponent.Cast(m_pCharacter.FindComponent(SCR_CharacterControllerComponent));
+		if (charController)
+		{
+			charController.GetOnAnimationEvent().Remove(OnAnimationEvent);
+			charController.m_OnLifeStateChanged.Remove(OnLifeStateChanged);
 		}
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	protected void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
+	{
+		if (newLifeState != ECharacterLifeState.ALIVE)
+		{
+			DetachGraphAttachmentAndFinish(true);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsLoiterCommandFinished()
+	{
+		return (m_eState == -1 || m_eState == ELoiterCommandState.DONE);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -160,9 +219,10 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 						if (isEntityLinked)
 							fallSpeed = m_pCharAnimComponent.GetLinkedEntity().GetPhysics().GetVelocity().Length();
 																	
-						if (characterControllerComponent.IsFalling() || characterControllerComponent.IsSwimming() || ((fallSpeed > m_fVelocityThreshold) && isEntityLinked))
+						if (characterControllerComponent.IsFalling() || characterControllerComponent.IsSwimming() || (isEntityLinked && fallSpeed > m_fVelocityThreshold))
 						{
-							shouldStopLoitering = true;
+							if (!m_customAnimData || m_customAnimData.m_bAllowEnvironmentExit)
+								shouldStopLoitering = true;
 							// Stop animation immediately
 						}
 					}			
@@ -170,13 +230,15 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 
 				if (shouldStopLoitering || (m_bWasTag && !isTag) || (cancelLoiterInputs && !m_pScrInputCtx.m_bLoiteringDisablePlayerInput))
 				{
-					m_pCommandHandler.StopLoitering(false);
+					// Falling or standing on something that moves stops immediately
+					m_pCommandHandler.StopLoitering(shouldStopLoitering);
 				}
 			}
 			break;
 			case ELoiterCommandState.EXITING:
 			{
-				m_pCharAnimComponent.CallCommand(m_pStaticTable.m_CommandGesture, -1, 0.0); // -1 is soft exit.
+				if (m_bUsingGraphAttachment)
+					break;
 				// @TODO(ivanickyjak) We cannot use tags on server.
 				bool isTag = m_pCharAnimComponent.IsPrimaryTag(m_pStaticTable.m_IsLoiteringTag) || m_pCharAnimComponent.IsSecondaryTag(m_pStaticTable.m_IsLoiteringTag);
 				if (!isTag)
@@ -194,12 +256,39 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 	//! \param newState
 	void SwitchState(ELoiterCommandState newState)
 	{
+		if (newState == m_eState)
+			return;
+		
 		TAnimGraphCommand customCommand = -1;
 		int customCommandValue = -1;
 		if (m_customAnimData)
 		{
-			customCommand = m_customAnimData.m_iCommandBindID;
-			customCommandValue = m_customAnimData.m_iCommandValue;
+			if (!m_customAnimData.m_sCommandName.IsEmpty())
+				m_customAnimData.m_iCommandBindID = m_pCharAnimComponent.BindCommand(m_customAnimData.m_sCommandName);
+			
+			if (m_customAnimData.m_iCommandBindID > -1)
+			{
+				customCommand = m_customAnimData.m_iCommandBindID;
+				customCommandValue = m_customAnimData.m_iCommandValue;
+			}
+			// is control variable used? - transition in anim graph should do the trick, no command executed
+			if (!m_customAnimData.m_sControlVariableName.IsEmpty())
+				m_customAnimData.m_iControlVariableID = m_pCharAnimComponent.BindVariableInt(m_customAnimData.m_sControlVariableName);
+			
+			if (m_customAnimData.m_iControlVariableID > -1)
+			{
+				m_pCharAnimComponent.SetVariableInt(m_customAnimData.m_iControlVariableID, m_customAnimData.m_iControlVariableValue);
+
+				// if we are using command we will need to execute the switch below aswell so we forego to early return
+				if (m_customAnimData.m_iCommandBindID < 0)
+				{
+					m_eState = newState;
+					if (m_customAnimData.m_iControlVariableValue == -2)
+						DetachGraphAttachmentAndFinish(true); // dont wait for animation event and end NOW
+
+					return;
+				}
+			}
 		}
 		
 		switch (newState)
@@ -207,6 +296,7 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 			case ELoiterCommandState.LOITERING:
 			{
 				m_bWasTag = false;
+
 				if (customCommand != -1)
 					m_pCharAnimComponent.CallCommand4I(customCommand, 0, customCommandValue, 0, 0, 0.0);
 				else
@@ -216,20 +306,62 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 			case ELoiterCommandState.EXITING:
 			{
 				if (customCommand == -1)
-					m_pCharAnimComponent.CallCommand(m_pStaticTable.m_CommandGesture, -1, 0.0); // -1 is soft exit.
+				{
+					m_pCharAnimComponent.CallCommand(m_pStaticTable.m_CommandGesture, m_iLoiterAbortType, 0.0);
+					if (m_iLoiterAbortType == -2)
+					{
+						DetachGraphAttachmentAndFinish(true);
+						return;
+					}
+				}
 				else
+				{
 					m_pCharAnimComponent.CallCommand(customCommand, customCommandValue, 0.0);
+					// in case of fast abort, we dont wait for any animation to end and set state to DONE
+					if (customCommandValue == -2)
+					{
+						DetachGraphAttachmentAndFinish(true);
+						return;
+					}
+				}
+
 			}
 			break;
 		}
-
+		
 		m_eState = newState;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! \param terminateFast should be true when going into alerted or combat state.
-	void StopLoitering(bool terminateFast)
+	void StopLoitering(bool terminateFast, SCR_LoiterCustomAnimData customAnimData = null)
 	{
+		if (m_eState != ELoiterCommandState.LOITERING)
+			return;
+		
+		if (customAnimData)
+		{
+			m_customAnimData = customAnimData;
+		}
+		
+		if (m_customAnimData)
+		{
+			// Animation graph convention: the int value is -2 for fast and -1 for normal OUT animation
+			if (terminateFast)
+				m_iLoiterAbortType = -2;
+			else
+				m_iLoiterAbortType = -1;
+			
+			// Depending if the Loiter is controlled by Command or GraphIntVariable we set proper value
+			// Control variable stop values are negative. -1 or a non-negative value (the start value, used when the caller
+			// provided no stop data) means no specific stop was requested, so m_iLoiterAbortType is used. Otherwise the graph
+			// would keep playing the start animation after the command finished.
+			if (m_customAnimData.m_iCommandBindID != -1 || !m_customAnimData.m_sCommandName.IsEmpty())
+				m_customAnimData.m_iCommandValue = m_iLoiterAbortType;
+			else if ((m_customAnimData.m_iControlVariableID != -1 || !m_customAnimData.m_sControlVariableName.IsEmpty()) && m_customAnimData.m_iControlVariableValue >= -1)
+				m_customAnimData.m_iControlVariableValue = m_iLoiterAbortType;
+		}
+		
 		SwitchState(ELoiterCommandState.EXITING);
 	}
 
@@ -238,5 +370,10 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 	{
 		SetFlagFinished(true);
 		m_pScrInputCtx.m_iLoiteringType = -1;
+		m_bUsingGraphAttachment = false;
+		if (m_customAnimData)
+			m_customAnimData.DeleteItem();
+		
+		SwitchState(ELoiterCommandState.DONE);
 	}
 }

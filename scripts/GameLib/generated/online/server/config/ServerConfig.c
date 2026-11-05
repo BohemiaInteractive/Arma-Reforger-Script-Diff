@@ -89,6 +89,36 @@ sealed class ServerConfig
 	proto external bool GetVisible();
 	//! Changes the visibility in server browser.
 	proto external void SetVisible(bool value);
+	/*!
+	Sets the socket address the server will bind to.
+	Pass an empty address to bind to all interfaces (0.0.0.0 - INADDR_ANY).
+	Pass -1 as port to use the server's main port.
+	\return `true` on success. Triggers a VM error on invalid address or out-of-range port.
+	*/
+	proto external bool SetSocket(string address, int port);
+	//! Writes the currently configured socket address and port into the out parameters.
+	proto void GetSocket(out string address, out int port);
+	/*!
+	Appends a connection endpoint to the list.
+	Pass -1 as port to use the server's main port.
+	\return Index of the appended endpoint on success, or -1 on invalid input.
+	Triggers a VM error on invalid input.
+	*/
+	proto external int AddConnectionEndpoint(string address, int port);
+	//! Returns the number of connection endpoints currently configured.
+	proto external int GetConnectionEndpointCount();
+	/*!
+	Writes the address and port of the endpoint at index into the out parameters.
+	Triggers a VM error if index is out of range.
+	*/
+	proto void GetConnectionEndpoint(int index, out string address, out int port);
+	/*!
+	Removes the endpoint at index, preserving the order of remaining endpoints.
+	Triggers a VM error if index is out of range.
+	*/
+	proto external void RemoveConnectionEndpoint(int index);
+	//! Removes all connection endpoints from the list.
+	proto external void ClearConnectionEndpoints();
 }
 
 /*!

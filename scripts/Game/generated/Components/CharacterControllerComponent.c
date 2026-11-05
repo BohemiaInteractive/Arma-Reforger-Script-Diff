@@ -20,6 +20,18 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	static proto void SetAimingSensitivity(float mouse, float gamepad, float ads);
 	static proto void GetAimingSensitivity(out float mouse, out float gamepad, out float ads);
 	//!------------------------------------------------------------------------
+	//! Steering input sensitivities multiplier, in range [0, 10]
+	static proto void SetMouseSteeringSensitivity(float value);
+	static proto float GetMouseSteeringSensitivity();
+	//!------------------------------------------------------------------------
+	//! Steering centering delay in seconds. Negative value means no auto centering
+	static proto void SetMouseSteeringCenteringDelay(float value);
+	static proto float GetMouseSteeringCenteringDelay();
+	//!------------------------------------------------------------------------
+	//! Manual clutch input
+	static proto void SetManualClutch(bool enabled);
+	static proto bool GetManualClutch();
+	//!------------------------------------------------------------------------
 	//! FOV input curves
 	static proto void SetFOVInputCurve(float mouse, float gamepad, float gyro, float trackIR);
 	static proto void GetFOVInputCurve(out float mouse, out float gamepad, out float gyro, out float trackIR);
@@ -39,12 +51,16 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	static proto void SetStickyADS(bool enable);
 	//!------------------------------------------------------------------------
 	//! When enabled, controller freelook is not forced while piloting aircraft
-	static proto void SetGamepadControlAircraft(bool enable);
-	static proto bool GetGamepadControlAircraft();
+	static proto void SetGamepadControlVehicle(bool enable);
+	static proto bool GetGamepadControlVehicle();
 	//!------------------------------------------------------------------------
-	//! When enabled, mouse freelook is not forced while piloting aircraft
+	//! When enabled, mouse freelook is not forced while driving vehicles
 	static proto void SetMouseControlAircraft(bool enable);
 	static proto bool GetMouseControlAircraft();
+	//!------------------------------------------------------------------------
+	//! When enabled, mouse freelook is not forced while piloting aircraft
+	static proto void SetMouseControlVehicle(bool enable);
+	static proto bool GetMouseControlVehicle();
 	//!------------------------------------------------------------------------
 	//! Track-IR controls
 	static proto void SetTrackIREnable(bool enable);

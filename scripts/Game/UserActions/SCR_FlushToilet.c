@@ -29,6 +29,13 @@ class SCR_FlushToilet : ScriptedUserAction
 	
 		m_AudioHandle = audioSource.m_AudioHandle;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool CanBeShownScript(IEntity user)
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+		return !character || !SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	static ScriptInvokerInt GetOnToiletFlushed()

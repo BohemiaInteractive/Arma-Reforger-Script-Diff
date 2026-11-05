@@ -14,9 +14,25 @@ class SCR_HoverEditableEntityFilter : SCR_BaseEditableEntityFilter
 	private bool m_EntityUnderCursorEnabled = true;
 	private SCR_BaseEditableEntityFilter m_RequiredFilter;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateEntityUnderCursor()
 	{
-		if (!m_EntityUnderCursorEnabled) return;
+		if (SCR_CameraLimitedEditorComponent.IsArmavisionBlocked(SCR_EditorModeEntity.Cast(GetManager().GetOwner())))
+		{
+			m_EntityUnderCursorCandidate = null;
+			m_bIsEntityUnderCursorDelegateCandidate = false;
+			m_bIsEntityUnderCursorDelegate = false;
+			if (m_RequiredFilter)
+				m_RequiredFilter.Clear();
+
+			if (GetFirstEntity())
+				Clear();
+
+			return;
+		}
+
+		if (!m_EntityUnderCursorEnabled)
+			return;
 		
 		if (m_EntityUnderCursorCandidate != GetFirstEntity())
 		{
@@ -36,63 +52,70 @@ class SCR_HoverEditableEntityFilter : SCR_BaseEditableEntityFilter
 		{
 			bool delegateChanged = m_bIsEntityUnderCursorDelegate != m_bIsEntityUnderCursorDelegateCandidate;
 			m_bIsEntityUnderCursorDelegate = m_bIsEntityUnderCursorDelegateCandidate;
-			if (delegateChanged) OnChanged();
+			if (delegateChanged)
+				OnChanged();
 		}
+		
 		m_EntityUnderCursorCandidate = null;
 	}
 	
-	/*!
-	Set which entity is under cursor.
-	\param entity Editable entity
-	\param isDelegate True if the entity under cursor is represented by a delegate (e.g., icon), not a geometry. Delegates have higher priority, for example for camera snapping.
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set which entity is under cursor.
+	//! \param[in] entity Editable entity
+	//! \param[in] isDelegate True if the entity under cursor is represented by a delegate (e.g., icon), not a geometry. Delegates have higher priority, for example for camera snapping.
+	//!
 	void SetEntityUnderCursor(SCR_EditableEntityComponent entity, bool isDelegate = false)
 	{
-		if (!entity && m_EntityUnderCursorCandidate) return; //--- Cannot null existing candidate
+		if (!entity && m_EntityUnderCursorCandidate)
+			return; //--- Cannot null existing candidate
+		
 		m_EntityUnderCursorCandidate = entity;
 		m_bIsEntityUnderCursorDelegateCandidate = isDelegate;
 		//if (entity) entity.Log(isDelegate.ToString(), true);
 	}
-	/*!
-	Get entity under cursor.
-	\param[out] isDelegate True if the entity under cursor is represented by a delegate (e.g., icon)
-	\return Editable entity
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get entity under cursor.
+	//! \param[out] isDelegate True if the entity under cursor is represented by a delegate (e.g., icon)
+	//! \return Editable entity
+	//!
 	SCR_EditableEntityComponent GetEntityUnderCursor(out bool isDelegate = false)
 	{
 		isDelegate = m_bIsEntityUnderCursorDelegate;
 		return GetFirstEntity();
 	}
-	/*!
-	Get interactive entity under cursor (e.g., one which can be selected)
-	\return Editable entity
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get interactive entity under cursor (e.g., one which can be selected)
+	//! \return Editable entity
+	//!
 	SCR_EditableEntityComponent GetInteractiveEntityUnderCursor()
 	{
 		SCR_EditableEntityComponent entity = GetFirstEntity();
-		if (!entity || entity.HasEntityFlag(EEditableEntityFlag.NON_INTERACTIVE)) return null;
+		if (!entity || entity.HasEntityFlag(EEditableEntityFlag.NON_INTERACTIVE))
+			return null;
+		
 		return entity;
 	}
-	/*!
-	Get candidate entity under cursor.
-	Multiple systems can set entity under cursor each frame, and the final one is assigned at the end of the frame.
-	This is useful for checking of a candidate already exists, so low priority candidate would be ignored.
-	\param[out] isDelegate True if the entity under cursor candidate is represented by a delegate (e.g., icon)
-	\return Editable entity
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get candidate entity under cursor.
+	//! Multiple systems can set entity under cursor each frame, and the final one is assigned at the end of the frame.
+	//! This is useful for checking of a candidate already exists, so low priority candidate would be ignored.
+	//! \param[out] isDelegate True if the entity under cursor candidate is represented by a delegate (e.g., icon)
+	//! \return Editable entity
+	//!
 	SCR_EditableEntityComponent GetEntityUnderCursorCandidate(out bool isDelegate = false)
 	{
 		isDelegate = m_bIsEntityUnderCursorDelegateCandidate;
 		return m_EntityUnderCursorCandidate;
 	}
-	/*!
-	Set if the entity under cursor can be assigned.
-	Important for systems that could collide with entity under cursor (e.g., selection frame).
-	\param enable True to enable asisgning (default: true)
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Set if the entity under cursor can be assigned.
+	//! Important for systems that could collide with entity under cursor (e.g., selection frame).
+	//! \param enable True to enable asisgning (default: true)
+	//!
 	void SetEntityUnderCursorEnabled(bool enabled)
 	{
-		if (enabled == m_EntityUnderCursorEnabled) return;
+		if (enabled == m_EntityUnderCursorEnabled)
+			return;
 		
 		if (enabled)
 		{
@@ -111,31 +134,57 @@ class SCR_HoverEditableEntityFilter : SCR_BaseEditableEntityFilter
 			SetEntityUnderCursor(null);
 			UpdateEntityUnderCursor();
 		}
+		
 		m_EntityUnderCursorEnabled = enabled;
 	}
-	/*!
-	Get if the entity under cursor can be assigned.
-	\return True to enable asisgning (default: true)
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Get if the entity under cursor can be assigned.
+	//! \return True to enable asisgning (default: true)
+	//!
 	bool GetEntityUnderCursorEnabled()
 	{
 		return m_EntityUnderCursorEnabled;
 	}
-	/*!
-	Check if the entity under cursor is represented by a delegate (e.g., icon)
-	\return True when delegate
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Check if the entity under cursor is represented by a delegate (e.g., icon)
+	//! \return True when delegate
+	//!
 	bool IsDelegate()
 	{
 		return m_bIsEntityUnderCursorDelegate;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnEditorFrame(float timeSlice)
 	{
 		UpdateEntityUnderCursor();
 	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnLimitedChange(bool isLimited)
+	{
+		UpdateEntityUnderCursor();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void EOnEditorActivate()
 	{
 		m_RequiredFilter = GetManager().GetFilter(m_RequiredState);
+
+		SCR_EditorModeEntity mode = SCR_EditorModeEntity.Cast(GetManager().GetOwner());
+		if (mode && (mode.GetModeType() == EEditorMode.PHOTO || mode.GetModeType() == EEditorMode.PHOTO_SAVE))
+		{
+			SCR_EditorManagerEntity editorManager = mode.GetManager();
+			if (editorManager)
+				editorManager.GetOnLimitedChange().Insert(OnLimitedChange);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void EOnEditorDeactivate()
+	{
+		SCR_EditorManagerEntity editorManager = GetManager().GetManager();
+		if (editorManager)
+			editorManager.GetOnLimitedChange().Remove(OnLimitedChange);
 	}
 };

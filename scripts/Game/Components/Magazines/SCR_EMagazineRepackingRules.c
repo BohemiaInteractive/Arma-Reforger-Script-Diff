@@ -1,0 +1,14 @@
+enum SCR_EMagazineRepackingRules
+{
+	CANNOT = 0,
+	CAN_WITH_SAME_CALIBER,
+	CAN_WITH_SAME_MAGAZINE,
+	CAN_WITH_SAME_AMMO_CONFIG,
+	CAN_WITH_SAME_AMMO_COMPOSITION,
+	CAN_WHEN_OTHER_CONTAINS_THIS_AMMO_TYPES,
+}
+
+enum SCR_EMagazineRepackingRulesOverride : SCR_EMagazineRepackingRules
+{
+	NO_OVERRIDE = -1,
+}

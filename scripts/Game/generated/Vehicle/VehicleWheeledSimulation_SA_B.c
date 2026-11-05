@@ -119,6 +119,12 @@ class VehicleWheeledSimulation_SA_B: VehicleBaseSimulation
 	proto external vector WheelGetContactLiquidPosition(int wheelIdx);
 	//! Returns current wheel's RPM
 	proto external float WheelGetRPM(int wheelIdx);
+	//! Returns current wheel's model space angular speed in rad/s
+	proto external float WheelGetAngularSpeed(int wheelIdx);
+	//! Returns current wheel's velocity in model space in m/s
+	proto external vector WheelGetVelocityLS(int wheelIdx);
+	//! Returns current wheel's velocity in world space in m/s
+	proto external vector WheelGetVelocityWS(int wheelIdx);
 	//! Returns initial wheel's radius
 	proto external float WheelGetRadius(int wheelIdx);
 	//! Returns current wheel's radius

@@ -63,6 +63,35 @@ class SCR_EffectsModuleChildComponent : ScriptComponent
 			GetOwner().Update();
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Sets the instigator for all triggers present on this entity
+	//! \param[in] author who will be blamed for damage done by this entity
+	void SetInstigator(SCR_EditableEntityAuthor author)
+	{
+		array<Managed> triggers = {};
+		GetOwner().FindComponents(BaseProjectileComponent, triggers);
+		if (triggers.IsEmpty())
+			return;
+
+		bool isGM = !author || author && author.m_bIsGM;
+		int id;
+		if (author)
+			id = author.m_iAuthorID;
+
+		BaseProjectileComponent trigger;
+		foreach (Managed entry : triggers)
+		{
+			trigger = BaseProjectileComponent.Cast(entry);
+			if (!trigger)
+				continue;
+
+			if (isGM)
+				trigger.GetInstigator().SetInstigatorTypeToGM(id);
+			else
+				trigger.GetInstigator().SetInstigatorByPlayerID(id);
+		}
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void EditorOnParentRemoved(SCR_EffectsModuleComponent effectModule, SCR_EffectsModule effectConfig)

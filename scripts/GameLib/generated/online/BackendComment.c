@@ -38,6 +38,14 @@ class BackendComment: Managed
 	\note Deleted comment will have its text replaced by empty string. All its replies remain visible.
 	*/
 	proto external void Delete(notnull BackendCallback callback);
+	/*!
+	Report this comment.
+	\param callback Script callback, where you will receive the result
+	\param description Optional description of the report. Maximum allowed number of character is 1000.
+	\param block If true, comment will also be blocked
+	\param type Type of the offense. Enum is game-specific and extended by the gamecode.
+	*/
+	proto external void Report(notnull BackendCallback callback, string description, bool block, ECommentReportType type);
 	//! Returns object containing data about the author of the comment
 	proto external WorkshopUserProfile GetAuthor();
 	//! Returns true if this comment was deleted
@@ -56,6 +64,8 @@ class BackendComment: Managed
 	proto external void GetRepliesPreview(notnull array<BackendComment> outReplies);
 	//! Returns true if this comment is a reply to another comment, false otherwise
 	proto external bool IsReply();
+	//! Returns the time when this comment was created
+	proto external Timestamp GetCreatedAt();
 	//! Returns user's reaction to this comment
 	proto external EBackendCommentReaction GetReaction();
 	//! Returns text of the comment

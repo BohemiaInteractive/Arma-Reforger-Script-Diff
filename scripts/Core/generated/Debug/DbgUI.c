@@ -128,14 +128,14 @@ sealed class DbgUI
 	\param[out] selection  Index of the currently selected element.
 	\param[in]  elems      Array of display strings.
 	*/
-	static proto void Combo(string label, out int selection, TStringArray elems);
+	static proto void Combo(string label, out int selection, notnull array<string> elems);
 	/*!
 	Draws a scrollable list box populated from an array of strings.
 	\param[in]  label      Widget label and unique identifier.
 	\param[out] selection  Index of the currently selected element.
 	\param[in]  elems      Array of display strings.
 	*/
-	static proto void List(string label, out int selection, TStringArray elems);
+	static proto void List(string label, out int selection, notnull array<string> elems);
 	/*!
 	Draws a horizontal float slider.
 	\param[in]  label    Widget label and unique identifier.
@@ -147,6 +147,8 @@ sealed class DbgUI
 	static proto void SliderFloat(string label, out float value, float min, float max, int pxWidth = 150);
 	//! Inserts vertical blank space of the given height in pixels.
 	static proto void Spacer(int height);
+	//! Draws a thin horizontal separator line spanning the full window width.
+	static proto void Separator();
 	/*!
 	Draws a solid color rectangle with a label.
 	\param[in] label   Widget label and unique identifier.

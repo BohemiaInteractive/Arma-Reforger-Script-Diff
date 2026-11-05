@@ -16,13 +16,13 @@ class CharacterMovementComponent: PawnMovementComponent
 	proto external bool HasRootMotionRotation();
 	proto external bool SetRootMotion(bool translation, bool rotation);
 	proto external vector GetVelocityWS();
-	proto external vector GetRawVelocityWS();
 	proto external vector GetVelocityMS();
 	proto external vector GetAngularVelocity();
 	proto external void SetMovementMode(ECharacterMovementMode mode, int customMode = 0);
 	proto external ECharacterMovementMode GetMovementMode();
 	proto external void SetRotationMode(ECharacterRotationMode mode);
 	proto external ECharacterRotationMode GetRotationMode();
+	proto external void SetRotationRate(vector rateDeg);
 	proto external void SetAlignNormalSpeed(float speed);
 	proto external void SetMovementMaxSpeed(float movementSpeed);
 	proto external float GetMovementMaxSpeed();

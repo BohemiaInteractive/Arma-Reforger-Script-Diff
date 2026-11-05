@@ -319,6 +319,9 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 		if (!character)
 			return false;
 
+		if (SCR_ScriptedUserAction.IsUserPlayingBlockingAnimation(character))
+			return false;
+
 		if (m_bSameFactionDisassembleOnly && !IsPlayerFactionSame(character))
 			return false;
 
@@ -476,11 +479,17 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 			}
 		}
 
-		if (!m_bDisassembleOnlyWhenCapturing || IsPlayerFactionSame(character))
+		if (IsPlayerFactionSame(character))
 			return true;
-		
+
+		if (m_bSameFactionDisassembleOnly)
+			return false;
+
+		if (!m_bDisassembleOnlyWhenCapturing)
+			return true;
+
 		Faction playerFaction = character.GetFaction();
-		
+
 		return playerFaction && playerFaction == m_BaseComponent.GetCapturingFaction();
 	}
 	

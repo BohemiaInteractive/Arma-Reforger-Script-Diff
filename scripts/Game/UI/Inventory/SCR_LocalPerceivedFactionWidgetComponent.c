@@ -38,31 +38,30 @@ class SCR_LocalPerceivedFactionWidgetComponent : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnOnPerceivedFactionChanged(Faction faction)
 	{
-		//~ Character is not a player (Or is possessed AI) so never show perceived faction
+		// Character is not a player so never show perceived faction
 		if (!m_CharFactionAffiliation || !m_CharFactionAffiliation.HasPerceivedFaction())
 		{
 			GetRootWidget().SetVisible(false);
 			return;
 		}
 		
-		//~ If player is punished for killing while disguised set color to warning otherwise set to light warning
+		// If server settings enables player getting punished for killing while disguised set color to warning otherwise set to light warning
 		SCR_PerceivedFactionManagerComponent perceivedFactionManager = SCR_PerceivedFactionManagerComponent.GetInstance();
 		if (perceivedFactionManager && perceivedFactionManager.GetPunishmentKillingWhileDisguisedFlags() == 0)
 			SetWidgetColor(m_LightWarningColor);
 		else 
 			SetWidgetColor(m_WarningColor);
 		
-		//~ Get player faction
 		Faction playerFaction = SCR_PlayerController.GetLocalMainEntityFaction();
 		
-		//~ No player faction so hide UI
+		// No player faction so hide UI
 		if (!playerFaction)
 		{
 			GetRootWidget().SetVisible(false);
 			return;
 		}
 		
-		//~ Unknown faction
+		// Unknown faction
 		if (!faction)
 		{
 			GetRootWidget().SetVisible(true);
@@ -71,25 +70,24 @@ class SCR_LocalPerceivedFactionWidgetComponent : SCR_ScriptedWidgetComponent
 			return;
 		}
 		
-		//~ Player perceived faction is default faction
+		// Player perceived faction is default faction
 		if (playerFaction == faction)
 		{
-			//~ Do not show default faction
+			// Do not show default faction
 			if (!m_bShowIfDefaultFaction)
 			{
 				GetRootWidget().SetVisible(false);
 				return;
 			}
-			//~ Show default faction
+			// Show default faction
 			else 
 			{
-				GetRootWidget().SetVisible(true);
 				SetWidgetColor(m_DefaultColor);
 			}
 		}
-		
-		//~ Set perceived faction icon
+
 		m_wFactionIcon.LoadImageTexture(0, faction.GetUIInfo().GetIconPath());
+		GetRootWidget().SetVisible(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------

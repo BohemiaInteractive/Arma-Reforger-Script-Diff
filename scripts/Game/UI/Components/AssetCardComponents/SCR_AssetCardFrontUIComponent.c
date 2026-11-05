@@ -21,7 +21,13 @@ class SCR_AssetCardFrontUIComponent : SCR_ScriptedWidgetComponent
 	
 	[Attribute("ModIndicatorIcon")]
 	protected string m_sModIndicatorIconName;
-	
+
+	[Attribute(defvalue: "DLCOverlay", desc: "DLC Indicator overlay widget name")]
+	protected string m_sDLCIndicatorWidgetName;
+
+	[Attribute(defvalue: "DLCIcon", desc: "DLC Indicator icon widget name")]
+	protected string m_sDLCIconWidgetName;
+
 	[Attribute("NoBudget")]
 	protected string m_sExceedBudgetLayoutName;
 	
@@ -335,14 +341,26 @@ class SCR_AssetCardFrontUIComponent : SCR_ScriptedWidgetComponent
 		//Check if asset is modded
 		Widget modIndicator = m_wWidget.FindAnyWidget(m_sModIndicatorWidgetName);
 		if (modIndicator)
+			modIndicator.SetVisible(!SCR_AddonTool.IsVanillaResource(prefab, true));
+
+		//Check if asset is DLC
+		Widget dlcIndicator = m_wWidget.FindAnyWidget(m_sDLCIndicatorWidgetName);
+		if (dlcIndicator)
 		{
-			array<string> modList = SCR_AddonTool.GetResourceAddons(prefab, true);
-			if (modList)
-				modIndicator.SetVisible(modList.Count() > 0);
-			else
-				modIndicator.SetVisible(false);
+			int DLCid = DlcManager.Get().GetRequiredDlcsForResource(null, prefab);
+
+			ImageWidget dlcIcon = ImageWidget.Cast(m_wWidget.FindAnyWidget(m_sDLCIconWidgetName));
 			
-			//~todo: Get Addon Icon. Use m_sModIndicatorIconName to get the ImageWidget
+			if (dlcIcon)
+			{
+				string dlcImageName;
+				ResourceName dlcIconSetResource;
+
+				if (SCR_DLCHelperTools.FetchDLCIcon(DLCid, dlcImageName, dlcIconSetResource))
+					dlcIcon.LoadImageFromSet(0, dlcIconSetResource, dlcImageName);
+			}
+
+			dlcIndicator.SetVisible(DLCid > 0);
 		}
 		
 		Event_OnCardInit.Invoke(m_iPrefabIndex);

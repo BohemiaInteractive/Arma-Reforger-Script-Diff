@@ -1,7 +1,7 @@
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkVehicleActionDamageHitZonesByGroup : SCR_ScenarioFrameworkVehicleActionBase
 {
-	[Attribute(defvalue: "100", desc: "Health Percentage to be set for target hitzone", UIWidgets.Graph, "0 100 1")]
+	[Attribute(defvalue: "100", desc: "Health Percentage to be set for target hitzone", UIWidgets.GradientDialog, "0 100 1")]
 	int m_iHealthPercentage;
 	
 	[Attribute(defvalue: "0", desc: "Hit Zone Groups", uiwidget: UIWidgets.ComboBox, enumType: EVehicleHitZoneGroup)]

@@ -100,14 +100,14 @@ class SCR_SliderComponent : SCR_ChangeableComponentBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnValueChanged(Widget w)
+	protected void OnValueChanged(Widget w, bool playSound = true)
 	{
 		float value = UpdateValue();
 
 //---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 // Can lead to severe sound spamming based on speed of user interaction
 		
-		if (m_sChangeSound != string.Empty && !float.AlmostEqual(m_fOldValue, value))
+		if (playSound && m_sChangeSound != string.Empty && !float.AlmostEqual(m_fOldValue, value))
 			PlaySound(m_sChangeSound);
 		
 //---- REFACTOR NOTE END ----
@@ -195,14 +195,14 @@ class SCR_SliderComponent : SCR_ChangeableComponentBase
 	
 	// User API
 	//------------------------------------------------------------------------------------------------
-	void SetValue(float value)
+	void SetValue(float value, bool playSound = true)
 	{
 		if (!m_wSlider)
 			return;
 
 		m_fValue = value;
 		m_wSlider.SetCurrent(value);
-		OnValueChanged(m_wSlider);
+		OnValueChanged(m_wSlider, playSound);
 	}
 
 	//------------------------------------------------------------------------------------------------

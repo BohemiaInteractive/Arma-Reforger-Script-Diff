@@ -39,6 +39,23 @@ class CharacterCamera3rdPersonTurret extends CharacterCamera3rdPersonVehicle
 			{
 				m_bIsTurret = true;
 				
+				// If we'll have multiple turrets, don't cache turret
+				if (compartment)
+					m_pTurretController = TurretControllerComponent.Cast(compartment.GetController());
+				else
+					m_pTurretController = compartmentAccess.GetCompartment().GetAttachedTurret();
+				
+				if (!m_pTurretController)
+					return;
+
+				m_pControlledTurret = m_pTurretController.GetTurretComponent();
+				if (!m_pControlledTurret)
+					return;
+				
+				m_pControlledTurret.GetAimingLimits(m_vHorAimLimits, m_vVertAimLimits);
+				m_vVertAimLimits[0] = CONST_UD_MIN;
+				m_vVertAimLimits[1] = CONST_UD_MAX;
+				
 				bool bUsingVehicleCameraData;
 
 				SCR_VehicleCameraDataComponent vehicleCamDataComp = SCR_VehicleCameraDataComponent.Cast(turret.FindComponent(SCR_VehicleCameraDataComponent));
@@ -99,23 +116,6 @@ class CharacterCamera3rdPersonTurret extends CharacterCamera3rdPersonVehicle
 						m_vCameraCenter = m_vCameraCenter.Multiply4(matrix); // 'm_vCameraCenter' should be in vehicle space
 					}
 				}
-				
-				// If we'll have multiple turrets, don't cache turret
-				if (compartment)
-					m_pTurretController = TurretControllerComponent.Cast(compartment.GetController());
-				else
-					m_pTurretController = compartmentAccess.GetCompartment().GetAttachedTurret();
-				
-				if (!m_pTurretController)
-					return;
-
-				m_pControlledTurret = m_pTurretController.GetTurretComponent();
-				if (!m_pControlledTurret)
-					return;
-				
-				m_pControlledTurret.GetAimingLimits(m_vHorAimLimits, m_vVertAimLimits);
-				m_vVertAimLimits[0] = CONST_UD_MIN;
-				m_vVertAimLimits[1] = CONST_UD_MAX;
 			}
 		}
 	}

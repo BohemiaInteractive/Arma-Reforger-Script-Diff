@@ -88,6 +88,17 @@ class SCR_MapSuppliesTransportSystemUI : SCR_MapUIBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Opens the transport units list if it is hidden and highlights the given unit in it
+	void HighlightTransportUnit(notnull SCR_TransportUnitComponent transportUnit)
+	{
+		if (!IsVisible())
+			ToggleVisible();
+
+		if (m_SuppliesTransportSystemUI)
+			m_SuppliesTransportSystemUI.HighlightTransportUnit(transportUnit);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	bool IsVisible()
 	{
 		return m_wSuppliesTransportSystemFrame && m_wSuppliesTransportSystemFrame.IsVisible();

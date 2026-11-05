@@ -12,6 +12,7 @@ Do not modify, this script is generated
 enum EInputBindingAxleCapture
 {
 	ANY,
+	NONE,
 	FULL_AXLE,
 	HALF_AXLE,
 }

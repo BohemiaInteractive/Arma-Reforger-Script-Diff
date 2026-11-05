@@ -17,7 +17,7 @@ class SCR_ScenarioFrameworkWaypointCycle : SCR_ScenarioFrameworkWaypoint
 	[Attribute(defvalue: "", UIWidgets.EditComboBox, desc: "From this list, layers will be used and their waypoints processed")]
 	ref array<string> 	m_aLayersWithWaypointsToCycle;
 
-	[Attribute(defvalue: "-1", desc: "Decides how many times the cycled waypoint will run for specific group. -1 means infinite. ", UIWidgets.Graph, "-1 inf 1")]
+	[Attribute(defvalue: "-1", desc: "Decides how many times the cycled waypoint will run for specific group. -1 means infinite. ", UIWidgets.GradientDialog, "-1 inf 1")]
 	int m_iRerunCounter;
 
 	[Attribute("Use random order")]

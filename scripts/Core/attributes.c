@@ -115,13 +115,6 @@ class UIWidgets
 	*/
 	static const string	Date = "date";
 
-	/*!
-	Graph, represented either by enf::DVT_VECTOR2ARRAY or
-	enf::DVT_VECTOR4ARRAY, where the first value is fraction, and rest is
-	value. m_strParams has no usage.
-	*/
-	static const string	Graph = "graph";
-
 	//! Font picker. m_strParams has no usage. Type must be enf::DVT_STRING.
 	static const string	Font = "font";
 
@@ -225,13 +218,17 @@ class UIWidgets
 	static const string	TopLevelObject = "topLevelObject";
 
 	/*!
+	Editor for splines which opens a dialog where the curve can be edited.
+	Type must be enf::DVT_OBJECT (CurveCubicSplineClass) or historically enf::DVT_VECTOR2ARRAY / enf::DVT_VECTOR4ARRAY.
+
 	Property parameters for curve consists of:
 
-	"type = CurveType [fixed], ends = EndCondition [fixed], default = DefaultValue, paramRange = ParamMin ParamMax [fixed], valueRange = ValueMin ValueMax [fixed]"
+	"type = CurveType [fixed], ends = EndCondition [fixed], default = DefaultValue, defaultSlope = DefaultSlope, paramRange = ParamMin ParamMax [fixed], valueRange = ValueMin ValueMax [fixed]"
 
 	- type: Default curve type selected
 	- ends: Default end type selected
-	- default: Default value when no knots are present, for example "1" or "(1, 1, 1)" for a 3D curve
+	- default: Value at 0 of the placeholder curve used when no knots are present, for example "1" or "(1, 1, 1)" for a 3D curve
+	- defaultSlope: Slope of the placeholder curve, same format as default value
 	- paramRange: Default parameter range limit, for example "0 1"
 	- valueRange: Default value range limit, computed values will be clamped to this range
 
@@ -252,9 +249,49 @@ class UIWidgets
 	- Flat      - Zero tangent at the ends, fixed value outside range
 	- Closed    - Loop spline (needs a finite parameter range)
 
+	The placeholder/default curve is used when no knots have been added to the spline yet. The value for parameter t is then simply calculated as default + defaultSlope * t.
+
 	The parameters can be blocked from editing by the user with "fixed" and none are mandatory.
 	*/
 	static const string CurveDialog = "curveDialog";
+
+	/*!
+	Editor for splines which opens a dialog where the curve can be edited. The spline will be visually represented as a color gradient where possible.
+	Type must be enf::DVT_OBJECT (CurveCubicSplineClass) or historically enf::DVT_VECTOR2ARRAY / enf::DVT_VECTOR4ARRAY.
+
+	Property parameters for curve consists of:
+
+	"type = CurveType [fixed], ends = EndCondition [fixed], default = DefaultValue, defaultSlope = DefaultSlope, paramRange = ParamMin ParamMax [fixed], valueRange = ValueMin ValueMax [fixed]"
+
+	- type: Default curve type selected
+	- ends: Default end type selected
+	- default: Value at 0 of the placeholder curve used when no knots are present, for example "1" or "(1, 1, 1)" for a 3D curve
+	- defaultSlope: Slope of the placeholder curve, same format as default value
+	- paramRange: Default parameter range limit, for example "0 1"
+	- valueRange: Default value range limit, computed values will be clamped to this range
+
+	Curve types:
+
+	- Akima          - Akima spline provides human- like interpolation (based on 6 people in the original paper)
+	- ModifiedAkima  - Snappier Akima spline which doesn't overshoot
+	- Linear         - C0-continuous spline (position)
+	- Catmull-Rom    - C1-continuous spline (position, tangents)
+	- Natural        - C2-continuous spline (position, tangents, acceleration)
+	- Custom         - Manual assignment of tangents
+	- Legacy         - Catmull-Rom-like spline, avoid it if possible
+
+	End condition:
+
+	- Open      - Free ends and extrapolation from the ends
+	- OpenFlat  - Free ends, derivative may be non-zero but value is fixed outside range
+	- Flat      - Zero tangent at the ends, fixed value outside range
+	- Closed    - Loop spline (needs a finite parameter range)
+
+	The placeholder/default curve is used when no knots have been added to the spline yet. The value for parameter t is then simply calculated as default + defaultSlope * t.
+
+	The parameters can be blocked from editing by the user with "fixed" and none are mandatory.
+	*/
+	static const string GradientDialog = "gradientDialog";
 
 	/*!
 	Editor which displays min and max bounds, also allows using the

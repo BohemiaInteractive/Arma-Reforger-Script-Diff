@@ -6,13 +6,13 @@ class SCR_WeaponBlastComponentClass : ScriptComponentClass
 	[Attribute("3.0", desc: "How far will the blast propagate. Also limits propagation sideways.", params: "0.1 inf")]
 	protected float m_fBlastLength;
 
-	[Attribute("30", desc: "How much angle deviation from foward vector of the blast is allowed", params: "0.1 89.9")]
+	[Attribute("30", desc: "How much angle deviation from forward vector of the blast is allowed", params: "0.1 89.9")]
 	protected float m_fBlastConeAngle;
 
 	[Attribute("1", desc: "Determines if game should check if blast will hit something that may cause it to ricochet")]
 	protected bool m_bCanBlastRicochet;
 
-	[Attribute("10", desc: "Determines how strongly ricochet angle of the blast is flattend upon impacting the surface", params: "1 10000")]
+	[Attribute("10", desc: "Determines how strongly ricochet angle of the blast is flattened upon impacting the surface", params: "1 10000")]
 	protected float m_fDeflectionFlatteningStrength;
 
 	[Attribute("2", desc: "Final amount of damage dealt to destructible entities will be multiplied by this factor", params: "0 inf")]
@@ -66,6 +66,7 @@ class SCR_WeaponBlastComponentClass : ScriptComponentClass
 		return m_bIgnoreAIUnits;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	bool CanAIBlastCharacters()
 	{
 		return m_bAICanBlastCharacters;
@@ -752,6 +753,7 @@ class SCR_WeaponBlastComponent : ScriptComponent
 		{
 			//Check if the entity is destructible entity
 			destructibleEntity = SCR_DestructibleEntity.Cast(entry.GetTargetEntity());
+
 			if (destructibleEntity)
 			{
 				foreach (int i, SCR_WeaponBlastEffect effect : blastEffects)
@@ -808,7 +810,18 @@ class SCR_WeaponBlastComponent : ScriptComponent
 					continue;//Skip damage handling if damage is negligible
 				}
 
-				damageManager.HandleDamage(context);
+				SCR_HitZone scrHitZone = SCR_HitZone.Cast(hitZone);
+				// For slotted entities that dont take damage we need to make the damage pass manually
+				if (hitZone.GetBaseDamageMultiplier() == 0)
+				{
+					if (scrHitZone && scrHitZone.DoesUseDamagePassRules())
+						scrHitZone.ApplyDamagePassRules(context);
+				}
+				else
+				{
+					damageManager.HandleDamage(context);
+				}
+
 #ifdef ENABLE_DIAG
 				if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_WEAPONS_BLAST) != 0)
 				{//RED SPHERE == DAMAGE AMOUNT
