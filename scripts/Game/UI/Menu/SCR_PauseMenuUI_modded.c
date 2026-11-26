@@ -126,6 +126,6 @@ modded class PauseMenuUI
 			return;
 
 		Close();
-		race.RestartRace(SCR_PlayerController.GetLocalPlayerId());
+		race.RequestRestart(SCR_PlayerController.GetLocalPlayerId());
 	}
 }

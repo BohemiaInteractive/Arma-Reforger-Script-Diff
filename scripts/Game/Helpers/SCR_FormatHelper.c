@@ -142,25 +142,25 @@ class SCR_FormatHelper
 		//To do: Decide the formatting of days. Currently it is dd:hh:mm:ss and by default days are hidden if it is 0 as it would rarely be a day or more
 		//Only show days
 		//if (days > -1 && ((hideEmpty & ETimeFormatParam.DAYS) && days > 0) || !(hideEmpty & ETimeFormatParam.DAYS))
-		if (days > 0 && (hideEmpty & ETimeFormatParam.DAYS) || !(hideEmpty & ETimeFormatParam.DAYS))
+		if (days > 0 || !(hideEmpty & ETimeFormatParam.DAYS))
 			returnString += days.ToString();
 		else
 			days = -1;
 
 		//hours (Check if should display hours and check if should display leading zero)
-		if (hours > 0 && (hideEmpty & ETimeFormatParam.HOURS) || !(hideEmpty & ETimeFormatParam.HOURS))
+		if (hours > -1 && (days > -1 || hours > 0 || !(hideEmpty & ETimeFormatParam.HOURS)))
 			returnString += ReturnTimeTypeString(days, hours, ((hideLeadingZeroes & ETimeFormatParam.HOURS) == 0) + 1);
 		else
 			hours = -1;
 
 		//Minutes (Check if should display Minutes and check if should display leading zero)
-		if (minutes > 0 && (hideEmpty & ETimeFormatParam.MINUTES) || !(hideEmpty & ETimeFormatParam.MINUTES))
+		if (minutes > -1 && (hours > -1 || minutes > 0 || !(hideEmpty & ETimeFormatParam.MINUTES)))
 			returnString += ReturnTimeTypeString(hours, minutes, ((hideLeadingZeroes & ETimeFormatParam.MINUTES) == 0) + 1);
 		else
 			minutes = -1;
 
 		//Seconds (Check if should display Seconds and check if should display leading zero)
-		if (seconds > 0 && (hideEmpty & ETimeFormatParam.SECONDS) || !(hideEmpty & ETimeFormatParam.SECONDS))
+		if (seconds > 0 || !(hideEmpty & ETimeFormatParam.SECONDS))
 			returnString += ReturnTimeTypeString(minutes, seconds, ((hideLeadingZeroes & ETimeFormatParam.SECONDS) == 0) + 1);
 
 		return returnString;

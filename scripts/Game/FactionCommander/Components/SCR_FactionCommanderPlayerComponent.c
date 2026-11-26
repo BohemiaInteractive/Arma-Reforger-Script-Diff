@@ -774,6 +774,22 @@ class SCR_FactionCommanderPlayerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Should the task be only be able to be made by the commander? Returns true by default
+	protected bool IsTaskCommanderOnly(string taskPrefab)
+	{
+		Resource resource = Resource.Load(taskPrefab);
+		if (resource.IsValid())
+		{
+			BaseContainer taskResourceContainer = resource.GetResource().ToBaseContainer();
+			typename taskType = taskResourceContainer.GetClassName().ToType();
+
+			return !taskType || !taskType.IsInherited(SCR_BaseRequestedTaskEntity);
+		}
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RpcAsk_CreateRequestedTask(string taskPrefab, vector destination, int requesterGroupId, int assigneeId)
 	{
@@ -802,6 +818,12 @@ class SCR_FactionCommanderPlayerComponent : ScriptComponent
 		int playerId = m_PlayerController.GetPlayerId();
 
 		if (!taskSystem.CanPlayerCreateNewTask(playerId))
+			return;
+
+		// Requests can be done by anyone but tasks themselves must be done by the commander
+		SCR_Faction scrFaction = SCR_Faction.Cast(faction);
+
+		if (scrFaction && !scrFaction.IsPlayerCommander(playerId) && IsTaskCommanderOnly(taskPrefab))
 			return;
 
 		string taskID = string.Format(REQUESTED_TASK_ID, faction.GetFactionKey(), GenerateTaskID());
@@ -872,6 +894,12 @@ class SCR_FactionCommanderPlayerComponent : ScriptComponent
 		int playerId = m_PlayerController.GetPlayerId();
 
 		if (!taskSystem.CanPlayerCreateNewTask(playerId))
+			return;
+
+		// Requests can be done by anyone but tasks themselves must be done by the commander
+		SCR_Faction scrFaction = SCR_Faction.Cast(faction);
+
+		if (scrFaction && !scrFaction.IsPlayerCommander(playerId) && IsTaskCommanderOnly(taskPrefab))
 			return;
 
 		string taskID = string.Format(TASK_ID, faction.GetFactionKey(), GenerateTaskID());

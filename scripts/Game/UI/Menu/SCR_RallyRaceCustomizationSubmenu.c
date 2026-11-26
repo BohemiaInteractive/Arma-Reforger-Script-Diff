@@ -118,15 +118,17 @@ class SCR_RallyRaceCustomizationSubmenu : SCR_SubMenuBase
 		if (!time1 || !time2 || !time3)
 			return;
 
-		if (race.m_aRaceRecords.Count() < 3)
+		if (race.GetMedalCount() < 3)
 		{
 			Print("SCR_RallyCustomizationMenu:: Not enough track records set!", LogLevel.WARNING);
 			return;
 		}
 
-		time1.SetText(SCR_FormatHelper.FormatTimeMSHideZeroes(race.m_aRaceRecords[0].GetFinalTime(), 2));
-		time2.SetText(SCR_FormatHelper.FormatTimeMSHideZeroes(race.m_aRaceRecords[1].GetFinalTime(), 2));
-		time3.SetText(SCR_FormatHelper.FormatTimeMSHideZeroes(race.m_aRaceRecords[2].GetFinalTime(), 2));
+		//medals for the next run, based on the ghost the player will race against
+		const float ghostFinishTime = race.GetGhostFinishTime();
+		time1.SetText(SCR_FormatHelper.FormatTimeMSHideZeroes(race.GetMedalTimeForGhost(0, ghostFinishTime), 2));
+		time2.SetText(SCR_FormatHelper.FormatTimeMSHideZeroes(race.GetMedalTimeForGhost(1, ghostFinishTime), 2));
+		time3.SetText(SCR_FormatHelper.FormatTimeMSHideZeroes(race.GetMedalTimeForGhost(2, ghostFinishTime), 2));
 
 		RichTextWidget checkpointCount = RichTextWidget.Cast(m_wRoot.FindAnyWidget("CheckpointsCount"));
 		if (!checkpointCount)

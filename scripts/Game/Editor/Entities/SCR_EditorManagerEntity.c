@@ -198,14 +198,15 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		}
 		
 		StartEvents(EEditorEventOperation.REQUEST_OPEN);
-		Rpc(ToggleServer, true);
+		Rpc(ToggleServer, true, true);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Close the editor.
 	//! Nothing will happen if the editor is not allowed to be closed.
 	//! \param showErrorNotification Set to false to prevent sending notification to player when the editor cannot be closed
-	void Close(bool showErrorNotification = true)
+	//! \param restoreCamera Set to false to retain the player-camera return when taking control
+	void Close(bool showErrorNotification = true, bool restoreCamera = true)
 	{
 		if (!m_CurrentModeEntity || m_CurrentModeEntity.GetPreventClose())
 			return;
@@ -258,12 +259,12 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		
 		StartEvents(EEditorEventOperation.REQUEST_CLOSE);
 		//Event_OnRequest.Invoke(false);
-		Rpc(ToggleServer, false);
+		Rpc(ToggleServer, false, restoreCamera);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void ToggleServer(bool open)
+	protected void ToggleServer(bool open, bool restoreCamera)
 	{
 		if (m_bIsOpened == open || RplSession.Mode() == RplMode.Client) return;
 
@@ -281,7 +282,7 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		}
 
 		m_bIsOpened = open;
-		Rpc(ToggleOwner, m_bIsOpened);
+		Rpc(ToggleOwner, m_bIsOpened, restoreCamera);
 
 		if (m_bIsOpened)
 		{
@@ -301,13 +302,21 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	protected void ToggleOwner(bool open)
+	protected void ToggleOwner(bool open, bool restoreCamera)
 	{
 		m_bIsOpened = open;
 		if (m_bIsOpened)
+		{
 			StartEvents(EEditorEventOperation.OPEN);
+		}
 		else
+		{
+			SCR_CameraDataEditorComponent cameraData = SCR_CameraDataEditorComponent.Cast(FindComponent(SCR_CameraDataEditorComponent));
+			if (cameraData)
+				cameraData.SetRestoreCameraOnClose(restoreCamera);
+
 			StartEvents(EEditorEventOperation.CLOSE);
+		}
 
 		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_IS_OPENED, m_bIsOpened);
 	}
@@ -397,7 +406,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		Rpc(SetCanOpenOwner, m_CanOpen);
 
 		//--- Opening disabled, close the editor if it's
-		if (!CanOpen() && IsOpened()) ToggleServer(false);
+		if (!CanOpen() && IsOpened())
+			ToggleServer(false, false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1261,13 +1271,13 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			//--- Current mode was removed, switch to another one
 			if (mode == m_CurrentMode)
 			{
-				Close(false);
+				Close(false, false);
 				SetCurrentMode(-1);
 			}
 
 			//--- Close when removing the mode changed access rules (e.g., remaining mode is limited)
 			if (!CanOpen() && IsOpened())
-				ToggleServer(false);
+				ToggleServer(false, false);
 		}
 		else
 		{
@@ -1405,7 +1415,7 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			Print(string.Format("Editor operation %1 was requested while %2 was still running! Editor closed to prevent conflicts!", typename.EnumToString(EEditorEventOperation, type), typename.EnumToString(EEditorEventOperation, m_iEventOperation)), LogLevel.WARNING);
 			m_aEvents = {EEditorEvent.EXIT_OPERATION};
 			ProcessEvent();
-			ToggleOwner(false);
+			ToggleOwner(false, false);
 			return;
 		}
 

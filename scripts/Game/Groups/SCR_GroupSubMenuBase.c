@@ -360,6 +360,13 @@ class SCR_GroupSubMenuBase : SCR_SubMenuBase
 				return;
 			}
 
+			if (!m_PlayerGroupController.CanPlayerJoinGroup(m_PlayerGroupController.GetPlayerID(), group)) // unable to join group, can only decline! (eg: when youre the commander)
+			{
+				m_AcceptInviteButton.SetVisible(false, false);
+				m_DeclineInviteButton.SetVisible(true, false);
+				return;
+			}
+
 			m_AcceptInviteButton.SetVisible(true, false);
 			m_DeclineInviteButton.SetVisible(true, false);
 		}

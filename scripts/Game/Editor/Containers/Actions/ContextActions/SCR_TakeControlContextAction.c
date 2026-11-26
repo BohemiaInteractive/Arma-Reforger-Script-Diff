@@ -117,7 +117,7 @@ class SCR_TakeControlContextAction : SCR_BaseEditorAction
 		{
 			SCR_EditorManagerEntity manager = core.GetEditorManager(param);
 			if (manager)
-				manager.Close();
+				manager.Close(true, false);
 		}
 	}
 	override int GetParam()

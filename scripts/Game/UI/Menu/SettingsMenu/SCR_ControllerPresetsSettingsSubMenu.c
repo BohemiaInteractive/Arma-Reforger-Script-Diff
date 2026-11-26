@@ -21,6 +21,7 @@ class SCR_ControllerPresetsSettingsSubmenu: SCR_SettingsSubMenuBase
 		m_aSettingsBindings.Clear();
 
 		HandleJoystickDevices();
+		HandleControllerDeadZones();
 
 		// HEAD TRACKING
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_HeadTrackingSettings", "m_bHeadTrackingFreelook", "HeadTrackingFreelook"));
@@ -124,7 +125,235 @@ class SCR_ControllerPresetsSettingsSubmenu: SCR_SettingsSubMenuBase
 		
 		keybindModule.SelectJoystickPresetPath(preset.GetResourceName());
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	protected void HandleControllerDeadZones()
+	{
+		Widget parent = m_wRoot.FindAnyWidget("TitleControllers");
+		if (!parent)
+			return;
+
+		BaseContainer gamepadProfile = SCR_InputHelper.GetGamepadProfileContainer();
+		if (!gamepadProfile)
+		{
+			HideMenuItem("TitleControllers");
+			return;
+		}
+
+		// Left thumb horizontal axis
+		BaseContainer entry = gamepadProfile.GetObject("LeftThumbHorizontal");
+		float deadZoneValue;
+		entry.Get("DeadZone", deadZoneValue);
+		InitializeAxisDeadZoneSlider(parent, "ControllerCenterDeadzoneLeftStickX", deadZoneValue).Insert(OnLeftXCenterDeadZoneSliderChangedFinal);
+
+		TVectorArray curve = SCR_InputHelper.GetInputCurve(entry);
+		deadZoneValue = 0;
+		if (curve && !curve.IsEmpty())
+			deadZoneValue = 1 - curve[curve.Count() - 1][0];
+
+		InitializeAxisDeadZoneSlider(parent, "ControllerEdgeDeadzoneLeftStickX", deadZoneValue).Insert(OnLeftXEdgeDeadZoneSliderChangedFinal);
+
+
+		// Left thumb vertical axis
+		entry = gamepadProfile.GetObject("LeftThumbVertical");
+		entry.Get("DeadZone", deadZoneValue);
+		InitializeAxisDeadZoneSlider(parent, "ControllerCenterDeadzoneLeftStickY", deadZoneValue).Insert(OnLeftYCenterDeadZoneSliderChangedFinal);
+		
+		curve = SCR_InputHelper.GetInputCurve(entry);
+		deadZoneValue = 0;
+		if (curve && !curve.IsEmpty())
+			deadZoneValue = 1 - curve[curve.Count() - 1][0];
+
+		InitializeAxisDeadZoneSlider(parent, "ControllerEdgeDeadzoneLeftStickY", deadZoneValue).Insert(OnLeftYEdgeDeadZoneSliderChangedFinal);
+
+
+		// Right thumb horizontal axis
+		entry = gamepadProfile.GetObject("RightThumbHorizontal");
+		entry.Get("DeadZone", deadZoneValue);
+		InitializeAxisDeadZoneSlider(parent, "ControllerCenterDeadzoneRightStickX", deadZoneValue).Insert(OnRightXCenterDeadZoneSliderChangedFinal);
+		
+		curve = SCR_InputHelper.GetInputCurve(entry);
+		deadZoneValue = 0;
+		if (curve && !curve.IsEmpty())
+			deadZoneValue = 1 - curve[curve.Count() - 1][0];
+
+		InitializeAxisDeadZoneSlider(parent, "ControllerEdgeDeadzoneRightStickX", deadZoneValue).Insert(OnRightXEdgeDeadZoneSliderChangedFinal);
+
+
+		// Right thumb vertical axis
+		entry = gamepadProfile.GetObject("RightThumbVertical");
+		entry.Get("DeadZone", deadZoneValue);
+		InitializeAxisDeadZoneSlider(parent, "ControllerCenterDeadzoneRightStickY", deadZoneValue).Insert(OnRightYCenterDeadZoneSliderChangedFinal);
+
+		curve = SCR_InputHelper.GetInputCurve(entry);
+		deadZoneValue = 0;
+		if (curve && !curve.IsEmpty())
+			deadZoneValue = 1 - curve[curve.Count() - 1][0];
+
+		InitializeAxisDeadZoneSlider(parent, "ControllerEdgeDeadzoneRightStickY", deadZoneValue).Insert(OnRightYEdgeDeadZoneSliderChangedFinal);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected ScriptInvoker InitializeAxisDeadZoneSlider(notnull Widget parent, string widgetName, float sliderValue)
+	{
+		Widget entryWidget = parent.FindAnyWidget(widgetName);
+		SCR_SliderComponent entryComp = SCR_SliderComponent.Cast(entryWidget.FindHandler(SCR_SliderComponent));
+		entryComp.SetValue(sliderValue, false);
+		SCR_AxisCurveGraphDescriptionComponent graphComp = SCR_AxisCurveGraphDescriptionComponent.Cast(entryWidget.FindHandler(SCR_AxisCurveGraphDescriptionComponent));
+		if (graphComp)
+			graphComp.Init(entryWidget);
+
+		return entryComp.GetOnChangedFinal();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnLeftXCenterDeadZoneSliderChangedFinal(SCR_SliderComponent comp, float value)
+	{
+		BaseContainer profileContainer;
+		if (!SetAxisDeadZone("LeftThumbHorizontal", value, profileContainer))
+			return;
+
+		if (profileContainer)
+			UpdateDesriptionGraph(comp, profileContainer);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnLeftYCenterDeadZoneSliderChangedFinal(SCR_SliderComponent comp, float value)
+	{
+		BaseContainer profileContainer;
+		if (!SetAxisDeadZone("LeftThumbVertical", value, profileContainer))
+			return;
+
+		if (profileContainer)
+			UpdateDesriptionGraph(comp, profileContainer);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnRightXCenterDeadZoneSliderChangedFinal(SCR_SliderComponent comp, float value)
+	{
+		BaseContainer profileContainer;
+		if (!SetAxisDeadZone("RightThumbHorizontal", value, profileContainer))
+			return;
+
+		if (profileContainer)
+			UpdateDesriptionGraph(comp, profileContainer);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnRightYCenterDeadZoneSliderChangedFinal(SCR_SliderComponent comp, float value)
+	{
+		BaseContainer profileContainer;
+		if (!SetAxisDeadZone("RightThumbVertical", value, profileContainer))
+			return;
+
+		if (profileContainer)
+			UpdateDesriptionGraph(comp, profileContainer);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateDesriptionGraph(notnull SCR_SliderComponent comp, notnull BaseContainer profileContainer)
+	{
+		SCR_AxisCurveGraphDescriptionComponent graphDrawingComp = SCR_AxisCurveGraphDescriptionComponent.Cast(comp.GetRootWidget().FindHandler(SCR_AxisCurveGraphDescriptionComponent));
+		if (!graphDrawingComp)
+			return;
+
+		graphDrawingComp.RequestGraphUpdate(profileContainer);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool SetAxisDeadZone(string profileName, float deadZoneValue, out BaseContainer profileContainer = null)
+	{
+		BaseContainer gamepadProfile = SCR_InputHelper.GetGamepadProfileContainer();
+		if (!gamepadProfile)
+		{
+			HideMenuItem("TitleControllers");
+			return false;
+		}
+
+		deadZoneValue = Math.Min(0.999, deadZoneValue);
+		profileContainer = gamepadProfile.GetObject(profileName);
+
+		float oldValue;
+		profileContainer.Get("DeadZone", oldValue);
+		if (oldValue == deadZoneValue)
+			return false;
+
+		profileContainer.Set("DeadZone", deadZoneValue);
+		gamepadProfile.SetObject(profileName, profileContainer);
+		SCR_BaseContainerTools.CleanContainerData(gamepadProfile);
+		GetGame().UserSettingsChanged();
+		GetGame().SaveUserSettings();
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnLeftYEdgeDeadZoneSliderChangedFinal(SCR_SliderComponent comp, float value)
+	{
+		BaseContainer profileContainer;
+		if (!SetCurveDeadZone("LeftThumbVertical", value, profileContainer))
+			return;
+
+		if (profileContainer)
+			UpdateDesriptionGraph(comp, profileContainer);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnLeftXEdgeDeadZoneSliderChangedFinal(SCR_SliderComponent comp, float value)
+	{
+		BaseContainer profileContainer;
+		if (!SetCurveDeadZone("LeftThumbHorizontal", value, profileContainer))
+			return;
+
+		if (profileContainer)
+			UpdateDesriptionGraph(comp, profileContainer);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnRightYEdgeDeadZoneSliderChangedFinal(SCR_SliderComponent comp, float value)
+	{
+		BaseContainer profileContainer;
+		if (!SetCurveDeadZone("RightThumbVertical", value, profileContainer))
+			return;
+
+		if (profileContainer)
+			UpdateDesriptionGraph(comp, profileContainer);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnRightXEdgeDeadZoneSliderChangedFinal(SCR_SliderComponent comp, float value)
+	{
+		BaseContainer profileContainer;
+		if (!SetCurveDeadZone("RightThumbHorizontal", value, profileContainer))
+			return;
+
+		if (profileContainer)
+			UpdateDesriptionGraph(comp, profileContainer);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool SetCurveDeadZone(string profileName, float deadZoneValue, out BaseContainer profileContainer = null)
+	{
+		BaseContainer gamepadProfile = SCR_InputHelper.GetGamepadProfileContainer();
+		if (!gamepadProfile)
+		{
+			HideMenuItem("TitleControllers");
+			return false;
+		}
+
+		profileContainer = gamepadProfile.GetObject(profileName);
+		if (!profileContainer)
+			return false;
+
+		if (!SCR_InputHelper.SetCurveDeadZone(profileContainer, deadZoneValue))
+			return false;
+
+		gamepadProfile.SetObject(profileName, profileContainer);
+		SCR_BaseContainerTools.CleanContainerData(gamepadProfile);
+		GetGame().UserSettingsChanged();
+		GetGame().SaveUserSettings();
+		return true;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected void HandleJoystickDevices()
 	{

@@ -21,6 +21,9 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	protected RplComponent m_RplComponent;
 	SCR_CampaignBuildingBuildUserAction m_BuildAction;
 	
+	[Attribute(defvalue: "2", desc: "Value by which action progress is going to be multiplied to speed it up when character is a engineer", params: "0.1 inf 0.01")]
+	protected float m_fQualifiedPersonnelBonusUseSpeedFactor;
+
 	protected SCR_GadgetManagerComponent m_GadgetManager;
 
 	protected const string DISMANTLE_ALL_BUILDINGS = "#AR-FactionCommander_DismantleAllBuildings";
@@ -29,6 +32,9 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	protected const string ENEMY_PRESENCE = "#AR-Campaign_Action_ShowBuildPreviewEnemyPresence";
 	protected const int TEMPORARY_BLOCKED_ACCESS_RESET_TIME = 2;
 	protected const int ALLOWED_PLAYER_DISTANCE_SQ = 10000; //! 100m
+
+	protected bool m_bIsQualified;
+	protected ECharacterStance m_eSavedStance = -1;
 
 	//------------------------------------------------------------------------------------------------
 	protected override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
@@ -66,7 +72,7 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override void OnActionStart(IEntity pUserEntity)
 	{
-		ChimeraCharacter character = ChimeraCharacter.Cast(pUserEntity);
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(pUserEntity);
 		if (!character)
 			return;
 
@@ -74,6 +80,8 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 		ToggleCompartmentAccess(GetOwner(), m_User);
 		if (!SCR_CharacterHelper.IsPlayerOrAIOwner(character))
 			return;
+
+		m_bIsQualified = character && (character.HasRole(GetQualifiedRoles()) || character.HasLabel(GetQualifiedLabels()));
 
 		CharacterControllerComponent charController = character.GetCharacterController();
 		if (charController)
@@ -89,6 +97,8 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 			params.SetCommandIntArg(2);
 
 			charController.TryUseItemOverrideParams(params);
+
+			m_eSavedStance = charController.GetStance();
 		}
 
 		super.OnActionStart(pUserEntity);
@@ -98,6 +108,8 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	override void OnActionCanceled(IEntity pOwnerEntity, IEntity pUserEntity)
 	{
 		m_User = null;
+		m_eSavedStance = -1;
+
 		ToggleCompartmentAccess(GetOwner(), null);
 
 		ChimeraCharacter character = ChimeraCharacter.Cast(pUserEntity);
@@ -157,6 +169,29 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 		CharacterAnimationComponent pAnimationComponent = charController.GetAnimationComponent();
 		CharacterCommandHandlerComponent cmdHandler = pAnimationComponent.GetCommandHandler();
 		cmdHandler.FinishItemUse(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override float GetActionProgressScript(float fProgress, float timeSlice)
+	{
+		if (m_bIsQualified)
+			timeSlice *= m_fQualifiedPersonnelBonusUseSpeedFactor;
+
+		return super.GetActionProgressScript(fProgress, timeSlice);
+	}
+
+	///------------------------------------------------------------------------------------------------
+	//! Override this if you would want to change which squad roles should make a character qualified
+	protected array<SCR_EGroupRole> GetQualifiedRoles()
+	{
+		return {SCR_EGroupRole.ENGINEER};
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Override this if you would want to change which character label should make a character qualified
+	protected array<EEditableEntityLabel> GetQualifiedLabels()
+	{
+		return {EEditableEntityLabel.ROLE_SAPPER};
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -393,6 +428,11 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 			SetCannotPerformReason(IN_USE);
 			return false;
 		}
+
+		CharacterControllerComponent charController = character.GetCharacterController();
+
+		if (charController.IsChangingStance() || (m_eSavedStance >= 0 && m_eSavedStance != charController.GetStance()))
+			return false;
 
 		SCR_Faction scriptedFaction = SCR_Faction.Cast(character.GetFaction());
 		if (scriptedFaction)

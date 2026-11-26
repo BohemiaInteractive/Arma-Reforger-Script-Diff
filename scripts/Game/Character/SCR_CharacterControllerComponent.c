@@ -58,6 +58,19 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	protected ref SCR_ScriptedCharacterInputContext m_pScrInputContext;
 	protected CharacterSoundComponent m_CharacterSoundComponent;
 
+	//! True when a loiter start that has not started the loiter command yet requested holstering the right-hand item.
+	//! Cleared once the loiter command starts, because the Move command recovers the item after the loiter ends.
+	protected bool m_bLoiteringHolsteredItem;
+	//! True when a pending loiter start was aborted after it requested holstering the right-hand item.
+	//! OnApplyControls recovers the item once the holster has finished, as it happens after a started loiter ends.
+	protected bool m_bRecoverItemAfterAbortedLoitering;
+	//! True on the owner from adding the loiter start input action until it is performed. The start cannot be aborted
+	//! then, a stop is sent instead and every machine performs it after the start.
+	protected bool m_bLoiteringStartRequested;
+	//! Stop parameters written into the loiter stop input action by OnWriteLoiterInputAction. Only valid while it is added.
+	protected bool m_bLoiteringStopFast;
+	protected SCR_LoiterCustomAnimData m_LoiteringStopAnimData;
+
 	//! Contains information about for which shell player saved some information for future use
 	protected ref array<ref SCR_ShellConfig> m_aSavedShellConfigs;
 
@@ -582,7 +595,14 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	//------------------------------------------------------------------------------------------------
 	protected override void OnApplyControls(IEntity owner, float timeSlice)
 	{
-		if (GetScrInputContext().m_iLoiteringType >= 0)
+		// The holster requested by the aborted loiter start can still be queued, so wait until the hands are empty
+		if (m_bRecoverItemAfterAbortedLoitering && CanEngageChangeItem() && !GetCurrentItemInHands())
+		{
+			m_bRecoverItemAfterAbortedLoitering = false;
+			TryRecoverLastRightHandItem();
+		}
+
+		if (GetScrInputContext().m_iLoiteringType >= 0 && !m_bLoiteringStartRequested)
 		{
 			SCR_CharacterCommandHandlerComponent handler = SCR_CharacterCommandHandlerComponent.Cast(GetAnimationComponent().GetCommandHandler());
 			if (!handler.IsLoitering())
@@ -718,14 +738,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		}
 		
 		if (IsAligningBeforeLoiter())
-		{
-			CharacterHeadingAnimComponent headingComponent = GetAnimationComponent().GetHeadingComponent();
-			if (headingComponent)
-			{
-				headingComponent.ResetAligning();
-				GetScrInputContext().m_iLoiteringType = -1;
-			}
-		}
+			AbortPendingLoitering();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1577,6 +1590,10 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		if (!scrCmdHandler.GetCommandMove())
 			return;
 
+		// The previous start is already on its way with its own data
+		if (m_bLoiteringStartRequested)
+			return;
+
 		if (!customAnimData)
 			customAnimData = SCR_LoiterCustomAnimData.Default;
 		else
@@ -1590,6 +1607,9 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		m_pScrInputContext.m_mLoiteringPosition = targetPosition;
 		m_pScrInputContext.m_bLoiteringRootMotion = allowRootMotion;
 		m_pScrInputContext.m_CustomAnimData = customAnimData;
+		
+		// The new loiter takes care of the item now, recovering it would only make the loiter holster it again
+		m_bRecoverItemAfterAbortedLoitering = false;
 		
 		if (IsGadgetInHands())
 			RemoveGadgetFromHand(true);
@@ -1619,55 +1639,20 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void Rpc_StartLoitering_S(RplId entityRplId, int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4], SCR_LoiterCustomAnimData customAnimData)
-	{
-		m_pScrInputContext.SetLoiteringEntityId(entityRplId);
-		m_pScrInputContext.m_iLoiteringType = loiteringType;
-		m_pScrInputContext.m_bLoiteringShouldHolsterWeapon = holsterWeapon;
-		m_pScrInputContext.m_bLoiteringShouldAlignCharacter = alignToPosition;
-		m_pScrInputContext.m_mLoiteringPosition = targetPosition;
-		m_pScrInputContext.m_bLoiteringRootMotion = allowRootMotion;
-		m_pScrInputContext.m_CustomAnimData = customAnimData;
-		
-		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
-		scrCmdHandler.StartCommandLoitering(customAnimData);
-
-		Rpc(Rpc_StartLoitering_BCNO,
-				entityRplId,
-				m_pScrInputContext.m_iLoiteringType,
-				m_pScrInputContext.m_bLoiteringShouldHolsterWeapon,
-				m_pScrInputContext.m_bLoiteringRootMotion,
-				m_pScrInputContext.m_bLoiteringShouldAlignCharacter,
-				m_pScrInputContext.m_mLoiteringPosition,
-				m_pScrInputContext.m_CustomAnimData);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast, RplCondition.NoOwner)]
-	protected void Rpc_StartLoitering_BCNO(RplId entityRplId, int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4],	SCR_LoiterCustomAnimData customAnimData)
-	{
-		m_pScrInputContext.SetLoiteringEntityId(entityRplId);
-		m_pScrInputContext.m_iLoiteringType = loiteringType;
-		m_pScrInputContext.m_bLoiteringShouldHolsterWeapon = holsterWeapon;
-		m_pScrInputContext.m_bLoiteringShouldAlignCharacter = alignToPosition;
-		m_pScrInputContext.m_mLoiteringPosition = targetPosition;
-		m_pScrInputContext.m_bLoiteringRootMotion = allowRootMotion;
-		m_pScrInputContext.m_CustomAnimData = customAnimData;
-		
-		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
-		scrCmdHandler.StartCommandLoitering(customAnimData);
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	protected bool TryStartLoiteringInternal()
 	{
+		RplComponent rplComponent = GetCharacter().GetRplComponent();
+		if (rplComponent && !rplComponent.IsOwner())
+			return false;
+		
 		if (IsChangingItem())
 			return false;
 		
 		if (GetScrInputContext().m_bLoiteringShouldHolsterWeapon && GetCurrentItemInHands() != null)
 		{
-			TryEquipRightHandItem(null, EEquipItemType.EEquipTypeUnarmedContextual);
+			if (TryEquipRightHandItem(null, EEquipItemType.EEquipTypeUnarmedContextual))
+				m_bLoiteringHolsteredItem = true;
+
 			return false;
 		}
 		
@@ -1681,42 +1666,13 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			}
 		}
 
-		ChimeraCharacter character = GetCharacter();
-		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(character.GetAnimationComponent().GetCommandHandler());
-		scrCmdHandler.StartCommandLoitering(m_pScrInputContext.m_CustomAnimData);
+		// Every machine starts the loiter when it performs the start input action, in the owner's input order. The server
+		// therefore starts it after the input actions of the item change that holstered the weapon.
+		if (!AddLoiterAction(ELoiterInputAction.START))
+			return false;
 		
-		RplComponent rplComponent = character.GetRplComponent();
-		
-		if (rplComponent && rplComponent.IsProxy())
-			Rpc(Rpc_StartLoitering_S,
-				m_pScrInputContext.m_loiterEntityRplId,
-				m_pScrInputContext.m_iLoiteringType,
-				m_pScrInputContext.m_bLoiteringShouldHolsterWeapon,
-				m_pScrInputContext.m_bLoiteringRootMotion,
-				m_pScrInputContext.m_bLoiteringShouldAlignCharacter,
-				m_pScrInputContext.m_mLoiteringPosition,
-				m_pScrInputContext.m_CustomAnimData);
-		else
-			Rpc(Rpc_StartLoitering_BCNO,
-				m_pScrInputContext.m_loiterEntityRplId,
-				m_pScrInputContext.m_iLoiteringType,
-				m_pScrInputContext.m_bLoiteringShouldHolsterWeapon,
-				m_pScrInputContext.m_bLoiteringRootMotion,
-				m_pScrInputContext.m_bLoiteringShouldAlignCharacter,
-				m_pScrInputContext.m_mLoiteringPosition,
-				m_pScrInputContext.m_CustomAnimData);
-		
+		m_bLoiteringStartRequested = true;
 		return true;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] terminateFast should be true when going into alerted or combat state.
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RPC_StopLoitering_S(bool terminateFast, SCR_LoiterCustomAnimData customAnimData)
-	{
-		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetAnimationComponent().GetCommandHandler());
-		scrCmdHandler.StopLoitering(terminateFast, customAnimData : customAnimData);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1734,22 +1690,121 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			return;
 		
 		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetAnimationComponent().GetCommandHandler());
+		if (!scrCmdHandler)
+			return;
 		
 		// if Loitering did not start - e.g. due to deffered Start when holstering weapon, we reset loitering type and align 
-		if (scrCmdHandler && !scrCmdHandler.IsLoitering() && m_pScrInputContext && m_pScrInputContext.m_iLoiteringType >= 0)
+		// A start that is already on its way cannot be aborted, it is stopped after it is performed instead
+		if (!scrCmdHandler.IsLoitering() && !m_bLoiteringStartRequested)
 		{
-			m_pScrInputContext.m_iLoiteringType = -1;
-			CharacterHeadingAnimComponent headingComponent = GetAnimationComponent().GetHeadingComponent();
-			if (headingComponent)
-				headingComponent.ResetAligning();
+			if (m_pScrInputContext && m_pScrInputContext.m_iLoiteringType >= 0)
+				AbortPendingLoitering();
 			
 			return;
 		}
 		
-		scrCmdHandler.StopLoitering(terminateFast, customAnimData : customAnimData);
+		// Every machine stops the loiter when it performs the stop input action, in the owner's input order
+		m_bLoiteringStopFast = terminateFast;
+		m_LoiteringStopAnimData = customAnimData;
+		AddLoiterAction(ELoiterInputAction.STOP);
+		m_LoiteringStopAnimData = null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Abandons a loiter start that has not started the loiter command yet, e.g. while holstering the weapon or aligning the character.
+	//! If the start holstered the right-hand item, the item is recovered once the holster finishes, the same way as after a started loiter.
+	protected void AbortPendingLoitering()
+	{
+		m_pScrInputContext.m_iLoiteringType = -1;
+		CharacterHeadingAnimComponent headingComponent = GetAnimationComponent().GetHeadingComponent();
+		if (headingComponent)
+			headingComponent.ResetAligning();
 		
-		if (rplComponent && rplComponent.IsProxy() && customAnimData)
-			Rpc(RPC_StopLoitering_S, terminateFast, customAnimData);
+		if (m_bLoiteringHolsteredItem)
+		{
+			m_bLoiteringHolsteredItem = false;
+			m_bRecoverItemAfterAbortedLoitering = true;
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Called by the loiter command on the owner when the loiter is over. Every machine finishes it when it performs the
+	//! finish input action, in the owner's input order.
+	void RequestFinishLoitering()
+	{
+		AddLoiterAction(ELoiterInputAction.FINISH);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override void OnWriteLoiterAction(ELoiterInputAction type, ScriptBitWriter writer)
+	{
+		switch (type)
+		{
+			case ELoiterInputAction.START:
+			{
+				if (m_pScrInputContext.m_CustomAnimData)
+					m_pScrInputContext.m_CustomAnimData.BindAnimationIDs(GetAnimationComponent());
+				
+				m_pScrInputContext.OnRplSave(writer);
+			}
+			break;
+			case ELoiterInputAction.STOP:
+			{
+				writer.WriteBool(m_bLoiteringStopFast);
+				writer.WriteBool(m_LoiteringStopAnimData != null);
+				if (m_LoiteringStopAnimData)
+				{
+					m_LoiteringStopAnimData.BindAnimationIDs(GetAnimationComponent());
+					m_LoiteringStopAnimData.OnRplSave(writer);
+				}
+			}
+			break;
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override void OnPerformLoiterAction(ELoiterInputAction type, ScriptBitReader reader)
+	{
+		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetAnimationComponent().GetCommandHandler());
+		if (!scrCmdHandler)
+			return;
+		
+		switch (type)
+		{
+			case ELoiterInputAction.START:
+			{
+				// The owner keeps its own context, it also references the loiter entity directly
+				RplComponent rplComponent = GetCharacter().GetRplComponent();
+				if (rplComponent && !rplComponent.IsOwner())
+					m_pScrInputContext.OnRplLoad(reader);
+				
+				m_bLoiteringStartRequested = false;
+				m_bLoiteringHolsteredItem = false;
+				scrCmdHandler.PerformStartLoitering(m_pScrInputContext.m_CustomAnimData);
+			}
+			break;
+			case ELoiterInputAction.STOP:
+			{
+				bool terminateFast;
+				reader.ReadBool(terminateFast);
+				bool hasAnimData;
+				reader.ReadBool(hasAnimData);
+				SCR_LoiterCustomAnimData customAnimData;
+				if (hasAnimData)
+				{
+					customAnimData = new SCR_LoiterCustomAnimData();
+					customAnimData.OnRplLoad(reader);
+				}
+				
+				scrCmdHandler.PerformStopLoitering(terminateFast, customAnimData);
+			}
+			break;
+			case ELoiterInputAction.FINISH:
+			{
+				scrCmdHandler.PerformFinishLoitering();
+			}
+			break;
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

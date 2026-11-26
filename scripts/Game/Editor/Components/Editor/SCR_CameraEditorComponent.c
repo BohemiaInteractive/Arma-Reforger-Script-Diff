@@ -211,7 +211,7 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 			m_Camera = SCR_ManualCamera.Cast(GetGame().SpawnEntityPrefab(Resource.Load(prefab), GetGame().GetWorld(), spawnParams));
 		}
 		
-		m_Camera.GetOnCameraDeactivate().Insert(OnCameraDectivate);
+		m_Camera.GetOnCameraDeactivate().Insert(OnCameraDeactivate);
 		Math3D.MatrixIdentity4(m_vInitCameraTransform);
 		
 		if (m_CameraData)
@@ -244,7 +244,7 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 		m_bIsReplacingCamera = false;
 		m_PreActivateControlledEntity = null;
 	}
-	protected void OnCameraDectivate()
+	protected void OnCameraDeactivate()
 	{
 		//--- Force camera
 		if (m_CameraManager && m_Camera) m_CameraManager.SetCamera(m_Camera);
@@ -373,7 +373,10 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 		
 		if (m_Camera)
 		{
-			m_Camera.TrySwitchToControlledEntityCamera();
+			m_Camera.GetOnCameraDeactivate().Remove(OnCameraDeactivate);
+			if (!m_CameraData || !m_CameraData.TryRestoreCamera(m_Camera))
+				m_Camera.TrySwitchToControlledEntityCamera();
+
 			delete m_Camera;
 		}
 	}

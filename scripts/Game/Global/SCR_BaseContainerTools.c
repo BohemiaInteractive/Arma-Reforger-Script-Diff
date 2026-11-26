@@ -604,4 +604,173 @@ class SCR_BaseContainerTools
 
 		return result;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Prints to log file the entire structure of the BaseContainer and its children
+	//! \param[in] container which structure will be printed
+	static void PrintContainerStructure(notnull BaseContainer container, int lvl = 0)
+	{
+		if (lvl == 0)
+		{ // initial container info
+			PrintFormat("Container Class=%1", container.GetClassName());
+			Print("{");
+		}
+
+		string depthMarker = "	";
+		for (int i; i < lvl; i++)
+		{
+			depthMarker += "	";
+		}
+
+		lvl++;
+		int count = container.GetNumVars();
+		for (int i; i < count; i++)
+		{
+			string varName = container.GetVarName(i);
+			DataVarType varType = container.GetDataVarType(i);
+			string log = string.Format("%1%2 = %3 | Type=%4", depthMarker, varName, "%1", typename.EnumToString(DataVarType, varType));
+
+			if (varType == DataVarType.OBJECT)
+			{
+				BaseContainer subContainer = container.GetObject(varName);
+				if (subContainer)
+					log = log + " | ObjectType="+subContainer.GetClassName();
+
+				PrintFormat(log, subContainer);
+				if (subContainer)
+				{
+					Print(depthMarker + "{");
+					PrintContainerStructure(subContainer, lvl);
+					Print(depthMarker + "}");
+				}
+
+				continue;
+			}
+
+			if (varType == DataVarType.OBJECT_ARRAY)
+			{
+				BaseContainerList containerList = container.GetObjectArray(varName);
+				PrintFormat(log, "Array: " + containerList);
+				if (containerList)
+				{
+					Print(depthMarker + "[");
+					PrintContainerList(containerList, lvl);
+					Print(depthMarker + "]");
+				}
+
+				continue;
+			}
+
+			string varVal;
+			container.Get(varName, varVal);
+			if (varVal.IsEmpty())
+			{
+				container.GetDefaultAsString(varName, varVal);
+				varVal = "DEFAULT: \"" + varVal + "\"";
+			}
+
+			if (typename.EnumToString(DataVarType, varType).Contains("ARRAY"))
+				varVal = "[" + varVal + "]";
+
+			PrintFormat(log, varVal);
+		}
+
+		if (lvl == 1) // closing for the initial container info
+			Print("}");
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Prints to log file the entire structure BaseContainerList and its child elements
+	//! \param[in] containerList which structure will be printed
+	static void PrintContainerList(notnull BaseContainerList containerList, int lvl = 0)
+	{
+		int count = containerList.Count();
+		BaseContainer container;
+
+		lvl++;
+		string depthMarker = "	";	
+		for (int i; i < lvl; i++)
+		{
+			depthMarker += "	";
+		}
+
+		for (int i; i < count; i++)
+		{
+			container = containerList.Get(i);
+
+			PrintFormat("%1Position=%2 | Object: %3", depthMarker, i, container);
+			if (container)
+				PrintContainerStructure(container, lvl);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Recursively cleans container from unnecessary data which is the data that is the same in passed container and its parent
+	//! \param[inout] container which will be cleared
+	//! \param[out] clearedAllAttributes is true if all preperties were cleared, otherwise false
+	static void CleanContainerData(notnull inout BaseContainer container, out bool clearedAllAttributes = false)
+	{
+		BaseContainer ancestor = container.GetAncestor();
+		if (!ancestor)
+			return;
+
+		int count = container.GetNumVars();
+		int cleared;
+		for (int i; i < count; i++)
+		{
+			string varName = container.GetVarName(i);
+			switch (container.GetDataVarType(i))
+			{
+				case DataVarType.OBJECT:
+					BaseContainer child = container.GetObject(varName);
+					bool clear;
+					CleanContainerData(child, clear);
+					if (clear)
+					{
+						container.ClearVariable(varName);
+						cleared++;
+					}
+
+				break;
+
+				case DataVarType.OBJECT_ARRAY:
+					BaseContainerList list = container.GetObjectArray(varName);
+					int listSize = list.Count();
+					BaseContainer element;
+					bool cleanList = true;
+					for (int j; j < listSize; j++)
+					{
+						element = list.Get(i);
+						if (!element)
+							continue;
+
+						bool elementCleared;
+						CleanContainerData(element, elementCleared);
+						cleanList = cleanList && elementCleared;
+					}
+
+					if (cleanList)
+					{
+						container.ClearVariable(varName);
+						cleared++;
+					}
+
+				break;
+
+				default:
+					string thisVar, ancestorVar;
+					container.Get(varName, thisVar);
+					ancestor.Get(varName, ancestorVar);
+					if (thisVar == ancestorVar)
+					{
+						container.ClearVariable(varName);
+						cleared++;
+					}
+
+				break;
+			}
+		}
+
+		clearedAllAttributes = cleared == count;
+	}
 }

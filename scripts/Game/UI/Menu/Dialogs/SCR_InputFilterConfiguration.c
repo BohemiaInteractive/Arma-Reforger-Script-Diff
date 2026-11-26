@@ -21,4 +21,7 @@ class SCR_InputFilterConfiguration
 
 	[Attribute(defvalue: "0", desc: "Can Adjust Click Duration")]
 	bool m_bCanAdjustClickDuration;
+
+	[Attribute(defvalue: "0", desc: "Can Adjust Deadzones")]
+	bool m_bCanAdjustDeadzones;
 }

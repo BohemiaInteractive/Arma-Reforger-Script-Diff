@@ -463,6 +463,49 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 		if (targetPlayerId == userPlayerId)
 			return;
 
+		SCR_BaseDamageHealSupportStationAction healingAction = SCR_BaseDamageHealSupportStationAction.Cast(action);
+		{
+			SCR_CharacterDamageManagerComponent dmgMgr = SCR_CharacterDamageManagerComponent.Cast(healingAction.GetActionDamageManager());
+			if (!dmgMgr)
+				return;
+
+			array<HitZone> healedHitZones = {};
+			if (healingAction.GetHitZonesToHeal(healedHitZones) < 1)
+				return;
+
+			array<ref BaseDamageEffect> damageEffects = {};
+			dmgMgr.GetDamageHistory(damageEffects);
+			SCR_CharacterHitZone affectedHitZone;
+			float totalDamage;
+			foreach (BaseDamageEffect dE : damageEffects)
+			{
+				affectedHitZone = SCR_CharacterHitZone.Cast(dE.GetAffectedHitZone());
+				if (!affectedHitZone)
+					continue;
+					
+				if (dE.GetInstigator().GetInstigatorPlayerID() != userPlayerId)
+					continue;
+
+				EDamageType damageType = dE.GetDamageType();
+				if (damageType == EDamageType.BLEEDING || damageType == EDamageType.TRUE)
+					continue;
+
+				if (!healedHitZones.Contains(affectedHitZone))
+					continue;
+
+				float damageMultiplier = affectedHitZone.GetDamageMultiplier(damageType);
+				float damageReduction;
+				if (damageType != EDamageType.HEALING)
+					damageReduction = affectedHitZone.GetDamageReduction();
+
+				float damage = dE.GetTotalDamage() * damageMultiplier - damageReduction; // it needs to be computed to actual damage to match the state of the hit zone
+				totalDamage += damage;
+			}
+
+			if (totalDamage >= 0)
+				return;
+		}
+
 		AwardXP(userPlayerId, SCR_EXPRewards.MEDICAL_ASSISTANCE);
 	}
 
@@ -1114,4 +1157,5 @@ enum SCR_EXPRewards
 	STARTING_RANK,
 	DEATH,
 	SQUAD_KILL_ASSIST,
+	FRIENDLY_DAMAGED,
 }

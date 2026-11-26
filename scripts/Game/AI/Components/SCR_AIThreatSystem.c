@@ -57,7 +57,11 @@ class SCR_AIThreatSystem
 	private SCR_ChimeraAIAgent m_Agent;
 	
 	private EAIThreatState m_State;
-		
+
+	//! Damage effects added since the danger events were last processed
+	protected int m_iHarmfulEffectsSinceUpdate;
+	protected int m_iHealingEffectsSinceUpdate;
+
 	private ref SCR_AIThreatStateChangedInvoker m_OnThreatStateChanged = new SCR_AIThreatStateChangedInvoker();
 	
 	//------------------------------------------------------------------------------------------------
@@ -235,7 +239,10 @@ class SCR_AIThreatSystem
 			}
 
 			m_Agent.ClearDangerEvents(i + 1);
-		}		
+		}
+
+		m_iHarmfulEffectsSinceUpdate = 0;
+		m_iHealingEffectsSinceUpdate = 0;
 
 		// Add threat value from current behavior
 		float threatFromBehavior;
@@ -253,12 +260,25 @@ class SCR_AIThreatSystem
 	//------------------------------------------------------------------------------------------------
 	protected void OnDamageEffectAdded(notnull SCR_DamageEffect dmgEffect)
 	{
-		if (dmgEffect.GetDamageType() != EDamageType.BLEEDING || !SCR_BleedingDamageEffect.Cast(dmgEffect))
+		EDamageType damageType = dmgEffect.GetDamageType();
+		if (damageType == EDamageType.HEALING || damageType == EDamageType.REGENERATION)
+			m_iHealingEffectsSinceUpdate++;
+		else
+			m_iHarmfulEffectsSinceUpdate++;
+
+		if (damageType != EDamageType.BLEEDING || !SCR_BleedingDamageEffect.Cast(dmgEffect))
 			return;
 		
 		m_fThreatInjury = BLEEDING_FIXED_INCREMENT;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! True if the pending danger events were caused only by healing, with no harmful damage
+	bool IsDamageTakenOnlyHealing()
+	{
+		return m_iHealingEffectsSinceUpdate > 0 && m_iHarmfulEffectsSinceUpdate == 0;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnDamageEffectRemoved(notnull SCR_DamageEffect dmgEffect)
 	{

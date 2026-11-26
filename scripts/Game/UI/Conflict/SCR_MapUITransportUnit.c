@@ -23,7 +23,11 @@ class SCR_MapUITransportUnit : SCR_MapUIElement
 		}
 
 		if (m_wName)
-			m_wName.SetText(transportUnit.GetName());
+		{
+			string company, platoon, squad, character, format;
+			transportUnit.GetAIGroup().GetCallsigns(company, platoon, squad, character, format);
+			m_wName.SetTextFormat(format, company, platoon, squad, character);
+		}
 
 		UpdateIcon();
 	}

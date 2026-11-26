@@ -949,7 +949,7 @@ class SCR_MapEntity: MapEntity
 	// \param worldY is world y
 	void ScreenToWorld(int screenPosX, int screenPosY, out float worldX, out float worldY)
 	{
-		if (m_fZoomPPU + m_iMapOffsetX == 0 || m_fZoomPPU - m_iMapOffsetY == 0)
+		if (m_fZoomPPU == 0)
 			return;
 
 		worldX = (screenPosX - m_Workspace.DPIScale(m_iPanX)) / m_fZoomPPU + m_iMapOffsetX;

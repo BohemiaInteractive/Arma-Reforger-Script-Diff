@@ -153,6 +153,19 @@ class SCR_LoiterCustomAnimData : SCR_CustomAnimData_Properties
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Binds the command and control variable IDs from their names. Only the IDs are replicated (see OnRplSave), and
+	//! they are the same on every machine using the same graph.
+	//! \param[in] animComponent
+	void BindAnimationIDs(notnull CharacterAnimationComponent animComponent)
+	{
+		if (!m_sCommandName.IsEmpty())
+			m_iCommandBindID = animComponent.BindCommand(m_sCommandName);
+
+		if (!m_sControlVariableName.IsEmpty())
+			m_iControlVariableID = animComponent.BindVariableInt(m_sControlVariableName);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! \param[in] r
 	void OnRplLoad(ScriptBitReader r)
 	{
@@ -164,16 +177,17 @@ class SCR_LoiterCustomAnimData : SCR_CustomAnimData_Properties
 		r.ReadInt(cmdValInt);
 		m_iCommandValue = cmdValInt;
 		r.ReadInt(m_eItemPresetID);
-		int varId = m_iControlVariableID;
+		int varId;
 		r.ReadInt(varId);
+		m_iControlVariableID = varId;
 		r.ReadInt(m_iControlVariableValue);
 		r.ReadInt(m_iSeed);
 
 		r.ReadBool(m_bAllowRootMotion);
 		r.ReadBool(m_bAllowEnvironmentExit);
 
-		r.ReadString(m_sGraphName);
-		r.ReadString(m_sGraphInstanceName);
+		r.ReadResourceName(m_sGraphName);
+		r.ReadResourceName(m_sGraphInstanceName);
 		r.ReadString(m_sGraphBindingName);
 	}
 	
@@ -184,17 +198,15 @@ class SCR_LoiterCustomAnimData : SCR_CustomAnimData_Properties
 		w.WriteInt(m_iCommandBindID);
 		w.WriteInt(m_iCommandValue);
 		w.WriteInt(m_eItemPresetID);
-		int varId;
-		w.WriteInt(varId);
-		m_iControlVariableID = varId;
+		w.WriteInt(m_iControlVariableID);
 		w.WriteInt(m_iControlVariableValue);
 		w.WriteInt(m_iSeed);
 
 		w.WriteBool(m_bAllowRootMotion);
 		w.WriteBool(m_bAllowEnvironmentExit);
 
-		w.WriteString(m_sGraphName);
-		w.WriteString(m_sGraphInstanceName);
+		w.WriteResourceName(m_sGraphName);
+		w.WriteResourceName(m_sGraphInstanceName);
 		w.WriteString(m_sGraphBindingName);
 	}
 	

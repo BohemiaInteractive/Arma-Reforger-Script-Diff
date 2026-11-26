@@ -3821,6 +3821,21 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			auto pSlot = m_pSelectedSlotUI.GetInventoryItemComponent().GetParentSlot();
 			if ( pSlot )
 			{
+				SCR_EquipmentStorageComponent equipmentStorage = SCR_EquipmentStorageComponent.Cast(pSlot.GetStorage());
+				if (SCR_InventorySlotQuickSlotUI.Cast(m_pSelectedSlotUI) && equipmentStorage && equipmentStorage.GetOwner() != m_StorageManager.GetOwner())
+				{
+					SCR_UniversalInventoryStorageComponent ownerStorage = SCR_UniversalInventoryStorageComponent.Cast(equipmentStorage.GetOwner().FindComponent(SCR_UniversalInventoryStorageComponent));
+					if (ownerStorage)
+					{
+						SCR_InventoryStorageBaseUI sourceUI = GetStorageUIByBaseStorageComponent(ownerStorage);
+						if (sourceUI)
+						{
+							m_pCallBack.m_pStorageFrom = sourceUI;
+							m_pCallBack.m_bUpdateSlotOnly = false;
+						}
+					}
+				}
+
 				if (pStorageFrom && pStorageFrom.IsInherited(SCR_WeaponAttachmentsStorageComponent))
 				{
 					m_pCallBack.m_pStorageMan = GetInventoryStorageManager();

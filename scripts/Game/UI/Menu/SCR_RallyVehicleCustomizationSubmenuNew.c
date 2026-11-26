@@ -3,7 +3,9 @@ class SCR_RAllyVehicleCustomizationSubmenuNew : SCR_SubMenuBase
 	protected SCR_RaceCustomizationPointEntity m_CustomizationPoint;
 	protected ref SCR_TabViewComponent m_CustomizationTabView;
 	protected SCR_ERallyCustomizationParts m_CurrentPart;
+	protected Vehicle m_CurrentPreviewVehicle;
 	protected ref map<SCR_ERallyCustomizationParts, ResourceName> m_mDefaultParts = new map<SCR_ERallyCustomizationParts, ResourceName>();
+	protected ref map<SCR_ERallyCustomizationParts, int> m_mSelectedVariantIndexes = new map<SCR_ERallyCustomizationParts, int>();
 
 	protected ProgressBarWidget m_wSpeedProgress;
 	protected ProgressBarWidget m_wAccelerationProgress;
@@ -111,6 +113,7 @@ class SCR_RAllyVehicleCustomizationSubmenuNew : SCR_SubMenuBase
 		if (!comp)
 			return;
 
+		comp.m_OnChanged.Remove(OnVariantSelected);
 		comp.ClearAll();
 
 		SCR_RallyVehicleCustomizationConfig conf = m_CustomizationPoint.GetCustomizationConfig();
@@ -140,7 +143,8 @@ class SCR_RAllyVehicleCustomizationSubmenuNew : SCR_SubMenuBase
 
 		// Capture the part the vehicle had before any customization, once per part,
 		// so it can be restored later by picking the first spinbox entry.
-		m_mDefaultParts.Set(part, GetAttachedPartResource(part));
+		if (!m_mDefaultParts.Contains(part))
+			m_mDefaultParts.Set(part, GetAttachedPartResource(part));
 
 		comp.AddItem("#AR-Editor_Attribute_OverlayLogo_Default");
 
@@ -149,7 +153,47 @@ class SCR_RAllyVehicleCustomizationSubmenuNew : SCR_SubMenuBase
 			comp.AddItem("#AR-RallyDLC-PartVariant", false, new SCR_TextFormatContainer<int>(i + 1));
 		}
 
+		comp.SetCurrentItem(GetSelectedVariantIndex(part, changedPart));
+
 		comp.m_OnChanged.Insert(OnVariantSelected);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns the spinbox index that matches the currently attached part
+	//! \param[in] part
+	//! \param[in] partData
+	protected int GetSelectedVariantIndex(SCR_ERallyCustomizationParts part, notnull SCR_RallyPartCustomizationData partData)
+	{
+		if (!m_CustomizationPoint.GetCurrentPreviewVehicle())
+			return 0;
+
+		ResourceName attachedPart = GetAttachedPartResource(part);
+
+		ResourceName defaultPart;
+		bool hasDefault = m_mDefaultParts.Find(part, defaultPart);
+
+		// Use the remembered selected index if it still matches the part that is currently attached to the vehicle
+		int selectedIndex;
+		if (m_mSelectedVariantIndexes.Find(part, selectedIndex))
+		{
+			if (selectedIndex == 0 && hasDefault && attachedPart == defaultPart)
+				return 0;
+
+			if (selectedIndex > 0 && selectedIndex <= partData.m_aAvailableParts.Count() && partData.m_aAvailableParts[selectedIndex - 1] == attachedPart)
+				return selectedIndex;
+		}
+
+		// If the currently attached part does not match the part assigned to the remembered selected index, find the index that matches it
+		if (hasDefault && attachedPart == defaultPart)
+			return 0;
+
+		foreach (int i, ResourceName resource : partData.m_aAvailableParts)
+		{
+			if (resource == attachedPart)
+				return i + 1;
+		}
+
+		return 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -213,6 +257,8 @@ class SCR_RAllyVehicleCustomizationSubmenuNew : SCR_SubMenuBase
 		if (!m_CustomizationPoint)
 			return;
 
+		m_mSelectedVariantIndexes.Set(m_CurrentPart, index);
+
 		if (index == 0)
 		{
 			m_CustomizationPoint.SetVehiclePartByPrefab(m_CurrentPart, m_mDefaultParts.Get(m_CurrentPart));
@@ -266,6 +312,14 @@ class SCR_RAllyVehicleCustomizationSubmenuNew : SCR_SubMenuBase
 		SCR_RallyVehicleCustomizationData vehicle = vehicles[m_CustomizationPoint.m_iCurrentPreviewVehicleIndex];
 		if (!vehicle)
 			return;
+
+		Vehicle previewVehicle = m_CustomizationPoint.GetCurrentPreviewVehicle();
+		if (previewVehicle && (previewVehicle != m_CurrentPreviewVehicle))
+		{
+			m_CurrentPreviewVehicle = previewVehicle;
+			m_mDefaultParts.Clear();
+			m_mSelectedVariantIndexes.Clear();
+		}
 
 		UpdateVisualAttributes(vehicle);
 		UpdateVehicleTexts(vehicle);

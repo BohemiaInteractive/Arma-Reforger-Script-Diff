@@ -8,6 +8,9 @@ class SCR_RaceEntity : GenericEntity
 		Race
 	*/
 
+	//! Medals, best first. In SP the first (gold) time is replaced by the finish time of the ghost the player races against
+	//! (their best run or the default ghost, whichever is faster) and the others keep their offset from it, see GetMedalTimeForGhost().
+	//! The authored times are used as they are in MP or when there is no ghost.
 	[Attribute(category: "Race")]
 	ref array<ref SCR_RaceRecord> m_aRaceRecords;
 
@@ -62,6 +65,7 @@ class SCR_RaceEntity : GenericEntity
 	protected bool m_bIsRaceRunning;
 	protected bool m_bIsRacePrepared;
 	protected SCR_RaceSave m_RecordRace;
+	protected float m_fLockedGhostFinishTime = -1;	//!< ghost finish time the current/last run's medals are based on, see LockMedalTimes()
 
 	protected ref array<ref Shape> m_aGhostDebugShapes = {};
 	protected ref SCR_GhostSave m_GhostData;
@@ -105,6 +109,7 @@ class SCR_RaceEntity : GenericEntity
 	protected static const float FLIPPED_MAX_SPEED_SQ = Math.Pow(FLIPPED_MAX_SPEED / 3.6, 2); //!< m/s²
 
 	protected static const int TELEPORT_DELAY = 100;		//!< ms
+	protected static const int WAKE_UP_DELAY = 1500;		//!< ms, time given to an unconscious racer to wake up before a restart puts them into a car
 
 	protected static const int BLACKIN_RACE_START = 1500;	//!< ms
 	protected static const int BLACKIN_RACE_RESTART = 500;	//!< ms
@@ -670,16 +675,100 @@ class SCR_RaceEntity : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return the race assigned to the map's customization point (one race per map), or null when there is none
+	static SCR_RaceEntity GetActiveRace()
+	{
+		SCR_AdditionalGameModeSettingsComponent settings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
+		if (!settings)
+			return null;
+
+		SCR_RaceCustomizationPointEntity point = settings.GetCustomizationEntity();
+		if (!point)
+			return null;
+
+		return SCR_RaceEntity.Cast(GetGame().GetWorld().FindEntityByName(point.GetAssignedRace()));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Restart entry point for the pause menu and the game over screen. Unlike RestartRace() it also copes with a racer
+	//! who is no longer in a state to simply be put into a new car:
+	//! - alive: restarted right away
+	//! - incapacitated (unconscious): healed and woken up first, restarted after WAKE_UP_DELAY
+	//! - dead / no controlled character: respawned through SCR_RaceSpawnLogic, which restarts the race once the new character exists
+	//! The chosen outfit is re-applied to a respawned character by SCR_RaceCustomizationPointEntity.OnPlayerSpawn.
+	void RequestRestart(int playerID)
+	{
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID));
+
+		CharacterControllerComponent controller;
+		if (character)
+			controller = character.GetCharacterController();
+
+		if (!controller || controller.GetLifeState() == ECharacterLifeState.DEAD)
+		{
+			RespawnAndRestart(playerID);
+			return;
+		}
+
+		if (controller.GetLifeState() == ECharacterLifeState.INCAPACITATED)
+		{
+			SCR_CharacterDamageManagerComponent damageManager = SCR_CharacterDamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(character));
+			if (damageManager)
+				damageManager.FullHeal();
+
+			controller.SetUnconscious(false);
+
+			// leave time for the wake-up animation, getting into a vehicle is not possible while it plays
+			GetGame().GetCallqueue().CallLater(RestartRace, WAKE_UP_DELAY, false, playerID);
+			return;
+		}
+
+		RestartRace(playerID);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void RespawnAndRestart(int playerID)
+	{
+		SCR_RespawnSystemComponent respawnSystem = SCR_RespawnSystemComponent.GetInstance();
+		if (!respawnSystem)
+		{
+			Print("SCR_RaceEntity::RespawnAndRestart: no SCR_RespawnSystemComponent", LogLevel.ERROR);
+			return;
+		}
+
+		SCR_RaceSpawnLogic spawnLogic = SCR_RaceSpawnLogic.Cast(respawnSystem.GetSpawnLogic());
+		if (!spawnLogic)
+		{
+			Print("SCR_RaceEntity::RespawnAndRestart: spawn logic is not SCR_RaceSpawnLogic", LogLevel.ERROR);
+			return;
+		}
+
+		// Stay fully black until RestartRace() (called after the respawn) fades back in, so the
+		// freshly spawned character standing on the road is never visible
+		HoldBlackout();
+		spawnLogic.RespawnForRaceRestart_S(playerID);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Restarts the race for a racer in-place, without reloading the world: resets timers, checkpoints,
 	//! speed stats and ghost recording, and gives them a fresh vehicle at the start line. The Start
 	//! checkpoint is re-armed but not auto-triggered - the player has to physically drive through it again.
 	void RestartRace(int playerID)
 	{
-		m_NextCheckpoint = null;
-		m_bOnClosingLeg = false;
 		SCR_RacerData data = GetRacerData(playerID);
 		if (!data)
 			return;
+
+		// Spawn the new car first: if that fails the running race is left exactly as it was
+		Vehicle newCar = SpawnRaceVehicle(data.GetCustomizationData(), data.GetVehiclePrefab());
+		if (!newCar)
+		{
+			Print(string.Format("SCR_RaceEntity::RestartRace: SpawnRaceVehicle failed for prefab '%1', race not restarted", data.GetVehiclePrefab()), LogLevel.ERROR);
+			return;
+		}
+
+		m_NextCheckpoint = null;
+		m_bOnClosingLeg = false;
 
 		PlayFadeFeedback(BLACKIN_RACE_RESTART);
 
@@ -693,10 +782,6 @@ class SCR_RaceEntity : GenericEntity
 
 		m_bIsRaceRunning = false;
 		m_bIsRacePrepared = false;
-
-		Vehicle newCar = SpawnRaceVehicle(data.GetCustomizationData(), data.GetVehiclePrefab());
-		if (!newCar)
-			return;
 
 		// drop the old car, spawn a fresh one with the same customization/prefab as before
 		Vehicle oldCar = data.GetVehicle();
@@ -753,26 +838,44 @@ class SCR_RaceEntity : GenericEntity
 		if (durationMS < 1)
 			return;
 
+		if (!PrepareBlackout())
+			return;
+
+		m_RestartFadeComponent.DelayedFadeOut(durationMS, false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Covers the screen with black and keeps it there until the next PlayFadeFeedback() fades it out
+	protected void HoldBlackout()
+	{
+		PrepareBlackout();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Creates the fade widget if needed and sets it to fully opaque
+	//! \return false if the widget could not be created
+	protected bool PrepareBlackout()
+	{
 		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
 		if (!hudManager)
-			return;
+			return false;
 
 		if (!m_wRestartFadeWidget)
 		{
 			m_wRestartFadeWidget = hudManager.CreateLayout(BLACK_OUT_IN_LAYOUT, EHudLayers.ALWAYS_TOP, 1000);
 			if (!m_wRestartFadeWidget)
-				return;
+				return false;
 
 			m_RestartFadeComponent = SCR_FadeUIComponent.Cast(m_wRestartFadeWidget.FindHandler(SCR_FadeUIComponent));
 		}
 
 		if (!m_RestartFadeComponent)
-			return;
+			return false;
 
 		m_RestartFadeComponent.CancelFade(false);
 		m_wRestartFadeWidget.SetOpacity(1);
 		m_wRestartFadeWidget.SetVisible(true);
-		m_RestartFadeComponent.DelayedFadeOut(durationMS, false);
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -997,6 +1100,63 @@ class SCR_RaceEntity : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Picks the ghost to race against: the player's best run or the track default, whichever is faster.
+	//! Ghosts are single-player only, in MP nothing is picked.
+	//! \param[out] ghostTime finish time of the picked ghost, -1 if none
+	//! \param[out] recordRace player's saved best run, null if none
+	//! \return picked ghost, null if none
+	protected SCR_GhostSave SelectGhost(out float ghostTime, out SCR_RaceSave recordRace)
+	{
+		ghostTime = -1;
+		recordRace = null;
+
+		if (RplSession.Mode() != RplMode.None)
+			return null;
+
+		SCR_GhostSave defaultGhost = LoadDefaultGhost();
+		SCR_GhostSave playerGhost;
+		float playerTime;
+
+		PersistenceSystem persistence = PersistenceSystem.GetInstance();
+		SCR_PersistentRaceData raceData;
+		if (persistence)
+			raceData = SCR_PersistentRaceData.Cast(persistence.GetPersistentState(SCR_PersistentRaceData));
+
+		if (raceData)
+		{
+			array<SCR_RaceSave> races = raceData.GetRaces();
+			//we store just one ghost per race so we can always get first
+			if (races && !races.IsEmpty())
+			{
+				recordRace = races.Get(0);
+				if (recordRace && recordRace.m_aGhost && !recordRace.m_aGhost.IsEmpty())
+				{
+					playerGhost = recordRace.m_aGhost.Get(0);
+					if (playerGhost)
+						playerGhost.RebuildTransforms();
+
+					playerTime = recordRace.m_fGoalReachedTime;
+				}
+			}
+		}
+
+		//default ghost carries no separate finish time field - its last recorded sample is its finish time
+		float defaultTime = -1;
+		if (defaultGhost && defaultGhost.m_aPositions && !defaultGhost.m_aPositions.IsEmpty())
+			defaultTime = defaultGhost.m_aPositions[defaultGhost.m_aPositions.Count() - 1].m_fTime;
+
+		//use whichever is faster; player's best only exists once a run is recorded, default only once authored
+		if (playerGhost && (!defaultGhost || playerTime <= defaultTime))
+		{
+			ghostTime = playerTime;
+			return playerGhost;
+		}
+
+		ghostTime = defaultTime;
+		return defaultGhost;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Ghosts are single-player only. In MP this is a no-op - m_GhostData stays null and no ghost
 	//! vehicle is spawned (see SCR_RaceStartCheckpoint, which also gates SpawnGhost() on RplSession.Mode()).
 	void StartPlayingGhost(SCR_RacerData racerData)
@@ -1004,44 +1164,72 @@ class SCR_RaceEntity : GenericEntity
 		if (RplSession.Mode() != RplMode.None)
 			return;
 
-		SCR_GhostSave defaultGhost = LoadDefaultGhost();
-		SCR_GhostSave playerGhost;
-		float playerTime;
-
-		SCR_PersistentRaceData raceData = SCR_PersistentRaceData.Cast(PersistenceSystem.GetInstance().GetPersistentState(SCR_PersistentRaceData));
-		if (raceData)
-		{
-			array<SCR_RaceSave> races = raceData.GetRaces();
-			//we store just one ghost per race so we can always get first
-			if (races && !races.IsEmpty())
-			{
-				m_RecordRace = races.Get(0);
-				if (m_RecordRace)
-				{
-					playerGhost = m_RecordRace.m_aGhost.Get(0);
-					if (playerGhost)
-						playerGhost.RebuildTransforms();
-
-					playerTime = m_RecordRace.m_fGoalReachedTime;
-				}
-			}
-		}
-
-		//default ghost carries no separate finish time field - its last recorded sample is its finish time
-		float defaultTime;
-		if (defaultGhost && defaultGhost.m_aPositions && !defaultGhost.m_aPositions.IsEmpty())
-			defaultTime = defaultGhost.m_aPositions[defaultGhost.m_aPositions.Count() - 1].m_fTime;
-
-		//use whichever is faster; player's best only exists once a run is recorded, default only once authored
-		if (playerGhost && (!defaultGhost || playerTime <= defaultTime))
-			m_GhostData = playerGhost;
-		else
-			m_GhostData = defaultGhost;
+		float ghostTime;
+		m_GhostData = SelectGhost(ghostTime, m_RecordRace);
 
 //		foreach (SCR_TimedPositionSave point : m_GhostData.m_aPositions)
 //		{
 //			m_aGhostDebugShapes.Insert(Shape.CreateSphere(ARGB(125, 255, 255, 255), ShapeFlags.WIREFRAME, point.m_aTransform[3], 0.1));
 //		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return finish time of the ghost the player races against (their best run or the track default, whichever is faster), -1 if none (MP or no ghost)
+	float GetGhostFinishTime()
+	{
+		float ghostTime;
+		SCR_RaceSave recordRace;
+		SelectGhost(ghostTime, recordRace);
+		return ghostTime;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Snapshot of the medal times for the run that is starting, so a new best saved at its finish doesn't change the medals it is judged by.
+	//! Call once at the start of a run, regardless of whether the ghost is shown.
+	void LockMedalTimes()
+	{
+		m_fLockedGhostFinishTime = GetGhostFinishTime();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return number of medals (m_aRaceRecords), ordered best first
+	int GetMedalCount()
+	{
+		if (!m_aRaceRecords)
+			return 0;
+
+		return m_aRaceRecords.Count();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return localized medal name
+	string GetMedalText(int index)
+	{
+		if (!m_aRaceRecords || !m_aRaceRecords.IsIndexValid(index))
+			return string.Empty;
+
+		return m_aRaceRecords[index].GetWinningText();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Medal time based on a ghost finish time: the first medal (gold) equals the ghost time, the others keep their
+	//! authored offset from gold in m_aRaceRecords. Without a ghost (ghostFinishTime < 0) the authored times are used.
+	float GetMedalTimeForGhost(int index, float ghostFinishTime)
+	{
+		if (!m_aRaceRecords || !m_aRaceRecords.IsIndexValid(index))
+			return 0;
+
+		if (ghostFinishTime < 0)
+			return m_aRaceRecords[index].GetFinalTime();
+
+		return ghostFinishTime + m_aRaceRecords[index].GetFinalTime() - m_aRaceRecords[0].GetFinalTime();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return medal time the last started run is judged by (locked by LockMedalTimes())
+	float GetLockedMedalTime(int index)
+	{
+		return GetMedalTimeForGhost(index, m_fLockedGhostFinishTime);
 	}
 
 	//------------------------------------------------------------------------------------------------

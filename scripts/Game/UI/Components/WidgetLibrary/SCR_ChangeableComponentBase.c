@@ -8,6 +8,12 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 	
 	[Attribute("", UIWidgets.EditBox, "")]
 	protected string m_sLabel;
+
+	[Attribute("", UIWidgets.EditBox, desc: "Label which is only going to be shown on Xbox. If empty it will use 'PC' variant from m_sLabel")]
+	protected string m_sLabelXbox;
+
+	[Attribute("", UIWidgets.EditBox, desc: "Label which is only going to be shown on Playstation. If empty it will use 'PC' variant from m_sLabel")]
+	protected string m_sLabelPlayStation;
 	
 	[Attribute("true")]
 	protected bool m_bForceSize;
@@ -140,7 +146,29 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 		TextWidget text = TextWidget.Cast(m_wLabelRoot.FindAnyWidget("Text"));
 		if (!text)
 			return;
-		
+
+		PlatformKind platformType = GetGame().GetPlatformService().GetLocalPlatformKind();
+		switch (platformType)
+		{
+			case PlatformKind.PSN:
+				if (!m_sLabelPlayStation.IsEmpty())
+				{
+					text.SetText(m_sLabelPlayStation);
+					return;
+				}
+
+				break;
+
+			case PlatformKind.XBOX:
+				if (!m_sLabelXbox.IsEmpty())
+				{
+					text.SetText(m_sLabelXbox);
+					return;
+				}
+
+				break;
+		}
+
 		text.SetText(m_sLabel);
 	}
 	

@@ -104,6 +104,10 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external ECharacterStance GetStance();
 	//! Returns the current controlled character.
 	proto external SCR_ChimeraCharacter GetCharacter();
+	//! Adds a loiter input action. Its payload is written by OnWriteLoiterInputAction.
+	//! \return False when the character is not locally controlled, when an action of the same type is still waiting
+	//!         to be performed, or when the payload is too big.
+	proto external bool AddLoiterAction(ELoiterInputAction type);
 	//! Set wanted input action values
 	proto external void SetFireWeaponWanted(bool val);
 	//! Set wanted input action values
@@ -498,6 +502,10 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	event bool CanGetOutVehicleScript() { return true; };
 	//! Override to handle whether character can eject from vehicle via JumpOut input action
 	event bool CanJumpOutVehicleScript() { return true; };
+	//! Writes the payload of a loiter input action that is being added.
+	event protected void OnWriteLoiterAction(ELoiterInputAction type, ScriptBitWriter writer);
+	//! Performs a loiter input action.
+	event protected void OnPerformLoiterAction(ELoiterInputAction type, ScriptBitReader reader);
 	//! Will be called when the life state of the character changes.
 	event protected void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState, bool isJIP);
 	//! Will be called when the consciousness of the character changes.

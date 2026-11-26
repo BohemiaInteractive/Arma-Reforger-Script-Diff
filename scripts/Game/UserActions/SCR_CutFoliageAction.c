@@ -240,6 +240,9 @@ class SCR_CutFoliageAction : SCR_ScriptedUserAction
 		if (charController && !IsInProgress() && !charController.CanUseItem())
 			return false;
 
+		if (charController.IsChangingStance() || (m_eSavedStance >= 0 && charController.GetStance() != m_eSavedStance))
+			return false;
+
 		return gadgetComponent.GetMode() == EGadgetMode.IN_HAND;
 	}
 

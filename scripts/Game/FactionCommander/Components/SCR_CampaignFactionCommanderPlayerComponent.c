@@ -389,6 +389,12 @@ class SCR_CampaignFactionCommanderPlayerComponent : SCR_FactionCommanderPlayerCo
 		if (!IsValidRequest(base))
 			return;
 
+		int playerId = m_PlayerController.GetPlayerId();
+
+		SCR_Faction faction = SCR_Faction.Cast(SCR_FactionManager.SGetPlayerFaction(playerId));
+		if (!faction || faction.IsPlayerCommander(playerId))
+			return;
+
 		base.SetSupplyLimit(value);
 	}
 
@@ -409,6 +415,12 @@ class SCR_CampaignFactionCommanderPlayerComponent : SCR_FactionCommanderPlayerCo
 		if (!IsValidRequest(base))
 			return;
 
+		int playerId = m_PlayerController.GetPlayerId();
+
+		SCR_Faction faction = SCR_Faction.Cast(SCR_FactionManager.SGetPlayerFaction(playerId));
+		if (!faction || faction.IsPlayerCommander(playerId))
+			return;
+
 		base.SetReservedSupplyAmount(value);
 	}
 
@@ -427,6 +439,12 @@ class SCR_CampaignFactionCommanderPlayerComponent : SCR_FactionCommanderPlayerCo
 	{
 		SCR_CampaignMilitaryBaseComponent base = SCR_GameModeCampaign.GetInstance().GetBaseManager().FindBaseByCallsign(baseCallsign);
 		if (!IsValidRequest(base))
+			return;
+
+		int playerId = m_PlayerController.GetPlayerId();
+
+		SCR_Faction faction = SCR_Faction.Cast(SCR_FactionManager.SGetPlayerFaction(playerId));
+		if (!faction || faction.IsPlayerCommander(playerId))
 			return;
 
 		base.SetSupplyRequestExecutionPriority(priority);

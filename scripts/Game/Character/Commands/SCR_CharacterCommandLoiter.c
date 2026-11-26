@@ -19,6 +19,9 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 	protected bool m_bWasTag, m_bUsingGraphAttachment;
 	protected float m_fVelocityThreshold = 0.2;
 	protected int m_iLoiterAbortType = -1;		// -1 is soft exit.
+	//! Set when the AI took the character back while it was loitering. The loiter is stopped by the owner, which can be
+	//! a later frame: the server becomes the owner again only after the ownership transfer back to it has completed.
+	protected bool m_bStopWhenOwner;
 	
 	//------------------------------------------------------------------------------------------------
 	// constructor
@@ -116,8 +119,15 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 		// If loitering was terminated without properly releasing the ownership of the loiter action, do it now
 		FreeOccupiedActions();
 		
+		// Another command replaced the loiter (e.g. a fall). It is finished here, and the owner tells the other machines.
+		bool wasActive = m_eState == ELoiterCommandState.LOITERING || m_eState == ELoiterCommandState.EXITING;
 		if (m_eState == ELoiterCommandState.LOITERING)
 			StopLoitering(true);
+		else if (m_eState == ELoiterCommandState.EXITING)
+			DetachGraphAttachmentAndFinish(true);
+		
+		if (wasActive)
+			RequestFinish();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -130,7 +140,7 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 		if (eventName == "ItemHide")
 			m_customAnimData.DeleteItem();
 		else if (eventName == "Gesture_End")
-			DetachGraphAttachmentAndFinish(false);
+			RequestFinish();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -146,7 +156,6 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 			PreAnim_SetAttachment(m_customAnimData.m_sGraphBindingName, string.Empty, string.Empty, string.Empty);
 
 		FinishLoiter();
-		m_pCommandHandler.BroadCastLoiterFinish();
 		
 		SCR_CharacterControllerComponent charController = SCR_CharacterControllerComponent.Cast(m_pCharacter.FindComponent(SCR_CharacterControllerComponent));
 		if (charController)
@@ -162,6 +171,7 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 		if (newLifeState != ECharacterLifeState.ALIVE)
 		{
 			DetachGraphAttachmentAndFinish(true);
+			RequestFinish();
 		}
 	}
 	
@@ -172,9 +182,44 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Finishes the loiter when the loiter finish input action is performed. A loiter that was not stopped on this
+	//! machine (e.g. the owner's loiter was replaced by another command) plays the fast exit first, a graph attachment
+	//! is detached.
+	void PerformFinish()
+	{
+		if (m_eState == ELoiterCommandState.LOITERING && !m_bUsingGraphAttachment)
+			StopLoitering(true);
+		
+		if (!IsLoiterCommandFinished())
+			DetachGraphAttachmentAndFinish(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return True on the machine that controls the character and decides the loiter transitions.
+	protected bool IsOwner()
+	{
+		return !m_rplComponent || m_rplComponent.IsOwner();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! On the owner, requests finishing the loiter on every machine through the loiter finish input action.
+	protected void RequestFinish()
+	{
+		if (!IsOwner())
+			return;
+		
+		SCR_CharacterControllerComponent charController = SCR_CharacterControllerComponent.Cast(m_pCharacter.GetCharacterController());
+		if (charController)
+			charController.RequestFinishLoitering();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Called on the server when the AI takes the character back, e.g. after a GM stops possessing it.
+	//! At this point ownership transfer back to the server is not complete yet.
 	override void OnPossess()
 	{
-		StopLoitering(true);
+		if (m_eState == ELoiterCommandState.LOITERING)
+			m_bStopWhenOwner = true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -196,6 +241,17 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 		{
 			case ELoiterCommandState.LOITERING:
 			{
+				// Only the owner decides when the loiter stops, the other machines follow its loiter input actions
+				if (!IsOwner())
+					break;
+				
+				// Requested again every frame until the stop is performed, the request is refused while one is pending
+				if (m_bStopWhenOwner)
+				{
+					m_pCommandHandler.StopLoitering(true);
+					break;
+				}
+				
 				bool isTag = m_pCharAnimComponent.IsPrimaryTag(m_pStaticTable.m_IsLoiteringTag);
 				m_bWasTag = isTag || m_bWasTag;
 				
@@ -237,15 +293,13 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 			break;
 			case ELoiterCommandState.EXITING:
 			{
-				if (m_bUsingGraphAttachment)
+				// Only the owner decides when the exit is over, the other machines follow its loiter finish input action
+				if (m_bUsingGraphAttachment || !IsOwner())
 					break;
-				// @TODO(ivanickyjak) We cannot use tags on server.
+				
 				bool isTag = m_pCharAnimComponent.IsPrimaryTag(m_pStaticTable.m_IsLoiteringTag) || m_pCharAnimComponent.IsSecondaryTag(m_pStaticTable.m_IsLoiteringTag);
 				if (!isTag)
-				{
-					FinishLoiter();
-					m_pCommandHandler.BroadCastLoiterFinish();
-				}
+					RequestFinish();
 			}
 			break;
 		}
@@ -258,6 +312,14 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 	{
 		if (newState == m_eState)
 			return;
+		
+		// The loiter is over and the graph got its exit value when the exit started. Writing the control variable
+		// again would put the graph back into the loiter animation on a machine that never received the stop.
+		if (newState == ELoiterCommandState.DONE)
+		{
+			m_eState = newState;
+			return;
+		}
 		
 		TAnimGraphCommand customCommand = -1;
 		int customCommandValue = -1;
@@ -339,6 +401,9 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 		if (m_eState != ELoiterCommandState.LOITERING)
 			return;
 		
+		// The loiter is stopping, a stop requested by OnPossess is no longer needed
+		m_bStopWhenOwner = false;
+		
 		if (customAnimData)
 		{
 			m_customAnimData = customAnimData;
@@ -368,6 +433,10 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 	//------------------------------------------------------------------------------------------------
 	void FinishLoiter()
 	{
+		// Technically we do not need to reset this flag because every new loiter requests starts
+		// a new loiter command.
+		m_bStopWhenOwner = false;
+		
 		SetFlagFinished(true);
 		m_pScrInputCtx.m_iLoiteringType = -1;
 		m_bUsingGraphAttachment = false;

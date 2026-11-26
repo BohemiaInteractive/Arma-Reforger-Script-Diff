@@ -41,12 +41,13 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 		vector lookAngles = m_CharacterHeadAimingComponent.GetLookAngles();
 		
 		if (m_CharacterAnimationComponent.PhysicsIsLinked() && !m_CmdHandler.GetCommandLadder())
-		{
-			pOutResult.m_fUseHeading = 0.0; // Do not use heading after so that we can calculate it ourselves here
-			
+		{			
 			if (!m_ControllerComponent.IsFreeLookEnabled())
 			{
-				lookAngles[0] = m_OwnerCharacter.GetAimRotationModel()[0] * Math.RAD2DEG;
+				vector linkedEntTM[4];
+				m_CharacterAnimationComponent.PhysicsGetParentTransform(linkedEntTM);
+				vector linkedEntYPR = Math3D.MatrixToAngles(linkedEntTM);
+				lookAngles[0] = lookAngles[0] + (linkedEntYPR[0] - m_OwnerCharacter.GetAngles()[0]);
 			}
 		}
 
@@ -89,7 +90,16 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 		}
 		else
 		{
-			msOffset[0] = msOffset[0] + shoulderDist;
+			if (m_CharacterAnimationComponent.PhysicsIsLinked() && !m_CmdHandler.GetCommandLadder())
+			{
+				vector linkedEntTM[4];
+				m_CharacterAnimationComponent.PhysicsGetParentTransform(linkedEntTM);
+				msOffset += linkedEntTM[0]*shoulderDist;
+			}
+			else
+			{
+				msOffset[0] = msOffset[0] + shoulderDist;
+			}
 		}
 		
 		vector charMat[4];

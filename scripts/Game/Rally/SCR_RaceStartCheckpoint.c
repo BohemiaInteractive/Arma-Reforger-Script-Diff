@@ -36,8 +36,12 @@ class SCR_RaceStartCheckpoint : SCR_RaceCheckpoint
 		if (!timeAndWeatherManager)
 			return;
 
+		//lock medal times once per run (circuits pass the start every lap), before a new best can be saved at the finish
 		if (data.GetStartTime() == 0)
+		{
 			data.SetStartTime(timeAndWeatherManager.GetEngineTime());
+			race.LockMedalTimes();
+		}
 
 		if (race.IsCircuit())
 		{

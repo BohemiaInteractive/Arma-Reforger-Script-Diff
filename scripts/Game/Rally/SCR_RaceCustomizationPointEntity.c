@@ -46,6 +46,10 @@ class SCR_RaceCustomizationPointEntity : GenericEntity
 
 	protected ref SCR_RallyCustomizationData m_CustomizationData = new SCR_RallyCustomizationData();
 
+	protected static const int OUTFIT_APPLY_DELAY = 100;	//!< ms
+
+	protected bool m_bCustomizationConfirmed;
+
 	protected static const ResourceName CAMERA_PREFAB = "{D6DE32D1C0FCC1C7}Prefabs/Editor/Camera/ManualCameraBase.et";
 
 	//------------------------------------------------------------------------------------------------
@@ -81,6 +85,16 @@ class SCR_RaceCustomizationPointEntity : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void OnPlayerSpawn(int playerId, IEntity player)
 	{
+		// Respawn after customization was done (e.g. restarting the race after dying): no customization screen again,
+		// the racer just gets the outfit they chose. Slightly delayed so the new character's inventory is ready.
+		if (m_bCustomizationConfirmed)
+		{
+			if (playerId == SCR_PlayerController.GetLocalPlayerId())
+				GetGame().GetCallqueue().CallLater(ApplyOutfitToCharacter, OUTFIT_APPLY_DELAY, false, player);
+
+			return;
+		}
+
 		m_vehicleCamPosition.Init(this);
 		m_characterCamPosition.Init(this);
 		m_SpoilerCamPosition.Init(this);
@@ -111,6 +125,8 @@ class SCR_RaceCustomizationPointEntity : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void OnCustomizationConfirmed()
 	{
+		m_bCustomizationConfirmed = true;
+
 		GetGame().GetCameraManager().SetPreviousCamera();
 		delete m_CurrentPreviewVehicle;
 
@@ -226,20 +242,20 @@ class SCR_RaceCustomizationPointEntity : GenericEntity
 			return;
 		}
 
-		// An empty prefab detaches the part instead of replacing it. Only lights can be
-		// removed entirely this way; for other parts an empty prefab is a no-op.
-		if (prefab.IsEmpty() && part != SCR_ERallyCustomizationParts.LIGHTS)
-			return;
-
 		IEntity attachedEntity = foundSlot.GetAttachedEntity();
+
 		if (attachedEntity)
 		{
 			foundSlot.DetachEntity();
 			delete attachedEntity;
 		}
 
+		// An empty prefab detaches the part, which is the default for vehicles that ship without it.
 		if (prefab.IsEmpty())
+		{
+			m_CustomizationData.SetVehiclePart(part, prefab);
 			return;
+		}
 
 		Resource partPrefab = Resource.Load(prefab);
 		if (!partPrefab.IsValid())
@@ -253,8 +269,42 @@ class SCR_RaceCustomizationPointEntity : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Remembers the chosen outfit part (so it can be re-applied after a respawn) and puts it on the character being customized
 	void SetCharacterPartByPrefab(string slotName, ResourceName prefab)
 	{
+		m_CustomizationData.SetCharacterPart(slotName, prefab);
+		EquipCharacterPart(slotName, prefab);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Applies the stored outfit to a character that is not the one the outfit was chosen on, i.e. after a respawn.
+	//! A character that is already the current one (alive or just woken up) keeps what it wears.
+	protected void ApplyOutfitToCharacter(IEntity character)
+	{
+		if (!character || character == m_PlayerEntity)
+			return;
+
+		// items of the previous character are gone with it
+		m_PlayerEntity = character;
+		m_CurrentHat = null;
+		m_CurrentOverall = null;
+		m_CurrentGloves = null;
+
+		array<string> slotNames = {"Hat", "Overal", "Gloves"};
+		foreach (string slotName : slotNames)
+		{
+			ResourceName prefab = m_CustomizationData.GetCharacterPart(slotName);
+			if (!prefab.IsEmpty())
+				EquipCharacterPart(slotName, prefab);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void EquipCharacterPart(string slotName, ResourceName prefab)
+	{
+		if (!m_PlayerEntity)
+			return;
+
 		SCR_InventoryStorageManagerComponent inventoryManager = SCR_InventoryStorageManagerComponent.Cast(m_PlayerEntity.FindComponent(SCR_InventoryStorageManagerComponent));
 		if (!inventoryManager)
 			return;
@@ -420,6 +470,7 @@ class SCR_RallyCustomizationData
 {
 	ResourceName m_sBaseVehicle;
 	protected ref map<SCR_ERallyCustomizationParts, ResourceName> m_mVehicleParts;
+	protected ref map<string, ResourceName> m_mCharacterParts;	//!< outfit: slot name ("Hat", "Overal", "Gloves") -> prefab, so it can be applied to any character, not just the one being customized
 	protected string m_sVehicleName;
 	protected string m_sWeather;
 	protected string m_sStartingTime;
@@ -457,6 +508,26 @@ class SCR_RallyCustomizationData
 			m_mVehicleParts = new map<SCR_ERallyCustomizationParts, ResourceName>();
 
 		m_mVehicleParts.Set(part, prefab);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] slotName "Hat", "Overal" or "Gloves"
+	ResourceName GetCharacterPart(string slotName)
+	{
+		if (!m_mCharacterParts)
+			return string.Empty;
+
+		return m_mCharacterParts.Get(slotName);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] slotName "Hat", "Overal" or "Gloves"
+	void SetCharacterPart(string slotName, ResourceName prefab)
+	{
+		if (!m_mCharacterParts)
+			m_mCharacterParts = new map<string, ResourceName>();
+
+		m_mCharacterParts.Set(slotName, prefab);
 	}
 
 	//------------------------------------------------------------------------------------------------

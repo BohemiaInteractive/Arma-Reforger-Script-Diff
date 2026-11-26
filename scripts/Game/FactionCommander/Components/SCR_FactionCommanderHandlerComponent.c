@@ -174,8 +174,14 @@ class SCR_FactionCommanderHandlerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Attempts to set the commander to a specific player Id, either used by server or to replicate from server
+	//! \param[in] faction faction to set the new commander in
+	//! \param[in] commanderPlayerId new commander id, 0 for AI commander
 	void SetFactionCommander(notnull SCR_Faction faction, int commanderPlayerId)
 	{
+		if (m_RplComponent && m_RplComponent.Role() != RplRole.Authority)
+			return;
+
 		int oldCommanderId = faction.GetCommanderId();
 
 		if (oldCommanderId == commanderPlayerId)

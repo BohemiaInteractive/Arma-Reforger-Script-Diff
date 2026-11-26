@@ -12,6 +12,7 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 	protected IEntity m_ActiveUser;
 	protected SCR_GadgetManagerComponent m_GadgetManager;
 	protected bool m_bIsShown;
+	protected ECharacterStance m_eSavedStance = -1;
 	
 	//------------------------------------------------------------------------------------------------
 	protected override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
@@ -55,6 +56,7 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 			params.SetCommandIntArg(1);
 
 			charController.TryUseItemOverrideParams(params);
+			m_eSavedStance = charController.GetStance();
 		}
 
 		super.OnActionStart(pUserEntity);
@@ -110,6 +112,8 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 			if (cmdHandler)
 				cmdHandler.FinishItemUse(true);
 		}
+
+		m_eSavedStance = -1;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -180,10 +184,13 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 		
 		ChimeraCharacter character = ChimeraCharacter.Cast(user);
 		CharacterControllerComponent charController = character.GetCharacterController();
-		
+
 		if (charController && !IsInProgress() && !charController.CanUseItem())
-			return false;			
-		
+			return false;
+
+		if (charController.IsChangingStance() || (m_eSavedStance >= 0 && m_eSavedStance != charController.GetStance()))
+			return false;
+
 		return (gadgetComponent.GetMode() == EGadgetMode.IN_HAND);
 	}
 	

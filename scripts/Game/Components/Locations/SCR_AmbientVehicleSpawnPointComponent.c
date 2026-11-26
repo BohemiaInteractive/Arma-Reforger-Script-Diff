@@ -22,6 +22,12 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 	[Attribute("1", desc: "If true, vehicles will be saved into persistence system on despawn (if available).")]
 	protected bool m_bSaveOnDespawn;
 
+	[Attribute("0", UIWidgets.ComboBox, "Only vehicles with this ambient spawn label (see SCR_EntityCatalogAmbientVehicleData) can spawn here. Catalog entries without labels count as BASE_GAME. NONE = no filtering.", "", ParamEnumArray.FromEnum(SCR_EAmbientVehicleSpawnLabel))]
+	protected SCR_EAmbientVehicleSpawnLabel m_eSpawnLabel;
+
+	[Attribute("1", UIWidgets.Slider, "Chance that this spawn point spawns a vehicle at all (0 = never, 1 = always). Rolled once per session before the first spawn; a failed roll depletes the spawn point.", "0 1 0.05")]
+	protected float m_fSpawnChance;
+
 	protected static const int SPAWNING_RADIUS = 5;				//m, check empty space on a spawnpoint with this radius
 	protected static const int IGNORE_CHANGES_DELAY_MS = 1000;	//ms, how long after vehicle spawn should changes to fuel or damage be ignored before despawn is disabled
 
@@ -29,6 +35,7 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 	protected bool m_bFirstSpawnDone;
 	protected bool m_bSpawnProcessed;
 	protected bool m_bAllowDespawn = true;
+	protected bool m_bSpawnChanceRolled;
 
 	protected float m_fSpawnTimestamp;
 
@@ -151,6 +158,17 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 		SCR_FactionAffiliationComponent comp = SCR_FactionAffiliationComponent.Cast(owner.FindComponent(SCR_FactionAffiliationComponent));
 		if (!comp)
 			return;
+
+		// Roll the spawn chance once per session. Spawn points restoring a saved vehicle passed the roll in an earlier session.
+		if (!m_bSpawnChanceRolled)
+		{
+			m_bSpawnChanceRolled = true;
+			if (m_fSpawnChance < 1 && m_sVehicleDataId.IsNull() && Math.RandomFloat01() >= m_fSpawnChance)
+			{
+				m_bDepleted = true;
+				return;
+			}
+		}
 
 		SCR_Faction faction = SCR_Faction.Cast(comp.GetAffiliatedFaction());
 		if (!faction)
@@ -412,7 +430,67 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 		if (data.IsEmpty())
 			return;
 
-		m_sPrefab = (data.GetRandomElement().GetPrefab());
+		m_sPrefab = GetRandomPrefabByWeight(data);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Weighted random pick. Weight is read from SCR_EntityCatalogAmbientVehicleData, entries without it have weight 1.
+	//! Entries not matching m_eSpawnLabel get weight 0. Entries without ambient data count as BASE_GAME.
+	protected ResourceName GetRandomPrefabByWeight(notnull array<SCR_EntityCatalogEntry> entries)
+	{
+		array<float> weights = {};
+		float total;
+		float weight;
+		bool labelMatch;
+		SCR_EntityCatalogAmbientVehicleData vehicleData;
+
+		foreach (SCR_EntityCatalogEntry entry : entries)
+		{
+			weight = 1;
+			vehicleData = SCR_EntityCatalogAmbientVehicleData.Cast(entry.GetEntityDataOfType(SCR_EntityCatalogAmbientVehicleData));
+
+			if (m_eSpawnLabel != SCR_EAmbientVehicleSpawnLabel.NONE)
+			{
+				if (vehicleData)
+					labelMatch = vehicleData.HasSpawnLabel(m_eSpawnLabel);
+				else
+					labelMatch = m_eSpawnLabel == SCR_EAmbientVehicleSpawnLabel.BASE_GAME;
+
+				if (!labelMatch)
+					weight = 0;
+			}
+
+			if (weight > 0 && vehicleData)
+				weight = Math.Max(0, vehicleData.GetSpawnWeight());
+
+			weights.Insert(weight);
+			total += weight;
+		}
+
+		if (total <= 0)
+		{
+#ifdef WORKBENCH
+			PrintFormat("SCR_AmbientVehicleSpawnPointComponent: no vehicle with spawn label %1 and non-zero weight found for %2", typename.EnumToString(SCR_EAmbientVehicleSpawnLabel, m_eSpawnLabel), GetOwner(), level: LogLevel.WARNING);
+#endif
+			return ResourceName.Empty;
+		}
+
+		const float roll = Math.RandomFloat(0, total);
+		float cumulative;
+		int lastValid = -1;
+
+		foreach (int i, SCR_EntityCatalogEntry entry : entries)
+		{
+			if (weights[i] <= 0)
+				continue;
+
+			lastValid = i;
+			cumulative += weights[i];
+			if (roll < cumulative)
+				return entry.GetPrefab();
+		}
+
+		return ResourceName.Empty;
 	}
 
 	//------------------------------------------------------------------------------------------------

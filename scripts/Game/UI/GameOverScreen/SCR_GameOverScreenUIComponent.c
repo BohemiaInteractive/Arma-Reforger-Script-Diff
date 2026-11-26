@@ -149,13 +149,17 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 
 			if (sequenceHeader)
 			{
-				if (sequenceHeader.m_sNextScenario.IsEmpty() || endScreenUIContent.m_GameOverInfo.GetInfoId() != EGameOverTypes.VICTORY)
+				bool isVictory = endScreenUIContent.m_GameOverInfo.GetInfoId() == EGameOverTypes.VICTORY;
+				
+				if (isVictory)
+					sequenceHeader.UpdateProgress();
+				
+				if (sequenceHeader.m_sNextScenario.IsEmpty() || !isVictory)
 				{
 					nextScenarioBtn.SetEnabled(false);
 				}
 				else
 				{
-					sequenceHeader.UpdateProgress();
 					SCR_InputButtonComponent nextScenarioButtontn = SCR_InputButtonComponent.Cast(nextScenarioBtn.FindHandler(SCR_InputButtonComponent));
 					if (nextScenarioButtontn)
 						nextScenarioButtontn.m_OnActivated.Insert(NextScenario);

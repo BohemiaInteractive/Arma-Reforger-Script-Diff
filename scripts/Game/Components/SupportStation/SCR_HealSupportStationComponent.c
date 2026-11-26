@@ -123,9 +123,10 @@ class SCR_HealSupportStationComponent : SCR_BaseDamageHealSupportStationComponen
 			if (!OnConsumeSuppliesServer(GetSupplyAmountAction(actionOwner, actionUser, action)))
 				return;
 		}
-					
+
+		SCR_DamageContext contextTemplate = GetHealingDamageContextTemplate(characterDamageManager.GetOwner(), actionUser);
 		//~ Heal the blood hitZone
-		characterDamageManager.HealHitZones(damageToHeal, true, m_fMaxBloodScaled, hitZones);
+		characterDamageManager.HealHitZones(damageToHeal, true, m_fMaxBloodScaled, hitZones, contextTemplate);
 		
 		//~ Get healstate
 		SCR_EDamageSupportStationHealState healState;	
@@ -143,6 +144,15 @@ class SCR_HealSupportStationComponent : SCR_BaseDamageHealSupportStationComponen
 			
 		OnExecuteDamageSystem(actionOwner, actionUser, healState, SCR_BaseDamageHealSupportStationAction.Cast(action), bloodHitZone.GetHealthScaled());
 		Rpc(OnExecuteDamageSystemBroadcast, ownerId, userId, healState, action.GetActionID(), bloodHitZone.GetHealthScaled());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected SCR_DamageContext GetHealingDamageContextTemplate(notnull IEntity healedOwner, IEntity instigatorEntity)
+	{
+		SCR_DamageContext dmgContext = super.GetHealingDamageContextTemplate(healedOwner, instigatorEntity);
+		dmgContext.damageEffect = new SCR_HealingDamageEffect();
+
+		return dmgContext;
 	}
 	
 	//------------------------------------------------------------------------------------------------

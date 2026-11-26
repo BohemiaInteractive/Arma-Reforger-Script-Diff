@@ -53,6 +53,9 @@ class SCR_HorizontalScrollAnimationComponent : ScriptedWidgetComponent
 	[Attribute("0", UIWidgets.CheckBox, "Inwards offset from left edge of root widget to be used in calculations")]
 	protected float m_fOffsetLeft;
 
+	[Attribute("false", UIWidgets.CheckBox, "When true, content will start animating automatically without needing to receive focus first.")]
+	protected bool m_bStartAutomatically;
+
 	[Attribute(typename.EnumToString(SCR_EScrollAnimationState, SCR_EScrollAnimationState.NONE), UIWidgets.ComboBox, "Start state of animation", "", ParamEnumArray.FromEnum(SCR_EScrollAnimationState))]
 	protected SCR_EScrollAnimationState m_eInitialState;
 
@@ -185,6 +188,13 @@ class SCR_HorizontalScrollAnimationComponent : ScriptedWidgetComponent
 			return;
 		}
 
+		if (m_bStartAutomatically)
+		{
+			m_fTimer = m_fWaitTimeLeftSec;
+			GetGame().GetCallqueue().CallLater(StartAutomatically, m_fWaitTimeLeftSec * 1000);
+			return;
+		}
+
 		m_eState = m_eInitialState;
 
 		//use CallLater, it seems that Call() might not have a loop/repeat option
@@ -199,7 +209,10 @@ class SCR_HorizontalScrollAnimationComponent : ScriptedWidgetComponent
 	override void HandlerDeattached(Widget w)
 	{
 		if (GetGame() && GetGame().GetCallqueue())
+		{
 			GetGame().GetCallqueue().Remove(OnFrame);
+			GetGame().GetCallqueue().Remove(StartAutomatically);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -321,6 +334,14 @@ class SCR_HorizontalScrollAnimationComponent : ScriptedWidgetComponent
 				break;
 			}
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void StartAutomatically()
+	{
+		GetGame().GetCallqueue().Remove(StartAutomatically);
+		if (!GetContentFitX())
+			AnimationStart();
 	}
 
 	//------------------------------------------------------------------------------------------------

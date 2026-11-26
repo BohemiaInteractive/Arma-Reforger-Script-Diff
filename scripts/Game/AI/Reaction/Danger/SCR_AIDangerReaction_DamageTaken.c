@@ -5,7 +5,11 @@ class SCR_AIDangerReaction_DamageTaken : SCR_AIDangerReaction
 	{
 		if (dangerEvent.GetVictim() != utility.m_OwnerEntity)
 			return false;
-		
+
+		// Healing is reported as damage taken, it is not a danger
+		if (threatSystem.IsDamageTakenOnlyHealing())
+			return false;
+
 		IEntity shooter = dangerEvent.GetObject();
 		
 		if (!shooter)

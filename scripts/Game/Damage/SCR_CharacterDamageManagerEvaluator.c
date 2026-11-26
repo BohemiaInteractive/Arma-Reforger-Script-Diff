@@ -31,6 +31,7 @@ class SCR_CharacterDamageManagerEvaluator : DamageEffectEvaluatorWrapper
 		super.HandleEffectConsequences(effect, dmgManager);
 	
 		CriticalThresholdTryCauseBleeding(effect, dmgManager);
+		PenalizeInstigatorWithXP(effect, dmgManager);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -251,5 +252,39 @@ class SCR_CharacterDamageManagerEvaluator : DamageEffectEvaluatorWrapper
 
 		staminaComponent.ApplyImmediateStaminaRecovery(effect.GetStaminaRecovery());
 		staminaComponent.ApplyHydrationRecovery(effect.GetHydrationRecovery());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Awards the instigator of the effect with friendly damaged xp penalty if he is from friendly faction
+	//! \param[in] effect which was applied
+	//! \param[in] dmgManager of the victim
+	protected void PenalizeInstigatorWithXP(SCR_DamageEffect effect, ExtendedDamageManagerComponent dmgManager)
+	{
+		if (!SCR_XPHandlerComponent.IsXpSystemEnabled())
+			return;
+
+		Instigator instigator = effect.GetInstigator();
+		int instigatorPlayerId = instigator.GetInstigatorPlayerID();
+		if (instigatorPlayerId < 1)
+			return; // not caused by a player
+
+		SCR_ChimeraCharacter instigatorCharacter = SCR_ChimeraCharacter.Cast(instigator.GetInstigatorEntity());
+		if (!instigatorCharacter)
+			return;
+
+		Faction instigatorFaction = instigatorCharacter.GetFaction();
+		if (!instigatorFaction)
+			return;
+
+		SCR_ChimeraCharacter victim = SCR_ChimeraCharacter.Cast(dmgManager.GetOwner());
+		Faction victimFaction = victim.GetFaction();
+		if (!instigatorFaction.IsFactionFriendly(victimFaction))
+			return;
+
+		SCR_XPHandlerComponent xpHandler = SCR_XPHandlerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_XPHandlerComponent));
+		if (!xpHandler)
+			return;
+
+		xpHandler.AwardXP(instigatorPlayerId, SCR_EXPRewards.FRIENDLY_DAMAGED);
 	}
 }

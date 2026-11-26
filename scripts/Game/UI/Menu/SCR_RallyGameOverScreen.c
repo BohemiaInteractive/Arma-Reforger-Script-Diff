@@ -3,6 +3,10 @@ class SCR_RallyGameOverScreen : SCR_SuperMenuBase
 	protected const float FINISH_AUDIO_FADE_DURATION = 1.5;
 	protected const float ENDSCREEN_MUSIC_DELAY = 3;
 
+	protected const string DIALOG_SCENARIO_EXIT = "scenario_exit";
+
+	protected ref SCR_ConfigurableDialogUi m_ExitDialog;
+
 	protected SCR_RacerData m_Data;
 	protected SCR_RaceEntity m_FinishedRace;
 
@@ -100,9 +104,10 @@ class SCR_RallyGameOverScreen : SCR_SuperMenuBase
 			return false;
 
 		float racerTime = m_Data.GetEndTime() - m_Data.GetStartTime();
-		foreach (SCR_RaceRecord record : m_FinishedRace.m_aRaceRecords)
+		const int medalCount = m_FinishedRace.GetMedalCount();
+		for (int i = 0; i < medalCount; i++)
 		{
-			if (racerTime < record.m_fFinalTime)
+			if (racerTime < m_FinishedRace.GetLockedMedalTime(i))
 				return true;
 		}
 
@@ -149,14 +154,20 @@ class SCR_RallyGameOverScreen : SCR_SuperMenuBase
 	protected void SetupNavigationButtons()
 	{
 		Widget restartButton = GetRootWidget().FindAnyWidget("Restart");
-		if (!restartButton)
-			return;
+		if (restartButton)
+		{
+			SCR_InputButtonComponent restartComponent = SCR_InputButtonComponent.Cast(restartButton.FindHandler(SCR_InputButtonComponent));
+			if (restartComponent)
+				restartComponent.m_OnActivated.Insert(OnRestartRace);
+		}
 
-		SCR_InputButtonComponent restartComponent = SCR_InputButtonComponent.Cast(restartButton.FindHandler(SCR_InputButtonComponent));
-		if (!restartComponent)
-			return;
-
-		restartComponent.m_OnActivated.Insert(OnRestart);
+		Widget restartScenarioButton = GetRootWidget().FindAnyWidget("RestartScenario");
+		if (restartScenarioButton)
+		{
+			SCR_InputButtonComponent restartScenarioComponent = SCR_InputButtonComponent.Cast(restartScenarioButton.FindHandler(SCR_InputButtonComponent));
+			if (restartScenarioComponent)
+				restartScenarioComponent.m_OnActivated.Insert(OnRestartScenario);
+		}
 
 		Widget backButton = GetRootWidget().FindAnyWidget("Back");
 		if (!backButton)
@@ -201,16 +212,17 @@ class SCR_RallyGameOverScreen : SCR_SuperMenuBase
 
 		float racerTime = m_Data.GetEndTime() - m_Data.GetStartTime();
 		string positionText = "#AR-RallyDLC-GameOver_NoMedal";
-		foreach (SCR_RaceRecord record : m_FinishedRace.m_aRaceRecords)
+		float medalTime;
+		const int medalCount = m_FinishedRace.GetMedalCount();
+		for (int i = 0; i < medalCount; i++)
 		{
-			//change this so when gold time is beaten, it will save the ghost
-			Print(" " + racerTime + " < " + record.m_fFinalTime, LogLevel.NORMAL);
-			if (racerTime < record.m_fFinalTime)
+			medalTime = m_FinishedRace.GetLockedMedalTime(i);
+			Print(" " + racerTime + " < " + medalTime, LogLevel.NORMAL);
+			if (racerTime < medalTime)
 			{
-				positionText = record.m_sWinningText;
+				positionText = m_FinishedRace.GetMedalText(i);
 				break;
 			}
-
 		}
 
 		text.SetText(positionText);
@@ -361,15 +373,16 @@ class SCR_RallyGameOverScreen : SCR_SuperMenuBase
 		if (!time1 || !time2 || !time3)
 			return;
 
-		if (m_FinishedRace.m_aRaceRecords.Count() < 3)
+		if (m_FinishedRace.GetMedalCount() < 3)
 		{
 			Print("SCR_RallyGameOverScreen:: Not enough track records set!", LogLevel.WARNING);
 			return;
 		}
 
-		time1.SetText(SCR_FormatHelper.FormatTimeMSHideZeroes(m_FinishedRace.m_aRaceRecords[0].GetFinalTime(), 3));
-		time2.SetText(SCR_FormatHelper.FormatTimeMSHideZeroes(m_FinishedRace.m_aRaceRecords[1].GetFinalTime(), 3));
-		time3.SetText(SCR_FormatHelper.FormatTimeMSHideZeroes(m_FinishedRace.m_aRaceRecords[2].GetFinalTime(), 3));
+		//medals this run was judged by (locked at its start)
+		time1.SetText(SCR_FormatHelper.FormatTimeMSHideZeroes(m_FinishedRace.GetLockedMedalTime(0), 3));
+		time2.SetText(SCR_FormatHelper.FormatTimeMSHideZeroes(m_FinishedRace.GetLockedMedalTime(1), 3));
+		time3.SetText(SCR_FormatHelper.FormatTimeMSHideZeroes(m_FinishedRace.GetLockedMedalTime(2), 3));
 
 		RichTextWidget checkpointCount = RichTextWidget.Cast(GetRootWidget().FindAnyWidget("CheckpointsCount"));
 		if (!checkpointCount)
@@ -379,7 +392,36 @@ class SCR_RallyGameOverScreen : SCR_SuperMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnRestart(SCR_InputButtonComponent comp, string action)
+	//! Quick restart: puts the racer (alive, unconscious or dead) back at the start line of the same race
+	protected void OnRestartRace(SCR_InputButtonComponent comp, string action)
+	{
+		SCR_RaceEntity race = m_FinishedRace;
+		if (!race)
+			race = SCR_RaceEntity.GetActiveRace();
+
+		if (!race)
+			return;
+
+		// the end screen track would keep playing over the restarted race
+		MusicManager musicManager;
+		ChimeraWorld world = GetGame().GetWorld();
+		if (world)
+			musicManager = world.GetMusicManager();
+
+		if (musicManager)
+		{
+			musicManager.Stop(SCR_SoundEvent.SOUND_MUSIC_RALLY_ENDSCREEN_MEDAL);
+			musicManager.Stop(SCR_SoundEvent.SOUND_MUSIC_RALLY_ENDSCREEN_NO_MEDAL);
+		}
+
+		// OnMenuClose restores the volumes and cancels the delayed end screen music
+		Close();
+		race.RequestRestart(SCR_PlayerController.GetLocalPlayerId());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Full restart: reloads the whole scenario
+	protected void OnRestartScenario(SCR_InputButtonComponent comp, string action)
 	{
 		GetGame().GetMenuManager().CloseAllMenus();
 		GameStateTransitions.RequestScenarioRestart();
@@ -388,8 +430,43 @@ class SCR_RallyGameOverScreen : SCR_SuperMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnBack(SCR_InputButtonComponent comp, string action)
 	{
+		if (m_ExitDialog)
+			return;
+
+		m_ExitDialog = SCR_CommonDialogs.CreateDialog(DIALOG_SCENARIO_EXIT);
+		if (!m_ExitDialog)
+		{
+			OnExitConfirm();
+			return;
+		}
+
+		m_ExitDialog.m_OnConfirm.Insert(OnExitConfirm);
+		m_ExitDialog.m_OnCancel.Insert(OnExitCancel);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnExitConfirm()
+	{
+		if (m_ExitDialog)
+		{
+			m_ExitDialog.m_OnConfirm.Remove(OnExitConfirm);
+			m_ExitDialog.m_OnCancel.Remove(OnExitCancel);
+			m_ExitDialog = null;
+		}
+
 		Close();
 		GameStateTransitions.RequestGameplayEndTransition();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnExitCancel()
+	{
+		if (m_ExitDialog)
+		{
+			m_ExitDialog.m_OnConfirm.Remove(OnExitConfirm);
+			m_ExitDialog.m_OnCancel.Remove(OnExitCancel);
+			m_ExitDialog = null;
+		}
 	}
 
 }

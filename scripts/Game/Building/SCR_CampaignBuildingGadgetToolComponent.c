@@ -1021,8 +1021,15 @@ class SCR_CampaignBuildingGadgetToolComponent : SCR_GadgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected bool EvaluateBush(IEntity ent)
 	{
+		Tree tree = Tree.Cast(ent);
+		if (!tree)
+			return true;
+
 		// check distance from player
 		if (m_SelectedFoliage && vector.DistanceSqXZ(m_vFoliageDetectionOrigin, ent.GetOrigin()) > vector.DistanceSqXZ(m_vFoliageDetectionOrigin, m_SelectedFoliage.GetOrigin()))
+			return true;
+
+		if (tree.GetCurrentHealth() <= 0)
 			return true;
 
 		m_SelectedFoliage = ent;

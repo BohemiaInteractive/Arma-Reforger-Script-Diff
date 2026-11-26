@@ -943,7 +943,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 
 		Faction groupFaction = group.GetFaction();
 		int playerId = GetPlayerID();
-		if (!groupFaction || groupFaction != SCR_FactionManager.SGetPlayerFaction(playerId))
+		if (!groupFaction || groupFaction != SCR_FactionManager.SGetPlayerFaction(playerId) || !CanPlayerJoinGroup(playerId, group))
 			return;
 
 		int groupIDAfter;

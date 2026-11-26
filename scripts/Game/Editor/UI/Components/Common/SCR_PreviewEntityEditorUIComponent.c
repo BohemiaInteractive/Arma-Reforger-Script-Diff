@@ -730,11 +730,19 @@ class SCR_PreviewEntityEditorUIComponent : SCR_BaseEditorUIComponent
 			//--- Rotation towards cursor
 			RotateTowardsCursor(tDelta, previewTransform);
 			m_bIsAnimated = false;
+
+			// to prevent people holding rotate while selecting and spawning them at 0,0,0
+			if (float.AlmostEqual(previewTransform[3].LengthSq(), 0, 0.01))
+				MoveHorizontalTowardsCursor(tDelta, previewTransform, canTransform, verticalMode);
 		}
 		else if (m_InputManagerBase.GetActionTriggered("EditorTransformMoveVerticalModifier") && HasMouseMoved())
 		{
 			//--- Vertical movement towards cursor
 			MoveVerticalTowardsCursor(tDelta, previewTransform);
+
+			// to prevent people holding vertical move while selecting and spawning them at 0,0,0
+			if (float.AlmostEqual(previewTransform[3].LengthSq(), 0, 0.01))
+				MoveHorizontalTowardsCursor(tDelta, previewTransform, canTransform, verticalMode);
 		}
 		else if (moveVertical != 0 && (m_Operation == EPreviewEntityEditorOperation.MOVE_HORIZONTAL || m_Operation == EPreviewEntityEditorOperation.MOVE_VERTICAL))
 		{

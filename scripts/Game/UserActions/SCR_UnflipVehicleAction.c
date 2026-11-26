@@ -14,9 +14,6 @@ class SCR_UnflipVehicleAction : SCR_PushVehicleAction
 	protected const float ALIGN_STANDOFF = 0.7;
 	//! Fallback stand-off distance from the center, used when the raycast fails to hit the body.
 	protected const float ALIGN_FALLBACK_DIST = 1.2;
-	//! Push and pull animations are disabled. The animation could end on the owner while it was still playing on the server,
-	//! which desynced the character state between them.
-	protected const bool USE_ANIMATIONS = false;
 
 	//------------------------------------------------------------------------------------------------
 	//! Can this action be shown in the UI to the provided user entity?
@@ -102,9 +99,6 @@ class SCR_UnflipVehicleAction : SCR_PushVehicleAction
 		if (charDmgManager)
 			charDmgManager.SetUnflipCollisionGuardActive(true, GetOwner().GetRootParent());
 		
-		if (!USE_ANIMATIONS)
-			return;
-		
 		// play animation on correct spot
 		SCR_AIAnimation_Recovery unflip = GetPushOrPullAnimation();
 		if (!unflip)
@@ -149,9 +143,6 @@ class SCR_UnflipVehicleAction : SCR_PushVehicleAction
 		SCR_CharacterDamageManagerComponent charDmgManager = SCR_CharacterDamageManagerComponent.Cast(pUserEntity.FindComponent(SCR_CharacterDamageManagerComponent));
 		if (charDmgManager)
 			charDmgManager.SetUnflipCollisionGuardActive(false, GetOwner().GetRootParent());
-		
-		if (!USE_ANIMATIONS)
-			return;
 		
 		SCR_AIAnimation_Recovery unflip = GetPushOrPullAnimation();
 		if (!unflip)

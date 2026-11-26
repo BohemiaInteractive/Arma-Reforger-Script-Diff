@@ -248,8 +248,9 @@ class SCR_BaseDamageHealSupportStationComponent : SCR_BaseSupportStationComponen
 
 		float maxHealScaled = GetMaxHealScaled();
 
+		SCR_DamageContext contextTemplate = GetHealingDamageContextTemplate(damageManager.GetOwner(), actionUser);
 		//~ No DoT so get hitZones to heal
-		damageManager.HealHitZones(damageToHeal, true, maxHealScaled, hitZones);
+		damageManager.HealHitZones(damageToHeal, true, maxHealScaled, hitZones, contextTemplate);
 
 		//~ The support station can still heal more
 		if (damageManager.GetHitZonesDamage(maxHealScaled, hitZones) > 0)
@@ -271,6 +272,16 @@ class SCR_BaseDamageHealSupportStationComponent : SCR_BaseSupportStationComponen
 
 		OnExecuteDamageSystem(actionOwner, actionUser, healState, SCR_BaseDamageHealSupportStationAction.Cast(action), healthScaled);
 		Rpc(OnExecuteDamageSystemBroadcast, ownerId, userId, healState, action.GetActionID(), healthScaled);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Creates a template damage context which will be used for healing the entity
+	//! \param[in] healedOwner the entity which is being healed
+	//! \param[in] instigatorEntity the entity which caused the healing
+	protected SCR_DamageContext GetHealingDamageContextTemplate(notnull IEntity healedOwner, IEntity instigatorEntity)
+	{
+		vector hitPosDirNorm[3];
+		return new SCR_DamageContext(EDamageType.HEALING, 0, hitPosDirNorm, healedOwner, null, Instigator.CreateInstigator(instigatorEntity), null, 0, 0);
 	}
 
 	//------------------------------------------------------------------------------------------------

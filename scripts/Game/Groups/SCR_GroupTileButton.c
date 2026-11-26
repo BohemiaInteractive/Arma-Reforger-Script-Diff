@@ -1123,10 +1123,14 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 
 		m_PlayerTileComponent.SetOptionsComboBoxComponent(playerOptionsCombo);
 
-		int playerID = GetGame().GetPlayerController().GetPlayerId();
-		SCR_AIGroup group = m_GroupManager.GetPlayerGroup(playerID);
+		int localPlayerID = GetGame().GetPlayerController().GetPlayerId();
+		int tilePlayerID = m_PlayerTileComponent.GetTilePlayerID();
 
-		if (group && m_iGroupID != group.GetGroupID() && m_PlayerTileComponent.GetTilePlayerID() != -1)
+		SCR_AIGroup group = m_GroupManager.GetPlayerGroup(localPlayerID);
+
+		SCR_PlayerControllerGroupComponent groupComponent = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+
+		if (group && m_iGroupID != group.GetGroupID() && m_PlayerTileComponent.GetTilePlayerID() != -1 && groupComponent.CanInvitePlayer(tilePlayerID))
 			m_PlayerTileComponent.GetOptionsComboComponent().AddItem(OPTIONS_COMBO_INVITE);
 
 		group = m_GroupManager.FindGroup(m_iGroupID);
@@ -1134,7 +1138,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		if (!group)
 			return;
 
-		if (group.IsPlayerLeader(playerID) && playerID != m_PlayerTileComponent.GetTilePlayerID() && m_PlayerTileComponent.GetTilePlayerID() != -1)
+		if (group.IsPlayerLeader(localPlayerID) && localPlayerID != tilePlayerID && tilePlayerID != -1)
 		{
 			if (group.GetGroupRole() != SCR_EGroupRole.RESERVES) // kicked players will get sent to the reserves, so we get rid of the option to avoid confusion
 				m_PlayerTileComponent.GetOptionsComboComponent().AddItem(OPTIONS_COMBO_KICK);

@@ -8,6 +8,21 @@ class SCR_RaceSpawnLogic : SCR_SpawnLogic
 	[Attribute("", uiwidget: UIWidgets.EditBox, category: "Respawn", desc: "Default loadout for players to spawn with or empty if none")]
 	protected string m_sForcedLoadout;
 
+	//! Players who asked for a race restart while having no living character; restarted once their new character spawned
+	protected ref set<int> m_aPendingRaceRestarts = new set<int>();
+
+	protected static const int RESTART_AFTER_SPAWN_DELAY = 200;	//!< ms, lets the new character be possessed and dressed before it is put into the new car
+
+	//------------------------------------------------------------------------------------------------
+	//! Respawns the player (the same way as the initial spawn) and restarts their race as soon as the new character exists
+	void RespawnForRaceRestart_S(int playerId)
+	{
+		if (!m_aPendingRaceRestarts.Contains(playerId))
+			m_aPendingRaceRestarts.Insert(playerId);
+
+		DoSpawn_S(playerId);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerAuditSuccess_S(int playerId)
 	{
@@ -19,6 +34,15 @@ class SCR_RaceSpawnLogic : SCR_SpawnLogic
 	override void OnPlayerSpawned_S(int playerId, IEntity entity)
 	{
 		super.OnPlayerSpawned_S(playerId, entity);
+
+		if (m_aPendingRaceRestarts.Contains(playerId))
+		{
+			m_aPendingRaceRestarts.RemoveItem(playerId);
+
+			SCR_RaceEntity race = SCR_RaceEntity.GetActiveRace();
+			if (race)
+				GetGame().GetCallqueue().CallLater(race.RestartRace, RESTART_AFTER_SPAWN_DELAY, false, playerId);
+		}
 
 		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(entity.FindComponent(CharacterControllerComponent));
 		if (!controller)

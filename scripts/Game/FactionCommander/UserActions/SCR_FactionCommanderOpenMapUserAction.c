@@ -60,12 +60,8 @@ class SCR_FactionCommanderOpenMapUserAction : ScriptedUserAction
 			SetCannotPerformReason(CANNOT_OPEN_MAP_TEXT);
 			return true;
 		}
-		else if (!playerFaction.IsPlayerCommander(playerId))
-		{
-			return false;
-		}
 
-		return true;
+		return playerFaction.IsPlayerCommander(playerId) && super.CanBeShownScript(user);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -86,12 +82,8 @@ class SCR_FactionCommanderOpenMapUserAction : ScriptedUserAction
 
 		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(user);
 
-		if (!playerFaction.IsPlayerCommander(playerId))
-		{
-			return false;
-		}
 
-		return true;
+		return playerFaction.IsPlayerCommander(playerId) && super.CanBePerformedScript(user);
 	}
 
 	//------------------------------------------------------------------------------------------------

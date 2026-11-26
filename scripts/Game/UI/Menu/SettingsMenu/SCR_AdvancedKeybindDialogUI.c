@@ -2,6 +2,7 @@
 class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 {
 	protected ref array<ref SCR_InputFilterConfiguration> m_aInputFilterConfigurations;
+	protected ref array<ref CanvasWidgetCommand> m_aDrawCommands = {};
 
 	protected SCR_InputButtonComponent m_Select;
 	
@@ -170,6 +171,65 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 			}
 		}
 
+		Widget deadzoneLayoutWidget = m_wRoot.FindAnyWidget("InputFilter_DeadZones");
+		if (deadzoneLayoutWidget)
+		{
+			bool canUse = filter && validFilter && validFilter.m_bCanAdjustDeadzones;
+			deadzoneLayoutWidget.SetEnabled(canUse);
+			deadzoneLayoutWidget.SetVisible(canUse);
+
+			ButtonWidget centerDeadzoneButtonWidget = ButtonWidget.Cast(m_wRoot.FindAnyWidget("InputFilter_CenterDeadzone"));
+			SCR_SliderComponent comp = SCR_SliderComponent.Cast(centerDeadzoneButtonWidget.FindHandler(SCR_SliderComponent));
+			if (comp)
+			{
+				comp.GetOnChangedFinal().Remove(OnCenterDeadZoneSliderChangedFinal);
+				if (canUse)
+				{
+					float value;
+					filter.Get(SCR_InputHelper.INPUT_CONTAINER_DEADZONE_NAME, value);
+					comp.SetValue(value, false);
+					comp.GetOnChangedFinal().Insert(OnCenterDeadZoneSliderChangedFinal);
+				}
+			}
+
+			ButtonWidget edgeDeadzoneButtonWidget = ButtonWidget.Cast(m_wRoot.FindAnyWidget("InputFilter_EdgeDeadzone"));
+			comp = SCR_SliderComponent.Cast(edgeDeadzoneButtonWidget.FindHandler(SCR_SliderComponent));
+			if (comp)
+			{
+				comp.GetOnChangedFinal().Remove(OnEdgeDeadzoneSliderChangedFinal);
+				if (canUse)
+				{
+					float value;
+					TVectorArray curve = SCR_InputHelper.GetInputCurve(filter);
+					if (curve && !curve.IsEmpty())
+						value = 1 - curve[curve.Count() - 1][0];
+
+					comp.SetValue(value, false);
+					comp.GetOnChangedFinal().Insert(OnEdgeDeadzoneSliderChangedFinal);
+				}
+			}
+
+			ButtonWidget curveShapeButtonWidget = ButtonWidget.Cast(m_wRoot.FindAnyWidget("InputFilter_CurveShape"));
+			comp = SCR_SliderComponent.Cast(curveShapeButtonWidget.FindHandler(SCR_SliderComponent));
+			if (comp)
+			{
+				comp.GetOnChangedFinal().Remove(OnCurveShapeSliderChangedFinal);
+				if (canUse)
+				{
+					float value;
+					TVectorArray curve = SCR_InputHelper.GetInputCurve(filter);
+					if (curve && curve.Count() == SCR_InputHelper.INPUT_CURVE_KNOTS_COUNT)
+						value = SCR_InputHelper.GetInputCurveFactor(5, curve[5][1] * 10);
+
+					comp.SetValue(Math.AbsFloat(value), false);
+					comp.GetOnChangedFinal().Insert(OnCurveShapeSliderChangedFinal);
+				}
+			}
+
+			if (canUse)
+				DrawInputCurve(inputSource);
+		}
+
 		ButtonWidget thresholdButtonWidget = ButtonWidget.Cast(m_wRoot.FindAnyWidget("InputFilter_Threshold"));
 		if (thresholdButtonWidget)
 		{
@@ -287,7 +347,7 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 		if (!filter)
 			return;
 
-		float currentVal
+		float currentVal;
 		filter.Get(SCR_InputHelper.INPUT_CONTAINER_MULTIPLIER_NAME, currentVal);
 
 		bool inverted;
@@ -316,13 +376,150 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 		if (!filter)
 			return;
 
-		float currentVal
+		float currentVal;
 		filter.Get(SCR_InputHelper.INPUT_CONTAINER_OFFSET_NAME, currentVal);
 		if (currentVal == value)
 			return;
 
 		filter.Set(SCR_InputHelper.INPUT_CONTAINER_OFFSET_NAME, value);
 		inputBinds.Save();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnCenterDeadZoneSliderChangedFinal(SCR_SliderComponent comp, float value)
+	{
+		InputBinding inputBinds = m_SettingsKeybindModule.GetInputBindings();
+		BaseContainer inputSource = SCR_InputHelper.GetInputBinding(m_sActionName, m_sActionPreset, m_iSelectedKeybind, inputBinds);
+		if (!inputSource)
+			return;
+
+		BaseContainer filter = inputSource.GetObject(SCR_InputHelper.INPUT_CONTAINER_FILTER_NAME);
+		if (!filter)
+			return;
+
+		// dont allow for setting dead zone to 100%, as then the input wont work at all as it
+		// will be always 0 - stop hurting yourself type of deal
+		value = Math.Min(0.999, value);
+		float currentVal;
+		filter.Get(SCR_InputHelper.INPUT_CONTAINER_DEADZONE_NAME, currentVal);
+		if (currentVal == value)
+			return;
+
+		filter.Set(SCR_InputHelper.INPUT_CONTAINER_DEADZONE_NAME, value);
+		inputBinds.Save();
+		DrawInputCurve(inputSource);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnEdgeDeadzoneSliderChangedFinal(SCR_SliderComponent comp, float value)
+	{
+		InputBinding inputBinds = m_SettingsKeybindModule.GetInputBindings();
+		BaseContainer inputSource = SCR_InputHelper.GetInputBinding(m_sActionName, m_sActionPreset, m_iSelectedKeybind, inputBinds);
+		if (!inputSource)
+			return;
+
+		BaseContainer filter = inputSource.GetObject(SCR_InputHelper.INPUT_CONTAINER_FILTER_NAME);
+		if (!filter)
+			return;
+
+		if (!SCR_InputHelper.SetCurveDeadZone(filter, value))
+			return;
+
+		inputBinds.Save();
+		DrawInputCurve(inputSource);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnCurveShapeSliderChangedFinal(SCR_SliderComponent comp, float value)
+	{
+		InputBinding inputBinds = m_SettingsKeybindModule.GetInputBindings();
+		BaseContainer inputSource = SCR_InputHelper.GetInputBinding(m_sActionName, m_sActionPreset, m_iSelectedKeybind, inputBinds);
+		if (!inputSource)
+			return;
+
+		BaseContainer filter = inputSource.GetObject(SCR_InputHelper.INPUT_CONTAINER_FILTER_NAME);
+		if (!filter)
+			return;
+
+		BaseContainer curveContainer;
+		TVectorArray curve = SCR_InputHelper.GetInputCurve(filter, curveContainer);
+		float oldEdgeDeadZoneValue;
+		if (curve && !curve.IsEmpty())
+		{
+			oldEdgeDeadZoneValue = 1 - curve[curve.Count() - 1][0];
+		}
+		else
+		{
+			if (!filter.SetObject(SCR_InputHelper.INPUT_CONTAINER_TRANSITION_CURVE_NAME, BaseContainerTools.CreateContainer(SCR_InputHelper.INPUT_CURVE_CONTAINER_TYPE).GetResource().ToBaseContainer()))
+				return;
+
+			curveContainer = filter.GetObject(SCR_InputHelper.INPUT_CONTAINER_TRANSITION_CURVE_NAME);
+			if (!curveContainer)
+				return;
+
+			curveContainer.Set(SCR_InputHelper.INPUT_CONTAINER_FILTER_SPLINE_TYPE_NAME, typename.EnumToString(ECurveType, ECurveType.Linear));
+		}
+
+		curve = SCR_InputHelper.GenerateInputCurve(value);
+
+		array<float> knots = {};
+		array<float> values = {};
+		foreach (vector point : curve)
+		{
+			knots.Insert(point[0]);
+			values.Insert(point[1]);
+		}
+
+		curveContainer.Set(SCR_InputHelper.INPUT_CONTAINER_FILTER_CURVE_KNOTS_NAME, knots);
+		curveContainer.Set(SCR_InputHelper.INPUT_CONTAINER_FILTER_CURVE_VALUES_NAME, values);
+
+		if (oldEdgeDeadZoneValue > 0 && !SCR_InputHelper.SetCurveDeadZone(filter, oldEdgeDeadZoneValue))
+			return;
+
+		inputBinds.Save();
+		DrawInputCurve(inputSource);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void DelayedDrawCurveCall()
+	{
+		InputBinding inputBinds = m_SettingsKeybindModule.GetInputBindings();
+		BaseContainer inputSource = SCR_InputHelper.GetInputBinding(m_sActionName, m_sActionPreset, m_iSelectedKeybind, inputBinds);
+		if (!inputSource)
+			return;
+
+		DrawInputCurve(inputSource);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void DrawInputCurve(notnull BaseContainer inputSource)
+	{
+		CanvasWidget canvas = CanvasWidget.Cast(m_wRoot.FindAnyWidget("CurveCanvas"));
+		if (!canvas)
+			return;
+
+		BaseContainer filter = inputSource.GetObject(SCR_InputHelper.INPUT_CONTAINER_FILTER_NAME);
+		if (!filter)
+			return;
+
+		float maxWidth;
+		float maxHeight;
+		canvas.GetScreenSize(maxWidth, maxHeight);
+		if (maxWidth == 0 && maxHeight == 0)
+		{
+			GetGame().GetCallqueue().CallLater(DelayedDrawCurveCall); // postpone drawing until the widget is fully initialized and has its proper height/width 
+			return;
+		}
+
+		string inputBinding;
+		inputSource.Get(SCR_InputHelper.INPUT_CONTAINER_INPUT_NAME, inputBinding);
+
+		float mult, offset;
+		int inverse;
+		GetDefaultAxisFilterValues(inputBinding, mult, offset, inverse);
+		bool isHalfAxis = mult != 0.5;
+
+		SCR_InputHelper.DrawInputCurve(filter, canvas, m_aDrawCommands, isHalfAxis);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -337,7 +534,7 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 		if (!filter)
 			return;
 
-		float currentVal
+		float currentVal;
 		filter.Get(SCR_InputHelper.INPUT_CONTAINER_THRESHOLD_NAME, currentVal);
 		if (currentVal == value)
 			return;
@@ -358,7 +555,7 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 		if (!filter)
 			return;
 
-		float currentVal
+		float currentVal;
 		filter.Get(SCR_InputHelper.INPUT_CONTAINER_HOLD_DURATION_NAME, currentVal);
 		if (currentVal == value)
 			return;
@@ -383,7 +580,7 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 		if (!filter)
 			return;
 
-		float currentVal
+		float currentVal;
 		filter.Get(SCR_InputHelper.INPUT_CONTAINER_CLICK_DURATION_NAME, currentVal);
 		if (currentVal == value)
 			return;

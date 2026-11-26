@@ -699,7 +699,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	//! \param maxHealThresholdScaled When set, hitzone is healed only up to this threshold. Must be between 0 and 1.
 	//! \param alternativeHitZones When filled, function will use these hitzones instead of the default, physicalHitZones
 	//! \return Returns float of health that was not distributed. Value above 0 means not all health was distributed
-	float HealHitZones(float healthToDistribute, bool sequential = false, float maxHealThresholdScaled = 1, array<HitZone> alternativeHitZones = null)
+	float HealHitZones(float healthToDistribute, bool sequential = false, float maxHealThresholdScaled = 1, array<HitZone> alternativeHitZones = null, SCR_DamageContext contextTemplate = null)
 	{
 		if (healthToDistribute <= 0)
 			return healthToDistribute;
@@ -713,38 +713,56 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		else
 			GetPhysicalHitZones(targetHitZones);
 
+		if (!contextTemplate)
+		{
+			vector hitPosDirNorm[3];
+			contextTemplate = SCR_DamageContext(EDamageType.HEALING, 0, hitPosDirNorm, GetOwner(), null, null, null, 0, 0);
+		}
+
+		if (!contextTemplate.damageEffect)
+			contextTemplate.damageEffect = new SCR_HealingDamageEffect();
+
 		if (sequential)
-			healthToDistribute = HealHitZonesInSequence(healthToDistribute, maxHealThresholdScaled, targetHitZones);
+			healthToDistribute = HealHitZonesInSequence(healthToDistribute, maxHealThresholdScaled, targetHitZones, contextTemplate);
 		else // if in Parallel
-			healthToDistribute = HealHitZonesInParallel(healthToDistribute, maxHealThresholdScaled, targetHitZones);
+			healthToDistribute = HealHitZonesInParallel(healthToDistribute, maxHealThresholdScaled, targetHitZones, contextTemplate);
 
 		ReduceSmoke();
 		return healthToDistribute;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected float HealHitZonesInSequence(float healthToDistribute, float maxHealThresholdScaled, array<HitZone> targetHitZones)
+	protected float HealHitZonesInSequence(float healthToDistribute, float maxHealThresholdScaled, array<HitZone> targetHitZones, SCR_DamageContext contextTemplate = null)
 	{
+		DamageManagerComponent dmgMgr;
 		foreach (HitZone hitZone : targetHitZones)
 		{
 			if (healthToDistribute <= 0)
 				break;
+
+			// fetch hit zone damage manager to cover the case when we are healing a hit zone from a child entity
+			dmgMgr = DamageManagerComponent.Cast(hitZone.GetHitZoneContainer());
+			if (!dmgMgr)
+				continue;
 
 			// If hitzone is undamaged, go onto the next one
 			float healthToAdd = (hitZone.GetMaxHealth() * maxHealThresholdScaled) - hitZone.GetHealth();
 			if (healthToAdd <= 0)
 				continue;
 
+			contextTemplate.struckHitZone = hitZone;
 			// If health to distribute runs out, heal hitzone with whats left and exit
 			if (healthToAdd > healthToDistribute)
 			{
-				hitZone.HandleDamage(-healthToDistribute, EDamageType.HEALING, null);
+				contextTemplate.damageValue = -healthToDistribute;
+				dmgMgr.HandleDamage(contextTemplate);
 				healthToDistribute = 0;
 				break;
 			}
 
+			contextTemplate.damageValue = -healthToAdd;
 			// Heal hitZone and substract distributable health value
-			hitZone.HandleDamage(-healthToAdd, EDamageType.HEALING, null);
+			dmgMgr.HandleDamage(contextTemplate);
 			healthToDistribute -= healthToAdd;
 		}
 
@@ -752,10 +770,11 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected float HealHitZonesInParallel(float healthToDistribute, float maxHealThresholdScaled, array<HitZone> targetHitZones)
+	protected float HealHitZonesInParallel(float healthToDistribute, float maxHealThresholdScaled, array<HitZone> targetHitZones, SCR_DamageContext contextTemplate = null)
 	{
 		array<HitZone> damagedHitZones = {};
 
+		DamageManagerComponent dmgMgr;
 		while (healthToDistribute > 0)
 		{
 			foreach (HitZone hitZone : targetHitZones)
@@ -778,19 +797,22 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 				if (healthToAdd <= 0)
 					continue;
 
+				contextTemplate.struckHitZone = hitZone;
 				// If health to distribute is more than needed, apply what's needed and save whats' left
 				if (healthToDistributeHitZone > healthToAdd)
 				{
-					hitZone.HandleDamage(-healthToAdd, EDamageType.HEALING, null);
+					contextTemplate.damageValue = -healthToAdd;
 					healthToDistribute -= healthToAdd;
-					continue;
 				}
 				else// If health to distribute is less than needed, reduce healthToDistribute by health applied and continue
 				{
-					hitZone.HandleDamage(-healthToDistributeHitZone, EDamageType.HEALING, null);
+					contextTemplate.damageValue = -healthToDistributeHitZone;
 					healthToDistribute -= healthToDistributeHitZone;
-					continue;
 				}
+
+				dmgMgr = DamageManagerComponent.Cast(hitZone.GetHitZoneContainer());
+				if (dmgMgr)
+					dmgMgr.HandleDamage(contextTemplate);
 			}
 
 			damagedHitZones.Clear();

@@ -51,9 +51,9 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 	//!
 	void StartCommandLoitering(SCR_LoiterCustomAnimData customAnimData)
 	{
+		// A finished loiter command can still be the current command until the command handler replaces it
 		bool isCmdRunning = (m_CmdLoiter && !m_CmdLoiter.IsLoiterCommandFinished());
-		
-		if (isCmdRunning || IsLoitering())
+		if (isCmdRunning)
 			return;
 		
 		SCR_CharacterControllerComponent scrCharCtrl = SCR_CharacterControllerComponent.Cast(GetControllerComponent());
@@ -81,70 +81,51 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] terminateFast
-	//terminateFast should be true when we are going into alerted or combat state.
+	//! Starts the loiter command when the loiter start input action is performed. A loiter command that has not
+	//! finished yet is finished first, so this machine follows the owner even if it missed the finish.
+	//! \param[in] customAnimData
+	void PerformStartLoitering(SCR_LoiterCustomAnimData customAnimData)
+	{
+		if (m_CmdLoiter && !m_CmdLoiter.IsLoiterCommandFinished())
+			m_CmdLoiter.PerformFinish();
+		
+		StartCommandLoitering(customAnimData);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Requests stopping the loiter. Only the owner can stop it, the stop is then performed on every machine through
+	//! the loiter stop input action (see SCR_CharacterControllerComponent.StopLoitering).
+	//! \param[in] terminateFast should be true when going into alerted or combat state.
+	//! \param[in] customAnimData
 	void StopLoitering(bool terminateFast, SCR_LoiterCustomAnimData customAnimData = null)
 	{
-		SCR_LoiterCustomAnimData startLoitering;
-		if (m_CmdLoiter)
-			startLoitering = m_CmdLoiter.GetLoiterCustomAnimData();
-
-		if (customAnimData && startLoitering) // copiing spawned items from StartLoitering phase
+		if (m_CharacterControllerComp)
+			m_CharacterControllerComp.StopLoitering(terminateFast, customAnimData);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Stops the loiter command when the loiter stop input action is performed.
+	//! \param[in] terminateFast
+	//! \param[in] customAnimData
+	void PerformStopLoitering(bool terminateFast, SCR_LoiterCustomAnimData customAnimData)
+	{
+		if (!m_CmdLoiter)
+			return;
+		
+		// The items spawned for the start animation are local, keep them for the stop animation
+		SCR_LoiterCustomAnimData startLoitering = m_CmdLoiter.GetLoiterCustomAnimData();
+		if (customAnimData && startLoitering)
 			customAnimData.SetItems(startLoitering.GetItems());
-
-		if (m_CmdLoiter)
-			m_CmdLoiter.StopLoitering(terminateFast, customAnimData : customAnimData);
-
-		if (customAnimData)
-			Rpc(Rpc_StopLoiterCustom_S, terminateFast, customAnimData);
-		else
-			Rpc(Rpc_StopLoiter_S, terminateFast);
+		
+		m_CmdLoiter.StopLoitering(terminateFast, customAnimData : customAnimData);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] terminateFast
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void Rpc_StopLoiter_S(bool terminateFast)
+	//! Finishes the loiter command when the loiter finish input action is performed.
+	void PerformFinishLoitering()
 	{
-		if (!m_CmdLoiter)
-			return;
-
-		m_CmdLoiter.StopLoitering(terminateFast);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] terminateFast
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void Rpc_StopLoiterCustom_S(bool terminateFast, SCR_LoiterCustomAnimData customAnimData)
-	{
-		if (!m_CmdLoiter)
-			return;
-		
-		SCR_LoiterCustomAnimData current = m_CmdLoiter.GetLoiterCustomAnimData();
-		if (customAnimData && current)
-			customAnimData.SetItems(current.GetItems());
-		
-		m_CmdLoiter.StopLoitering(terminateFast, customAnimData: customAnimData);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void BroadCastLoiterFinish()
-	{
-		Rpc(RPC_FinishLoitering_BCNO);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast, RplCondition.NoOwner)]
-	void RPC_FinishLoitering_BCNO()
-	{		
-		auto loiterCommand = GetLoiterCommand();
-		if (!loiterCommand)
-			return;
-		
-		loiterCommand.FinishLoiter();
+		if (m_CmdLoiter && !m_CmdLoiter.IsLoiterCommandFinished())
+			m_CmdLoiter.PerformFinish();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -188,7 +169,7 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 	//------------------------------------------------------------------------------------------------
 	protected override bool OnRplSave(ScriptBitWriter writer)
 	{
-		if (!m_CmdLoiter || !IsLoitering() || !m_CmdLoiter.GetScriptedInputContext())
+		if (!m_CmdLoiter || !IsLoitering() || m_CmdLoiter.IsLoiterCommandFinished() || !m_CmdLoiter.GetScriptedInputContext())
 		{
 			writer.WriteBool(false);
 			return true;
